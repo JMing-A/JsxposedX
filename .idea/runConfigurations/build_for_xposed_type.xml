@@ -1,8 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="build_for_xposed_type" type="ShConfigurationType">
     <option name="SCRIPT_TEXT" value="" />
     <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
-    <option name="SCRIPT_PATH" value="$PROJECT_DIR$/.buildScript/run-installDebug.ps1" />
+    <option name="SCRIPT_PATH" value="$PROJECT_DIR$/.buildScript/run_install_debug.ps1" />
     <option name="SCRIPT_OPTIONS" value="-SkipAttach" />
     <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true" />
     <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$" />

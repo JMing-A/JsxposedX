@@ -1,16 +1,19 @@
-# jsxposed_x
+# JsxposedX
 
-flutter for hook
+- English: [`README_EN.md`](README_EN.md)
+- 中文：[`README_CN.md`](README_CN.md)
 
-## Getting Started
+JsxposedX is a Flutter Android application for Xposed/LSPosed and Frida workflows.
 
-This project is a starting point for a Flutter application.
+## Summary
 
-A few resources to get you started if this is your first Flutter project:
+- Flutter UI with Android-side Xposed hooks and LSPosed service integration
+- Project entries for `Quick Functions`, `AI Reverse`, `Xposed Project`, and `Frida Project`
+- Additional pages for crypto audit and SO analysis
+- Pigeon bridge generation via `pigen-watch.ps1`
+- Debug install flow via `bin/run-installDebug.ps1`
+- Shared JetBrains run configuration in `.idea/runConfigurations/Flutter_installDebug.xml`
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Build Note
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+This repository is not a normal Flutter-only app. Device-side verification also involves the Android/Xposed side, so the repository includes its own PowerShell-based install/debug flow.
