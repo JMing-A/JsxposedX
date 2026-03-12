@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import com.jsxposed.x.core.bridge.lsposed_native.LSPosed
+import com.jsxposed.x.core.bridge.xposed_js_snapshot.XposedScriptSnapshotRepository
 import com.jsxposed.x.core.utils.log.LogX
 
 class Pinia(val context: Context) {
@@ -13,6 +14,8 @@ class Pinia(val context: Context) {
         const val TYPE_LOCAL = 1
         const val TYPE_REMOTE = 2
     }
+
+    private val snapshotRepository by lazy { XposedScriptSnapshotRepository(context) }
 
     @PublishedApi
     internal fun prefs(space: String, type: Int): SharedPreferences {
@@ -35,6 +38,7 @@ class Pinia(val context: Context) {
                 else -> throw IllegalArgumentException("Unsupported value type: ${value.javaClass}")
             }
         }
+        snapshotRepository.refreshForSwitchKey(space, key)
     }
 
     inline fun <reified T> getValue(space: String = "pinia", key: String, defaultValue: T, type: Int = TYPE_REMOTE): T {
@@ -54,9 +58,11 @@ class Pinia(val context: Context) {
 
     fun remove(space: String = "pinia", key: String, type: Int = TYPE_REMOTE) {
         prefs(space, type).edit { remove(key) }
+        snapshotRepository.refreshForSwitchKey(space, key)
     }
 
     fun clear(space: String = "pinia", type: Int = TYPE_REMOTE) {
         prefs(space, type).edit { clear() }
+        snapshotRepository.refreshAfterClear(space)
     }
 }

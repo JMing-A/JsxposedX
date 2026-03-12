@@ -3,6 +3,7 @@
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
+import com.jsxposed.x.core.bridge.xposed_js_snapshot.XposedScriptSnapshotRepository
 import com.jsxposed.x.core.models.Encrypt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -14,6 +15,8 @@ class ProjectNativeImpl(val context: Context) : ProjectNative {
         // Avoid blocking UI thread
         private val fridaExecutor = Executors.newSingleThreadExecutor()
     }
+
+    private val snapshotRepository by lazy { XposedScriptSnapshotRepository(context) }
     override fun initProject() = runBlocking(Dispatchers.IO) {
         Project(context).initProject()
     }
@@ -97,6 +100,7 @@ class ProjectNativeImpl(val context: Context) : ProjectNative {
         Project(context).createJsScript(
             packageName = packageName, content = content, localPath = localPath, append = append
         )
+        snapshotRepository.writeSnapshot(packageName)
     }
 
     override fun readJsScript(packageName: String, localPath: String): String =
@@ -110,6 +114,7 @@ class ProjectNativeImpl(val context: Context) : ProjectNative {
     override fun deleteJsScript(packageName: String, localPath: String) =
         runBlocking(Dispatchers.IO) {
             Project(context).deleteJsScript(packageName, localPath)
+            snapshotRepository.writeSnapshot(packageName)
         }
 
     override fun importJsScripts(
@@ -118,6 +123,7 @@ class ProjectNativeImpl(val context: Context) : ProjectNative {
         runBlocking(Dispatchers.IO) {
             try {
                 Project(context).importJsScripts(packageName, localPaths)
+                snapshotRepository.writeSnapshot(packageName)
                 callback(Result.success(Unit))
             } catch (e: Exception) {
                 callback(Result.failure(e))

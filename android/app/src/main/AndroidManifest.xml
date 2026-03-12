@@ -92,13 +92,6 @@
             android:exported="true"
             android:grantUriPermissions="true" />
         <provider
-            android:name=".feature.provider.JsxposedProvider"
-            android:authorities="com.jsxposed.x.scripts"
-            android:exported="true"
-            android:grantUriPermissions="true" />
-
-
-        <provider
             android:name="io.github.libxposed.service.XposedProvider"
             android:authorities="${applicationId}.XposedService"
             android:exported="true"

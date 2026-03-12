@@ -1,6 +1,8 @@
-﻿package com.jsxposed.x.core.bridge.lsposed_native
+package com.jsxposed.x.core.bridge.lsposed_native
 
 import android.content.Context
+import android.os.ParcelFileDescriptor
+import com.jsxposed.x.core.bridge.xposed_js_snapshot.XposedScriptSnapshotRepository
 import com.jsxposed.x.core.utils.log.LogX
 import io.github.libxposed.service.XposedService
 import io.github.libxposed.service.XposedServiceHelper
@@ -26,6 +28,7 @@ class LSPosed(private val context: Context) {
                         xposedService = service
                         LogX.d(TAG, "XposedService connected, API=${service.getAPIVersion()}")
                         migrateLocalToRemote(context, service)
+                        XposedScriptSnapshotRepository(context).rebuildAllSnapshots()
                     }
 
                     override fun onServiceDied(service: XposedService) {
@@ -48,13 +51,13 @@ class LSPosed(private val context: Context) {
 
                 val remote = service.getRemotePreferences("pinia")
                 val editor = remote.edit()
-                for ((k, v) in localMap) {
-                    when (v) {
-                        is String -> editor.putString(k, v)
-                        is Boolean -> editor.putBoolean(k, v)
-                        is Int -> editor.putInt(k, v)
-                        is Float -> editor.putFloat(k, v)
-                        is Long -> editor.putLong(k, v)
+                for ((key, value) in localMap) {
+                    when (value) {
+                        is String -> editor.putString(key, value)
+                        is Boolean -> editor.putBoolean(key, value)
+                        is Int -> editor.putInt(key, value)
+                        is Float -> editor.putFloat(key, value)
+                        is Long -> editor.putLong(key, value)
                         else -> {}
                     }
                 }
@@ -72,6 +75,30 @@ class LSPosed(private val context: Context) {
                 xposedService?.getRemotePreferences(group)
             } catch (e: Exception) {
                 LogX.e(TAG, "getRemotePreferences failed: ${e.message}")
+                null
+            }
+        }
+
+        fun listRemoteFiles(): List<String> {
+            return try {
+                xposedService?.listRemoteFiles()?.toList() ?: emptyList()
+            } catch (e: UnsupportedOperationException) {
+                LogX.e(TAG, "listRemoteFiles unsupported: ${e.message}")
+                emptyList()
+            } catch (e: Exception) {
+                LogX.e(TAG, "listRemoteFiles failed: ${e.message}")
+                emptyList()
+            }
+        }
+
+        fun openRemoteFile(name: String): ParcelFileDescriptor? {
+            return try {
+                xposedService?.openRemoteFile(name)
+            } catch (e: UnsupportedOperationException) {
+                LogX.e(TAG, "openRemoteFile unsupported: name=$name error=${e.message}")
+                null
+            } catch (e: Exception) {
+                LogX.e(TAG, "openRemoteFile failed: name=$name error=${e.message}")
                 null
             }
         }
