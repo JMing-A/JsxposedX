@@ -417,6 +417,16 @@ class AiChatAction extends _$AiChatAction {
       return;
     }
 
+    if (_stopRequested || response.userStopped) {
+      await _finishStoppedAssistantTurn(
+        config: config,
+        protocolMessages: contextAssembly.sanitizedProtocolMessages,
+        placeholderId: placeholderId,
+        partialContent: response.content,
+      );
+      return;
+    }
+
     if (response.issue == AiResponseIssue.emptyResponse &&
         retriesRemaining > 0) {
       await _runAssistantTurn(
@@ -563,18 +573,7 @@ class AiChatAction extends _$AiChatAction {
         .toList(growable: false);
     for (final call in parsedCalls) {
       if (_stopRequested) {
-        state = state.copyWith(
-          isStreaming: false,
-          error: '已停止生成。',
-          lastResponseIssue: AiResponseIssue.partialResponse,
-        );
-        _syncContextState(
-          protocolMessages: state.protocolMessages,
-          config: config,
-          lastError: '已停止生成。',
-          recoveryMode: AiChatRecoveryMode.resumeToolPhase,
-        );
-        await _saveChatHistory();
+        await _finishStoppedToolPhase(config: config);
         return;
       }
 
@@ -597,12 +596,7 @@ class AiChatAction extends _$AiChatAction {
       );
 
       if (_stopRequested) {
-        state = state.copyWith(
-          isStreaming: false,
-          error: '已停止生成。',
-          lastResponseIssue: AiResponseIssue.partialResponse,
-        );
-        await _saveChatHistory();
+        await _finishStoppedToolPhase(config: config);
         return;
       }
 
@@ -653,17 +647,7 @@ class AiChatAction extends _$AiChatAction {
     await _saveChatHistory();
 
     if (_stopRequested) {
-      state = state.copyWith(
-        isStreaming: false,
-        error: '已停止生成。',
-        lastResponseIssue: AiResponseIssue.partialResponse,
-      );
-      _syncContextState(
-        protocolMessages: state.protocolMessages,
-        config: config,
-        lastError: '已停止生成。',
-        recoveryMode: AiChatRecoveryMode.resumeToolPhase,
-      );
+      await _finishStoppedToolPhase(config: config);
       return;
     }
 
@@ -1132,26 +1116,18 @@ class AiChatAction extends _$AiChatAction {
     _stopRequested = true;
     final partialContent = _latestStreamingContent;
     final hasPendingToolPhase = state.sessionContext.hasPendingToolPhase;
-    final stopMessage = partialContent.isEmpty ? '已停止生成。' : partialContent;
-    if (hasPendingToolPhase) {
-      _appendDisplayMessage(
-        AiMessage(
-          id: const Uuid().v4(),
-          role: 'assistant',
-          content: '已停止生成。',
-          isError: true,
-        ),
-      );
-    } else {
+    if (!hasPendingToolPhase && partialContent.isNotEmpty) {
       _replaceLatestAssistantPlaceholder(
-        content: stopMessage,
-        isError: true,
+        content: partialContent,
+        isError: false,
       );
+    } else if (!hasPendingToolPhase) {
+      _removeLatestAssistantPlaceholder();
     }
     state = state.copyWith(
       isStreaming: false,
-      error: '已停止生成。',
-      lastResponseIssue: AiResponseIssue.partialResponse,
+      error: null,
+      lastResponseIssue: null,
     );
     _activeRequestCancelToken?.cancel('user_stopped');
     _activeRequestCancelToken = null;
@@ -1165,20 +1141,10 @@ class AiChatAction extends _$AiChatAction {
       completer.complete(
         _CollectedAssistantResponse(
           content: partialContent,
-          issue: AiResponseIssue.partialResponse,
-          errorMessage: '已停止生成。',
+          userStopped: true,
         ),
       );
     }
-    _syncContextState(
-      protocolMessages: state.protocolMessages,
-      config: ref.read(aiConfigProvider).value,
-      lastError: '已停止生成。',
-      recoveryMode: hasPendingToolPhase
-          ? AiChatRecoveryMode.resumeToolPhase
-          : AiChatRecoveryMode.continueGeneration,
-    );
-    await _saveChatHistory();
   }
 
   Future<String> testConnection(AiConfig config) {
@@ -1840,6 +1806,23 @@ class AiChatAction extends _$AiChatAction {
     );
   }
 
+  void _removeLatestAssistantPlaceholder() {
+    final updatedMessages = List<AiMessage>.from(state.messages);
+    for (var index = updatedMessages.length - 1; index >= 0; index--) {
+      final message = updatedMessages[index];
+      if (message.role == 'assistant' &&
+          !message.isToolResultBubble &&
+          !message.isError &&
+          message.content.isEmpty) {
+        updatedMessages.removeAt(index);
+        state = state.copyWith(
+          messages: List<AiMessage>.unmodifiable(updatedMessages),
+        );
+        return;
+      }
+    }
+  }
+
   void _updateDisplayMessage(
     String messageId, {
     required String content,
@@ -1892,6 +1875,68 @@ class AiChatAction extends _$AiChatAction {
         isError: isError,
       ),
     );
+  }
+
+  Future<void> _finishStoppedAssistantTurn({
+    required AiConfig config,
+    required List<AiMessage> protocolMessages,
+    required String placeholderId,
+    required String partialContent,
+  }) async {
+    final normalizedContent = partialContent.trim();
+    final hasPendingToolPhase = state.sessionContext.hasPendingToolPhase;
+    var nextProtocolMessages = protocolMessages;
+
+    if (!hasPendingToolPhase && normalizedContent.isNotEmpty) {
+      _updateDisplayMessage(
+        placeholderId,
+        content: normalizedContent,
+        isError: false,
+      );
+      nextProtocolMessages = [
+        ...protocolMessages,
+        AiMessage(
+          id: const Uuid().v4(),
+          role: 'assistant',
+          content: normalizedContent,
+        ),
+      ];
+    } else if (!hasPendingToolPhase) {
+      _removeDisplayMessage(placeholderId);
+    }
+
+    state = state.copyWith(
+      protocolMessages: List<AiMessage>.unmodifiable(nextProtocolMessages),
+      isStreaming: false,
+      error: null,
+      lastResponseIssue: null,
+    );
+    _syncContextState(
+      protocolMessages: nextProtocolMessages,
+      config: config,
+      lastError: null,
+      recoveryMode: AiChatRecoveryMode.none,
+    );
+    _stopRequested = false;
+    await _saveChatHistory();
+  }
+
+  Future<void> _finishStoppedToolPhase({
+    required AiConfig config,
+  }) async {
+    state = state.copyWith(
+      isStreaming: false,
+      error: null,
+      lastResponseIssue: null,
+    );
+    _syncContextState(
+      protocolMessages: state.protocolMessages,
+      config: config,
+      lastError: null,
+      recoveryMode: AiChatRecoveryMode.none,
+    );
+    _stopRequested = false;
+    await _saveChatHistory();
   }
 
   void _pushStreamingContent(String content) {
@@ -2146,6 +2191,7 @@ class _CollectedAssistantResponse {
     this.toolCalls,
     this.issue,
     this.errorMessage,
+    this.userStopped = false,
   });
 
   final String content;
@@ -2153,4 +2199,5 @@ class _CollectedAssistantResponse {
   final List<Map<String, dynamic>>? toolCalls;
   final AiResponseIssue? issue;
   final String? errorMessage;
+  final bool userStopped;
 }
