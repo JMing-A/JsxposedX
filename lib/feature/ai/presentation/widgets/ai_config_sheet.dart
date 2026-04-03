@@ -39,7 +39,7 @@ class AIConfigSheet extends HookConsumerWidget {
               children: [
                 TextButton(
                   onPressed: () => UrlHelper.openUrlInBrowser(
-                    url: "https://jsxposed.org/posts/ai.html",
+                    url: "https://www.yuque.com/ababa-haoqq/hake3e/npt913l7r1goxsoi?singleDoc",
                   ),
                   child: Text(context.l10n.aiTutorial),
                 ),
@@ -85,6 +85,33 @@ class AIConfigSheet extends HookConsumerWidget {
     }
   }
 
+  static AiConfig _emptyFormConfig() {
+    return const AiConfig(
+      id: '',
+      name: '',
+      apiUrl: '',
+      apiKey: '',
+      moduleName: '',
+      maxToken: 300,
+      temperature: 0.7,
+      memoryRounds: 5.0,
+      apiType: AiApiType.openai,
+    );
+  }
+
+  static Map<String, dynamic> _formValuesFromConfig(AiConfig config) {
+    return {
+      'name': config.name,
+      'api': config.apiUrl,
+      'api_key': config.apiKey,
+      'module_name': config.moduleName,
+      'max_token': config.maxToken.toString(),
+      'temperature': config.temperature,
+      'memory_rounds': config.memoryRounds,
+      'api_type': config.apiType.name,
+    };
+  }
+
   /// 处理测试连接逻辑
   static Future<void> _handleTest(BuildContext context, WidgetRef ref) async {
     final formKey = ref.read(_sheetFormKeyProvider);
@@ -120,14 +147,31 @@ class AIConfigSheet extends HookConsumerWidget {
     final isNewMode = useState<bool>(false);
     final builtinApiKeyController = useTextEditingController();
     final lastLoadedBuiltinApiKey = useRef<String?>(null);
+    final currentConfig = aiConfigAsync.value;
 
-    // 监听状态变化，自动重置表单
+    // 统一同步内置配置输入框，避免在多个位置重复写 controller
     useEffect(() {
+      final selectedConfig = isNewMode.value
+          ? null
+          : (editingConfig.value ?? currentConfig);
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        formKey.currentState?.reset();
+        if (selectedConfig != null && isBuiltinAiConfig(selectedConfig)) {
+          if (lastLoadedBuiltinApiKey.value != selectedConfig.apiKey) {
+            builtinApiKeyController.text = selectedConfig.apiKey;
+            lastLoadedBuiltinApiKey.value = selectedConfig.apiKey;
+          }
+          return;
+        }
+
+        if (lastLoadedBuiltinApiKey.value != null ||
+            builtinApiKeyController.text.isNotEmpty) {
+          builtinApiKeyController.clear();
+          lastLoadedBuiltinApiKey.value = null;
+        }
       });
       return null;
-    }, [isNewMode.value, editingConfig.value]);
+    }, [isNewMode.value, editingConfig.value, currentConfig]);
 
     ref.listen(aiConfigActionProvider, (previous, next) {
       next.whenOrNull(
@@ -169,39 +213,12 @@ class AIConfigSheet extends HookConsumerWidget {
           ),
           data: (configList) {
             // 确定表单展示的配置：新建模式用空白，编辑模式用选中的，默认用当前配置
-            final AiConfig formConfig;
-            if (isNewMode.value) {
-              formConfig = AiConfig(
-                id: '',
-                name: '',
-                apiUrl: '',
-                apiKey: '',
-                moduleName: '',
-                maxToken: 300,
-                temperature: 0.7,
-                memoryRounds: 5.0,
-                apiType: AiApiType.openai,
-              );
-            } else {
-              formConfig = editingConfig.value ?? currentConfig;
-            }
+            final formConfig = isNewMode.value
+                ? _emptyFormConfig()
+                : (editingConfig.value ?? currentConfig);
 
-            final initialValue = {
-              'name': formConfig.name,
-              'api': formConfig.apiUrl,
-              'api_key': formConfig.apiKey,
-              'module_name': formConfig.moduleName,
-              'max_token': formConfig.maxToken.toString(),
-              'temperature': formConfig.temperature,
-              'memory_rounds': formConfig.memoryRounds,
-              'api_type': formConfig.apiType.name,
-            };
+            final initialValue = _formValuesFromConfig(formConfig);
             final isBuiltinEditing = isBuiltinAiConfig(formConfig);
-            if (isBuiltinEditing &&
-                lastLoadedBuiltinApiKey.value != formConfig.apiKey) {
-              builtinApiKeyController.text = formConfig.apiKey;
-              lastLoadedBuiltinApiKey.value = formConfig.apiKey;
-            }
 
             return SingleChildScrollView(
               child: Column(
@@ -247,13 +264,11 @@ class AIConfigSheet extends HookConsumerWidget {
                         children: configList.asMap().entries.map((entry) {
                           final index = entry.key;
                           final config = entry.value;
-                          final isEditing =
-                              !isNewMode.value &&
-                              (editingConfig.value?.id == config.id ||
-                                  (editingConfig.value == null &&
-                                      currentConfig.id == config.id));
                           final isCurrent = currentConfig.id == config.id;
                           final isBuiltin = isBuiltinAiConfig(config);
+                          final isEditing = !isNewMode.value &&
+                              (editingConfig.value?.id == config.id ||
+                                  (editingConfig.value == null && isCurrent));
 
                           return _ConfigListItem(
                             config: config,
@@ -261,32 +276,33 @@ class AIConfigSheet extends HookConsumerWidget {
                             isCurrent: isCurrent,
                             isEditing: isEditing,
                             isFirst: index == 0,
-                            onTap: () {
-                              isNewMode.value = false;
-                              editingConfig.value = config;
+                            onTap: () async {
+                              try {
+                                var selectedConfig = config;
+                                if (!isCurrent) {
+                                  await ref
+                                      .read(aiConfigActionProvider.notifier)
+                                      .switchConfig(config.id);
+                                  ref.invalidate(aiStatusProvider);
+                                  selectedConfig = await ref.read(
+                                    aiConfigProvider.future,
+                                  );
+                                }
+
+                                // 直接更新状态
+                                editingConfig.value = selectedConfig;
+                                isNewMode.value = false;
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ToastMessage.show(
+                                    '${context.l10n.error}: ${e.toString()}',
+                                  );
+                                }
+                              }
                             },
-                            onSwitch: isCurrent
-                                ? null
-                                : () async {
-                                    try {
-                                      await ref
-                                          .read(aiConfigActionProvider.notifier)
-                                          .switchConfig(config.id);
-                                      ref.invalidate(aiStatusProvider);
-                                      editingConfig.value = null;
-                                      isNewMode.value = false;
-                                    } catch (e) {
-                                      if (context.mounted) {
-                                        ToastMessage.show(
-                                          '${context.l10n.error}: ${e.toString()}',
-                                        );
-                                      }
-                                    }
-                                  },
                             onDelete: isBuiltin
                                 ? null
                                 : () async {
-                                    // 显示删除确认对话框
                                     final confirmed = await showDialog<bool>(
                                       context: context,
                                       builder: (context) => AlertDialog(
@@ -423,168 +439,194 @@ class AIConfigSheet extends HookConsumerWidget {
                             hintText: context.l10n.aiApiKeyHint,
                             keyboardType: TextInputType.visiblePassword,
                           ),
+                          SizedBox(height: 8.h),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () => UrlHelper.openUrlInBrowser(
+                                url: 'https://shop.zmfaka.cn/shop/5W176EN1',
+                              ),
+                              icon: const Icon(Icons.shopping_cart_outlined),
+                              label: Text(context.l10n.aiBuyCardSecret),
+                            ),
+                          ),
                         ],
                       ),
                     )
                   else
-                    FormBuilder(
-                      key: formKey,
-                      initialValue: initialValue,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CustomTextField.formBuilder(
-                            name: 'name',
-                            labelText: context.l10n.aiConfigName,
-                            hintText: context.l10n.aiConfigNameHint,
-                            validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(
-                                errorText: context.l10n.cannotBeEmpty(
-                                  context.l10n.aiConfigName,
+                    KeyedSubtree(
+                      key: ValueKey(
+                        [
+                          formConfig.id,
+                          formConfig.name,
+                          formConfig.apiUrl,
+                          formConfig.apiKey,
+                          formConfig.moduleName,
+                          formConfig.maxToken,
+                          formConfig.temperature,
+                          formConfig.memoryRounds,
+                          formConfig.apiType.name,
+                        ].join('|'),
+                      ),
+                      child: FormBuilder(
+                        key: formKey,
+                        initialValue: initialValue,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CustomTextField.formBuilder(
+                              name: 'name',
+                              labelText: context.l10n.aiConfigName,
+                              hintText: context.l10n.aiConfigNameHint,
+                              validator: FormBuilderValidators.compose([
+                                FormBuilderValidators.required(
+                                  errorText: context.l10n.cannotBeEmpty(
+                                    context.l10n.aiConfigName,
+                                  ),
                                 ),
-                              ),
-                            ]),
-                          ),
-                          SizedBox(height: 12.h),
-                          CustomTextField.formBuilder(
-                            name: 'api',
-                            labelText: context.l10n.aiBaseUrl,
-                            hintText: context.l10n.aiBaseUrlHint,
-                            keyboardType: TextInputType.url,
-                            validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(
-                                errorText: context.l10n.cannotBeEmpty(
-                                  context.l10n.aiBaseUrl,
-                                ),
-                              ),
-                              FormBuilderValidators.url(
-                                errorText: context.l10n.loadFailedMessage,
-                              ),
-                            ]),
-                          ),
-                          SizedBox(height: 12.h),
-                          Text(
-                            context.l10n.aiApiType,
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              color: context.theme.hintColor,
-                              fontWeight: FontWeight.w500,
+                              ]),
                             ),
-                          ),
-                          SizedBox(height: 8.h),
-                          FormBuilderDropdown<String>(
-                            name: 'api_type',
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12.w,
-                                vertical: 12.h,
+                            SizedBox(height: 12.h),
+                            CustomTextField.formBuilder(
+                              name: 'api',
+                              labelText: context.l10n.aiBaseUrl,
+                              hintText: context.l10n.aiBaseUrlHint,
+                              keyboardType: TextInputType.url,
+                              validator: FormBuilderValidators.compose([
+                                FormBuilderValidators.required(
+                                  errorText: context.l10n.cannotBeEmpty(
+                                    context.l10n.aiBaseUrl,
+                                  ),
+                                ),
+                                FormBuilderValidators.url(
+                                  errorText: context.l10n.loadFailedMessage,
+                                ),
+                              ]),
+                            ),
+                            SizedBox(height: 12.h),
+                            Text(
+                              context.l10n.aiApiType,
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: context.theme.hintColor,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                            initialValue: formConfig.apiType.name,
-                            items: AiApiType.values.map((type) {
-                              return DropdownMenuItem(
-                                value: type.name,
-                                child: Text(_apiTypeLabel(context, type)),
-                              );
-                            }).toList(),
-                          ),
-                          SizedBox(height: 12.h),
-                          CustomTextField.formBuilder(
-                            name: 'api_key',
-                            labelText: 'API Key',
-                            hintText: context.l10n.aiApiKeyHint,
-                            keyboardType: TextInputType.visiblePassword,
-                            validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(
-                                errorText: context.l10n.cannotBeEmpty(
-                                  'API Key',
+                            SizedBox(height: 8.h),
+                            FormBuilderDropdown<String>(
+                              name: 'api_type',
+                              decoration: InputDecoration(
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12.w,
+                                  vertical: 12.h,
                                 ),
                               ),
-                            ]),
-                          ),
-                          SizedBox(height: 12.h),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: CustomTextField.formBuilder(
-                                  name: 'module_name',
-                                  labelText: context.l10n.aiModelName,
-                                  hintText: context.l10n.aiModelNameHint,
-                                  validator: FormBuilderValidators.compose([
-                                    FormBuilderValidators.required(
-                                      errorText: context.l10n.cannotBeEmpty(
-                                        context.l10n.aiModelName,
+                              initialValue: formConfig.apiType.name,
+                              items: AiApiType.values.map((type) {
+                                return DropdownMenuItem(
+                                  value: type.name,
+                                  child: Text(_apiTypeLabel(context, type)),
+                                );
+                              }).toList(),
+                            ),
+                            SizedBox(height: 12.h),
+                            CustomTextField.formBuilder(
+                              name: 'api_key',
+                              labelText: 'API Key',
+                              hintText: context.l10n.aiApiKeyHint,
+                              keyboardType: TextInputType.visiblePassword,
+                              validator: FormBuilderValidators.compose([
+                                FormBuilderValidators.required(
+                                  errorText: context.l10n.cannotBeEmpty(
+                                    'API Key',
+                                  ),
+                                ),
+                              ]),
+                            ),
+                            SizedBox(height: 12.h),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: CustomTextField.formBuilder(
+                                    name: 'module_name',
+                                    labelText: context.l10n.aiModelName,
+                                    hintText: context.l10n.aiModelNameHint,
+                                    validator: FormBuilderValidators.compose([
+                                      FormBuilderValidators.required(
+                                        errorText: context.l10n.cannotBeEmpty(
+                                          context.l10n.aiModelName,
+                                        ),
                                       ),
-                                    ),
-                                  ]),
+                                    ]),
+                                  ),
                                 ),
-                              ),
-                              SizedBox(width: 12.w),
-                              Expanded(
-                                child: CustomTextField.formBuilder(
-                                  name: 'max_token',
-                                  labelText: context.l10n.aiMaxTokens,
-                                  hintText: context.l10n.aiMaxTokensHint,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                  ],
-                                  validator: FormBuilderValidators.compose([
-                                    FormBuilderValidators.required(
-                                      errorText: context.l10n.cannotBeEmpty(
-                                        context.l10n.aiMaxTokens,
+                                SizedBox(width: 12.w),
+                                Expanded(
+                                  child: CustomTextField.formBuilder(
+                                    name: 'max_token',
+                                    labelText: context.l10n.aiMaxTokens,
+                                    hintText: context.l10n.aiMaxTokensHint,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                    ],
+                                    validator: FormBuilderValidators.compose([
+                                      FormBuilderValidators.required(
+                                        errorText: context.l10n.cannotBeEmpty(
+                                          context.l10n.aiMaxTokens,
+                                        ),
                                       ),
-                                    ),
-                                  ]),
+                                    ]),
+                                  ),
                                 ),
+                              ],
+                            ),
+                            SizedBox(height: 20.h),
+                            Text(
+                              context.l10n.aiTemperature,
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: context.theme.hintColor,
+                                fontWeight: FontWeight.w500,
                               ),
-                            ],
-                          ),
-                          SizedBox(height: 20.h),
-                          Text(
-                            context.l10n.aiTemperature,
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              color: context.theme.hintColor,
-                              fontWeight: FontWeight.w500,
                             ),
-                          ),
-                          FormBuilderSlider(
-                            name: 'temperature',
-                            min: 0.0,
-                            max: 2.0,
-                            initialValue: formConfig.temperature,
-                            divisions: 20,
-                            activeColor: context.colorScheme.primary,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
+                            FormBuilderSlider(
+                              name: 'temperature',
+                              min: 0.0,
+                              max: 2.0,
+                              initialValue: formConfig.temperature,
+                              divisions: 20,
+                              activeColor: context.colorScheme.primary,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
-                          ),
-                          Text(
-                            context.l10n.aiMemoryRounds,
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              color: context.theme.hintColor,
-                              fontWeight: FontWeight.w500,
+                            Text(
+                              context.l10n.aiMemoryRounds,
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: context.theme.hintColor,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                          FormBuilderSlider(
-                            name: 'memory_rounds',
-                            min: 0.0,
-                            max: 20.0,
-                            initialValue: formConfig.memoryRounds,
-                            divisions: 20,
-                            activeColor: context.colorScheme.primary,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
+                            FormBuilderSlider(
+                              name: 'memory_rounds',
+                              min: 0.0,
+                              max: 20.0,
+                              initialValue: formConfig.memoryRounds,
+                              divisions: 20,
+                              activeColor: context.colorScheme.primary,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   SizedBox(height: 24.h),
@@ -735,8 +777,7 @@ class _ConfigListItem extends ConsumerWidget {
     required this.isEditing,
     required this.isFirst,
     required this.onTap,
-    required this.onSwitch,
-    required this.onDelete,
+    this.onDelete,
   });
 
   final AiConfig config;
@@ -745,7 +786,6 @@ class _ConfigListItem extends ConsumerWidget {
   final bool isEditing;
   final bool isFirst;
   final VoidCallback onTap;
-  final VoidCallback? onSwitch;
   final VoidCallback? onDelete;
 
   @override
@@ -780,7 +820,7 @@ class _ConfigListItem extends ConsumerWidget {
             tooltip: isCurrent
                 ? context.l10n.aiConfigCurrent
                 : context.l10n.aiConfigSwitch,
-            onPressed: isCurrent ? null : onSwitch,
+            onPressed: onTap, // 这里的按钮点击也走总的 onTap，确保效果一致
           ),
           // 中间：配置信息（可点击编辑）
           Expanded(
@@ -872,7 +912,7 @@ class _ConfigListItem extends ConsumerWidget {
                     SizedBox(height: 2.h),
                     Text(
                       isBuiltin
-                          ? '${config.moduleName} · ${config.apiKey.trim().isNotEmpty ? context.l10n.aiApiKeyConfigured : context.l10n.aiApiKeyNotConfigured}'
+                          ? 'GPT-MAX · ${config.apiKey.trim().isNotEmpty ? context.l10n.aiApiKeyConfigured : context.l10n.aiApiKeyNotConfigured}'
                           : config.moduleName,
                       style: TextStyle(
                         fontSize: 11.sp,
