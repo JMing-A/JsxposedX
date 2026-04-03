@@ -7,20 +7,25 @@ import 'package:uuid/uuid.dart';
 
 /// AI 配置查询数据源
 class AiConfigQueryDatasource {
+  static const _currentConfigStorageKey = "ai_config";
+  static const _builtinApiKeyStorageKey = "ai_builtin_api_key";
+
   final PiniaStorage _storage;
 
   AiConfigQueryDatasource({required PiniaStorage storage}) : _storage = storage;
 
   /// 获取 AI 配置
   Future<AiConfigDto> getConfig() async {
-    final configStr = await _storage.getString("ai_config");
+    final configStr = await _storage.getString(_currentConfigStorageKey);
     if (configStr.isNotEmpty) {
       try {
         final config = AiConfigDto.fromJson(jsonDecode(configStr));
         if (config.id == builtinAiConfigId) {
+          final builtinApiKey = await _storage.getString(_builtinApiKeyStorageKey);
           return AiConfigDto(
             id: builtinAiConfigId,
             name: builtinAiConfigName,
+            apiKey: builtinApiKey.isNotEmpty ? builtinApiKey : config.apiKey,
             apiUrl: builtinAiConfigBaseUrl,
             moduleName: 'gpt-5.4',
             maxToken: 4096,
@@ -53,9 +58,10 @@ class AiConfigQueryDatasource {
   }
 
   AiConfigDto _builtinConfigDto() {
-    return const AiConfigDto(
+    return AiConfigDto(
       id: builtinAiConfigId,
       name: builtinAiConfigName,
+      apiKey: '',
       apiUrl: builtinAiConfigBaseUrl,
       moduleName: 'gpt-5.4',
       maxToken: 4096,

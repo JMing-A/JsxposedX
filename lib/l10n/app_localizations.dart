@@ -1826,6 +1826,48 @@ abstract class AppLocalizations {
   /// **'教程'**
   String get aiTutorial;
 
+  /// No description provided for @aiBuiltinConfigName.
+  ///
+  /// In zh, this message translates to:
+  /// **'帕帝接口'**
+  String get aiBuiltinConfigName;
+
+  /// No description provided for @aiBuiltinUseConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用内置接口'**
+  String get aiBuiltinUseConfig;
+
+  /// No description provided for @aiBuiltinSwitching.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在切换到内置默认接口'**
+  String get aiBuiltinSwitching;
+
+  /// No description provided for @aiApiKeyConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key 已配置'**
+  String get aiApiKeyConfigured;
+
+  /// No description provided for @aiApiKeyNotConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'API Key 未配置'**
+  String get aiApiKeyNotConfigured;
+
+  /// No description provided for @aiCurrentStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前状态：{status}'**
+  String aiCurrentStatus(String status);
+
+  /// No description provided for @aiCurrentInterface.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前接口：{name}'**
+  String aiCurrentInterface(String name);
+
   /// No description provided for @terminal.
   ///
   /// In zh, this message translates to:

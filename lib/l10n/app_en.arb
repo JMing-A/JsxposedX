@@ -478,6 +478,23 @@
   "aiApiTypeOpenAIResponses": "OpenAI Responses",
   "aiApiTypeAnthropic": "Anthropic Claude",
   "aiTutorial": "Tutorial",
+  "aiBuiltinConfigName": "PadiApi",
+  "aiBuiltinUseConfig": "Use Built-in Endpoint",
+  "aiBuiltinSwitching": "Switching to built-in default endpoint",
+  "aiApiKeyConfigured": "API Key configured",
+  "aiApiKeyNotConfigured": "API Key not configured",
+  "aiCurrentStatus": "Status: {status}",
+  "@aiCurrentStatus": {
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "aiCurrentInterface": "Current endpoint: {name}",
+  "@aiCurrentInterface": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "terminal": "Terminal",
   "terminalFilterHint": "Secondary Filter...",
   "autoScroll": "Auto Scroll",

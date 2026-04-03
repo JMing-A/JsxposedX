@@ -137,7 +137,7 @@ class AiReverseHeader extends HookConsumerWidget {
                                   ),
                                 ),
                                 child: Text(
-                                  '帕帝接口',
+                                  context.l10n.aiBuiltinConfigName,
                                   style: TextStyle(
                                     fontSize: 10.sp,
                                     color: Colors.orange.shade700,
@@ -149,7 +149,9 @@ class AiReverseHeader extends HookConsumerWidget {
                           : Padding(
                               padding: EdgeInsets.only(top: 4.h),
                               child: Text(
-                                '当前接口：${meta.displayLabel}',
+                                context.l10n.aiCurrentInterface(
+                                  meta.displayLabel,
+                                ),
                                 style: TextStyle(
                                   fontSize: 10.sp,
                                   color: context.theme.hintColor,

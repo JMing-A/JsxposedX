@@ -26,11 +26,15 @@ Future<AiConfig> aiConfig(Ref ref) async {
 /// 获取 AI 配置列表
 @riverpod
 Future<List<AiConfig>> aiConfigList(Ref ref) async {
+  final currentConfig = await ref.watch(aiConfigProvider.future);
   final storage = ref.watch(piniaStorageLocalProvider);
   final dataSource = AiConfigActionDatasource(storage: storage);
   final dtos = await dataSource.getConfigList();
+  final builtinConfig = isBuiltinAiConfig(currentConfig)
+      ? currentConfig
+      : buildBuiltinAiConfig();
   return [
-    buildBuiltinAiConfig(),
+    builtinConfig,
     ...dtos.map((dto) => dto.toEntity()),
   ];
 }
@@ -58,4 +62,3 @@ final activeAiConfigMetaProvider = Provider<AsyncValue<ActiveAiConfigMeta>>((ref
     );
   });
 });
-

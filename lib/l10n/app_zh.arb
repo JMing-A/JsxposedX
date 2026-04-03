@@ -477,6 +477,23 @@
   "aiApiTypeOpenAIResponses": "OpenAI Responses",
   "aiApiTypeAnthropic": "Anthropic Claude",
   "aiTutorial": "教程",
+  "aiBuiltinConfigName": "帕帝接口",
+  "aiBuiltinUseConfig": "使用内置接口",
+  "aiBuiltinSwitching": "正在切换到内置默认接口",
+  "aiApiKeyConfigured": "API Key 已配置",
+  "aiApiKeyNotConfigured": "API Key 未配置",
+  "aiCurrentStatus": "当前状态：{status}",
+  "@aiCurrentStatus": {
+    "placeholders": {
+      "status": { "type": "String" }
+    }
+  },
+  "aiCurrentInterface": "当前接口：{name}",
+  "@aiCurrentInterface": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "terminal": "控制台",
   "terminalFilterHint": "二次过滤...",
   "autoScroll": "自动滚屏",

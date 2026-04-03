@@ -914,6 +914,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiTutorial => 'Tutorial';
 
   @override
+  String get aiBuiltinConfigName => 'PadiApi';
+
+  @override
+  String get aiBuiltinUseConfig => 'Use Built-in Endpoint';
+
+  @override
+  String get aiBuiltinSwitching => 'Switching to built-in default endpoint';
+
+  @override
+  String get aiApiKeyConfigured => 'API Key configured';
+
+  @override
+  String get aiApiKeyNotConfigured => 'API Key not configured';
+
+  @override
+  String aiCurrentStatus(String status) {
+    return 'Status: $status';
+  }
+
+  @override
+  String aiCurrentInterface(String name) {
+    return 'Current endpoint: $name';
+  }
+
+  @override
   String get terminal => 'Terminal';
 
   @override

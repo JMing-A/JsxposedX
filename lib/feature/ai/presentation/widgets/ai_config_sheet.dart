@@ -118,6 +118,8 @@ class AIConfigSheet extends HookConsumerWidget {
     // 用 useState 管理，避免引入额外的全局 provider
     final editingConfig = useState<AiConfig?>(null);
     final isNewMode = useState<bool>(false);
+    final builtinApiKeyController = useTextEditingController();
+    final lastLoadedBuiltinApiKey = useRef<String?>(null);
 
     // 监听状态变化，自动重置表单
     useEffect(() {
@@ -195,6 +197,11 @@ class AIConfigSheet extends HookConsumerWidget {
               'api_type': formConfig.apiType.name,
             };
             final isBuiltinEditing = isBuiltinAiConfig(formConfig);
+            if (isBuiltinEditing &&
+                lastLoadedBuiltinApiKey.value != formConfig.apiKey) {
+              builtinApiKeyController.text = formConfig.apiKey;
+              lastLoadedBuiltinApiKey.value = formConfig.apiKey;
+            }
 
             return SingleChildScrollView(
               child: Column(
@@ -387,12 +394,34 @@ class AIConfigSheet extends HookConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '帕帝接口',
+                            context.l10n.aiBuiltinConfigName,
                             style: TextStyle(
                               fontSize: 14.sp,
                               fontWeight: FontWeight.w600,
                               color: context.colorScheme.primary,
                             ),
+                          ),
+                          SizedBox(height: 8.h),
+                          Text(
+                            context.l10n.aiCurrentStatus(
+                              formConfig.apiKey.trim().isNotEmpty
+                                  ? context.l10n.aiApiKeyConfigured
+                                  : context.l10n.aiApiKeyNotConfigured,
+                            ),
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: formConfig.apiKey.trim().isNotEmpty
+                                  ? Colors.green
+                                  : Colors.orange,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(height: 8.h),
+                          CustomTextField(
+                            controller: builtinApiKeyController,
+                            labelText: 'API Key',
+                            hintText: context.l10n.aiApiKeyHint,
+                            keyboardType: TextInputType.visiblePassword,
                           ),
                         ],
                       ),
@@ -575,7 +604,20 @@ class AIConfigSheet extends HookConsumerWidget {
                           ? null
                           : () async {
                               if (isBuiltinEditing) {
-                                ToastMessage.show('正在切换到内置默认接口');
+                                final apiKey = builtinApiKeyController.text
+                                    .trim();
+                                if (apiKey.isEmpty) {
+                                  ToastMessage.show(
+                                    context.l10n.cannotBeEmpty('API Key'),
+                                  );
+                                  return;
+                                }
+                                final builtinConfig = formConfig.copyWith(
+                                  apiKey: apiKey,
+                                );
+                                ToastMessage.show(
+                                  context.l10n.aiBuiltinSwitching,
+                                );
                                 try {
                                   await ref
                                       .read(
@@ -583,10 +625,10 @@ class AIConfigSheet extends HookConsumerWidget {
                                           packageName: 'temp',
                                         ).notifier,
                                       )
-                                      .testConnection(formConfig);
+                                      .testConnection(builtinConfig);
                                   await ref
                                       .read(aiConfigActionProvider.notifier)
-                                      .save(formConfig);
+                                      .save(builtinConfig);
                                   ref.invalidate(aiStatusProvider);
                                   isNewMode.value = false;
                                   editingConfig.value = null;
@@ -665,7 +707,7 @@ class AIConfigSheet extends HookConsumerWidget {
                             )
                           : Text(
                               isBuiltinEditing
-                                  ? '使用内置接口'
+                                  ? context.l10n.aiBuiltinUseConfig
                                   : context.l10n.confirm,
                               style: TextStyle(
                                 fontSize: 16.sp,
@@ -829,7 +871,9 @@ class _ConfigListItem extends ConsumerWidget {
                     ),
                     SizedBox(height: 2.h),
                     Text(
-                      config.moduleName,
+                      isBuiltin
+                          ? '${config.moduleName} · ${config.apiKey.trim().isNotEmpty ? context.l10n.aiApiKeyConfigured : context.l10n.aiApiKeyNotConfigured}'
+                          : config.moduleName,
                       style: TextStyle(
                         fontSize: 11.sp,
                         color: context.theme.hintColor,

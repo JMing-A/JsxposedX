@@ -899,6 +899,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiTutorial => '教程';
 
   @override
+  String get aiBuiltinConfigName => '帕帝接口';
+
+  @override
+  String get aiBuiltinUseConfig => '使用内置接口';
+
+  @override
+  String get aiBuiltinSwitching => '正在切换到内置默认接口';
+
+  @override
+  String get aiApiKeyConfigured => 'API Key 已配置';
+
+  @override
+  String get aiApiKeyNotConfigured => 'API Key 未配置';
+
+  @override
+  String aiCurrentStatus(String status) {
+    return '当前状态：$status';
+  }
+
+  @override
+  String aiCurrentInterface(String name) {
+    return '当前接口：$name';
+  }
+
+  @override
   String get terminal => '控制台';
 
   @override
