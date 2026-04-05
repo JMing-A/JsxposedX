@@ -10,66 +10,59 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # 强制不使用任何缓存
-    env:
-      PUB_CACHE: /tmp/pub_cache
-      FLUTTER_CACHE: /tmp/flutter_cache
+    container: ubuntu:22.04  # 空白纯净系统
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 清理系统缓存
-      - name: Clean all caches
-        run: |
-          sudo rm -rf ~/.gradle ~/.m2 ~/.pub-cache ~/.flutter
-          sudo rm -rf /tmp/*
-          sudo apt clean
-
+      # ========== 系统更新 + 所有依赖纯 apt 安装 ==========
       - name: Install system dependencies
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y curl git unzip xz-utils zip libgl1-mesa-glx libx11-xcb1
+          apt update -y
+          apt install -y \
+            curl git unzip xz-utils zip \
+            libgl1-mesa-glx libx11-xcb1 libnss3 libatk1.0-0 \
+            wget gnupg2 ca-certificates
 
-      # JDK 21
-      - name: Setup Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-
-      # 官网手动安装 Flutter（无缓存）
-      - name: Download Flutter SDK
+      # ========== 手动安装 JDK 21 ==========
+      - name: Install JDK 21
         run: |
-          cd ~
+          apt install -y openjdk-21-jdk
+          echo "JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64" >> "$GITHUB_ENV"
+
+      # ========== 手动安装 Flutter（官网手动教程） ==========
+      - name: Install Flutter
+        run: |
+          cd /opt
           curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.2-stable.tar.xz -o flutter.tar.xz
           tar -xf flutter.tar.xz
+          echo "/opt/flutter/bin" >> "$GITHUB_PATH"
 
-      - name: Add Flutter to PATH
+      - name: Check Flutter & Java
         run: |
-          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
-
-      - name: Flutter doctor
-        run: flutter doctor -v
+          flutter --version
+          java -version
+          javac -version
 
       - name: Disable Flutter analytics
-        run: flutter config --no-analytics --no-cli-animations
+        run: |
+          flutter config --no-analytics --no-cli-animations
 
-      # 全新依赖安装
+      # ========== 项目构建 ==========
       - name: Flutter pub get
         run: flutter pub get
 
       - name: Generate Pigeon
         run: flutter pub run pigeon --input pigeons/message.dart
 
-      # 构建
       - name: Build API100 AAB
         run: flutter build appbundle --flavor api100 --release
 
       - name: Build API101 APK
         run: flutter build apk --flavor api101 --release
 
-      # 上传
+      # ========== 只上传最终安装包 ==========
       - name: Upload API100 AAB
         uses: actions/upload-artifact@v4
         with:
