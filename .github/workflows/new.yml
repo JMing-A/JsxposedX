@@ -15,40 +15,37 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl git unzip xz-utils zip libgl1-mesa-glx libx11-x11-dev
+
+      # JDK 21 版本
+      - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
-      # ==============================================
-      # 完全手动安装 Flutter，不依赖任何第三方 action
-      # ==============================================
-      - name: Install Linux dependencies
+      # 官网手动安装 Flutter
+      - name: Download Flutter SDK
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y curl git unzip xz-utils zip libgl1-mesa-glx libx11-xcb1
-
-      - name: Download Flutter 3.27.2
-        run: |
-          cd /opt
-          sudo git clone https://github.com/flutter/flutter.git -b 3.27.2 --depth 1
+          cd ~
+          curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.2-stable.tar.xz -o flutter.tar.xz
+          tar -xf flutter.tar.xz
 
       - name: Add Flutter to PATH
         run: |
-          echo "/opt/flutter/bin" >> $GITHUB_PATH
-          echo "FLUTTER_ROOT=/opt/flutter" >> $GITHUB_ENV
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
 
-      - name: Precache Flutter
+      - name: Flutter version
         run: flutter --version
 
-      - name: Disable analytics
+      - name: Disable Flutter analytics
         run: flutter config --no-analytics --no-cli-animations
 
-      # ==============================================
       # 项目构建
-      # ==============================================
-      - name: Flutter pub get
+      - name: flutter pub get
         run: flutter pub get
 
       - name: Generate Pigeon
@@ -60,9 +57,7 @@ jobs:
       - name: Build API101 APK
         run: flutter build apk --flavor api101 --release
 
-      # ==============================================
       # 上传产物
-      # ==============================================
       - name: Upload API100 AAB
         uses: actions/upload-artifact@v4
         with:
