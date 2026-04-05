@@ -28,6 +28,58 @@
   "@star": {
     "description": "收藏标签"
   },
+  "repositoryAccountInfo": "账号信息",
+  "@repositoryAccountInfo": {
+    "description": "仓库 Token 登录账号信息标题"
+  },
+  "repositoryTokenLogin": "Token 登录",
+  "@repositoryTokenLogin": {
+    "description": "仓库 Token 登录标题"
+  },
+  "repositoryReplaceToken": "更换 Token",
+  "@repositoryReplaceToken": {
+    "description": "仓库更换 Token 按钮"
+  },
+  "repositoryTokenHint": "请输入 Token",
+  "@repositoryTokenHint": {
+    "description": "仓库 Token 输入框提示"
+  },
+  "repositoryTokenEmpty": "Token 不能为空",
+  "@repositoryTokenEmpty": {
+    "description": "仓库 Token 为空提示"
+  },
+  "repositoryVerifyAndLogin": "验证并登录",
+  "@repositoryVerifyAndLogin": {
+    "description": "仓库 Token 登录确认按钮"
+  },
+  "repositoryTokenLoginSuccess": "Token 登录成功",
+  "@repositoryTokenLoginSuccess": {
+    "description": "仓库 Token 登录成功提示"
+  },
+  "repositoryTokenInvalid": "Token 无效或已失效",
+  "@repositoryTokenInvalid": {
+    "description": "仓库 Token 登录失败提示"
+  },
+  "repositoryUnnamedUser": "未命名用户",
+  "@repositoryUnnamedUser": {
+    "description": "仓库未命名用户占位"
+  },
+  "repositoryMxid": "MXID",
+  "@repositoryMxid": {
+    "description": "仓库用户 MXID 标签"
+  },
+  "repositoryVip": "VIP",
+  "@repositoryVip": {
+    "description": "仓库用户 VIP 标签"
+  },
+  "repositoryVipActive": "已开通",
+  "@repositoryVipActive": {
+    "description": "仓库用户 VIP 已开通状态"
+  },
+  "repositoryVipInactive": "未开通",
+  "@repositoryVipInactive": {
+    "description": "仓库用户 VIP 未开通状态"
+  },
   "settings": "设置",
   "@settings": {
     "description": "设置页面"

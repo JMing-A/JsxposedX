@@ -28,6 +28,58 @@
   "@star": {
     "description": "Star tab"
   },
+  "repositoryAccountInfo": "Account Info",
+  "@repositoryAccountInfo": {
+    "description": "Repository token login account info title"
+  },
+  "repositoryTokenLogin": "Token Login",
+  "@repositoryTokenLogin": {
+    "description": "Repository token login title"
+  },
+  "repositoryReplaceToken": "Replace Token",
+  "@repositoryReplaceToken": {
+    "description": "Repository replace token button"
+  },
+  "repositoryTokenHint": "Enter token",
+  "@repositoryTokenHint": {
+    "description": "Repository token input hint"
+  },
+  "repositoryTokenEmpty": "Token cannot be empty",
+  "@repositoryTokenEmpty": {
+    "description": "Repository empty token prompt"
+  },
+  "repositoryVerifyAndLogin": "Verify & Login",
+  "@repositoryVerifyAndLogin": {
+    "description": "Repository token login confirm button"
+  },
+  "repositoryTokenLoginSuccess": "Token login successful",
+  "@repositoryTokenLoginSuccess": {
+    "description": "Repository token login success prompt"
+  },
+  "repositoryTokenInvalid": "Invalid or expired token",
+  "@repositoryTokenInvalid": {
+    "description": "Repository token login failed prompt"
+  },
+  "repositoryUnnamedUser": "Unnamed User",
+  "@repositoryUnnamedUser": {
+    "description": "Repository unnamed user placeholder"
+  },
+  "repositoryMxid": "MXID",
+  "@repositoryMxid": {
+    "description": "Repository user MXID label"
+  },
+  "repositoryVip": "VIP",
+  "@repositoryVip": {
+    "description": "Repository user VIP label"
+  },
+  "repositoryVipActive": "Active",
+  "@repositoryVipActive": {
+    "description": "Repository user VIP active status"
+  },
+  "repositoryVipInactive": "Inactive",
+  "@repositoryVipInactive": {
+    "description": "Repository user VIP inactive status"
+  },
   "settings": "Settings",
   "@settings": {
     "description": "Settings page"

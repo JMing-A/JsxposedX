@@ -140,6 +140,84 @@ abstract class AppLocalizations {
   /// **'收藏'**
   String get star;
 
+  /// 仓库 Token 登录账号信息标题
+  ///
+  /// In zh, this message translates to:
+  /// **'账号信息'**
+  String get repositoryAccountInfo;
+
+  /// 仓库 Token 登录标题
+  ///
+  /// In zh, this message translates to:
+  /// **'Token 登录'**
+  String get repositoryTokenLogin;
+
+  /// 仓库更换 Token 按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'更换 Token'**
+  String get repositoryReplaceToken;
+
+  /// 仓库 Token 输入框提示
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入 Token'**
+  String get repositoryTokenHint;
+
+  /// 仓库 Token 为空提示
+  ///
+  /// In zh, this message translates to:
+  /// **'Token 不能为空'**
+  String get repositoryTokenEmpty;
+
+  /// 仓库 Token 登录确认按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'验证并登录'**
+  String get repositoryVerifyAndLogin;
+
+  /// 仓库 Token 登录成功提示
+  ///
+  /// In zh, this message translates to:
+  /// **'Token 登录成功'**
+  String get repositoryTokenLoginSuccess;
+
+  /// 仓库 Token 登录失败提示
+  ///
+  /// In zh, this message translates to:
+  /// **'Token 无效或已失效'**
+  String get repositoryTokenInvalid;
+
+  /// 仓库未命名用户占位
+  ///
+  /// In zh, this message translates to:
+  /// **'未命名用户'**
+  String get repositoryUnnamedUser;
+
+  /// 仓库用户 MXID 标签
+  ///
+  /// In zh, this message translates to:
+  /// **'MXID'**
+  String get repositoryMxid;
+
+  /// 仓库用户 VIP 标签
+  ///
+  /// In zh, this message translates to:
+  /// **'VIP'**
+  String get repositoryVip;
+
+  /// 仓库用户 VIP 已开通状态
+  ///
+  /// In zh, this message translates to:
+  /// **'已开通'**
+  String get repositoryVipActive;
+
+  /// 仓库用户 VIP 未开通状态
+  ///
+  /// In zh, this message translates to:
+  /// **'未开通'**
+  String get repositoryVipInactive;
+
   /// 设置页面
   ///
   /// In zh, this message translates to:

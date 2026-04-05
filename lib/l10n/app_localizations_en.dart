@@ -31,6 +31,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get star => 'Star';
 
   @override
+  String get repositoryAccountInfo => 'Account Info';
+
+  @override
+  String get repositoryTokenLogin => 'Token Login';
+
+  @override
+  String get repositoryReplaceToken => 'Replace Token';
+
+  @override
+  String get repositoryTokenHint => 'Enter token';
+
+  @override
+  String get repositoryTokenEmpty => 'Token cannot be empty';
+
+  @override
+  String get repositoryVerifyAndLogin => 'Verify & Login';
+
+  @override
+  String get repositoryTokenLoginSuccess => 'Token login successful';
+
+  @override
+  String get repositoryTokenInvalid => 'Invalid or expired token';
+
+  @override
+  String get repositoryUnnamedUser => 'Unnamed User';
+
+  @override
+  String get repositoryMxid => 'MXID';
+
+  @override
+  String get repositoryVip => 'VIP';
+
+  @override
+  String get repositoryVipActive => 'Active';
+
+  @override
+  String get repositoryVipInactive => 'Inactive';
+
+  @override
   String get settings => 'Settings';
 
   @override

@@ -30,6 +30,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get star => '收藏';
 
   @override
+  String get repositoryAccountInfo => '账号信息';
+
+  @override
+  String get repositoryTokenLogin => 'Token 登录';
+
+  @override
+  String get repositoryReplaceToken => '更换 Token';
+
+  @override
+  String get repositoryTokenHint => '请输入 Token';
+
+  @override
+  String get repositoryTokenEmpty => 'Token 不能为空';
+
+  @override
+  String get repositoryVerifyAndLogin => '验证并登录';
+
+  @override
+  String get repositoryTokenLoginSuccess => 'Token 登录成功';
+
+  @override
+  String get repositoryTokenInvalid => 'Token 无效或已失效';
+
+  @override
+  String get repositoryUnnamedUser => '未命名用户';
+
+  @override
+  String get repositoryMxid => 'MXID';
+
+  @override
+  String get repositoryVip => 'VIP';
+
+  @override
+  String get repositoryVipActive => '已开通';
+
+  @override
+  String get repositoryVipInactive => '未开通';
+
+  @override
   String get settings => '设置';
 
   @override

@@ -1,5 +1,4 @@
 import 'package:JsxposedX/core/networks/http_service.dart';
-import 'package:JsxposedX/core/services/app_storage.dart';
 import 'package:JsxposedX/features/home/data/models/post_detail_dto.dart';
 import 'package:JsxposedX/features/home/data/models/post_dto.dart';
 import 'package:JsxposedX/features/home/data/models/user_detail_dto.dart';
@@ -68,14 +67,28 @@ class RepositoryQueryDatasource {
   }
 
   Future<UserDetailDto> getMyUserDetail({required String token}) async {
-    try {
-      final result = await _httpService.get(
-        _myUserDetailApi,
-        options: Options(headers: {"Authorization": "Bearer $token"}),
-      );
-      return UserDetailDto.fromJson(result.data["data"]);
-    } catch (e) {
-      throw Exception(e);
+    final result = await _httpService.get(
+      _myUserDetailApi,
+      options: Options(headers: {"Authorization": "Bearer $token"}),
+    );
+    if (result.statusCode != 200) {
+      throw RepositoryLoginStatusException(result.statusCode);
     }
+
+    final payload = result.data;
+    if (payload is! Map<String, dynamic> || payload['data'] is! Map<String, dynamic>) {
+      throw const FormatException('Invalid user detail response');
+    }
+
+    return UserDetailDto.fromJson(payload['data'] as Map<String, dynamic>);
   }
+}
+
+class RepositoryLoginStatusException implements Exception {
+  final int? statusCode;
+
+  const RepositoryLoginStatusException(this.statusCode);
+
+  @override
+  String toString() => 'RepositoryLoginStatusException(statusCode: $statusCode)';
 }
