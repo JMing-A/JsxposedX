@@ -10,24 +10,35 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 强制不使用任何缓存
+    env:
+      PUB_CACHE: /tmp/pub_cache
+      FLUTTER_CACHE: /tmp/flutter_cache
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 清理系统缓存
+      - name: Clean all caches
+        run: |
+          sudo rm -rf ~/.gradle ~/.m2 ~/.pub-cache ~/.flutter
+          sudo rm -rf /tmp/*
+          sudo apt clean
+
       - name: Install system dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y curl git unzip xz-utils zip libgl1-mesa-glx libx11-x11-dev
+          sudo apt-get install -y curl git unzip xz-utils zip libgl1-mesa-glx libx11-xcb1
 
-      # JDK 21 版本
+      # JDK 21
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
-      # 官网手动安装 Flutter
+      # 官网手动安装 Flutter（无缓存）
       - name: Download Flutter SDK
         run: |
           cd ~
@@ -38,26 +49,27 @@ jobs:
         run: |
           echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
 
-      - name: Flutter version
-        run: flutter --version
+      - name: Flutter doctor
+        run: flutter doctor -v
 
       - name: Disable Flutter analytics
         run: flutter config --no-analytics --no-cli-animations
 
-      # 项目构建
-      - name: flutter pub get
+      # 全新依赖安装
+      - name: Flutter pub get
         run: flutter pub get
 
       - name: Generate Pigeon
         run: flutter pub run pigeon --input pigeons/message.dart
 
+      # 构建
       - name: Build API100 AAB
         run: flutter build appbundle --flavor api100 --release
 
       - name: Build API101 APK
         run: flutter build apk --flavor api101 --release
 
-      # 上传产物
+      # 上传
       - name: Upload API100 AAB
         uses: actions/upload-artifact@v4
         with:
