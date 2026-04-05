@@ -10,47 +10,47 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: ubuntu:22.04  # 空白纯净系统
+    container: ubuntu:22.04
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ========== 系统更新 + 所有依赖纯 apt 安装 ==========
-      - name: Install system dependencies
+      - name: Install base dependencies
         run: |
           apt update -y
-          apt install -y \
-            curl git unzip xz-utils zip \
-            libgl1-mesa-glx libx11-xcb1 libnss3 libatk1.0-0 \
-            wget gnupg2 ca-certificates
+          apt install -y curl git unzip xz-utils zip wget libgl1-mesa-glx libx11-xcb1 libnss3 libatk1.0-0
 
-      # ========== 手动安装 JDK 21 ==========
+      # 安装 JDK 21
       - name: Install JDK 21
         run: |
           apt install -y openjdk-21-jdk
-          echo "JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64" >> "$GITHUB_ENV"
+          echo "JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64" >> $GITHUB_ENV
 
-      # ========== 手动安装 Flutter（官网手动教程） ==========
+      # 手动安装 Flutter 3.27.2（对应 Dart 3.9.2）
       - name: Install Flutter
         run: |
-          cd /opt
+          cd /usr/local
           curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.27.2-stable.tar.xz -o flutter.tar.xz
           tar -xf flutter.tar.xz
-          echo "/opt/flutter/bin" >> "$GITHUB_PATH"
+          echo "/usr/local/flutter/bin" >> $GITHUB_ENV
 
-      - name: Check Flutter & Java
+      # 修复 git 安全权限
+      - name: Fix git safe directory
+        run: |
+          git config --global --add safe.directory /usr/local/flutter
+
+      - name: Check versions
         run: |
           flutter --version
           java -version
-          javac -version
 
       - name: Disable Flutter analytics
         run: |
           flutter config --no-analytics --no-cli-animations
 
-      # ========== 项目构建 ==========
-      - name: Flutter pub get
+      # 构建项目
+      - name: flutter pub get
         run: flutter pub get
 
       - name: Generate Pigeon
@@ -62,7 +62,7 @@ jobs:
       - name: Build API101 APK
         run: flutter build apk --flavor api101 --release
 
-      # ========== 只上传最终安装包 ==========
+      # 只导出安装包
       - name: Upload API100 AAB
         uses: actions/upload-artifact@v4
         with:
