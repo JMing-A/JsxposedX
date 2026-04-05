@@ -24,8 +24,11 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.27.0'
           channel: stable
+
+      - name: Disable Flutter analytics
+        run: flutter config --no-analytics
 
       - name: Install dependencies
         run: flutter pub get
@@ -36,7 +39,7 @@ jobs:
       - name: Analyze code
         run: flutter analyze
 
-      - name: Build API100 App Bundle
+      - name: Build API100 AAB
         run: flutter build appbundle --flavor api100 --release
 
       - name: Build API101 APK
