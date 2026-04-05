@@ -7,7 +7,7 @@ import 'package:JsxposedX/core/utils/procedure_utils.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/notice_bottom_sheet.dart';
 import 'package:JsxposedX/features/home/presentation/pages/tabs/home_tab.dart';
 import 'package:JsxposedX/features/home/presentation/pages/tabs/project_tab.dart';
-import 'package:JsxposedX/features/home/presentation/pages/tabs/repository_tab.dart';
+import 'package:JsxposedX/features/home/presentation/pages/tabs/repository_tab/repository_tab.dart';
 import 'package:JsxposedX/features/home/presentation/pages/tabs/settings_tab.dart';
 import 'package:JsxposedX/features/home/presentation/providers/check_query_provider.dart';
 import 'package:JsxposedX/features/home/presentation/utils/update_check_helper.dart';

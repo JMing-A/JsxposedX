@@ -9,8 +9,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-class NewScriptPage extends HookConsumerWidget {
-  const NewScriptPage({super.key});
+class NewScriptTab extends HookConsumerWidget {
+  const NewScriptTab({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
