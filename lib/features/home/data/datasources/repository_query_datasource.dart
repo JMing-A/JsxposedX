@@ -1,9 +1,7 @@
-import 'package:JsxposedX/core/models/page_result.dart';
-import 'package:JsxposedX/core/network/http_service.dart';
+import 'package:JsxposedX/core/networks/http_service.dart';
 import 'package:JsxposedX/features/home/data/models/post_detail_dto.dart';
 import 'package:JsxposedX/features/home/data/models/post_dto.dart';
 import 'package:JsxposedX/features/home/domain/models/page_result_dto.dart';
-import 'package:JsxposedX/features/home/domain/models/post.dart';
 
 class RepositoryQueryDatasource {
   final HttpService _httpService;
@@ -24,7 +22,10 @@ class RepositoryQueryDatasource {
     required int offset,
   }) async {
     try {
-      final result = await _httpService.get(_postApi);
+      final result = await _httpService.get(
+        _postApi,
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
       return PageResultDto.fromJson(
         result.data,
         (data) => PostDto.fromJson(data as Map<String, dynamic>),
@@ -39,7 +40,10 @@ class RepositoryQueryDatasource {
     required int offset,
   }) async {
     try {
-      final result = await _httpService.get(_favoriteApi);
+      final result = await _httpService.get(
+        _favoriteApi,
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
       return PageResultDto.fromJson(
         result.data,
         (data) => PostDto.fromJson(data as Map<String, dynamic>),
@@ -57,4 +61,6 @@ class RepositoryQueryDatasource {
       throw Exception(e);
     }
   }
+
+
 }

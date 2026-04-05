@@ -1,4 +1,4 @@
-import 'package:JsxposedX/core/network/http_service.dart';
+import 'package:JsxposedX/core/networks/http_service.dart';
 
 class RepositoryActionDatasource {
   final HttpService _httpService;

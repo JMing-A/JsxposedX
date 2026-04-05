@@ -27,7 +27,6 @@ object NativeProvider {
         val apkAnalysisImpl = ApkAnalysisNativeImpl(context)
         ApkAnalysisNative.setUp(messenger, apkAnalysisImpl)
         SoAnalysisNative.setUp(messenger, SoAnalysisNativeImpl(context, apkAnalysisImpl.sharedSession))
-        // XposedService 连接已在 App.onCreate() 中初始化
         LSPosedNative.setUp(messenger, LSPosedNativeImpl(context))
         ZygiskFridaNative.setUp(messenger, ZygiskFridaNativeImpl(context))
     }

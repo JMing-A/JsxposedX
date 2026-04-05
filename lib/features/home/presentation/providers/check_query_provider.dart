@@ -1,6 +1,6 @@
 import 'package:JsxposedX/core/models/notice.dart';
 import 'package:JsxposedX/core/models/update.dart';
-import 'package:JsxposedX/core/network/http_service.dart';
+import 'package:JsxposedX/core/networks/http_service.dart';
 import 'package:JsxposedX/features/home/data/datasources/check_query_datasource.dart';
 import 'package:JsxposedX/features/home/data/repositories/check_query_repository_impl.dart';
 import 'package:JsxposedX/features/home/domain/repositories/check_query_repository.dart';

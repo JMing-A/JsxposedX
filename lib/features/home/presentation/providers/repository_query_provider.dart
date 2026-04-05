@@ -2,7 +2,7 @@ import 'package:JsxposedX/core/models/page_result.dart';
 import 'package:JsxposedX/features/home/domain/models/post.dart';
 import 'package:JsxposedX/features/home/domain/models/post_detail.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:JsxposedX/core/network/http_service.dart';
+import 'package:JsxposedX/core/networks/http_service.dart';
 import 'package:JsxposedX/features/home/data/datasources/repository_query_datasource.dart';
 import 'package:JsxposedX/features/home/data/repositories/repository_query_repository_impl.dart';
 import 'package:JsxposedX/features/home/domain/repositories/repository_query_repository.dart';

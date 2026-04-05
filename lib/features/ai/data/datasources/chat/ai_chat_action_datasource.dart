@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:JsxposedX/core/enums/ai_api_type.dart';
 import 'package:JsxposedX/core/models/ai_config.dart';
-import 'package:JsxposedX/core/network/http_service.dart';
+import 'package:JsxposedX/core/networks/http_service.dart';
 import 'package:JsxposedX/core/providers/pinia_provider.dart';
 import 'package:JsxposedX/features/ai/data/models/ai_message_dto.dart';
 import 'package:JsxposedX/features/ai/data/models/ai_session_dto.dart';

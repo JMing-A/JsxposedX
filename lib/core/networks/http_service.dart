@@ -1,4 +1,5 @@
-﻿import 'package:JsxposedX/core/constants/network_constants.dart';
+import 'package:JsxposedX/core/constants/network_constants.dart';
+import 'package:JsxposedX/core/networks/interceptors/http_interceptor.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -161,6 +162,8 @@ Dio dio(Ref ref) {
       validateStatus: (status) => status != null && status < 500,
     ),
   );
+
+  dio.interceptors.add(HttpInterceptor());
 
   // 添加日志拦截器（开发环境）
   if (kDebugMode) {
