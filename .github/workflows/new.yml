@@ -15,13 +15,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
-        uses: setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter 3.19.0
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.0'
@@ -30,27 +30,27 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Generate Pigeon code
+      - name: Generate Pigeon
         run: flutter pub run pigeon --input pigeons/message.dart
 
       - name: Analyze code
         run: flutter analyze
 
-      - name: Build API100 AAB
+      - name: Build API100 App Bundle
         run: flutter build appbundle --flavor api100 --release
 
       - name: Build API101 APK
         run: flutter build apk --flavor api101 --release
 
       - name: Upload API100 AAB
-        uses: upload-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
-          name: jsxposedx-api100-aab
+          name: jsxposedx-api100-appbundle
           path: build/app/outputs/bundle/api100Release/app-api100-release.aab
           retention-days: 7
 
       - name: Upload API101 APK
-        uses: upload-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
           name: jsxposedx-api101-apk
           path: build/app/outputs/flutter-apk/app-api101-release.apk
