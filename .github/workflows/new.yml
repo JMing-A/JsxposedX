@@ -1,0 +1,83 @@
+name: Build JsxposedX
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch: # 手动触发构建
+
+# 构建环境矩阵
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        flavor: [api100, api101]
+        build-type: [debug, release]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Flutter 环境
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable' # 适配Flutter稳定版，可根据项目需求指定版本
+          channel: 'stable'
+          cache: true # 开启缓存加速构建
+
+      - name: 安装 Flutter 依赖
+        run: flutter pub get
+
+      - name: 生成 Pigeon 代码（桥接代码）
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            .\.buildScript\pigen_watch.ps1
+          else
+            pwsh .\.buildScript\pigen_watch.ps1
+          fi
+
+      - name: 构建 Flutter 产物（APK）
+        run: |
+          if [ "${{ matrix.build-type }}" = "release" ]; then
+            flutter build apk --flavor ${{ matrix.flavor }} --release
+          else
+            flutter build apk --flavor ${{ matrix.flavor }} --debug
+          fi
+
+      - name: 构建 Android AppBundle（AAB，仅Release）
+        if: matrix.build-type == 'release'
+        run: flutter build appbundle --flavor ${{ matrix.flavor }} --release
+
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsxposedx-${{ matrix.flavor }}-${{ matrix.build-type }}-apk-${{ runner.os }}
+          path: build/app/outputs/flutter-apk/*-${{ matrix.flavor }}-${{ matrix.build-type }}*.apk
+
+      - name: 上传 AAB 产物（仅Release）
+        if: matrix.build-type == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsxposedx-${{ matrix.flavor }}-release-aab-${{ runner.os }}
+          path: build/app/outputs/bundle/${{ matrix.flavor }}Release/app-${{ matrix.flavor }}-release.aab
+
+      # 可选：Android Gradle 直接构建（与Flutter CLI构建产物一致）
+      - name: Gradle 直接构建 Release APK
+        if: matrix.build-type == 'release'
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            .\gradlew.bat :app:assemble${{ matrix.flavor | capitalize }}Release
+          else
+            chmod +x gradlew
+            ./gradlew :app:assemble${{ matrix.flavor | capitalize }}Release
+          fi
+
+      - name: 上传 Gradle 构建 APK 产物
+        if: matrix.build-type == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsxposedx-${{ matrix.flavor }}-release-gradle-apk-${{ runner.os }}
+          path: build/app/outputs/apk/${{ matrix.flavor }}/release/app-${{ matrix.flavor }}-release.apk
