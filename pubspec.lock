@@ -494,6 +494,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
+  flutter_floating:
+    dependency: "direct main"
+    description:
+      name: flutter_floating
+      sha256: "3cd7b8df24992d745fea274f3c37f9a7d4bb5a17712478af063382b70936f3cb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
   flutter_form_builder:
     dependency: "direct main"
     description:
