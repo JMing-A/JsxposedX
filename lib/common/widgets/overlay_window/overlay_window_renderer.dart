@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_scene.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_window.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_window_scope.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/memory_tool_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
@@ -62,7 +63,7 @@ class _OverlayWindowRendererState extends State<OverlayWindowRenderer> {
   Widget _buildScene(int scene) {
     switch (scene) {
       case OverlayScene.memoryTool:
-        return const SizedBox.shrink();
+        return const MemoryToolOverlay();
       default:
         return const SizedBox.shrink();
     }
