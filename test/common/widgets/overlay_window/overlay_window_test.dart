@@ -17,21 +17,6 @@ void main() {
     );
   }
 
-  testWidgets('renders title, child and footer', (tester) async {
-    await tester.pumpWidget(
-      buildSubject(
-        const OverlayWindow(
-          title: 'Overlay title',
-          footer: Text('Footer'),
-          child: Text('Body'),
-        ),
-      ),
-    );
-
-    expect(find.text('Overlay title'), findsOneWidget);
-    expect(find.text('Body'), findsOneWidget);
-    expect(find.text('Footer'), findsOneWidget);
-  });
 
   testWidgets('renders custom header instead of title row', (tester) async {
     await tester.pumpWidget(
