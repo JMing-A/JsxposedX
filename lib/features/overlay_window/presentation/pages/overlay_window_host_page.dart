@@ -64,22 +64,20 @@ OverlaySceneDefinition? _scene(WidgetRef ref, int sceneId) {
 Widget _buildPanelWindow(BuildContext context, WidgetRef ref, int sceneId) {
   final scene = _scene(ref, sceneId);
   final controller = ref.read(overlayWindowHostRuntimeProvider.notifier);
-  final title = scene?.title(context) ?? context.l10n.overlayWindowFallbackTitle;
-  final subtitle =
-      scene?.subtitle?.call(context) ?? context.l10n.overlayFloatingToolWindow;
-
-  return OverlayWindow(
-    title: title,
-    subtitle: subtitle,
-    onBackdropTap: () => controller.setDisplayMode(OverlayWindowDisplayMode.bubble),
-    onMinimize: () => controller.setDisplayMode(OverlayWindowDisplayMode.bubble),
-    onClose: () {
+  final controls = OverlayWindowPanelControls(
+    minimize: () => controller.setDisplayMode(OverlayWindowDisplayMode.bubble),
+    close: () {
       unawaited(controller.closeOverlay());
     },
-    margin: scene?.panelMargin?.call(context),
-    maxWidth: scene?.panelMaxWidth?.call(context),
-    maxHeight: scene?.panelMaxHeight?.call(context),
-    child: scene?.panelBuilder(context) ?? _buildUnknownScene(context, ref),
+  );
+
+  if (scene == null) {
+    return _buildUnknownScene(context, ref);
+  }
+
+  return OverlayWindowPanelScope(
+    controls: controls,
+    child: scene.panelBuilder(context),
   );
 }
 
@@ -93,35 +91,48 @@ Widget _buildBubble(WidgetRef ref, int sceneId) {
 }
 
 Widget _buildUnknownScene(BuildContext context, WidgetRef ref) {
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: <Widget>[
-      Text(
-        context.l10n.overlayWindowUnknownSceneTitle,
-        style: context.textTheme.titleLarge?.copyWith(
-          fontWeight: FontWeight.w700,
+  return OverlayWindowScaffold(
+    overlayBar: OverlayWindowBar(
+      title: Text(context.l10n.overlayWindowFallbackTitle),
+      subtitle: Text(context.l10n.overlayFloatingToolWindow),
+      showMinimizeAction: true,
+      showCloseAction: true,
+    ),
+    onBackdropTap: () {
+      unawaited(ref.read(overlayWindowHostRuntimeProvider.notifier).closeOverlay());
+    },
+    body: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          context.l10n.overlayWindowUnknownSceneTitle,
+          style: context.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      ),
-      SizedBox(height: 8.h),
-      Text(
-        context.l10n.overlayWindowUnknownSceneDescription,
-        style: context.textTheme.bodyMedium?.copyWith(
-          color: context.colorScheme.onSurfaceVariant,
-          height: 1.45,
+        SizedBox(height: 8.h),
+        Text(
+          context.l10n.overlayWindowUnknownSceneDescription,
+          style: context.textTheme.bodyMedium?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+            height: 1.45,
+          ),
         ),
-      ),
-      SizedBox(height: 16.h),
-      Align(
-        alignment: Alignment.centerRight,
-        child: FilledButton(
-          onPressed: () {
-            unawaited(ref.read(overlayWindowHostRuntimeProvider.notifier).closeOverlay());
-          },
-          child: Text(context.l10n.close),
+        SizedBox(height: 16.h),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton(
+            onPressed: () {
+              unawaited(
+                ref.read(overlayWindowHostRuntimeProvider.notifier).closeOverlay(),
+              );
+            },
+            child: Text(context.l10n.close),
+          ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 }
 

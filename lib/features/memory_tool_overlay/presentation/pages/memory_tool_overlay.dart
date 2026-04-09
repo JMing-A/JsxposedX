@@ -1,11 +1,46 @@
 import 'package:JsxposedX/common/pages/toast.dart';
+import 'package:JsxposedX/common/widgets/overlay_window/overlay_window.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/overlay_window/domain/models/overlay_window_presentation.dart';
+import 'package:JsxposedX/features/overlay_window/presentation/models/overlay_scene_definition.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class MemoryToolOverlay extends HookConsumerWidget {
   const MemoryToolOverlay({super.key});
+
+  OverlayWindowConfig get overlayConfig => OverlayWindowConfig(
+    sceneId: 0,
+    bubbleSize: OverlayWindowPresentation.defaultBubbleSize,
+    notificationTitle: (context) => context.l10n.overlayMemoryToolTitle,
+    notificationContent: (context) =>
+        context.l10n.overlayWindowNotificationContent,
+  );
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return OverlayWindowScaffold(
+      overlayConfig: overlayConfig,
+      overlayBar: OverlayWindowBar(
+        title: Text(context.l10n.overlayMemoryToolTitle),
+        subtitle: Text(context.l10n.overlayFloatingToolWindow),
+        leading: const Icon(
+          Icons.memory_rounded,
+          color: Colors.white,
+          size: 20,
+        ),
+        showMinimizeAction: true,
+        showCloseAction: false,
+      ),
+      margin: EdgeInsets.all(8.r),
+      body: const _MemoryToolOverlayBody(),
+    );
+  }
+}
+
+class _MemoryToolOverlayBody extends HookConsumerWidget {
+  const _MemoryToolOverlayBody();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

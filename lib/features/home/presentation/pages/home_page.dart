@@ -15,7 +15,7 @@ import 'package:JsxposedX/features/home/presentation/widgets/home_center_dock_bu
 import 'package:JsxposedX/features/home/presentation/widgets/notice_bottom_sheet.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/select_app_sheet.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/update_check_dialog.dart';
-import 'package:JsxposedX/features/memory_tool_overlay/presentation/overlay/memory_tool_overlay_scene.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/memory_tool_overlay.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_action_provider.dart';
 import 'package:JsxposedX/features/project/presentation/providers/project_action_provider.dart';
 import 'package:JsxposedX/features/project/presentation/providers/project_query_provider.dart';
@@ -130,9 +130,10 @@ class HomePage extends HookConsumerWidget {
         colorScheme: colorScheme,
         size: fabSize,
         onPressed: () async {
+          final overlay = MemoryToolOverlay();
           await ref.read(overlayWindowActionProvider.notifier).show(
                 context,
-                sceneId: MemoryToolOverlayScene.sceneId,
+                sceneId: overlay.overlayConfig.sceneId,
               );
         },
       ),
