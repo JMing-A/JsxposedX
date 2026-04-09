@@ -1,21 +1,23 @@
 package flutter.overlay.window.flutter_overlay_window;
 
 import android.app.Activity;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Insets;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
-import android.service.notification.StatusBarNotification;
-import android.util.Log;
+import android.util.DisplayMetrics;
+import android.view.Display;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
-import androidx.core.app.NotificationManagerCompat;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import io.flutter.FlutterInjector;
@@ -109,6 +111,23 @@ public class FlutterOverlayWindowPlugin implements
             intent.putExtra("startY", startY);
             context.startService(intent);
             result.success(null);
+        } else if (call.method.equals("updateOverlayLayout")) {
+            Integer width = call.argument("width");
+            Integer height = call.argument("height");
+            Integer x = call.argument("x");
+            Integer y = call.argument("y");
+            Boolean enableDrag = call.argument("enableDrag");
+            String flag = call.argument("flag");
+            result.success(
+                    OverlayService.updateOverlayLayout(
+                            width != null ? width : OverlayConstants.MATCH_PARENT,
+                            height != null ? height : OverlayConstants.MATCH_PARENT,
+                            x,
+                            y,
+                            enableDrag != null && enableDrag,
+                            flag != null ? flag : "defaultFlag"
+                    )
+            );
         } else if (call.method.equals("isOverlayActive")) {
             result.success(OverlayService.isRunning);
             return;
@@ -121,6 +140,8 @@ public class FlutterOverlayWindowPlugin implements
             result.success(OverlayService.moveOverlay(x, y));
         } else if (call.method.equals("getOverlayPosition")) {
             result.success(OverlayService.getCurrentPosition());
+        } else if (call.method.equals("getOverlayViewportMetrics")) {
+            result.success(resolveOverlayViewportMetrics());
         } else if (call.method.equals("closeOverlay")) {
             if (OverlayService.isRunning) {
                 final Intent i = new Intent(context, OverlayService.class);
@@ -180,6 +201,69 @@ public class FlutterOverlayWindowPlugin implements
             return Settings.canDrawOverlays(context);
         }
         return true;
+    }
+
+    private Map<String, Double> resolveOverlayViewportMetrics() {
+        final Map<String, Double> serviceMetrics = OverlayService.getViewportMetrics();
+        if (serviceMetrics != null) {
+            return serviceMetrics;
+        }
+
+        final Context metricContext = mActivity != null ? mActivity : context;
+        int widthPx = metricContext.getResources().getDisplayMetrics().widthPixels;
+        int heightPx = metricContext.getResources().getDisplayMetrics().heightPixels;
+        int safeLeftPx = 0;
+        int safeTopPx = 0;
+        int safeRightPx = 0;
+        int safeBottomPx = 0;
+
+        if (mActivity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            final Rect bounds = mActivity.getWindowManager().getCurrentWindowMetrics().getBounds();
+            final Insets insets = mActivity.getWindowManager()
+                    .getCurrentWindowMetrics()
+                    .getWindowInsets()
+                    .getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+            widthPx = bounds.width();
+            heightPx = bounds.height();
+            safeLeftPx = insets.left;
+            safeTopPx = insets.top;
+            safeRightPx = insets.right;
+            safeBottomPx = insets.bottom;
+        } else {
+            final WindowManager windowManager =
+                    (WindowManager) metricContext.getSystemService(Context.WINDOW_SERVICE);
+            if (windowManager != null) {
+                final Display display = windowManager.getDefaultDisplay();
+                final DisplayMetrics realMetrics = new DisplayMetrics();
+                display.getRealMetrics(realMetrics);
+                widthPx = realMetrics.widthPixels;
+                heightPx = realMetrics.heightPixels;
+            }
+            safeTopPx = resolveSystemDimensionPx(metricContext, "status_bar_height");
+            safeBottomPx = resolveSystemDimensionPx(metricContext, "navigation_bar_height");
+        }
+
+        final double density = metricContext.getResources().getDisplayMetrics().density;
+        final Map<String, Double> metrics = new HashMap<>();
+        metrics.put(OverlayConstants.VIEWPORT_WIDTH, widthPx / density);
+        metrics.put(OverlayConstants.VIEWPORT_HEIGHT, heightPx / density);
+        metrics.put(OverlayConstants.VIEWPORT_SAFE_LEFT, safeLeftPx / density);
+        metrics.put(OverlayConstants.VIEWPORT_SAFE_TOP, safeTopPx / density);
+        metrics.put(OverlayConstants.VIEWPORT_SAFE_RIGHT, safeRightPx / density);
+        metrics.put(OverlayConstants.VIEWPORT_SAFE_BOTTOM, safeBottomPx / density);
+        return metrics;
+    }
+
+    private int resolveSystemDimensionPx(Context metricContext, String resourceName) {
+        final int resourceId = metricContext.getResources().getIdentifier(
+                resourceName,
+                "dimen",
+                "android"
+        );
+        if (resourceId == 0) {
+            return 0;
+        }
+        return metricContext.getResources().getDimensionPixelSize(resourceId);
     }
 
     @Override

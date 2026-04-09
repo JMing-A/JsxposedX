@@ -14,4 +14,10 @@ final public class OverlayConstants {
     static final String EVENT = "event";
     static final String EVENT_BUBBLE_TAP = "bubbleTap";
     static final String EVENT_BUBBLE_DRAG_END = "bubbleDragEnd";
+    static final String VIEWPORT_WIDTH = "width";
+    static final String VIEWPORT_HEIGHT = "height";
+    static final String VIEWPORT_SAFE_LEFT = "safeLeft";
+    static final String VIEWPORT_SAFE_TOP = "safeTop";
+    static final String VIEWPORT_SAFE_RIGHT = "safeRight";
+    static final String VIEWPORT_SAFE_BOTTOM = "safeBottom";
 }

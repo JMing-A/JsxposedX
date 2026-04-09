@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_overlay_window/src/models/overlay_position.dart';
+import 'package:flutter_overlay_window/src/models/overlay_viewport_metrics.dart';
 import 'package:flutter_overlay_window/src/overlay_config.dart';
 
 class FlutterOverlayWindow {
@@ -116,6 +117,27 @@ class FlutterOverlayWindow {
     return res;
   }
 
+  /// Update the overlay layout in a single native pass.
+  static Future<bool?> updateOverlayLayout({
+    required int width,
+    required int height,
+    OverlayPosition? position,
+    required bool enableDrag,
+    required OverlayFlag flag,
+  }) async {
+    final bool? res = await _channel.invokeMethod<bool?>(
+      'updateOverlayLayout',
+      <String, dynamic>{
+        'width': width,
+        'height': height,
+        'enableDrag': enableDrag,
+        'flag': flag.name,
+        if (position != null) ...position.toMap(),
+      },
+    );
+    return res;
+  }
+
   /// Update the overlay size in the screen
   static Future<bool?> resizeOverlay(
     int width,
@@ -154,6 +176,14 @@ class FlutterOverlayWindow {
       'getOverlayPosition',
     );
     return OverlayPosition.fromMap(res);
+  }
+
+  /// Get the real display size and safe areas in dp.
+  static Future<OverlayViewportMetrics> getOverlayViewportMetrics() async {
+    final Map<Object?, Object?>? res = await _channel.invokeMethod(
+      'getOverlayViewportMetrics',
+    );
+    return OverlayViewportMetrics.fromMap(res);
   }
 
   /// Check if the current overlay is active
