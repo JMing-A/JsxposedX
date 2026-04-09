@@ -17,6 +17,7 @@ import 'package:JsxposedX/features/home/presentation/widgets/select_app_sheet.da
 import 'package:JsxposedX/features/home/presentation/widgets/update_check_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/memory_tool_overlay.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_action_provider.dart';
+import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_query_provider.dart';
 import 'package:JsxposedX/features/project/presentation/providers/project_action_provider.dart';
 import 'package:JsxposedX/features/project/presentation/providers/project_query_provider.dart';
 import 'package:flutter/material.dart';
@@ -130,11 +131,20 @@ class HomePage extends HookConsumerWidget {
         colorScheme: colorScheme,
         size: fabSize,
         onPressed: () async {
-          final overlay = MemoryToolOverlay();
-          await ref.read(overlayWindowActionProvider.notifier).show(
-                context,
-                sceneId: overlay.overlayConfig.sceneId,
-              );
+          final overlay = const MemoryToolOverlay();
+          ref.invalidate(overlayWindowStatusProvider);
+          final status = await ref.read(overlayWindowStatusProvider.future);
+          final actions = ref.read(overlayWindowActionProvider.notifier);
+
+          if (status.isActive) {
+            await actions.hide();
+            return;
+          }
+
+          await actions.show(
+            context,
+            sceneId: overlay.overlayConfig.sceneId,
+          );
         },
       ),
       appBar: AppBar(

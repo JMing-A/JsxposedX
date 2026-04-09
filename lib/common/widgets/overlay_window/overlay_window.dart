@@ -337,7 +337,7 @@ class OverlayWindowBar extends StatelessWidget {
                   style: TextStyle(
                     color: colorScheme.onSurface,
                     fontSize: 17.sp,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.bold,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
