@@ -353,8 +353,17 @@ class OverlayWindowBar extends StatelessWidget implements PreferredSizeWidget {
               appBarTheme.backgroundColor ??
               colorScheme.surface,
         );
+    final isCustomTitleWidget = title != null && title is! Text && subtitle == null;
     final content = (title == null && subtitle == null)
         ? const SizedBox.shrink()
+        : isCustomTitleWidget
+        ? SizedBox(
+            height: resolvedToolbarHeight,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: title!,
+            ),
+          )
         : Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

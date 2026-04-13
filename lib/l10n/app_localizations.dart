@@ -3325,6 +3325,126 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'悬浮窗已连接'**
   String get overlayConnected;
+
+  /// No description provided for @memoryToolTabSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索'**
+  String get memoryToolTabSearch;
+
+  /// No description provided for @memoryToolTabEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改'**
+  String get memoryToolTabEdit;
+
+  /// No description provided for @memoryToolTabWatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'监视'**
+  String get memoryToolTabWatch;
+
+  /// No description provided for @memoryToolSearchTabTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索参数'**
+  String get memoryToolSearchTabTitle;
+
+  /// No description provided for @memoryToolSearchTabSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'用于放首次搜索、范围缩小和读取入口。'**
+  String get memoryToolSearchTabSubtitle;
+
+  /// No description provided for @memoryToolSearchModeLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'模式'**
+  String get memoryToolSearchModeLabel;
+
+  /// No description provided for @memoryToolActionPanelTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作入口'**
+  String get memoryToolActionPanelTitle;
+
+  /// No description provided for @memoryToolActionPanelSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留给首次扫描、继续筛选和读取操作。'**
+  String get memoryToolActionPanelSubtitle;
+
+  /// No description provided for @memoryToolEditTabTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改工作区'**
+  String get memoryToolEditTabTitle;
+
+  /// No description provided for @memoryToolEditTabSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'这里适合放指定地址写入、批量修改和冻结入口。'**
+  String get memoryToolEditTabSubtitle;
+
+  /// No description provided for @memoryToolEditActionWriteValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'向目标地址写入新数值'**
+  String get memoryToolEditActionWriteValue;
+
+  /// No description provided for @memoryToolEditActionFreezeValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'把结果加入冻结列表并保持值不变'**
+  String get memoryToolEditActionFreezeValue;
+
+  /// No description provided for @memoryToolEditActionBatchWrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'对筛选结果执行批量写入'**
+  String get memoryToolEditActionBatchWrite;
+
+  /// No description provided for @memoryToolPatchTabTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'补丁与脚本'**
+  String get memoryToolPatchTabTitle;
+
+  /// No description provided for @memoryToolPatchTabSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'适合放 Hex 补丁、汇编修改和恢复原值。'**
+  String get memoryToolPatchTabSubtitle;
+
+  /// No description provided for @memoryToolPatchActionHex.
+  ///
+  /// In zh, this message translates to:
+  /// **'Hex Patch 编辑入口'**
+  String get memoryToolPatchActionHex;
+
+  /// No description provided for @memoryToolPatchActionAsm.
+  ///
+  /// In zh, this message translates to:
+  /// **'汇编修改入口'**
+  String get memoryToolPatchActionAsm;
+
+  /// No description provided for @memoryToolPatchActionRestore.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复原始值与补丁'**
+  String get memoryToolPatchActionRestore;
+
+  /// No description provided for @memoryToolWatchTabTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'监视列表'**
+  String get memoryToolWatchTabTitle;
+
+  /// No description provided for @memoryToolWatchTabSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'这里适合展示常驻监视值和冻结状态。'**
+  String get memoryToolWatchTabSubtitle;
 }
 
 class _AppLocalizationsDelegate

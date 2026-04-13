@@ -17,6 +17,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 class OverlayWindowHostPage extends HookConsumerWidget {
   const OverlayWindowHostPage({super.key});
 
+  static const Size _retainedPanelFallbackSize = Size(480, 960);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(overlayWindowHostRuntimeProvider.notifier);
@@ -37,6 +39,19 @@ class OverlayWindowHostPage extends HookConsumerWidget {
     final payload = runtimeState.payload;
     final panelWindow = _buildPanelWindow(context, ref, payload.sceneId);
     final bubbleWindow = _buildBubble(ref, payload.sceneId);
+    final retainedPanelSize = runtimeState.viewportMetrics == null
+        ? _retainedPanelFallbackSize
+        : Size(
+            runtimeState.viewportMetrics!.width,
+            runtimeState.viewportMetrics!.height,
+          );
+    final retainedPanelWindow =
+        payload.isPanel || runtimeState.isTransitioningToPanel
+        ? panelWindow
+        : _RetainedOverlayPanelLayout(
+            size: retainedPanelSize,
+            child: panelWindow,
+          );
 
     return Material(
       color: Colors.transparent,
@@ -49,7 +64,7 @@ class OverlayWindowHostPage extends HookConsumerWidget {
               enabled: payload.isPanel && !runtimeState.isTransitioningToPanel,
               child: KeyedSubtree(
                 key: ValueKey('overlay-panel-${payload.sceneId}'),
-                child: panelWindow,
+                child: retainedPanelWindow,
               ),
             ),
           ),
@@ -67,6 +82,32 @@ class OverlayWindowHostPage extends HookConsumerWidget {
           if (runtimeState.activeToast != null)
             _OverlayToastView(toast: runtimeState.activeToast!),
         ],
+      ),
+    );
+  }
+}
+
+class _RetainedOverlayPanelLayout extends StatelessWidget {
+  const _RetainedOverlayPanelLayout({
+    required this.size,
+    required this.child,
+  });
+
+  final Size size;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return OverflowBox(
+      alignment: Alignment.topLeft,
+      minWidth: size.width,
+      maxWidth: size.width,
+      minHeight: size.height,
+      maxHeight: size.height,
+      child: SizedBox(
+        width: size.width,
+        height: size.height,
+        child: child,
       ),
     );
   }

@@ -1683,4 +1683,64 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get overlayConnected => '悬浮窗已连接';
+
+  @override
+  String get memoryToolTabSearch => '搜索';
+
+  @override
+  String get memoryToolTabEdit => '修改';
+
+  @override
+  String get memoryToolTabWatch => '监视';
+
+  @override
+  String get memoryToolSearchTabTitle => '搜索参数';
+
+  @override
+  String get memoryToolSearchTabSubtitle => '用于放首次搜索、范围缩小和读取入口。';
+
+  @override
+  String get memoryToolSearchModeLabel => '模式';
+
+  @override
+  String get memoryToolActionPanelTitle => '操作入口';
+
+  @override
+  String get memoryToolActionPanelSubtitle => '保留给首次扫描、继续筛选和读取操作。';
+
+  @override
+  String get memoryToolEditTabTitle => '修改工作区';
+
+  @override
+  String get memoryToolEditTabSubtitle => '这里适合放指定地址写入、批量修改和冻结入口。';
+
+  @override
+  String get memoryToolEditActionWriteValue => '向目标地址写入新数值';
+
+  @override
+  String get memoryToolEditActionFreezeValue => '把结果加入冻结列表并保持值不变';
+
+  @override
+  String get memoryToolEditActionBatchWrite => '对筛选结果执行批量写入';
+
+  @override
+  String get memoryToolPatchTabTitle => '补丁与脚本';
+
+  @override
+  String get memoryToolPatchTabSubtitle => '适合放 Hex 补丁、汇编修改和恢复原值。';
+
+  @override
+  String get memoryToolPatchActionHex => 'Hex Patch 编辑入口';
+
+  @override
+  String get memoryToolPatchActionAsm => '汇编修改入口';
+
+  @override
+  String get memoryToolPatchActionRestore => '恢复原始值与补丁';
+
+  @override
+  String get memoryToolWatchTabTitle => '监视列表';
+
+  @override
+  String get memoryToolWatchTabSubtitle => '这里适合展示常驻监视值和冻结状态。';
 }

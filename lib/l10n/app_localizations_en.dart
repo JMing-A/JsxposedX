@@ -1708,4 +1708,73 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get overlayConnected => 'Overlay connected';
+
+  @override
+  String get memoryToolTabSearch => 'Search';
+
+  @override
+  String get memoryToolTabEdit => 'Edit';
+
+  @override
+  String get memoryToolTabWatch => 'Watch';
+
+  @override
+  String get memoryToolSearchTabTitle => 'Search Parameters';
+
+  @override
+  String get memoryToolSearchTabSubtitle =>
+      'Use this area for first scan, narrowing, and read entry points.';
+
+  @override
+  String get memoryToolSearchModeLabel => 'Mode';
+
+  @override
+  String get memoryToolActionPanelTitle => 'Action Panel';
+
+  @override
+  String get memoryToolActionPanelSubtitle =>
+      'Reserved for first scan, next scan, and read operations.';
+
+  @override
+  String get memoryToolEditTabTitle => 'Edit Workspace';
+
+  @override
+  String get memoryToolEditTabSubtitle =>
+      'A good place for address writes, batch edits, and freeze entry points.';
+
+  @override
+  String get memoryToolEditActionWriteValue =>
+      'Write a new value to the target address';
+
+  @override
+  String get memoryToolEditActionFreezeValue =>
+      'Add the result to the freeze list and keep it stable';
+
+  @override
+  String get memoryToolEditActionBatchWrite =>
+      'Apply a batch write to filtered results';
+
+  @override
+  String get memoryToolPatchTabTitle => 'Patches & Scripts';
+
+  @override
+  String get memoryToolPatchTabSubtitle =>
+      'Suitable for hex patches, asm edits, and restore actions.';
+
+  @override
+  String get memoryToolPatchActionHex => 'Hex patch entry';
+
+  @override
+  String get memoryToolPatchActionAsm => 'Assembly edit entry';
+
+  @override
+  String get memoryToolPatchActionRestore =>
+      'Restore original values and patches';
+
+  @override
+  String get memoryToolWatchTabTitle => 'Watch List';
+
+  @override
+  String get memoryToolWatchTabSubtitle =>
+      'Use this tab for persistent watch values and freeze states.';
 }

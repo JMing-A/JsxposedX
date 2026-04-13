@@ -1,6 +1,7 @@
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_window.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_overlay_l10n.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/process_avatar.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/process_picker_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/selected_process_panel.dart';
@@ -26,49 +27,72 @@ class MemoryToolOverlay extends HookConsumerWidget {
     useAutomaticKeepAlive();
     final isPickerVisible = useState(false);
     final selectedProcess = ref.watch(memoryToolSelectedProcessProvider);
+    final mediaQuery = MediaQuery.of(context);
+    final isPortrait = mediaQuery.orientation == Orientation.portrait;
+    final portraitTopInset = isPortrait ? mediaQuery.padding.top : 0.0;
 
-    return Stack(
-      children: [
-        OverlayWindowScaffold(
-          overlayConfig: overlayConfig,
-          overlayBar: OverlayWindowBar(
-            backgroundColor: context.colorScheme.surface.withValues(alpha: 0.3),
-            title: Text(
-              context.l10n.overlayMemoryToolTitle,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+    return DefaultTabController(
+      length: 3,
+      child: Stack(
+        children: [
+          OverlayWindowScaffold(
+            overlayConfig: overlayConfig,
+            overlayBar: OverlayWindowBar(
+              backgroundColor: context.colorScheme.surface.withValues(alpha: 0.3),
+              toolbarHeight: 52.r,
+              titleSpacing: 0,
+              leadingWidth: 48.r,
+              leading: IconButton(
+                padding: EdgeInsets.zero,
+                onPressed: () {
+                  isPickerVisible.value = true;
+                },
+                icon: ProcessAvatar(process: selectedProcess),
+              ),
+              title: TabBar(
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14.r),
+                  color: context.colorScheme.primary.withValues(alpha: 0.14),
+                ),
+                labelColor: context.colorScheme.primary,
+                unselectedLabelColor: context.colorScheme.onSurfaceVariant,
+                labelStyle: context.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+                tabs: <Widget>[
+                  Tab(text: context.l10n.memoryToolTabSearch),
+                  Tab(text: context.l10n.memoryToolTabEdit),
+                  Tab(text: context.l10n.memoryToolTabWatch),
+                ],
+              ),
+              showMinimizeAction: true,
+              showCloseAction: false,
             ),
-            leadingWidth: 48.r,
-            leading: IconButton(
-              padding: EdgeInsets.zero,
-              onPressed: () {
-                isPickerVisible.value = true;
-              },
-              icon: ProcessAvatar(process: selectedProcess),
-            ),
-            showMinimizeAction: true,
-            showCloseAction: false,
+            backgroundColor: context.colorScheme.surface.withValues(alpha: 0.6),
+            padding: EdgeInsets.only(top: portraitTopInset),
+            body: SelectedProcessPanel(selectedProcess: selectedProcess),
           ),
-          backgroundColor: context.colorScheme.surface.withValues(alpha: 0.6),
-          body: SelectedProcessPanel(selectedProcess: selectedProcess),
-        ),
-        if (isPickerVisible.value)
-          Positioned.fill(
-            child: MemoryToolProcessPickerDialog(
-              onClose: () {
-                isPickerVisible.value = false;
-              },
-              onSelected: (process) {
-                ref
-                    .read(memoryToolSelectedProcessProvider.notifier)
-                    .select(process);
-                isPickerVisible.value = false;
-              },
-              onRetry: () {
-                ref.invalidate(getProcessInfoProvider(offset: 0, limit: 20));
-              },
+          if (isPickerVisible.value)
+            Positioned.fill(
+              child: MemoryToolProcessPickerDialog(
+                onClose: () {
+                  isPickerVisible.value = false;
+                },
+                onSelected: (process) {
+                  ref
+                      .read(memoryToolSelectedProcessProvider.notifier)
+                      .select(process);
+                  isPickerVisible.value = false;
+                },
+                onRetry: () {
+                  ref.invalidate(getProcessInfoProvider(offset: 0, limit: 20));
+                },
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
