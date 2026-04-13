@@ -170,11 +170,20 @@ class OverlayWindowHostRuntimeNotifier
     final hostPosition = await ref
         .read(overlayWindowQueryRepositoryProvider)
         .getOverlayPosition();
+    final hostVisualOffset = OverlayWindowGeometry.visualOffsetFromHostPosition(
+      hostPosition,
+    );
     final visualOffset = OverlayWindowGeometry.clampBubbleVisualOffset(
-      OverlayWindowGeometry.visualOffsetFromHostPosition(hostPosition),
+      hostVisualOffset,
       viewport: viewport,
       bubbleSize: bubbleSize,
     );
+
+    if (_offsetNeedsSync(hostVisualOffset, visualOffset)) {
+      await moveBubbleHostToVisualOffset(visualOffset);
+      return;
+    }
+
     state = state.copyWith(bubbleVisualOffset: visualOffset);
   }
 
@@ -215,6 +224,12 @@ class OverlayWindowHostRuntimeNotifier
 
   OverlaySceneDefinition? _scene(int sceneId) {
     return ref.read(overlaySceneRegistryProvider)[sceneId];
+  }
+
+  bool _offsetNeedsSync(Offset source, Offset target) {
+    const epsilon = 0.1;
+    return (source.dx - target.dx).abs() > epsilon ||
+        (source.dy - target.dy).abs() > epsilon;
   }
 
   Future<OverlayViewportMetrics?> _ensureViewportMetrics() async {

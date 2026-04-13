@@ -155,16 +155,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
             WindowSetup.messenger.send(message);
         });
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            windowManager.getDefaultDisplay().getSize(szWindow);
-        } else {
-            DisplayMetrics displaymetrics = new DisplayMetrics();
-            windowManager.getDefaultDisplay().getMetrics(displaymetrics);
-            int w = displaymetrics.widthPixels;
-            int h = displaymetrics.heightPixels;
-            szWindow.set(w, h);
-        }
+        refreshWindowSize();
         int dx = startX == OverlayConstants.DEFAULT_XY ? 0 : startX;
         int dy = startY == OverlayConstants.DEFAULT_XY ? 0 : startY;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
@@ -243,6 +234,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
 
     private void resizeOverlay(int width, int height, boolean enableDrag, MethodChannel.Result result) {
         if (windowManager != null) {
+            refreshWindowSize();
             WindowManager.LayoutParams params = (WindowManager.LayoutParams) flutterView.getLayoutParams();
             params.width = resolveOverlayWidth(width);
             params.height = resolveOverlayHeight(height);
@@ -268,6 +260,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
 
     private void moveOverlay(int x, int y, MethodChannel.Result result) {
         if (windowManager != null) {
+            refreshWindowSize();
             WindowManager.LayoutParams params = (WindowManager.LayoutParams) flutterView.getLayoutParams();
             params.x = resolveOverlayPosition(x);
             params.y = resolveOverlayPosition(y);
@@ -295,6 +288,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
     public static boolean moveOverlay(int x, int y) {
         if (instance != null && instance.flutterView != null) {
             if (instance.windowManager != null) {
+                instance.refreshWindowSize();
                 WindowManager.LayoutParams params = (WindowManager.LayoutParams) instance.flutterView.getLayoutParams();
                 params.x = instance.resolveOverlayPosition(x);
                 params.y = instance.resolveOverlayPosition(y);
@@ -324,6 +318,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
         WindowSetup.setFlag(flag);
 
         WindowManager.LayoutParams params = (WindowManager.LayoutParams) instance.flutterView.getLayoutParams();
+        instance.refreshWindowSize();
         params.width = instance.resolveOverlayWidth(width);
         params.height = instance.resolveOverlayHeight(height);
         params.flags = instance.resolveWindowFlags();
@@ -478,7 +473,29 @@ public class OverlayService extends Service implements View.OnTouchListener {
         return (double) px / mResources.getDisplayMetrics().density;
     }
 
+    private void refreshWindowSize() {
+        if (windowManager == null) {
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            final Rect bounds = windowManager.getCurrentWindowMetrics().getBounds();
+            szWindow.set(bounds.width(), bounds.height());
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
+            windowManager.getDefaultDisplay().getSize(szWindow);
+            return;
+        }
+
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        windowManager.getDefaultDisplay().getMetrics(displayMetrics);
+        szWindow.set(displayMetrics.widthPixels, displayMetrics.heightPixels);
+    }
+
     private Map<String, Double> buildViewportMetrics() {
+        refreshWindowSize();
         int widthPx;
         int heightPx;
         int safeLeftPx = 0;
@@ -608,6 +625,7 @@ public class OverlayService extends Service implements View.OnTouchListener {
 
         public TrayAnimationTimerTask() {
             super();
+            refreshWindowSize();
             mDestY = lastYPosition;
             switch (WindowSetup.positionGravity) {
                 case "auto":
