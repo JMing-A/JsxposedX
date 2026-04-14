@@ -16,8 +16,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'memory_tool_search_provider.g.dart';
 
-const int memoryToolSearchResultPageLimit = 20;
-
 @riverpod
 bool hasMatchingSearchSession(Ref ref) {
   final selectedProcess = ref.watch(memoryToolSelectedProcessProvider);
@@ -44,12 +42,18 @@ bool hasRunningSearchTask(Ref ref) {
 @riverpod
 AsyncValue<List<SearchResult>> currentSearchResults(Ref ref) {
   final hasMatchingSession = ref.watch(hasMatchingSearchSessionProvider);
+  final renderLimit = ref.watch(
+    memoryToolResultSelectionProvider.select((state) => state.selectionLimit),
+  );
   if (!hasMatchingSession) {
     return const AsyncData<List<SearchResult>>(<SearchResult>[]);
   }
 
   return ref.watch(
-    getSearchResultsProvider(offset: 0, limit: memoryToolSearchResultPageLimit),
+    getSearchResultsProvider(
+      offset: 0,
+      limit: renderLimit,
+    ),
   );
 }
 

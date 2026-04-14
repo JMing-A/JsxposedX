@@ -45,13 +45,10 @@ class OverlayWindowHostPage extends HookConsumerWidget {
             runtimeState.viewportMetrics!.width,
             runtimeState.viewportMetrics!.height,
           );
-    final retainedPanelWindow =
-        payload.isPanel || runtimeState.isTransitioningToPanel
-        ? panelWindow
-        : _RetainedOverlayPanelLayout(
-            size: retainedPanelSize,
-            child: panelWindow,
-          );
+    final retainedPanelWindow = _RetainedOverlayPanelLayout(
+      size: retainedPanelSize,
+      child: panelWindow,
+    );
 
     return Material(
       color: Colors.transparent,

@@ -13,6 +13,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 class MemoryToolOverlay extends HookConsumerWidget {
   const MemoryToolOverlay({super.key});
 
+  static final PageStorageBucket _pageStorageBucket = PageStorageBucket();
+
   OverlayWindowConfig get overlayConfig => OverlayWindowConfig(
     sceneId: 0,
     bubbleSize: OverlayWindowPresentation.defaultBubbleSize,
@@ -71,7 +73,10 @@ class MemoryToolOverlay extends HookConsumerWidget {
             ),
             backgroundColor: context.colorScheme.surface.withValues(alpha: 0.6),
             padding: EdgeInsets.only(top: portraitTopInset),
-            body: SelectedProcessPanel(selectedProcess: selectedProcess),
+            body: PageStorage(
+              bucket: _pageStorageBucket,
+              child: SelectedProcessPanel(selectedProcess: selectedProcess),
+            ),
           ),
           if (isPickerVisible.value)
             Positioned.fill(

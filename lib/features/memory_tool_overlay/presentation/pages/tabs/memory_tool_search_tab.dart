@@ -27,7 +27,29 @@ class MemoryToolSearchTab extends HookConsumerWidget {
     final hasRunningTask = ref.watch(hasRunningSearchTaskProvider);
     final previousTaskStatus = useRef<SearchTaskStatus?>(null);
     final previousSelectedPid = useRef<int?>(selectedPid);
-    final previousHasMatchingSession = useRef<bool?>(hasMatchingSession);
+    final previousSessionPid = useRef<int?>(null);
+
+    void scheduleSelectionClear() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) {
+          return;
+        }
+        ref.read(memoryToolResultSelectionProvider.notifier).clear();
+      });
+    }
+
+    void scheduleSearchRefresh() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) {
+          return;
+        }
+        ref.invalidate(getSearchSessionStateProvider);
+        ref.invalidate(getSearchTaskStateProvider);
+        ref.invalidate(getSearchResultsProvider);
+        ref.invalidate(hasMatchingSearchSessionProvider);
+        ref.invalidate(currentSearchResultsProvider);
+      });
+    }
 
     useEffect(() {
       if (!hasRunningTask) {
@@ -46,12 +68,8 @@ class MemoryToolSearchTab extends HookConsumerWidget {
         final currentStatus = state.status;
         if (previousStatus == SearchTaskStatus.running &&
             currentStatus != SearchTaskStatus.running) {
-          ref.invalidate(getSearchSessionStateProvider);
-          ref.invalidate(getSearchTaskStateProvider);
-          ref.invalidate(getSearchResultsProvider);
-          ref.invalidate(hasMatchingSearchSessionProvider);
-          ref.invalidate(currentSearchResultsProvider);
-          ref.read(memoryToolResultSelectionProvider.notifier).clear();
+          scheduleSearchRefresh();
+          scheduleSelectionClear();
         }
         previousTaskStatus.value = currentStatus;
       });
@@ -61,20 +79,29 @@ class MemoryToolSearchTab extends HookConsumerWidget {
     useEffect(() {
       final previousPid = previousSelectedPid.value;
       if (previousPid != null && previousPid != selectedPid) {
-        ref.read(memoryToolResultSelectionProvider.notifier).clear();
+        scheduleSelectionClear();
       }
       previousSelectedPid.value = selectedPid;
       return null;
     }, [selectedPid]);
 
     useEffect(() {
-      final previousValue = previousHasMatchingSession.value;
-      if (previousValue == true && !hasMatchingSession) {
-        ref.read(memoryToolResultSelectionProvider.notifier).clear();
-      }
-      previousHasMatchingSession.value = hasMatchingSession;
+      sessionStateAsync.whenData((state) {
+        final previousPid = previousSessionPid.value;
+        final currentSessionPid = state.hasActiveSession ? state.pid : null;
+        final hadMatchingSession =
+            selectedPid != null && previousPid != null && previousPid == selectedPid;
+        final hasExactMatchingSession =
+            state.hasActiveSession && selectedPid != null && state.pid == selectedPid;
+
+        if (hadMatchingSession && !hasExactMatchingSession) {
+          scheduleSelectionClear();
+        }
+
+        previousSessionPid.value = currentSessionPid;
+      });
       return null;
-    }, [hasMatchingSession]);
+    }, [sessionStateAsync, selectedPid]);
 
     final resultCard = MemoryToolSearchResultCard(
       hasMatchingSession: hasMatchingSession,

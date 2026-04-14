@@ -25,85 +25,26 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final visibleLimit = useState(memoryToolSearchResultPageLimit);
-    final scrollController = useScrollController();
-    final isSettingsVisible = useState(false);
-    final cachedResults = useState<List<SearchResult>>(const <SearchResult>[]);
     final selectionState = ref.watch(memoryToolResultSelectionProvider);
     final selectionNotifier = ref.read(
       memoryToolResultSelectionProvider.notifier,
     );
-
-    useEffect(() {
-      visibleLimit.value = memoryToolSearchResultPageLimit;
-      cachedResults.value = const <SearchResult>[];
-      return null;
-    }, [hasMatchingSession]);
+    final selectedPid = ref.watch(memoryToolSelectedProcessProvider)?.pid;
+    final isSettingsVisible = useState(false);
 
     final resultsAsync = hasMatchingSession
-        ? ref.watch(
-            getSearchResultsProvider(offset: 0, limit: visibleLimit.value),
-          )
+        ? ref.watch(currentSearchResultsProvider)
         : const AsyncValue.data(<SearchResult>[]);
-
-    useEffect(() {
-      resultsAsync.whenData((results) {
-        cachedResults.value = results;
-      });
-      return null;
-    }, [resultsAsync]);
-
-    useEffect(
-      () {
-        if (!hasMatchingSession) {
-          return null;
-        }
-
-        void onScroll() {
-          if (!scrollController.hasClients) {
-            return;
-          }
-
-          final position = scrollController.position;
-          final shouldLoadMore =
-              position.pixels >= position.maxScrollExtent - 120.r;
-          if (!shouldLoadMore) {
-            return;
-          }
-
-          final totalCount = sessionStateAsync.maybeWhen(
-            data: (state) => state.resultCount,
-            orElse: () => 0,
-          );
-          if (totalCount <= visibleLimit.value) {
-            return;
-          }
-
-          visibleLimit.value =
-              (visibleLimit.value + memoryToolSearchResultPageLimit).clamp(
-                0,
-                totalCount,
-              );
-        }
-
-        scrollController.addListener(onScroll);
-        return () {
-          scrollController.removeListener(onScroll);
-        };
-      },
-      [
-        hasMatchingSession,
-        scrollController,
-        sessionStateAsync,
-        visibleLimit.value,
-      ],
-    );
-
     final displayedResults = resultsAsync.maybeWhen(
       data: (results) => results,
-      orElse: () => cachedResults.value,
+      orElse: () => const <SearchResult>[],
     );
-    final isLoadingMore = resultsAsync.isLoading && displayedResults.isNotEmpty;
+    final visibleResults = displayedResults
+        .take(selectionState.selectionLimit)
+        .toList(growable: false);
+    final listStorageKey = PageStorageKey<String>(
+      'memory_tool_search_results_${selectedPid ?? 0}',
+    );
 
     return Stack(
       children: <Widget>[
@@ -123,7 +64,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                 )
               : resultsAsync.when(
                   data: (_) {
-                    if (displayedResults.isEmpty) {
+                    if (visibleResults.isEmpty) {
                       return Center(
                         child: Text(
                           context.l10n.noData,
@@ -137,20 +78,14 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                       );
                     }
 
-                    final totalCount = sessionStateAsync.maybeWhen(
-                      data: (state) => state.resultCount,
-                      orElse: () => displayedResults.length,
-                    );
-                    final hasMore = displayedResults.length < totalCount;
-
                     return Column(
                       children: <Widget>[
                         _MemoryToolResultSelectionBar(
                           onSelectAll: () {
-                            selectionNotifier.selectVisible(displayedResults);
+                            selectionNotifier.selectVisible(visibleResults);
                           },
                           onInvert: () {
-                            selectionNotifier.invertVisible(displayedResults);
+                            selectionNotifier.invertVisible(visibleResults);
                           },
                           onClear: selectionNotifier.clear,
                           onOpenSettings: () {
@@ -160,44 +95,16 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                         SizedBox(height: 1.r),
                         Expanded(
                           child: ListView.separated(
-                            controller: scrollController,
+                            key: listStorageKey,
                             padding: EdgeInsets.zero,
-                            itemCount:
-                                displayedResults.length +
-                                ((hasMore || isLoadingMore) ? 1 : 0),
+                            itemCount: visibleResults.length,
                             separatorBuilder: (_, index) => SizedBox(
-                              height:
-                                  index == displayedResults.length - 1 &&
-                                      (hasMore || isLoadingMore)
+                              height: index == visibleResults.length - 1
                                   ? 6.r
                                   : 4.r,
                             ),
                             itemBuilder: (BuildContext context, int index) {
-                              if (index >= displayedResults.length) {
-                                if (isLoadingMore) {
-                                  return Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.r),
-                                    child: const Center(child: Loading()),
-                                  );
-                                }
-
-                                return Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 4.r),
-                                  child: Center(
-                                    child: Text(
-                                      '${displayedResults.length}/$totalCount',
-                                      style: context.textTheme.labelMedium
-                                          ?.copyWith(
-                                            color: context.colorScheme.onSurface
-                                                .withValues(alpha: 0.64),
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final result = displayedResults[index];
+                              final result = visibleResults[index];
                               return _MemoryToolSearchResultTile(
                                 result: result,
                                 isSelected: selectionState.contains(
@@ -218,21 +125,15 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                   },
                   error: (error, _) => RefError(onRetry: onRetry, error: error),
                   loading: () {
-                    if (displayedResults.isNotEmpty) {
-                      final totalCount = sessionStateAsync.maybeWhen(
-                        data: (state) => state.resultCount,
-                        orElse: () => displayedResults.length,
-                      );
-                      final hasMore = displayedResults.length < totalCount;
-
+                    if (visibleResults.isNotEmpty) {
                       return Column(
                         children: <Widget>[
                           _MemoryToolResultSelectionBar(
                             onSelectAll: () {
-                              selectionNotifier.selectVisible(displayedResults);
+                              selectionNotifier.selectVisible(visibleResults);
                             },
                             onInvert: () {
-                              selectionNotifier.invertVisible(displayedResults);
+                              selectionNotifier.invertVisible(visibleResults);
                             },
                             onClear: selectionNotifier.clear,
                             onOpenSettings: () {
@@ -242,27 +143,16 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                           SizedBox(height: 1.r),
                           Expanded(
                             child: ListView.separated(
-                              controller: scrollController,
+                              key: listStorageKey,
                               padding: EdgeInsets.zero,
-                              itemCount:
-                                  displayedResults.length +
-                                  ((hasMore || isLoadingMore) ? 1 : 0),
+                              itemCount: visibleResults.length,
                               separatorBuilder: (_, index) => SizedBox(
-                                height:
-                                    index == displayedResults.length - 1 &&
-                                        (hasMore || isLoadingMore)
+                                height: index == visibleResults.length - 1
                                     ? 6.r
                                     : 4.r,
                               ),
                               itemBuilder: (BuildContext context, int index) {
-                                if (index >= displayedResults.length) {
-                                  return Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 8.r),
-                                    child: const Center(child: Loading()),
-                                  );
-                                }
-
-                                final result = displayedResults[index];
+                                final result = visibleResults[index];
                                 return _MemoryToolSearchResultTile(
                                   result: result,
                                   isSelected: selectionState.contains(

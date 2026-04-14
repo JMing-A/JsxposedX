@@ -1,6 +1,6 @@
 class MemoryToolResultSelectionState {
   const MemoryToolResultSelectionState({
-    this.selectionLimit = 10,
+    this.selectionLimit = 100,
     this.selectedAddresses = const <int>[],
   });
 
