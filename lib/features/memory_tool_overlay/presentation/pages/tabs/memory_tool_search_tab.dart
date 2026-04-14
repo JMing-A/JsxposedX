@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_result_card.dart';
-import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_session_card.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_task_feedback.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_task_overlay.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
@@ -21,7 +20,7 @@ class MemoryToolSearchTab extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     useAutomaticKeepAlive();
     final isSearchDialogVisible = useState(false);
-    final selectedProcess = ref.watch(memoryToolSelectedProcessProvider);
+    final selectedPid = ref.watch(memoryToolSelectedProcessProvider)?.pid;
     final sessionStateAsync = ref.watch(getSearchSessionStateProvider);
     final taskStateAsync = ref.watch(getSearchTaskStateProvider);
     final hasMatchingSession = ref.watch(hasMatchingSearchSessionProvider);
@@ -50,16 +49,24 @@ class MemoryToolSearchTab extends HookConsumerWidget {
           ref.invalidate(getSearchResultsProvider);
           ref.invalidate(hasMatchingSearchSessionProvider);
           ref.invalidate(currentSearchResultsProvider);
+          ref.read(memoryToolResultSelectionProvider.notifier).clear();
         }
         previousTaskStatus.value = currentStatus;
       });
       return null;
     }, [taskStateAsync]);
 
-    final sessionCard = MemoryToolSearchSessionCard(
-      sessionStateAsync: sessionStateAsync,
-      selectedPid: selectedProcess?.pid,
-    );
+    useEffect(() {
+      ref.read(memoryToolResultSelectionProvider.notifier).clear();
+      return null;
+    }, [selectedPid]);
+
+    useEffect(() {
+      if (!hasMatchingSession) {
+        ref.read(memoryToolResultSelectionProvider.notifier).clear();
+      }
+      return null;
+    }, [hasMatchingSession]);
 
     final resultCard = MemoryToolSearchResultCard(
       hasMatchingSession: hasMatchingSession,
@@ -88,8 +95,6 @@ class MemoryToolSearchTab extends HookConsumerWidget {
           padding: padding,
           child: Column(
             children: <Widget>[
-              sessionCard,
-              if (hasMatchingSession) SizedBox(height: spacing),
               if (hasTaskFeedback) ...<Widget>[
                 MemoryToolSearchTaskFeedback(taskStateAsync: taskStateAsync),
                 SizedBox(height: spacing),

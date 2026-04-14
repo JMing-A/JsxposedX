@@ -2,8 +2,10 @@ import 'dart:typed_data';
 
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_result_selection_state.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_search_state.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'memory_tool_search_provider.g.dart';
@@ -43,6 +45,85 @@ AsyncValue<List<SearchResult>> currentSearchResults(Ref ref) {
   return ref.watch(
     getSearchResultsProvider(offset: 0, limit: memoryToolSearchResultPageLimit),
   );
+}
+
+final memoryToolResultSelectionProvider = NotifierProvider<
+  MemoryToolResultSelectionController,
+  MemoryToolResultSelectionState
+>(MemoryToolResultSelectionController.new);
+
+class MemoryToolResultSelectionController
+    extends Notifier<MemoryToolResultSelectionState> {
+  @override
+  MemoryToolResultSelectionState build() {
+    return const MemoryToolResultSelectionState();
+  }
+
+  void updateSelectionLimit(int limit) {
+    final clampedLimit = limit < 1 ? 1 : limit;
+    state = state.copyWith(
+      selectionLimit: clampedLimit,
+      selectedAddresses: state.selectedAddresses.take(clampedLimit).toList(),
+    );
+  }
+
+  void toggle(SearchResult result) {
+    final selected = List<int>.from(state.selectedAddresses);
+    final address = result.address;
+    final existingIndex = selected.indexOf(address);
+    if (existingIndex >= 0) {
+      selected.removeAt(existingIndex);
+      state = state.copyWith(selectedAddresses: selected);
+      return;
+    }
+
+    if (state.selectionLimit == 1) {
+      state = state.copyWith(selectedAddresses: <int>[address]);
+      return;
+    }
+
+    if (selected.length >= state.selectionLimit) {
+      return;
+    }
+
+    selected.add(address);
+    state = state.copyWith(selectedAddresses: selected);
+  }
+
+  void selectVisible(List<SearchResult> results) {
+    state = state.copyWith(
+      selectedAddresses: results
+          .take(state.selectionLimit)
+          .map((result) => result.address)
+          .toList(),
+    );
+  }
+
+  void invertVisible(List<SearchResult> results) {
+    final visibleAddresses = results.map((result) => result.address).toSet();
+    final preserved = state.selectedAddresses
+        .where((address) => !visibleAddresses.contains(address))
+        .toList();
+    final selectedVisible = state.selectedAddresses.toSet();
+    for (final result in results) {
+      if (selectedVisible.contains(result.address)) {
+        continue;
+      }
+      if (preserved.length >= state.selectionLimit) {
+        break;
+      }
+      preserved.add(result.address);
+    }
+
+    state = state.copyWith(selectedAddresses: preserved);
+  }
+
+  void clear() {
+    if (state.selectedAddresses.isEmpty) {
+      return;
+    }
+    state = state.copyWith(selectedAddresses: const <int>[]);
+  }
 }
 
 @Riverpod(keepAlive: true)
