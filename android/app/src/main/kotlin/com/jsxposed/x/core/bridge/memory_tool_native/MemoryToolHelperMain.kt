@@ -2,7 +2,6 @@ package com.jsxposed.x.core.bridge.memory_tool_native
 
 import android.net.LocalServerSocket
 import android.net.LocalSocket
-import android.os.SystemClock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.Closeable
@@ -20,17 +19,10 @@ object MemoryToolHelperMain {
 private class MemoryToolDaemonServer(
     private val socketName: String
 ) : Closeable {
-    companion object {
-        private const val IDLE_TIMEOUT_MS = 60_000L
-    }
-
     private val running = AtomicBoolean(true)
     private val serverSocket = LocalServerSocket(socketName)
-    @Volatile
-    private var lastRequestAt = SystemClock.elapsedRealtime()
 
     fun run() {
-        startWatchdog()
         while (running.get()) {
             val client = try {
                 serverSocket.accept()
@@ -47,27 +39,11 @@ private class MemoryToolDaemonServer(
         kotlin.runCatching { serverSocket.close() }
     }
 
-    private fun startWatchdog() {
-        Thread {
-            while (running.get()) {
-                if (SystemClock.elapsedRealtime() - lastRequestAt > IDLE_TIMEOUT_MS) {
-                    close()
-                    return@Thread
-                }
-                Thread.sleep(1000)
-            }
-        }.apply {
-            isDaemon = true
-            start()
-        }
-    }
-
     private fun handleClient(client: LocalSocket) {
         client.use { socket ->
             val reader = socket.inputStream.bufferedReader()
             val writer = socket.outputStream.bufferedWriter()
             val requestText = reader.readLine() ?: return
-            lastRequestAt = SystemClock.elapsedRealtime()
 
             val response = try {
                 handleRequest(JSONObject(requestText))

@@ -93,6 +93,11 @@ class MemoryToolSearchForm extends _$MemoryToolSearchForm {
   }
 
   Future<void> nextScan() async {
+    final selectedProcess = ref.read(memoryToolSelectedProcessProvider);
+    if (selectedProcess == null) {
+      return;
+    }
+
     final validationError = _validateValue(
       type: state.selectedType,
       rawValue: state.value,
@@ -100,6 +105,16 @@ class MemoryToolSearchForm extends _$MemoryToolSearchForm {
     if (validationError != null) {
       state = state.copyWith(validationError: validationError);
       return;
+    }
+
+    final latestSessionState = await ref.refresh(
+      getSearchSessionStateProvider.future,
+    );
+    final hasMatchingSession =
+        latestSessionState.hasActiveSession &&
+        latestSessionState.pid == selectedProcess.pid;
+    if (!hasMatchingSession) {
+      throw StateError('当前没有可继续筛选的搜索会话，请先重新执行首次扫描。');
     }
 
     final request = NextScanRequest(

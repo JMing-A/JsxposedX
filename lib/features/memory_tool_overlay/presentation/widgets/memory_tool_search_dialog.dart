@@ -30,6 +30,14 @@ class MemoryToolSearchDialog extends HookConsumerWidget {
     final valueController = useTextEditingController(text: searchFormState.value);
 
     useEffect(() {
+      Future.microtask(() {
+        ref.invalidate(getSearchSessionStateProvider);
+        ref.invalidate(getSearchTaskStateProvider);
+      });
+      return null;
+    }, const []);
+
+    useEffect(() {
       if (valueController.text == searchFormState.value) {
         return null;
       }

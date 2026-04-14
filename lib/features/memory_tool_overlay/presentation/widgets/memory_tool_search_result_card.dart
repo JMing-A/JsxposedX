@@ -83,85 +83,75 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
       ],
     );
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: context.colorScheme.surfaceContainerHighest.withValues(
-          alpha: 0.42,
-        ),
-        borderRadius: BorderRadius.circular(18.r),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(14.r),
-        child: !hasMatchingSession
-            ? Center(
-                child: Text(
-                  context.l10n.noData,
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    color: context.colorScheme.onSurface.withValues(
-                      alpha: 0.66,
-                    ),
-                    fontWeight: FontWeight.w600,
-                  ),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 2.r),
+      child: !hasMatchingSession
+          ? Center(
+              child: Text(
+                context.l10n.noData,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.colorScheme.onSurface.withValues(alpha: 0.66),
+                  fontWeight: FontWeight.w600,
                 ),
-              )
-            : resultsAsync.when(
-                data: (results) {
-                  if (results.isEmpty) {
-                    return Center(
-                      child: Text(
-                        context.l10n.noData,
-                        style: context.textTheme.bodyMedium?.copyWith(
-                          color: context.colorScheme.onSurface.withValues(
-                            alpha: 0.66,
-                          ),
-                          fontWeight: FontWeight.w600,
+              ),
+            )
+          : resultsAsync.when(
+              data: (results) {
+                if (results.isEmpty) {
+                  return Center(
+                    child: Text(
+                      context.l10n.noData,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.colorScheme.onSurface.withValues(
+                          alpha: 0.66,
                         ),
+                        fontWeight: FontWeight.w600,
                       ),
-                    );
-                  }
-
-                  final totalCount = sessionStateAsync.maybeWhen(
-                    data: (state) => state.resultCount,
-                    orElse: () => results.length,
-                  );
-                  final hasMore = results.length < totalCount;
-
-                  return ListView.separated(
-                    controller: scrollController,
-                    itemCount: results.length + (hasMore ? 1 : 0),
-                    separatorBuilder: (_, index) => SizedBox(
-                      height: index == results.length - 1 && hasMore
-                          ? 10.r
-                          : 8.r,
                     ),
-                    itemBuilder: (BuildContext context, int index) {
-                      if (index >= results.length) {
-                        return Padding(
-                          padding: EdgeInsets.symmetric(vertical: 6.r),
-                          child: Center(
-                            child: Text(
-                              '${results.length}/$totalCount',
-                              style: context.textTheme.labelMedium?.copyWith(
-                                color: context.colorScheme.onSurface.withValues(
-                                  alpha: 0.64,
-                                ),
-                                fontWeight: FontWeight.w700,
+                  );
+                }
+
+                final totalCount = sessionStateAsync.maybeWhen(
+                  data: (state) => state.resultCount,
+                  orElse: () => results.length,
+                );
+                final hasMore = results.length < totalCount;
+
+                return ListView.separated(
+                  controller: scrollController,
+                  itemCount: results.length + (hasMore ? 1 : 0),
+                  separatorBuilder: (_, index) => SizedBox(
+                    height: index == results.length - 1 && hasMore
+                        ? 10.r
+                        : 8.r,
+                  ),
+                  itemBuilder: (BuildContext context, int index) {
+                    if (index >= results.length) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: 6.r),
+                        child: Center(
+                          child: Text(
+                            '${results.length}/$totalCount',
+                            style: context.textTheme.labelMedium?.copyWith(
+                              color: context.colorScheme.onSurface.withValues(
+                                alpha: 0.64,
                               ),
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        );
-                      }
-
-                      return _MemoryToolSearchResultTile(
-                        result: results[index],
+                        ),
                       );
-                    },
-                  );
-                },
-                error: (error, _) => RefError(onRetry: onRetry, error: error),
-                loading: () => const Loading(),
-              ),
-      ),
+                    }
+
+                    return _MemoryToolSearchResultTile(
+                      result: results[index],
+                    );
+                  },
+                );
+              },
+              error: (error, _) => RefError(onRetry: onRetry, error: error),
+              loading: () => const Loading(),
+            ),
     );
   }
 }
