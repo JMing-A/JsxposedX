@@ -102,6 +102,18 @@ class MemoryTool(private val context: Context) {
         return daemonClient.readMemoryValues(requests)
     }
 
+    fun writeMemoryValue(request: MemoryWriteRequest) {
+        daemonClient.writeMemoryValue(request)
+    }
+
+    fun setMemoryFreeze(request: MemoryFreezeRequest) {
+        daemonClient.setMemoryFreeze(request)
+    }
+
+    fun getFrozenMemoryValues(): List<FrozenMemoryValue> {
+        return daemonClient.getFrozenMemoryValues()
+    }
+
     fun firstScan(request: FirstScanRequest) {
         daemonClient.firstScan(request)
     }

@@ -86,6 +86,25 @@ struct MemoryValuePreview {
     std::string display_value;
 };
 
+struct MemoryWriteRequest {
+    uint64_t address = 0;
+    SearchValue value;
+};
+
+struct MemoryFreezeRequest {
+    uint64_t address = 0;
+    SearchValue value;
+    bool enabled = false;
+};
+
+struct FrozenMemoryValueView {
+    int pid = 0;
+    uint64_t address = 0;
+    SearchValueType type = SearchValueType::kI32;
+    std::vector<uint8_t> raw_bytes;
+    std::string display_value;
+};
+
 struct SearchSessionStateView {
     bool has_active_session = false;
     int pid = 0;
@@ -93,6 +112,7 @@ struct SearchSessionStateView {
     size_t region_count = 0;
     size_t result_count = 0;
     bool exact_mode = true;
+    bool little_endian = true;
 };
 
 struct SearchTaskStateView {

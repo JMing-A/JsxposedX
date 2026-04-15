@@ -15,6 +15,9 @@ class MemoryToolDaemonClient(
         private const val METHOD_GET_SEARCH_TASK_STATE = "getSearchTaskState"
         private const val METHOD_GET_SEARCH_RESULTS = "getSearchResults"
         private const val METHOD_READ_MEMORY_VALUES = "readMemoryValues"
+        private const val METHOD_WRITE_MEMORY_VALUE = "writeMemoryValue"
+        private const val METHOD_SET_MEMORY_FREEZE = "setMemoryFreeze"
+        private const val METHOD_GET_FROZEN_MEMORY_VALUES = "getFrozenMemoryValues"
         private const val METHOD_FIRST_SCAN = "firstScan"
         private const val METHOD_NEXT_SCAN = "nextScan"
         private const val METHOD_CANCEL_SEARCH = "cancelSearch"
@@ -113,7 +116,8 @@ class MemoryToolDaemonClient(
                 type = SearchValueType.I32,
                 regionCount = 0,
                 resultCount = 0,
-                exactMode = true
+                exactMode = true,
+                littleEndian = true
             )
         }
 
@@ -124,7 +128,8 @@ class MemoryToolDaemonClient(
             type = SearchValueType.entries[item.getInt("type")],
             regionCount = item.getLong("regionCount"),
             resultCount = item.getLong("resultCount"),
-            exactMode = item.getBoolean("exactMode")
+            exactMode = item.getBoolean("exactMode"),
+            littleEndian = item.optBoolean("littleEndian", true)
         )
     }
 
@@ -220,6 +225,48 @@ class MemoryToolDaemonClient(
         return List(result.length()) { index ->
             val item = result.getJSONObject(index)
             MemoryValuePreview(
+                address = item.getLong("address"),
+                type = SearchValueType.entries[item.getInt("type")],
+                rawBytes = decodeHex(item.optString("rawBytesHex")),
+                displayValue = item.getString("displayValue")
+            )
+        }
+    }
+
+    fun writeMemoryValue(request: MemoryWriteRequest) {
+        helperManager.ensureDaemon()
+        sendOrThrow(
+            METHOD_WRITE_MEMORY_VALUE,
+            JSONObject().apply {
+                put("address", request.address)
+                put("value", buildSearchValueJson(request.value))
+            }
+        )
+    }
+
+    fun setMemoryFreeze(request: MemoryFreezeRequest) {
+        helperManager.ensureDaemon()
+        sendOrThrow(
+            METHOD_SET_MEMORY_FREEZE,
+            JSONObject().apply {
+                put("address", request.address)
+                put("value", buildSearchValueJson(request.value))
+                put("enabled", request.enabled)
+            }
+        )
+    }
+
+    fun getFrozenMemoryValues(): List<FrozenMemoryValue> {
+        if (!helperManager.isDaemonAlive()) {
+            return emptyList()
+        }
+
+        val result = sendOrThrow(METHOD_GET_FROZEN_MEMORY_VALUES, null)
+            .optJSONArray("result") ?: JSONArray()
+        return List(result.length()) { index ->
+            val item = result.getJSONObject(index)
+            FrozenMemoryValue(
+                pid = item.getLong("pid"),
                 address = item.getLong("address"),
                 type = SearchValueType.entries[item.getInt("type")],
                 rawBytes = decodeHex(item.optString("rawBytesHex")),

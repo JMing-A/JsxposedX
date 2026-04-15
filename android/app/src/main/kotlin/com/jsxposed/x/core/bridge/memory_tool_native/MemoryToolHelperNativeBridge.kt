@@ -22,6 +22,25 @@ object MemoryToolHelperNativeBridge {
         lengths: IntArray
     ): String
 
+    external fun writeMemoryValue(
+        address: Long,
+        type: Int,
+        textValue: String?,
+        bytesValue: ByteArray?,
+        littleEndian: Boolean
+    )
+
+    external fun setMemoryFreeze(
+        address: Long,
+        type: Int,
+        textValue: String?,
+        bytesValue: ByteArray?,
+        littleEndian: Boolean,
+        enabled: Boolean
+    )
+
+    external fun getFrozenMemoryValuesJson(): String
+
     external fun firstScan(
         pid: Long,
         type: Int,

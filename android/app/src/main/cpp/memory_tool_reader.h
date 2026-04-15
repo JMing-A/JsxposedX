@@ -42,6 +42,8 @@ public:
 
     bool Read(uint64_t address, size_t size, std::vector<uint8_t>* buffer) const;
     bool ReadInto(uint64_t address, size_t size, uint8_t* buffer) const;
+    bool Write(uint64_t address, const std::vector<uint8_t>& buffer) const;
+    bool WriteFrom(uint64_t address, const uint8_t* buffer, size_t size) const;
     bool ReadMany(const std::vector<uint64_t>& addresses,
                   size_t size,
                   std::vector<std::vector<uint8_t>>* buffers) const;
@@ -52,6 +54,8 @@ public:
 private:
     bool ReadWithProcessVmReadv(uint64_t address, size_t size, void* buffer) const;
     bool ReadWithPread(uint64_t address, size_t size, void* buffer) const;
+    bool WriteWithProcessVmWritev(uint64_t address, const void* buffer, size_t size) const;
+    bool WriteWithPwrite(uint64_t address, const void* buffer, size_t size) const;
 
     int pid_ = 0;
     int mem_fd_ = -1;

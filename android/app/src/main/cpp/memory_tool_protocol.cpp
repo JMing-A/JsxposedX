@@ -51,7 +51,8 @@ std::string SerializeSearchSessionState(const SearchSessionStateView& state) {
            << "\"type\":" << ToRawType(state.type) << ','
            << "\"regionCount\":" << state.region_count << ','
            << "\"resultCount\":" << state.result_count << ','
-           << "\"exactMode\":" << ToJsonBool(state.exact_mode)
+           << "\"exactMode\":" << ToJsonBool(state.exact_mode) << ','
+           << "\"littleEndian\":" << ToJsonBool(state.little_endian)
            << '}';
     return stream.str();
 }
@@ -110,6 +111,26 @@ std::string SerializeMemoryValuePreviews(const std::vector<MemoryValuePreview>& 
                << "\"type\":" << ToRawType(preview.type) << ','
                << "\"rawBytesHex\":\"" << utils::HexEncode(preview.raw_bytes) << "\","
                << "\"displayValue\":\"" << utils::JsonEscape(preview.display_value) << "\""
+               << '}';
+    }
+    stream << ']';
+    return stream.str();
+}
+
+std::string SerializeFrozenMemoryValues(const std::vector<FrozenMemoryValueView>& values) {
+    std::ostringstream stream;
+    stream << '[';
+    for (size_t index = 0; index < values.size(); ++index) {
+        const FrozenMemoryValueView& value = values[index];
+        if (index > 0) {
+            stream << ',';
+        }
+        stream << '{'
+               << "\"pid\":" << value.pid << ','
+               << "\"address\":" << value.address << ','
+               << "\"type\":" << ToRawType(value.type) << ','
+               << "\"rawBytesHex\":\"" << utils::HexEncode(value.raw_bytes) << "\","
+               << "\"displayValue\":\"" << utils::JsonEscape(value.display_value) << "\""
                << '}';
     }
     stream << ']';

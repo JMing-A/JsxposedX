@@ -158,3 +158,56 @@ abstract class _$MemorySearchAction extends $Notifier<AsyncValue<void>> {
     element.handleValue(ref, created);
   }
 }
+
+@ProviderFor(MemoryValueAction)
+const memoryValueActionProvider = MemoryValueActionProvider._();
+
+final class MemoryValueActionProvider
+    extends $NotifierProvider<MemoryValueAction, AsyncValue<void>> {
+  const MemoryValueActionProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'memoryValueActionProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$memoryValueActionHash();
+
+  @$internal
+  @override
+  MemoryValueAction create() => MemoryValueAction();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AsyncValue<void> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AsyncValue<void>>(value),
+    );
+  }
+}
+
+String _$memoryValueActionHash() => r'296b81a0958ddea8043c486f01d17ce48523b611';
+
+abstract class _$MemoryValueAction extends $Notifier<AsyncValue<void>> {
+  AsyncValue<void> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final created = build();
+    final ref = this.ref as $Ref<AsyncValue<void>, AsyncValue<void>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<void>, AsyncValue<void>>,
+              AsyncValue<void>,
+              Object?,
+              Object?
+            >;
+    element.handleValue(ref, created);
+  }
+}

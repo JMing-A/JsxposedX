@@ -100,6 +100,35 @@ private class MemoryToolDaemonServer(
                 )
             )
 
+            "writeMemoryValue" -> {
+                val value = params.getJSONObject("value")
+                MemoryToolHelperNativeBridge.writeMemoryValue(
+                    address = params.getLong("address"),
+                    type = value.getInt("type"),
+                    textValue = value.optString("textValue").ifBlank { null },
+                    bytesValue = decodeHex(value.optString("bytesHex")),
+                    littleEndian = value.optBoolean("littleEndian", true)
+                )
+                JSONObject.NULL
+            }
+
+            "setMemoryFreeze" -> {
+                val value = params.getJSONObject("value")
+                MemoryToolHelperNativeBridge.setMemoryFreeze(
+                    address = params.getLong("address"),
+                    type = value.getInt("type"),
+                    textValue = value.optString("textValue").ifBlank { null },
+                    bytesValue = decodeHex(value.optString("bytesHex")),
+                    littleEndian = value.optBoolean("littleEndian", true),
+                    enabled = params.optBoolean("enabled", false)
+                )
+                JSONObject.NULL
+            }
+
+            "getFrozenMemoryValues" -> JSONArray(
+                MemoryToolHelperNativeBridge.getFrozenMemoryValuesJson()
+            )
+
             "firstScan" -> {
                 val value = params.getJSONObject("value")
                 MemoryToolHelperNativeBridge.firstScan(

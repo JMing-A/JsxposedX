@@ -575,6 +575,164 @@ class MemoryValuePreview {
 ;
 }
 
+class MemoryWriteRequest {
+  MemoryWriteRequest({
+    required this.address,
+    required this.value,
+  });
+
+  int address;
+
+  SearchValue value;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      address,
+      value,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static MemoryWriteRequest decode(Object result) {
+    result as List<Object?>;
+    return MemoryWriteRequest(
+      address: result[0]! as int,
+      value: result[1]! as SearchValue,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! MemoryWriteRequest || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList())
+;
+}
+
+class MemoryFreezeRequest {
+  MemoryFreezeRequest({
+    required this.address,
+    required this.value,
+    required this.enabled,
+  });
+
+  int address;
+
+  SearchValue value;
+
+  bool enabled;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      address,
+      value,
+      enabled,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static MemoryFreezeRequest decode(Object result) {
+    result as List<Object?>;
+    return MemoryFreezeRequest(
+      address: result[0]! as int,
+      value: result[1]! as SearchValue,
+      enabled: result[2]! as bool,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! MemoryFreezeRequest || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList())
+;
+}
+
+class FrozenMemoryValue {
+  FrozenMemoryValue({
+    required this.pid,
+    required this.address,
+    required this.type,
+    required this.rawBytes,
+    required this.displayValue,
+  });
+
+  int pid;
+
+  int address;
+
+  SearchValueType type;
+
+  Uint8List rawBytes;
+
+  String displayValue;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      pid,
+      address,
+      type,
+      rawBytes,
+      displayValue,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static FrozenMemoryValue decode(Object result) {
+    result as List<Object?>;
+    return FrozenMemoryValue(
+      pid: result[0]! as int,
+      address: result[1]! as int,
+      type: result[2]! as SearchValueType,
+      rawBytes: result[3]! as Uint8List,
+      displayValue: result[4]! as String,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! FrozenMemoryValue || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList())
+;
+}
+
 class SearchSessionState {
   SearchSessionState({
     required this.hasActiveSession,
@@ -583,6 +741,7 @@ class SearchSessionState {
     required this.regionCount,
     required this.resultCount,
     required this.exactMode,
+    required this.littleEndian,
   });
 
   bool hasActiveSession;
@@ -597,6 +756,8 @@ class SearchSessionState {
 
   bool exactMode;
 
+  bool littleEndian;
+
   List<Object?> _toList() {
     return <Object?>[
       hasActiveSession,
@@ -605,6 +766,7 @@ class SearchSessionState {
       regionCount,
       resultCount,
       exactMode,
+      littleEndian,
     ];
   }
 
@@ -620,6 +782,7 @@ class SearchSessionState {
       regionCount: result[3]! as int,
       resultCount: result[4]! as int,
       exactMode: result[5]! as bool,
+      littleEndian: result[6]! as bool,
     );
   }
 
@@ -786,11 +949,20 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is MemoryValuePreview) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    }    else if (value is SearchSessionState) {
+    }    else if (value is MemoryWriteRequest) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    }    else if (value is SearchTaskState) {
+    }    else if (value is MemoryFreezeRequest) {
       buffer.putUint8(142);
+      writeValue(buffer, value.encode());
+    }    else if (value is FrozenMemoryValue) {
+      buffer.putUint8(143);
+      writeValue(buffer, value.encode());
+    }    else if (value is SearchSessionState) {
+      buffer.putUint8(144);
+      writeValue(buffer, value.encode());
+    }    else if (value is SearchTaskState) {
+      buffer.putUint8(145);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -828,8 +1000,14 @@ class _PigeonCodec extends StandardMessageCodec {
       case 140: 
         return MemoryValuePreview.decode(readValue(buffer)!);
       case 141: 
-        return SearchSessionState.decode(readValue(buffer)!);
+        return MemoryWriteRequest.decode(readValue(buffer)!);
       case 142: 
+        return MemoryFreezeRequest.decode(readValue(buffer)!);
+      case 143: 
+        return FrozenMemoryValue.decode(readValue(buffer)!);
+      case 144: 
+        return SearchSessionState.decode(readValue(buffer)!);
+      case 145: 
         return SearchTaskState.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -1043,6 +1221,80 @@ class MemoryToolNative {
       );
     } else {
       return (pigeonVar_replyList[0] as List<Object?>?)!.cast<MemoryValuePreview>();
+    }
+  }
+
+  Future<void> writeMemoryValue(MemoryWriteRequest request) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.JsxposedX.MemoryToolNative.writeMemoryValue$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[request]);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<void> setMemoryFreeze(MemoryFreezeRequest request) async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.JsxposedX.MemoryToolNative.setMemoryFreeze$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[request]);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<List<FrozenMemoryValue>> getFrozenMemoryValues() async {
+    final String pigeonVar_channelName = 'dev.flutter.pigeon.JsxposedX.MemoryToolNative.getFrozenMemoryValues$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<FrozenMemoryValue>();
     }
   }
 

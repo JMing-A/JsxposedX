@@ -119,6 +119,51 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
         }
     }
 
+    override fun writeMemoryValue(request: MemoryWriteRequest, callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            try {
+                memoryTool.writeMemoryValue(request)
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(Unit))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun setMemoryFreeze(request: MemoryFreezeRequest, callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            try {
+                memoryTool.setMemoryFreeze(request)
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(Unit))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun getFrozenMemoryValues(callback: (Result<List<FrozenMemoryValue>>) -> Unit) {
+        scope.launch {
+            try {
+                val result = memoryTool.getFrozenMemoryValues()
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(result))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
     override fun firstScan(request: FirstScanRequest, callback: (Result<Unit>) -> Unit) {
         scope.launch {
             try {

@@ -137,6 +137,44 @@ class MemoryValuePreview {
   });
 }
 
+class MemoryWriteRequest {
+  final int address;
+  final SearchValue value;
+
+  const MemoryWriteRequest({
+    required this.address,
+    required this.value,
+  });
+}
+
+class MemoryFreezeRequest {
+  final int address;
+  final SearchValue value;
+  final bool enabled;
+
+  const MemoryFreezeRequest({
+    required this.address,
+    required this.value,
+    required this.enabled,
+  });
+}
+
+class FrozenMemoryValue {
+  final int pid;
+  final int address;
+  final SearchValueType type;
+  final Uint8List rawBytes;
+  final String displayValue;
+
+  const FrozenMemoryValue({
+    required this.pid,
+    required this.address,
+    required this.type,
+    required this.rawBytes,
+    required this.displayValue,
+  });
+}
+
 class SearchSessionState {
   final bool hasActiveSession;
   final int pid;
@@ -144,6 +182,7 @@ class SearchSessionState {
   final int regionCount;
   final int resultCount;
   final bool exactMode;
+  final bool littleEndian;
 
   const SearchSessionState({
     required this.hasActiveSession,
@@ -152,6 +191,7 @@ class SearchSessionState {
     required this.regionCount,
     required this.resultCount,
     required this.exactMode,
+    required this.littleEndian,
   });
 }
 
@@ -209,6 +249,15 @@ abstract class MemoryToolNative {
 
   @async
   List<MemoryValuePreview> readMemoryValues(List<MemoryReadRequest> requests);
+
+  @async
+  void writeMemoryValue(MemoryWriteRequest request);
+
+  @async
+  void setMemoryFreeze(MemoryFreezeRequest request);
+
+  @async
+  List<FrozenMemoryValue> getFrozenMemoryValues();
 
   @async
   void firstScan(FirstScanRequest request);

@@ -155,6 +155,30 @@ std::vector<SearchResultEntry> FilterResultsByMatchedType(
     return filtered;
 }
 
+bool BuildWritableValuePayload(const SearchValue& value,
+                               std::vector<uint8_t>* bytes,
+                               BytesDisplayEncoding* bytes_display_encoding,
+                               std::string* display_value,
+                               std::string* error) {
+    if (bytes == nullptr || bytes_display_encoding == nullptr || display_value == nullptr) {
+        if (error != nullptr) {
+            *error = "Invalid writable value payload.";
+        }
+        return false;
+    }
+
+    if (!BuildSearchPattern(value, bytes, error)) {
+        return false;
+    }
+
+    *bytes_display_encoding = ResolveBytesDisplayEncoding(value);
+    *display_value = FormatDisplayValue(value.type,
+                                        *bytes,
+                                        value.little_endian,
+                                        *bytes_display_encoding);
+    return true;
+}
+
 }  // namespace
 
 MemoryToolEngine& MemoryToolEngine::Instance() {
@@ -243,6 +267,116 @@ std::vector<MemoryValuePreview> MemoryToolEngine::ReadMemoryValues(
         previews.push_back(std::move(preview));
     }
     return previews;
+}
+
+void MemoryToolEngine::WriteMemoryValue(const MemoryWriteRequest& request) {
+    std::vector<uint8_t> value_bytes;
+    BytesDisplayEncoding bytes_display_encoding = BytesDisplayEncoding::kHex;
+    std::string display_value;
+    std::string error;
+    if (!BuildWritableValuePayload(request.value,
+                                   &value_bytes,
+                                   &bytes_display_encoding,
+                                   &display_value,
+                                   &error)) {
+        throw std::runtime_error(error.empty() ? "Invalid writable value." : error);
+    }
+
+    int pid = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        EnsureActiveSessionLocked();
+        if (!IsProcessAlive(session_.pid)) {
+            session_.Clear();
+            throw std::runtime_error("Search session target process is no longer available.");
+        }
+        pid = session_.pid;
+    }
+
+    ProcessMemoryReader reader(pid);
+    if (!reader.Write(request.address, value_bytes)) {
+        throw std::runtime_error("Failed to write memory value.");
+    }
+}
+
+void MemoryToolEngine::SetMemoryFreeze(const MemoryFreezeRequest& request) {
+    std::vector<uint8_t> value_bytes;
+    BytesDisplayEncoding bytes_display_encoding = BytesDisplayEncoding::kHex;
+    std::string display_value;
+    std::string error;
+    if (request.enabled &&
+        !BuildWritableValuePayload(request.value,
+                                   &value_bytes,
+                                   &bytes_display_encoding,
+                                   &display_value,
+                                   &error)) {
+        throw std::runtime_error(error.empty() ? "Invalid frozen value." : error);
+    }
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    EnsureActiveSessionLocked();
+    if (!IsProcessAlive(session_.pid)) {
+        session_.Clear();
+        throw std::runtime_error("Search session target process is no longer available.");
+    }
+
+    auto entry_iterator = std::find_if(
+        frozen_entries_.begin(),
+        frozen_entries_.end(),
+        [&request](const FrozenWriteEntry& entry) {
+            return entry.address == request.address;
+        });
+
+    if (!request.enabled) {
+        if (entry_iterator != frozen_entries_.end()) {
+            frozen_entries_.erase(entry_iterator);
+        }
+        NotifyFreezeWorkerLocked();
+        return;
+    }
+
+    FrozenWriteEntry next_entry;
+    next_entry.pid = session_.pid;
+    next_entry.address = request.address;
+    next_entry.type = request.value.type;
+    next_entry.value_bytes = std::move(value_bytes);
+    next_entry.little_endian = request.value.little_endian;
+    next_entry.bytes_display_encoding = bytes_display_encoding;
+
+    if (entry_iterator == frozen_entries_.end()) {
+        frozen_entries_.push_back(std::move(next_entry));
+    } else {
+        *entry_iterator = std::move(next_entry);
+    }
+
+    EnsureFreezeWorkerLocked();
+    NotifyFreezeWorkerLocked();
+}
+
+std::vector<FrozenMemoryValueView> MemoryToolEngine::GetFrozenMemoryValues() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    frozen_entries_.erase(
+        std::remove_if(
+            frozen_entries_.begin(),
+            frozen_entries_.end(),
+            [](const FrozenWriteEntry& entry) { return !IsProcessAlive(entry.pid); }),
+        frozen_entries_.end());
+
+    std::vector<FrozenMemoryValueView> values;
+    values.reserve(frozen_entries_.size());
+    for (const FrozenWriteEntry& entry : frozen_entries_) {
+        FrozenMemoryValueView value;
+        value.pid = entry.pid;
+        value.address = entry.address;
+        value.type = entry.type;
+        value.raw_bytes = entry.value_bytes;
+        value.display_value = FormatDisplayValue(entry.type,
+                                                 entry.value_bytes,
+                                                 entry.little_endian,
+                                                 entry.bytes_display_encoding);
+        values.push_back(std::move(value));
+    }
+    return values;
 }
 
 void MemoryToolEngine::FirstScan(int pid,
@@ -655,6 +789,68 @@ void MemoryToolEngine::ResetSearchSession() {
     session_.Clear();
 }
 
+void MemoryToolEngine::EnsureFreezeWorkerLocked() {
+    if (freeze_worker_started_) {
+        return;
+    }
+
+    freeze_worker_started_ = true;
+    std::thread([this]() { FreezeWorkerLoop(); }).detach();
+}
+
+void MemoryToolEngine::NotifyFreezeWorkerLocked() {
+    freeze_condition_.notify_one();
+}
+
+void MemoryToolEngine::FreezeWorkerLoop() {
+    while (true) {
+        std::vector<FrozenWriteEntry> snapshot;
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            if (frozen_entries_.empty()) {
+                freeze_condition_.wait(lock, [this]() { return !frozen_entries_.empty(); });
+            } else {
+                freeze_condition_.wait_for(lock, std::chrono::milliseconds(120));
+            }
+            snapshot = frozen_entries_;
+        }
+
+        if (snapshot.empty()) {
+            continue;
+        }
+
+        std::vector<uint64_t> inactive_addresses;
+        for (const FrozenWriteEntry& entry : snapshot) {
+            if (!IsProcessAlive(entry.pid)) {
+                inactive_addresses.push_back(entry.address);
+                continue;
+            }
+
+            ProcessMemoryReader reader(entry.pid);
+            if (!reader.Write(entry.address, entry.value_bytes) &&
+                !IsProcessAlive(entry.pid)) {
+                inactive_addresses.push_back(entry.address);
+            }
+        }
+
+        if (inactive_addresses.empty()) {
+            continue;
+        }
+
+        std::lock_guard<std::mutex> lock(mutex_);
+        frozen_entries_.erase(
+            std::remove_if(
+                frozen_entries_.begin(),
+                frozen_entries_.end(),
+                [&inactive_addresses](const FrozenWriteEntry& entry) {
+                    return std::find(inactive_addresses.begin(),
+                                     inactive_addresses.end(),
+                                     entry.address) != inactive_addresses.end();
+                }),
+            frozen_entries_.end());
+    }
+}
+
 SearchSessionStateView MemoryToolEngine::BuildSessionStateLocked() const {
     SearchSessionStateView state;
     state.has_active_session = session_.has_active_session;
@@ -663,6 +859,7 @@ SearchSessionStateView MemoryToolEngine::BuildSessionStateLocked() const {
     state.region_count = session_.regions.size();
     state.result_count = session_.results.size();
     state.exact_mode = session_.exact_mode;
+    state.little_endian = session_.little_endian;
     return state;
 }
 

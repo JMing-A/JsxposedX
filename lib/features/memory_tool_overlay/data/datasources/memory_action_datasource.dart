@@ -18,4 +18,16 @@ class MemoryActionDatasource {
   Future<void> resetSearchSession() async {
     await _native.resetSearchSession();
   }
+
+  Future<void> writeMemoryValue({required MemoryWriteRequest request}) async {
+    await _native.writeMemoryValue(request);
+  }
+
+  Future<void> setMemoryFreeze({required MemoryFreezeRequest request}) async {
+    await _native.setMemoryFreeze(request);
+  }
+
+  Future<List<FrozenMemoryValue>> getFrozenMemoryValues() async {
+    return await _native.getFrozenMemoryValues();
+  }
 }

@@ -27,4 +27,19 @@ class MemoryActionRepositoryImpl implements MemoryActionRepository {
   Future<void> resetSearchSession() async {
     await _dataSource.resetSearchSession();
   }
+
+  @override
+  Future<void> writeMemoryValue({required MemoryWriteRequest request}) async {
+    await _dataSource.writeMemoryValue(request: request);
+  }
+
+  @override
+  Future<void> setMemoryFreeze({required MemoryFreezeRequest request}) async {
+    await _dataSource.setMemoryFreeze(request: request);
+  }
+
+  @override
+  Future<List<FrozenMemoryValue>> getFrozenMemoryValues() async {
+    return await _dataSource.getFrozenMemoryValues();
+  }
 }

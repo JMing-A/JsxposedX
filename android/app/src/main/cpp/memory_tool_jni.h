@@ -34,6 +34,23 @@ public:
                                         jintArray types,
                                         jintArray lengths);
 
+    static void WriteMemoryValue(JNIEnv* env,
+                                 jlong address,
+                                 jint type,
+                                 jstring text_value,
+                                 jbyteArray bytes_value,
+                                 jboolean little_endian);
+
+    static void SetMemoryFreeze(JNIEnv* env,
+                                jlong address,
+                                jint type,
+                                jstring text_value,
+                                jbyteArray bytes_value,
+                                jboolean little_endian,
+                                jboolean enabled);
+
+    static jstring GetFrozenMemoryValuesJson(JNIEnv* env);
+
     static void FirstScan(JNIEnv* env,
                           jlong pid,
                           jint type,

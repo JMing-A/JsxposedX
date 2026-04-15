@@ -65,6 +65,80 @@ int resolveMemoryToolReadLengthForType({
   };
 }
 
+SearchValue buildMemoryToolWriteValue({
+  required SearchValueType type,
+  required String input,
+  required bool littleEndian,
+  required SearchValueType sourceType,
+  required Uint8List sourceRawBytes,
+  required String sourceDisplayValue,
+}) {
+  final trimmed = input.trim();
+  if (trimmed.isEmpty) {
+    throw const FormatException('Value is required.');
+  }
+
+  if (type != SearchValueType.bytes) {
+    return SearchValue(
+      type: type,
+      textValue: trimmed,
+      littleEndian: littleEndian,
+    );
+  }
+
+  final bytesInputMode = resolveMemoryToolBytesInputMode(
+    input: trimmed,
+    sourceType: sourceType,
+    sourceRawBytes: sourceRawBytes,
+    sourceDisplayValue: sourceDisplayValue,
+  );
+
+  return switch (bytesInputMode) {
+    MemoryToolBytesInputMode.hex => SearchValue(
+        type: SearchValueType.bytes,
+        bytesValue: _parseHexBytes(trimmed),
+        littleEndian: littleEndian,
+      ),
+    MemoryToolBytesInputMode.utf8 => SearchValue(
+        type: SearchValueType.bytes,
+        textValue: '__jsx_text_utf8__:$trimmed',
+        bytesValue: Uint8List.fromList(utf8.encode(trimmed)),
+        littleEndian: littleEndian,
+      ),
+    MemoryToolBytesInputMode.utf16Le => SearchValue(
+        type: SearchValueType.bytes,
+        textValue: '__jsx_text_utf16le__:$trimmed',
+        bytesValue: Uint8List.fromList(_encodeUtf16Le(trimmed)),
+        littleEndian: littleEndian,
+      ),
+  };
+}
+
+MemoryToolBytesInputMode resolveMemoryToolBytesInputMode({
+  required String input,
+  required SearchValueType sourceType,
+  required Uint8List sourceRawBytes,
+  required String sourceDisplayValue,
+}) {
+  if (_looksLikeHexByteSequence(input)) {
+    return MemoryToolBytesInputMode.hex;
+  }
+
+  if (sourceType == SearchValueType.bytes) {
+    final utf16Value = _tryDecodeUtf16Le(sourceRawBytes);
+    if (utf16Value != null && utf16Value == sourceDisplayValue) {
+      return MemoryToolBytesInputMode.utf16Le;
+    }
+
+    final utf8Value = _tryDecodeUtf8(sourceRawBytes);
+    if (utf8Value != null && utf8Value == sourceDisplayValue) {
+      return MemoryToolBytesInputMode.utf8;
+    }
+  }
+
+  return MemoryToolBytesInputMode.utf8;
+}
+
 String formatMemoryToolSearchResultAddress(int value) {
   return value.toRadixString(16).toUpperCase();
 }
@@ -240,4 +314,41 @@ bool _isReadableText(String value) {
     }
   }
   return true;
+}
+
+Uint8List _parseHexBytes(String value) {
+  final sanitized = value
+      .replaceAll(RegExp(r'0x', caseSensitive: false), '')
+      .replaceAll(RegExp(r'[^0-9a-fA-F]'), '');
+  if (sanitized.isEmpty || sanitized.length.isOdd) {
+    throw const FormatException('Invalid byte sequence.');
+  }
+
+  final bytes = <int>[];
+  for (int index = 0; index < sanitized.length; index += 2) {
+    final byte = int.tryParse(
+      sanitized.substring(index, index + 2),
+      radix: 16,
+    );
+    if (byte == null) {
+      throw const FormatException('Invalid byte sequence.');
+    }
+    bytes.add(byte);
+  }
+  return Uint8List.fromList(bytes);
+}
+
+List<int> _encodeUtf16Le(String value) {
+  final bytes = <int>[];
+  for (final unit in value.codeUnits) {
+    bytes.add(unit & 0xFF);
+    bytes.add((unit >> 8) & 0xFF);
+  }
+  return bytes;
+}
+
+enum MemoryToolBytesInputMode {
+  hex,
+  utf8,
+  utf16Le,
 }

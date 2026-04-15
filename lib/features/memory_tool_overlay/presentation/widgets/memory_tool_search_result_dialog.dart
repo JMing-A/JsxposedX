@@ -1,6 +1,7 @@
 import 'package:JsxposedX/common/widgets/custom_text_field.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_panel_dialog.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_result_presenter.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
@@ -26,10 +27,16 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedType = useState<SearchValueType>(result.type);
+    final freezeEnabled = useState<bool>(false);
     final livePreview = livePreviewsAsync.asData?.value[result.address];
+    final sourceRawBytes = livePreview?.rawBytes ?? result.rawBytes;
     final sourceType = livePreview?.type ?? result.type;
     final sourceDisplayValue = livePreview?.displayValue ?? displayValue;
-    final sourceBytesLength = livePreview?.rawBytes.length ?? result.rawBytes.length;
+    final sourceBytesLength = sourceRawBytes.length;
+    final searchSessionStateAsync = ref.watch(getSearchSessionStateProvider);
+    final frozenValuesAsync = ref.watch(currentFrozenMemoryValuesProvider);
+    final valueActionState = ref.watch(memoryValueActionProvider);
+    final valueActionNotifier = ref.read(memoryValueActionProvider.notifier);
     final readRequests = useMemoized(
       () => <MemoryReadRequest>[
         MemoryReadRequest(
@@ -54,7 +61,16 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
         selectedType.value == sourceType
             ? sourceDisplayValue
             : selectedPreview?.displayValue ?? '';
+    final isFrozen = frozenValuesAsync.asData?.value.any(
+          (value) => value.address == result.address,
+        ) ??
+        false;
     final valueController = useTextEditingController(text: selectedDisplayValue);
+    useListenable(valueController);
+    useEffect(() {
+      freezeEnabled.value = isFrozen;
+      return null;
+    }, <Object?>[isFrozen]);
     useEffect(() {
       valueController.value = TextEditingValue(
         text: selectedDisplayValue,
@@ -66,6 +82,47 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
       type: selectedType.value,
       displayValue: selectedDisplayValue,
     );
+    final isResolvingAlternateType =
+        selectedType.value != sourceType && selectedPreviewAsync.isLoading;
+    final canSave =
+        valueController.text.trim().isNotEmpty &&
+        !valueActionState.isLoading &&
+        !isResolvingAlternateType;
+
+    Future<void> handleSave() async {
+      try {
+        final sessionState = await ref.read(getSearchSessionStateProvider.future);
+        final writeValue = buildMemoryToolWriteValue(
+          type: selectedType.value,
+          input: valueController.text,
+          littleEndian: sessionState.littleEndian,
+          sourceType: sourceType,
+          sourceRawBytes: sourceRawBytes,
+          sourceDisplayValue: sourceDisplayValue,
+        );
+
+        await valueActionNotifier.writeMemoryValue(
+          request: MemoryWriteRequest(
+            address: result.address,
+            value: writeValue,
+          ),
+        );
+        await valueActionNotifier.setMemoryFreeze(
+          request: MemoryFreezeRequest(
+            address: result.address,
+            value: writeValue,
+            enabled: freezeEnabled.value,
+          ),
+        );
+
+        if (!context.mounted) {
+          return;
+        }
+        onClose();
+      } catch (_) {
+        return;
+      }
+    }
 
     return OverlayPanelDialog.card(
       onClose: onClose,
@@ -180,6 +237,43 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
                 ),
               ),
               SizedBox(height: 12.r),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: context.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.42,
+                  ),
+                  borderRadius: BorderRadius.circular(14.r),
+                  border: Border.all(
+                    color: context.colorScheme.outlineVariant.withValues(
+                      alpha: 0.34,
+                    ),
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 6.r),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          context.l10n.memoryToolResultActionFreeze,
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: freezeEnabled.value,
+                        onChanged: valueActionState.isLoading
+                            ? null
+                            : (value) {
+                                freezeEnabled.value = value;
+                              },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 12.r),
               _MemoryToolSearchResultLine(
                 label: context.l10n.memoryToolResultType,
                 value: selectedTypeLabel,
@@ -197,6 +291,19 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
                   result.regionTypeKey,
                 ),
               ),
+              if (searchSessionStateAsync.hasError || frozenValuesAsync.hasError || valueActionState.hasError) ...<Widget>[
+                SizedBox(height: 10.r),
+                Text(
+                  valueActionState.error?.toString() ??
+                      frozenValuesAsync.error?.toString() ??
+                      searchSessionStateAsync.error?.toString() ??
+                      '',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.error,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               SizedBox(height: 14.r),
               Row(
                 children: <Widget>[
@@ -209,7 +316,7 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
                   SizedBox(width: 10.r),
                   Expanded(
                     child: FilledButton(
-                      onPressed: () {},
+                      onPressed: canSave ? handleSave : null,
                       child: Text(context.l10n.save),
                     ),
                   ),

@@ -114,6 +114,37 @@ jstring MemoryToolJniBridge::ReadMemoryValuesJson(JNIEnv* env,
     return env->NewStringUTF(protocol::SerializeMemoryValuePreviews(previews).c_str());
 }
 
+void MemoryToolJniBridge::WriteMemoryValue(JNIEnv* env,
+                                           jlong address,
+                                           jint type,
+                                           jstring text_value,
+                                           jbyteArray bytes_value,
+                                           jboolean little_endian) {
+    MemoryWriteRequest request;
+    request.address = static_cast<uint64_t>(address);
+    request.value = BuildSearchValue(env, type, text_value, bytes_value, little_endian);
+    MemoryToolEngine::Instance().WriteMemoryValue(request);
+}
+
+void MemoryToolJniBridge::SetMemoryFreeze(JNIEnv* env,
+                                          jlong address,
+                                          jint type,
+                                          jstring text_value,
+                                          jbyteArray bytes_value,
+                                          jboolean little_endian,
+                                          jboolean enabled) {
+    MemoryFreezeRequest request;
+    request.address = static_cast<uint64_t>(address);
+    request.value = BuildSearchValue(env, type, text_value, bytes_value, little_endian);
+    request.enabled = enabled == JNI_TRUE;
+    MemoryToolEngine::Instance().SetMemoryFreeze(request);
+}
+
+jstring MemoryToolJniBridge::GetFrozenMemoryValuesJson(JNIEnv* env) {
+    const auto values = MemoryToolEngine::Instance().GetFrozenMemoryValues();
+    return env->NewStringUTF(protocol::SerializeFrozenMemoryValues(values).c_str());
+}
+
 void MemoryToolJniBridge::FirstScan(JNIEnv* env,
                                     jlong pid,
                                     jint type,
@@ -324,6 +355,64 @@ Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridg
         jintArray lengths) {
     try {
         return memory_tool::MemoryToolJniBridge::ReadMemoryValuesJson(env, addresses, types, lengths);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+        return nullptr;
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_writeMemoryValue(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jlong address,
+        jint type,
+        jstring text_value,
+        jbyteArray bytes_value,
+        jboolean little_endian) {
+    try {
+        memory_tool::MemoryToolJniBridge::WriteMemoryValue(
+            env,
+            address,
+            type,
+            text_value,
+            bytes_value,
+            little_endian);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_setMemoryFreeze(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jlong address,
+        jint type,
+        jstring text_value,
+        jbyteArray bytes_value,
+        jboolean little_endian,
+        jboolean enabled) {
+    try {
+        memory_tool::MemoryToolJniBridge::SetMemoryFreeze(
+            env,
+            address,
+            type,
+            text_value,
+            bytes_value,
+            little_endian,
+            enabled);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+    }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_getFrozenMemoryValuesJson(
+        JNIEnv* env,
+        jobject /* thiz */) {
+    try {
+        return memory_tool::MemoryToolJniBridge::GetFrozenMemoryValuesJson(env);
     } catch (const std::exception& exception) {
         memory_tool::ThrowRuntimeException(env, exception.what());
         return nullptr;

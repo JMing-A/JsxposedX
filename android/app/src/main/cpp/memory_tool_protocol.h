@@ -18,6 +18,8 @@ std::string SerializeSearchResults(const std::vector<SearchResultView>& results)
 
 std::string SerializeMemoryValuePreviews(const std::vector<MemoryValuePreview>& previews);
 
+std::string SerializeFrozenMemoryValues(const std::vector<FrozenMemoryValueView>& values);
+
 }  // namespace memory_tool::protocol
 
 #endif  // JSXPOSEDX_MEMORY_TOOL_PROTOCOL_H

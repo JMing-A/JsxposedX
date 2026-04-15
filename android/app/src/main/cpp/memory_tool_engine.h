@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -31,6 +32,12 @@ public:
     std::vector<SearchResultView> GetSearchResults(int offset, int limit);
 
     std::vector<MemoryValuePreview> ReadMemoryValues(const std::vector<MemoryReadRequest>& requests);
+
+    void WriteMemoryValue(const MemoryWriteRequest& request);
+
+    void SetMemoryFreeze(const MemoryFreezeRequest& request);
+
+    std::vector<FrozenMemoryValueView> GetFrozenMemoryValues();
 
     void FirstScan(int pid,
                    const SearchValue& value,
@@ -72,8 +79,26 @@ private:
 
     void FinishTaskFailure(uint64_t generation, const std::string& message);
 
+    void EnsureFreezeWorkerLocked();
+
+    void NotifyFreezeWorkerLocked();
+
+    void FreezeWorkerLoop();
+
+    struct FrozenWriteEntry {
+        int pid = 0;
+        uint64_t address = 0;
+        SearchValueType type = SearchValueType::kI32;
+        std::vector<uint8_t> value_bytes;
+        bool little_endian = true;
+        BytesDisplayEncoding bytes_display_encoding = BytesDisplayEncoding::kHex;
+    };
+
     SearchSession session_;
     SearchTaskRuntime task_;
+    std::vector<FrozenWriteEntry> frozen_entries_;
+    std::condition_variable freeze_condition_;
+    bool freeze_worker_started_ = false;
     uint64_t task_generation_counter_ = 0;
     mutable std::mutex mutex_;
 };
