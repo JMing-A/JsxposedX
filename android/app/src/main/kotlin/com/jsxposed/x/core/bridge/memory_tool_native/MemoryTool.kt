@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
 import androidx.annotation.RequiresApi
 import com.jsxposed.x.core.utils.log.LogX
 import com.jsxposed.x.core.utils.shell.Shell
@@ -22,6 +23,10 @@ object MemoryToolJni {
 class MemoryTool(private val context: Context) {
     companion object {
         private const val TAG = "MemoryTool"
+        private const val PROCESS_INFO_CACHE_TTL_MS = 2500L
+        private const val FOREGROUND_PACKAGE_CACHE_TTL_MS = 2000L
+        private const val ROOT_ACCESS_CACHE_TTL_MS = 15000L
+        private const val INSTALLED_PACKAGE_CACHE_TTL_MS = 5 * 60 * 1000L
         private val foregroundPackageRegex =
             Regex("""([A-Za-z0-9._]+)/(?:[A-Za-z0-9._$]+|\.[A-Za-z0-9._$]+)""")
     }
@@ -32,6 +37,21 @@ class MemoryTool(private val context: Context) {
     private val iconCache = MemoryToolIconCache(context)
     private val helperManager = MemoryToolHelperManager(context)
     private val daemonClient = MemoryToolDaemonClient(helperManager)
+    private val processCacheLock = Any()
+    private val rootAccessCacheLock = Any()
+    private val foregroundPackageCacheLock = Any()
+    private val installedPackageCacheLock = Any()
+    private val applicationInfoCacheLock = Any()
+    private val applicationInfoCache = mutableMapOf<String, ApplicationInfo?>()
+    private val thirdPartyAppCache = mutableMapOf<String, Boolean>()
+    @Volatile
+    private var installedPackageCache: InstalledPackageCache? = null
+    @Volatile
+    private var processListCache: ProcessListCache? = null
+    @Volatile
+    private var rootAccessCache: TimedBooleanCache? = null
+    @Volatile
+    private var foregroundPackageCache: TimedStringCache? = null
 
     fun getPid(packageName: String): Long {
         return MemoryToolJni.getPid(packageName)
@@ -43,25 +63,7 @@ class MemoryTool(private val context: Context) {
             return emptyList()
         }
 
-        val runningProcessMap = activityManager.runningAppProcesses
-            ?.associateBy { it.pid }
-            .orEmpty()
-        val foregroundPackageName = resolveForegroundPackageName()
-
-        val sortedProcesses = readProcessEntries()
-            .mapNotNull { rawProcess ->
-                resolveProcess(rawProcess, runningProcessMap[rawProcess.pid])
-            }
-            .distinctBy { it.pid }
-            .sortedWith(
-                compareBy<ResolvedProcess>(
-                    { if (it.packageName == foregroundPackageName) 0 else 1 },
-                    { if (it.isThirdPartyApp) 0 else 1 },
-                    { importanceRank(it.importance) },
-                    { it.name.lowercase(Locale.ROOT) },
-                    { it.pid }
-                )
-            )
+        val sortedProcesses = getCachedResolvedProcesses()
 
         if (offset >= sortedProcesses.size) {
             return emptyList()
@@ -79,6 +81,52 @@ class MemoryTool(private val context: Context) {
                 packageName = process.packageName,
                 icon = iconCache.getIconBytes(process.packageName)
             )
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.P)
+    private fun getCachedResolvedProcesses(): List<ResolvedProcess> {
+        val now = SystemClock.elapsedRealtime()
+        val cachedProcesses = processListCache
+        if (cachedProcesses != null &&
+            now - cachedProcesses.generatedAtMs <= PROCESS_INFO_CACHE_TTL_MS
+        ) {
+            return cachedProcesses.processes
+        }
+
+        synchronized(processCacheLock) {
+            val synchronizedNow = SystemClock.elapsedRealtime()
+            val refreshedCache = processListCache
+            if (refreshedCache != null &&
+                synchronizedNow - refreshedCache.generatedAtMs <=
+                    PROCESS_INFO_CACHE_TTL_MS
+            ) {
+                return refreshedCache.processes
+            }
+
+            val runningProcessMap = activityManager.runningAppProcesses
+                ?.associateBy { it.pid }
+                .orEmpty()
+            val foregroundPackageName = resolveForegroundPackageName()
+            val resolvedProcesses = readProcessEntries()
+                .mapNotNull { rawProcess ->
+                    resolveProcess(rawProcess, runningProcessMap[rawProcess.pid])
+                }
+                .distinctBy { it.pid }
+                .sortedWith(
+                    compareBy<ResolvedProcess>(
+                        { if (it.packageName == foregroundPackageName) 0 else 1 },
+                        { if (it.isThirdPartyApp) 0 else 1 },
+                        { importanceRank(it.importance) },
+                        { it.name.lowercase(Locale.ROOT) },
+                        { it.pid }
+                    )
+                )
+            processListCache = ProcessListCache(
+                generatedAtMs = synchronizedNow,
+                processes = resolvedProcesses
+            )
+            return resolvedProcesses
         }
     }
 
@@ -250,6 +298,7 @@ class MemoryTool(private val context: Context) {
         processName: String,
         runningProcessInfo: ActivityManager.RunningAppProcessInfo?
     ): String? {
+        val installedPackages = getInstalledPackages()
         val candidates = linkedSetOf<String>()
         val baseProcessName = processName.substringBefore(':')
         candidates += baseProcessName
@@ -259,56 +308,169 @@ class MemoryTool(private val context: Context) {
             packageManager.getPackagesForUid(uid)?.let { candidates.addAll(it) }
         }
 
-        return candidates.firstOrNull { isInstalledPackage(it) }
+        return candidates.firstOrNull { candidate ->
+            candidate.isNotBlank() && installedPackages.contains(candidate)
+        }
     }
 
     private fun isInstalledPackage(packageName: String): Boolean {
-        return try {
-            packageManager.getApplicationInfo(packageName, 0)
-            true
-        } catch (_: PackageManager.NameNotFoundException) {
-            false
+        if (packageName.isBlank()) {
+            return false
+        }
+        return getInstalledPackages().contains(packageName)
+    }
+
+    private fun getInstalledPackages(): Set<String> {
+        val now = SystemClock.elapsedRealtime()
+        val cachedPackages = installedPackageCache
+        if (cachedPackages != null &&
+            now - cachedPackages.generatedAtMs <= INSTALLED_PACKAGE_CACHE_TTL_MS
+        ) {
+            return cachedPackages.packageNames
+        }
+
+        synchronized(installedPackageCacheLock) {
+            val synchronizedNow = SystemClock.elapsedRealtime()
+            val refreshedCache = installedPackageCache
+            if (refreshedCache != null &&
+                synchronizedNow - refreshedCache.generatedAtMs <=
+                    INSTALLED_PACKAGE_CACHE_TTL_MS
+            ) {
+                return refreshedCache.packageNames
+            }
+
+            val packageNames = packageManager.getInstalledApplications(0)
+                .asSequence()
+                .mapNotNull { it.packageName }
+                .filter { it.isNotBlank() }
+                .toSet()
+            installedPackageCache = InstalledPackageCache(
+                generatedAtMs = synchronizedNow,
+                packageNames = packageNames
+            )
+            return packageNames
+        }
+    }
+
+    private fun getApplicationInfoCached(packageName: String): ApplicationInfo? {
+        synchronized(applicationInfoCacheLock) {
+            if (applicationInfoCache.containsKey(packageName)) {
+                return applicationInfoCache[packageName]
+            }
+
+            val appInfo = try {
+                packageManager.getApplicationInfo(packageName, 0)
+            } catch (_: PackageManager.NameNotFoundException) {
+                null
+            }
+            applicationInfoCache[packageName] = appInfo
+            return appInfo
         }
     }
 
     private fun isThirdPartyApp(packageName: String): Boolean {
-        return try {
-            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+        synchronized(applicationInfoCacheLock) {
+            val cachedValue = thirdPartyAppCache[packageName]
+            if (cachedValue != null) {
+                return cachedValue
+            }
+        }
+
+        val appInfo = getApplicationInfoCached(packageName) ?: return false
+        val isThirdParty =
             (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0 &&
                 (appInfo.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
-        } catch (_: PackageManager.NameNotFoundException) {
-            false
+
+        synchronized(applicationInfoCacheLock) {
+            thirdPartyAppCache[packageName] = isThirdParty
         }
+        return isThirdParty
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun hasRootAccess(): Boolean {
-        return try {
-            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id")).apply {
-                waitFor(1200, TimeUnit.MILLISECONDS)
+        val now = SystemClock.elapsedRealtime()
+        val cachedRootAccess = rootAccessCache
+        if (cachedRootAccess != null &&
+            now - cachedRootAccess.generatedAtMs <= ROOT_ACCESS_CACHE_TTL_MS
+        ) {
+            return cachedRootAccess.value
+        }
+
+        synchronized(rootAccessCacheLock) {
+            val synchronizedNow = SystemClock.elapsedRealtime()
+            val refreshedCache = rootAccessCache
+            if (refreshedCache != null &&
+                synchronizedNow - refreshedCache.generatedAtMs <=
+                    ROOT_ACCESS_CACHE_TTL_MS
+            ) {
+                return refreshedCache.value
             }
-            process.exitValue() == 0
-        } catch (e: Exception) {
-            LogX.w(TAG, "root check failed: ${e.message}")
-            false
+
+            val hasRoot = try {
+                val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
+                val finished = process.waitFor(1200, TimeUnit.MILLISECONDS)
+                if (!finished) {
+                    process.destroy()
+                    false
+                } else {
+                    process.exitValue() == 0
+                }
+            } catch (e: Exception) {
+                LogX.w(TAG, "root check failed: ${e.message}")
+                false
+            }
+            rootAccessCache = TimedBooleanCache(
+                generatedAtMs = synchronizedNow,
+                value = hasRoot
+            )
+            return hasRoot
         }
     }
 
     private fun resolveForegroundPackageName(): String? {
-        val outputs = listOf(
-            Shell(su = true).execute("dumpsys window windows"),
-            Shell(su = true).execute("dumpsys activity top")
-        )
-
-        for (output in outputs) {
-            val packageName = parseForegroundPackageName(output)
-            if (packageName != null) {
-                return packageName
-            }
+        val now = SystemClock.elapsedRealtime()
+        val cachedForegroundPackage = foregroundPackageCache
+        if (cachedForegroundPackage != null &&
+            now - cachedForegroundPackage.generatedAtMs <=
+                FOREGROUND_PACKAGE_CACHE_TTL_MS
+        ) {
+            return cachedForegroundPackage.value
         }
 
-        LogX.w(TAG, "failed to resolve foreground package name")
-        return null
+        synchronized(foregroundPackageCacheLock) {
+            val synchronizedNow = SystemClock.elapsedRealtime()
+            val refreshedCache = foregroundPackageCache
+            if (refreshedCache != null &&
+                synchronizedNow - refreshedCache.generatedAtMs <=
+                    FOREGROUND_PACKAGE_CACHE_TTL_MS
+            ) {
+                return refreshedCache.value
+            }
+
+            val outputs = listOf(
+                Shell(su = true).execute("dumpsys window windows"),
+                Shell(su = true).execute("dumpsys activity top")
+            )
+
+            for (output in outputs) {
+                val packageName = parseForegroundPackageName(output)
+                if (packageName != null) {
+                    foregroundPackageCache = TimedStringCache(
+                        generatedAtMs = synchronizedNow,
+                        value = packageName
+                    )
+                    return packageName
+                }
+            }
+
+            LogX.w(TAG, "failed to resolve foreground package name")
+            foregroundPackageCache = TimedStringCache(
+                generatedAtMs = synchronizedNow,
+                value = null
+            )
+            return null
+        }
     }
 
     private fun parseForegroundPackageName(output: String): String? {
@@ -368,5 +530,25 @@ class MemoryTool(private val context: Context) {
         val packageName: String,
         val importance: Int,
         val isThirdPartyApp: Boolean
+    )
+
+    private data class ProcessListCache(
+        val generatedAtMs: Long,
+        val processes: List<ResolvedProcess>
+    )
+
+    private data class TimedBooleanCache(
+        val generatedAtMs: Long,
+        val value: Boolean
+    )
+
+    private data class TimedStringCache(
+        val generatedAtMs: Long,
+        val value: String?
+    )
+
+    private data class InstalledPackageCache(
+        val generatedAtMs: Long,
+        val packageNames: Set<String>
     )
 }

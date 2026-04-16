@@ -33,6 +33,7 @@ class MemoryToolOverlay extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     useAutomaticKeepAlive();
+    ref.watch(getProcessInfoProvider(offset: 0, limit: 20));
     final isPickerVisible = useState(false);
     final isProcessTerminatedDialogVisible = useState(false);
     final hasPendingProcessTerminatedDialog = useState(false);

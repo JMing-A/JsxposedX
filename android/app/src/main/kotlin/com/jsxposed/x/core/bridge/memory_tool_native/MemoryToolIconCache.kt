@@ -11,15 +11,27 @@ import java.io.File
 
 class MemoryToolIconCache(context: Context) {
     private val packageManager = context.packageManager
+    private val inMemoryCache = mutableMapOf<String, ByteArray?>()
+    private val memoryCacheLock = Any()
     private val cacheDirectory = File(context.cacheDir, "memory_tool/process_icons").apply {
         mkdirs()
     }
 
     @RequiresApi(Build.VERSION_CODES.P)
     fun getIconBytes(packageName: String): ByteArray? {
+        synchronized(memoryCacheLock) {
+            if (inMemoryCache.containsKey(packageName)) {
+                return inMemoryCache[packageName]
+            }
+        }
+
         val cacheFile = resolveCacheFile(packageName) ?: return null
         if (cacheFile.exists()) {
-            return cacheFile.readBytes()
+            val cachedBytes = runCatching { cacheFile.readBytes() }.getOrNull()
+            synchronized(memoryCacheLock) {
+                inMemoryCache[packageName] = cachedBytes
+            }
+            return cachedBytes
         }
 
         val iconBytes = try {
@@ -37,6 +49,9 @@ class MemoryToolIconCache(context: Context) {
             cacheFile.writeBytes(iconBytes)
         }
 
+        synchronized(memoryCacheLock) {
+            inMemoryCache[packageName] = iconBytes
+        }
         return iconBytes
     }
 
