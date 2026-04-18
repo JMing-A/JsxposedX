@@ -111,6 +111,18 @@ private class MemoryToolDaemonServer(
                 MemoryToolHelperNativeBridge.getPointerScanChaseHintJson()
             )
 
+            "getPointerAutoChaseState" -> JSONObject(
+                MemoryToolHelperNativeBridge.getPointerAutoChaseStateJson()
+            )
+
+            "getPointerAutoChaseLayerResults" -> JSONArray(
+                MemoryToolHelperNativeBridge.getPointerAutoChaseLayerResultsJson(
+                    layerIndex = params.getInt("layerIndex"),
+                    offset = params.getInt("offset"),
+                    limit = params.getInt("limit")
+                )
+            )
+
             "readMemoryValues" -> JSONArray(
                 MemoryToolHelperNativeBridge.readMemoryValuesJson(
                     pids = extractLongArray(params.getJSONArray("requests"), "pid"),
@@ -199,13 +211,37 @@ private class MemoryToolDaemonServer(
                 JSONObject.NULL
             }
 
+            "startPointerAutoChase" -> {
+                MemoryToolHelperNativeBridge.startPointerAutoChase(
+                    pid = params.getLong("pid"),
+                    targetAddress = params.getLong("targetAddress"),
+                    pointerWidth = params.getInt("pointerWidth"),
+                    maxOffset = params.getLong("maxOffset"),
+                    alignment = params.getInt("alignment"),
+                    maxDepth = params.getInt("maxDepth"),
+                    rangeSectionKeys = extractStringArray(params.optJSONArray("rangeSectionKeys")),
+                    scanAllReadableRegions = params.optBoolean("scanAllReadableRegions", true)
+                )
+                JSONObject.NULL
+            }
+
             "cancelPointerScan" -> {
                 MemoryToolHelperNativeBridge.cancelPointerScan()
                 JSONObject.NULL
             }
 
+            "cancelPointerAutoChase" -> {
+                MemoryToolHelperNativeBridge.cancelPointerAutoChase()
+                JSONObject.NULL
+            }
+
             "resetPointerScanSession" -> {
                 MemoryToolHelperNativeBridge.resetPointerScanSession()
+                JSONObject.NULL
+            }
+
+            "resetPointerAutoChase" -> {
+                MemoryToolHelperNativeBridge.resetPointerAutoChase()
                 JSONObject.NULL
             }
 

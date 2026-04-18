@@ -62,9 +62,10 @@ class MemoryToolPointerTab extends HookConsumerWidget {
 
     final currentTaskState = taskStateAsync.asData?.value;
     final isRunningTask = currentTaskState?.status == SearchTaskStatus.running;
+    final shouldPollTaskState = isRunningTask || pointerState.isAutoChasing;
 
     useEffect(() {
-      if (!isRunningTask) {
+      if (!shouldPollTaskState) {
         return null;
       }
 
@@ -72,7 +73,7 @@ class MemoryToolPointerTab extends HookConsumerWidget {
         ref.invalidate(getPointerScanTaskStateProvider);
       });
       return timer.cancel;
-    }, [isRunningTask, ref]);
+    }, [shouldPollTaskState, ref]);
 
     useEffect(() {
       taskStateAsync.whenData((taskState) {
@@ -412,7 +413,12 @@ class _MemoryToolPointerAutoChaseMask extends StatelessWidget {
   Widget build(BuildContext context) {
     final processedRegions = taskState?.processedRegions ?? 0;
     final totalRegions = taskState?.totalRegions ?? 0;
+    final processedEntries = taskState?.processedEntries ?? 0;
+    final totalEntries = taskState?.totalEntries ?? 0;
     final resultCount = taskState?.resultCount ?? 0;
+    final progressPercent = totalEntries > 0
+        ? ((processedEntries / totalEntries) * 100).clamp(0, 100).toStringAsFixed(0)
+        : null;
 
     return ColoredBox(
       color: Colors.black.withValues(alpha: 0.22),
@@ -442,7 +448,7 @@ class _MemoryToolPointerAutoChaseMask extends StatelessWidget {
                 ),
                 SizedBox(height: 12.r),
                 Text(
-                  'L$currentDepth/$maxDepth',
+                  'L$currentDepth${maxDepth > 0 ? '/$maxDepth' : ''}${progressPercent == null ? '' : ' · $progressPercent%'}',
                   style: context.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: context.colorScheme.primary,
@@ -472,6 +478,15 @@ class _MemoryToolPointerAutoChaseMask extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (totalEntries > 0) ...<Widget>[
+                  SizedBox(height: 4.r),
+                  Text(
+                    '地址: $processedEntries/$totalEntries',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
                 SizedBox(height: 12.r),
                 Align(
                   alignment: Alignment.centerRight,

@@ -4,14 +4,17 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/enums/memory
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/enums/memory_search_range_section_enum.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/enums/memory_tool_pointer_alignment_option.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_auto_chase_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_auto_chase_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_pointer_form_state.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_pointer_state.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart'
     show
+        PointerAutoChaseRequest,
+        PointerAutoChaseState,
         PointerScanRequest,
         PointerScanResult,
-        PointerScanTaskState,
         PointerScanSessionState,
         SearchTaskStatus;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -155,6 +158,7 @@ class MemoryToolPointerSearchForm extends _$MemoryToolPointerSearchForm {
 class MemoryToolPointerController extends _$MemoryToolPointerController {
   static const Set<String> _staticRegionTypeKeys = <String>{'cData', 'cBss'};
   int _autoChaseRunToken = 0;
+  PointerScanRequest? _autoChaseBaseRequest;
 
   @override
   MemoryToolPointerState build() {
@@ -163,6 +167,7 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
 
   Future<void> startRootScan({required PointerScanRequest request}) async {
     await _interruptAutoChaseIfNeeded();
+    _autoChaseBaseRequest = null;
     await _startFreshScan(request: request, isAutoChasing: false);
   }
 
@@ -172,6 +177,7 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
   }) async {
     _autoChaseRunToken += 1;
     final runToken = _autoChaseRunToken;
+    _autoChaseBaseRequest = request;
     state = MemoryToolPointerState(
       layers: <PointerChainLayerState>[
         PointerChainLayerState(
@@ -184,15 +190,42 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
       currentLayerIndex: 0,
       isAutoChasing: true,
       autoChaseMaxDepth: maxDepth,
-      autoChaseCurrentDepth: 1,
+      autoChaseCurrentDepth: 0,
     );
-    unawaited(
-      _runAutoChase(
-        runToken: runToken,
-        initialRequest: request,
-        maxDepth: maxDepth,
-      ),
-    );
+
+    try {
+      await ref
+          .read(memoryPointerAutoChaseActionProvider.notifier)
+          .startPointerAutoChase(
+            request: PointerAutoChaseRequest(
+              pid: request.pid,
+              targetAddress: request.targetAddress,
+              pointerWidth: request.pointerWidth,
+              maxOffset: request.maxOffset,
+              alignment: request.alignment,
+              maxDepth: maxDepth,
+              rangeSectionKeys: request.rangeSectionKeys,
+              scanAllReadableRegions: request.scanAllReadableRegions,
+            ),
+          );
+    } catch (error) {
+      state = MemoryToolPointerState(
+        layers: <PointerChainLayerState>[
+          PointerChainLayerState(
+            request: request,
+            autoChaseLayerIndex: 0,
+            isLoadingInitial: false,
+            errorText: error.toString(),
+            autoStopReasonKey: 'failed',
+            staticOnlyMode: true,
+          ),
+        ],
+        currentLayerIndex: 0,
+      );
+      return;
+    }
+
+    unawaited(_pollAutoChaseState(runToken));
   }
 
   Future<void> continueScan({
@@ -297,9 +330,9 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
       autoChaseMaxDepth: 0,
       autoChaseMessage: 'cancelled',
     );
-    try {
-      await ref.read(memoryPointerActionProvider.notifier).cancelPointerScan();
-    } catch (_) {}
+    await ref
+        .read(memoryPointerAutoChaseActionProvider.notifier)
+        .cancelPointerAutoChase();
   }
 
   Future<void> loadMore() async {
@@ -318,7 +351,15 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
     );
 
     try {
-      final nextPage = await _loadManualPointerPage(currentLayer);
+      final nextPage = currentLayer.autoChaseLayerIndex != null
+          ? await ref
+                .read(memoryPointerAutoChaseQueryRepositoryProvider)
+                .getPointerAutoChaseLayerResults(
+                  layerIndex: currentLayer.autoChaseLayerIndex!,
+                  offset: currentLayer.results.length,
+                  limit: memoryToolPointerPageSize,
+                )
+          : await _loadManualPointerPage(currentLayer);
       final mergedResults = <PointerScanResult>[
         ...currentLayer.results,
         ...nextPage,
@@ -352,6 +393,7 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
 
   Future<void> clear() async {
     _autoChaseRunToken += 1;
+    _autoChaseBaseRequest = null;
     state = const MemoryToolPointerState();
   }
 
@@ -369,9 +411,9 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
       autoChaseCurrentDepth: 0,
       autoChaseMaxDepth: 0,
     );
-    try {
-      await ref.read(memoryPointerActionProvider.notifier).cancelPointerScan();
-    } catch (_) {}
+    await ref
+        .read(memoryPointerAutoChaseActionProvider.notifier)
+        .cancelPointerAutoChase();
   }
 
   Future<List<PointerScanResult>> _loadManualPointerPage(
@@ -387,134 +429,38 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
     );
   }
 
-  Future<void> _runAutoChase({
-    required int runToken,
-    required PointerScanRequest initialRequest,
-    required int maxDepth,
-  }) async {
-    final builtLayers = <PointerChainLayerState>[];
-    PointerScanRequest currentRequest = initialRequest;
-    PointerScanResult? previousResult;
-
+  Future<void> _pollAutoChaseState(int runToken) async {
     try {
-      for (var layerIndex = 0; layerIndex < maxDepth; layerIndex += 1) {
+      while (_isAutoChaseRunActive(runToken)) {
+        final autoChaseState = await ref
+            .read(memoryPointerAutoChaseQueryRepositoryProvider)
+            .getPointerAutoChaseState();
         if (!_isAutoChaseRunActive(runToken)) {
           return;
         }
-
-        final placeholderLayer = PointerChainLayerState(
-          request: currentRequest,
-          autoChaseLayerIndex: layerIndex,
-          sourceResult: previousResult,
-          isLoadingInitial: true,
-          staticOnlyMode: true,
-        );
-        if (builtLayers.length == layerIndex) {
-          builtLayers.add(placeholderLayer);
-        } else {
-          builtLayers[layerIndex] = placeholderLayer;
-        }
-        state = state.copyWith(
-          layers: List<PointerChainLayerState>.from(builtLayers),
-          currentLayerIndex: layerIndex,
-          isAutoChasing: true,
-          autoChaseMaxDepth: maxDepth,
-          autoChaseCurrentDepth: layerIndex + 1,
-          clearAutoChaseMessage: true,
-        );
-
-        await ref
-            .read(memoryPointerActionProvider.notifier)
-            .startPointerScan(request: currentRequest);
-        final taskState = await _waitForPointerTask(runToken: runToken);
-        if (!_isAutoChaseRunActive(runToken)) {
+        _applyAutoChaseState(autoChaseState);
+        if (!autoChaseState.isRunning) {
           return;
         }
-        if (taskState.status == SearchTaskStatus.cancelled) {
-          _finishAutoChaseCancelled(layerIndex: layerIndex, builtLayers: builtLayers);
-          return;
-        }
-        if (taskState.status == SearchTaskStatus.failed) {
-          throw StateError(taskState.message.isEmpty ? 'Pointer scan failed.' : taskState.message);
-        }
-
-        final sessionState = await ref
-            .read(memoryPointerQueryRepositoryProvider)
-            .getPointerScanSessionState();
-        if (!_matchesSession(currentRequest, sessionState)) {
-          throw StateError('Pointer scan session changed unexpectedly.');
-        }
-
-        final results = await _loadAllPointerResults(
-          totalResultCount: sessionState.resultCount,
-        );
-        final bestResult = results.isEmpty ? null : results.first;
-        final stopReasonKey = _resolveAutoChaseStopReason(
-          layerIndex: layerIndex,
-          maxDepth: maxDepth,
-          bestResult: bestResult,
-        );
-        final updatedLayer = placeholderLayer.copyWith(
-          results: results,
-          totalResultCount: sessionState.resultCount,
-          isLoadingInitial: false,
-          hasMore: false,
-          selectedPointerAddress: bestResult?.pointerAddress,
-          isAutoSelectedLayer: bestResult != null,
-          isTerminalLayer: stopReasonKey == 'staticReached',
-          autoStopReasonKey: stopReasonKey,
-          clearErrorText: true,
-        );
-        builtLayers[layerIndex] = updatedLayer;
-
-        final isFinished = stopReasonKey != null;
-        state = state.copyWith(
-          layers: List<PointerChainLayerState>.from(builtLayers),
-          currentLayerIndex: layerIndex,
-          isAutoChasing: !isFinished,
-          autoChaseMaxDepth: maxDepth,
-          autoChaseCurrentDepth: layerIndex + 1,
-          autoChaseMessage: isFinished ? stopReasonKey : null,
-          clearAutoChaseMessage: !isFinished,
-        );
-
-        if (isFinished) {
-          return;
-        }
-
-        previousResult = bestResult;
-        currentRequest = _buildNextRequest(
-          baseRequest: initialRequest,
-          targetAddress: bestResult!.pointerAddress,
-        );
+        await Future<void>.delayed(const Duration(milliseconds: 120));
       }
     } catch (error) {
       if (!_isAutoChaseRunActive(runToken)) {
         return;
       }
-      final targetLayerIndex = builtLayers.isEmpty ? 0 : builtLayers.length - 1;
-      if (targetLayerIndex >= 0 && targetLayerIndex < builtLayers.length) {
-        builtLayers[targetLayerIndex] = builtLayers[targetLayerIndex].copyWith(
-          isLoadingInitial: false,
-          isLoadingMore: false,
-          autoStopReasonKey: 'failed',
-          errorText: error.toString(),
-        );
-      } else {
-        builtLayers.add(
-          PointerChainLayerState(
-            request: currentRequest,
-            autoChaseLayerIndex: 0,
+      final lastLayerIndex = state.currentLayerIndex;
+      if (lastLayerIndex >= 0 && lastLayerIndex < state.layers.length) {
+        _updateLayer(
+          lastLayerIndex,
+          state.layers[lastLayerIndex].copyWith(
             isLoadingInitial: false,
-            errorText: error.toString(),
+            isLoadingMore: false,
             autoStopReasonKey: 'failed',
-            staticOnlyMode: true,
+            errorText: error.toString(),
           ),
         );
       }
       state = state.copyWith(
-        layers: List<PointerChainLayerState>.from(builtLayers),
-        currentLayerIndex: builtLayers.isEmpty ? -1 : builtLayers.length - 1,
         isAutoChasing: false,
         autoChaseCurrentDepth: 0,
         autoChaseMaxDepth: 0,
@@ -523,98 +469,60 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
     }
   }
 
-  Future<PointerScanTaskState> _waitForPointerTask({required int runToken}) async {
-    while (true) {
-      if (!_isAutoChaseRunActive(runToken)) {
-        return PointerScanTaskState(
-          status: SearchTaskStatus.cancelled,
-          pid: 0,
-          processedRegions: 0,
-          totalRegions: 0,
-          processedEntries: 0,
-          totalEntries: 0,
-          processedBytes: 0,
-          totalBytes: 0,
-          resultCount: 0,
-          elapsedMilliseconds: 0,
-          canCancel: false,
-          message: 'Cancelled.',
-        );
-      }
-      final taskState = await ref
-          .read(memoryPointerQueryRepositoryProvider)
-          .getPointerScanTaskState();
-      if (taskState.status == SearchTaskStatus.running ||
-          taskState.status == SearchTaskStatus.idle) {
-        await Future<void>.delayed(const Duration(milliseconds: 120));
-        continue;
-      }
-      return taskState;
-    }
-  }
-
-  Future<List<PointerScanResult>> _loadAllPointerResults({
-    required int totalResultCount,
-  }) async {
-    if (totalResultCount <= 0) {
-      return const <PointerScanResult>[];
+  void _applyAutoChaseState(PointerAutoChaseState autoChaseState) {
+    final baseRequest = _autoChaseBaseRequest;
+    if (baseRequest == null) {
+      return;
     }
 
-    final results = <PointerScanResult>[];
-    while (results.length < totalResultCount) {
-      final page = await ref
-          .read(memoryPointerQueryRepositoryProvider)
-          .getPointerScanResults(
-            offset: results.length,
-            limit: memoryToolPointerPageSize,
-          );
-      if (page.isEmpty) {
-        break;
-      }
-      results.addAll(page);
-      if (page.length < memoryToolPointerPageSize) {
-        break;
-      }
-    }
-    return results;
-  }
+    final layers = autoChaseState.layers.isEmpty
+        ? <PointerChainLayerState>[
+            PointerChainLayerState(
+              request: baseRequest,
+              autoChaseLayerIndex: 0,
+              isLoadingInitial: autoChaseState.isRunning,
+              errorText: autoChaseState.isRunning || autoChaseState.message.isEmpty
+                  ? null
+                  : autoChaseState.message,
+              autoStopReasonKey: autoChaseState.isRunning ? null : 'failed',
+              staticOnlyMode: true,
+            ),
+          ]
+        : List<PointerChainLayerState>.generate(autoChaseState.layers.length, (
+            index,
+          ) {
+            final layer = autoChaseState.layers[index];
+            return PointerChainLayerState(
+              request: _buildNextRequest(
+                baseRequest: baseRequest,
+                targetAddress: layer.targetAddress,
+              ),
+              results: List<PointerScanResult>.from(layer.initialResults),
+              totalResultCount: layer.resultCount,
+              autoChaseLayerIndex: layer.layerIndex,
+              sourceResult: index > 0
+                  ? autoChaseState.layers[index - 1].selectedResult
+                  : null,
+              isLoadingInitial: false,
+              isLoadingMore: false,
+              hasMore: layer.hasMore,
+              selectedPointerAddress: layer.selectedPointerAddress,
+              isAutoSelectedLayer: layer.selectedResult != null,
+              isTerminalLayer: layer.isTerminalLayer,
+              autoStopReasonKey: layer.stopReasonKey.isEmpty
+                  ? null
+                  : layer.stopReasonKey,
+              staticOnlyMode: true,
+            );
+          });
 
-  String? _resolveAutoChaseStopReason({
-    required int layerIndex,
-    required int maxDepth,
-    required PointerScanResult? bestResult,
-  }) {
-    if (bestResult == null) {
-      return 'noMorePointers';
-    }
-    if (isStaticRegionType(bestResult.regionTypeKey)) {
-      return 'staticReached';
-    }
-    if (layerIndex + 1 >= maxDepth) {
-      return 'maxDepth';
-    }
-    return null;
-  }
-
-  void _finishAutoChaseCancelled({
-    required int layerIndex,
-    required List<PointerChainLayerState> builtLayers,
-  }) {
-    if (layerIndex >= 0 && layerIndex < builtLayers.length) {
-      builtLayers[layerIndex] = builtLayers[layerIndex].copyWith(
-        isLoadingInitial: false,
-        isLoadingMore: false,
-        autoStopReasonKey: 'cancelled',
-        clearErrorText: true,
-      );
-    }
     state = state.copyWith(
-      layers: List<PointerChainLayerState>.from(builtLayers),
-      currentLayerIndex: builtLayers.isEmpty ? -1 : builtLayers.length - 1,
-      isAutoChasing: false,
-      autoChaseCurrentDepth: 0,
-      autoChaseMaxDepth: 0,
-      autoChaseMessage: 'cancelled',
+      layers: layers,
+      currentLayerIndex: layers.isEmpty ? -1 : layers.length - 1,
+      isAutoChasing: autoChaseState.isRunning,
+      autoChaseMaxDepth: autoChaseState.maxDepth,
+      autoChaseCurrentDepth: autoChaseState.currentDepth,
+      autoChaseMessage: autoChaseState.message,
     );
   }
 
@@ -693,7 +601,7 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
   }
 
   bool _isAutoChaseRunActive(int runToken) {
-    return _autoChaseRunToken == runToken;
+    return state.isAutoChasing && _autoChaseRunToken == runToken;
   }
 
   bool _matchesSession(

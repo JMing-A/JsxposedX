@@ -19,6 +19,15 @@ namespace {
 constexpr size_t kHardFreezeYieldEveryPasses = 64;
 constexpr size_t kPointerBatchEntryCount = 4096;
 constexpr size_t kPointerProgressFlushEntryCount = kPointerBatchEntryCount * 8;
+constexpr size_t kPointerScanSlabBytes = 256 * 1024;
+constexpr size_t kPointerAutoChaseInitialResultLimit = 100;
+
+class PointerScanCancelledException : public std::exception {
+public:
+    const char* what() const noexcept override {
+        return "pointer scan cancelled";
+    }
+};
 
 uint64_t ElapsedMilliseconds(const std::chrono::steady_clock::time_point& started_at) {
     if (started_at == std::chrono::steady_clock::time_point{}) {
@@ -44,9 +53,35 @@ size_t ResolvePointerRegionEntryCount(const MemoryRegion& region, size_t pointer
     return ((region.size - pointer_width) / alignment) + 1;
 }
 
+size_t ResolvePointerRangeEntryCount(uint64_t region_start,
+                                     uint64_t range_start,
+                                     uint64_t range_candidate_bytes,
+                                     size_t alignment) {
+    if (alignment == 0 || range_candidate_bytes == 0) {
+        return 0;
+    }
+    uint64_t first_address = range_start;
+    const uint64_t misalignment = (first_address - region_start) % alignment;
+    if (misalignment != 0) {
+        first_address += alignment - misalignment;
+    }
+    const uint64_t range_end = range_start + range_candidate_bytes;
+    if (first_address >= range_end) {
+        return 0;
+    }
+    return 1 + static_cast<size_t>((range_end - 1 - first_address) / alignment);
+}
+
 bool IsPointerStaticCandidateRegionKey(const std::string& region_type_key) {
     return region_type_key == "cData" ||
            region_type_key == "cBss";
+}
+
+bool IsPointerRecommendedRegionKey(const std::string& region_type_key) {
+    return IsPointerStaticCandidateRegionKey(region_type_key) ||
+           region_type_key == "codeApp" ||
+           region_type_key == "codeSys" ||
+           region_type_key == "other";
 }
 
 int ResolvePointerChaseRegionPriority(const std::string& region_type_key) {
@@ -140,6 +175,23 @@ size_t ResolveFirstScanWorkerCount(size_t region_count) {
     return std::max<size_t>(1, std::min(region_count, preferred_workers));
 }
 
+size_t ResolvePointerScanWorkerCount(uint64_t total_region_bytes, size_t region_count) {
+    if (region_count <= 1) {
+        return region_count;
+    }
+
+    const unsigned int hardware_workers = std::thread::hardware_concurrency();
+    const size_t preferred_workers = hardware_workers == 0 ? 4U : hardware_workers;
+    const uint64_t target_bytes_per_worker = 32ULL * 1024ULL * 1024ULL;
+    const size_t byte_limited_workers = std::max<size_t>(
+        1,
+        static_cast<size_t>((total_region_bytes + target_bytes_per_worker - 1) /
+                            target_bytes_per_worker));
+    return std::max<size_t>(
+        1,
+        std::min(region_count, std::min(preferred_workers, byte_limited_workers)));
+}
+
 std::vector<std::vector<MemoryRegion>> PartitionRegionsForWorkers(
     const std::vector<MemoryRegion>& regions,
     size_t worker_count) {
@@ -174,6 +226,336 @@ std::vector<std::vector<MemoryRegion>> PartitionRegionsForWorkers(
         }
     }
     return buckets;
+}
+
+bool IsBetterPointerResult(const PointerScanResultEntry& candidate,
+                           const PointerScanResultEntry& current) {
+    const int candidate_priority =
+        ResolvePointerChaseRegionPriority(candidate.region_type_key);
+    const int current_priority = ResolvePointerChaseRegionPriority(current.region_type_key);
+    if (candidate_priority != current_priority) {
+        return candidate_priority < current_priority;
+    }
+    if (candidate.offset != current.offset) {
+        return candidate.offset < current.offset;
+    }
+    return candidate.pointer_address < current.pointer_address;
+}
+
+const PointerScanResultEntry* SelectBestPointerResult(
+    const std::vector<PointerScanResultEntry>& results) {
+    const PointerScanResultEntry* best_entry = nullptr;
+    for (const PointerScanResultEntry& entry : results) {
+        if (!IsPointerRecommendedRegionKey(entry.region_type_key)) {
+            continue;
+        }
+        if (best_entry == nullptr || IsBetterPointerResult(entry, *best_entry)) {
+            best_entry = &entry;
+        }
+    }
+    return best_entry;
+}
+
+template <typename ProgressCallback>
+void ReportPointerScanDelta(size_t processed_entries,
+                            uint64_t processed_bytes,
+                            size_t matched_count,
+                            const ProgressCallback& on_progress) {
+    if (!on_progress(processed_entries, processed_bytes, matched_count)) {
+        throw PointerScanCancelledException();
+    }
+}
+
+template <typename ProgressCallback>
+void ScanPointerWindowDiscreteFallback(ProcessMemoryReader& reader,
+                                       const MemoryRegion& region,
+                                       uint64_t window_start,
+                                       uint64_t window_candidate_bytes,
+                                       uint64_t target_address,
+                                       size_t pointer_width,
+                                       uint64_t max_offset,
+                                       size_t alignment,
+                                       const std::string& region_type_key,
+                                       const std::shared_ptr<std::atomic_bool>& cancel_flag,
+                                       const ProgressCallback& on_progress,
+                                       std::vector<PointerScanResultEntry>* results) {
+    if (results == nullptr || window_candidate_bytes == 0) {
+        return;
+    }
+
+    FlatReadBatch read_batch;
+    std::vector<uint64_t> addresses;
+    addresses.reserve(kPointerBatchEntryCount);
+    const uint64_t region_candidate_end = region.end_address - pointer_width + 1;
+    const uint64_t window_candidate_end =
+        std::min(window_start + window_candidate_bytes, region_candidate_end);
+    uint64_t next_address = window_start;
+    const uint64_t misalignment = (next_address - region.start_address) % alignment;
+    if (misalignment != 0) {
+        next_address += alignment - misalignment;
+    }
+
+    while (next_address < window_candidate_end) {
+        if (cancel_flag && cancel_flag->load()) {
+            throw PointerScanCancelledException();
+        }
+
+        addresses.clear();
+        for (; next_address < window_candidate_end &&
+               addresses.size() < kPointerBatchEntryCount;
+             next_address += alignment) {
+            addresses.push_back(next_address);
+        }
+        if (addresses.empty()) {
+            break;
+        }
+
+        reader.ReadManyFlat(addresses, pointer_width, &read_batch);
+        size_t matched_count = 0;
+        for (size_t index = 0; index < addresses.size(); ++index) {
+            if (!read_batch.HasValue(index)) {
+                continue;
+            }
+            const uint8_t* raw_value = read_batch.ValueAt(index);
+            if (raw_value == nullptr) {
+                continue;
+            }
+            const uint64_t base_address = ReadUnsignedLittleEndian(raw_value, pointer_width);
+            if (target_address < base_address) {
+                continue;
+            }
+            const uint64_t pointer_offset = target_address - base_address;
+            if (pointer_offset > max_offset) {
+                continue;
+            }
+
+            PointerScanResultEntry entry;
+            entry.pointer_address = addresses[index];
+            entry.base_address = base_address;
+            entry.target_address = target_address;
+            entry.offset = pointer_offset;
+            entry.region_start = region.start_address;
+            entry.region_type_key = region_type_key;
+            results->push_back(std::move(entry));
+            ++matched_count;
+        }
+
+        ReportPointerScanDelta(
+            addresses.size(),
+            static_cast<uint64_t>(addresses.size()) * static_cast<uint64_t>(pointer_width),
+            matched_count,
+            on_progress);
+    }
+}
+
+template <typename ProgressCallback>
+void ScanPointerRegionBuffered(ProcessMemoryReader& reader,
+                               const MemoryRegion& region,
+                               uint64_t target_address,
+                               size_t pointer_width,
+                               uint64_t max_offset,
+                               size_t alignment,
+                               const std::shared_ptr<std::atomic_bool>& cancel_flag,
+                               const ProgressCallback& on_progress,
+                               std::vector<PointerScanResultEntry>* results) {
+    if (results == nullptr || region.size < pointer_width) {
+        return;
+    }
+
+    const std::string region_type_key = ClassifyMemoryRegion(region);
+    const uint64_t region_candidate_end = region.end_address - pointer_width + 1;
+    std::vector<uint8_t> slab_buffer;
+    for (uint64_t slab_start = region.start_address;
+         slab_start < region_candidate_end;
+         slab_start += kPointerScanSlabBytes) {
+        if (cancel_flag && cancel_flag->load()) {
+            throw PointerScanCancelledException();
+        }
+
+        const uint64_t candidate_bytes =
+            std::min<uint64_t>(kPointerScanSlabBytes, region_candidate_end - slab_start);
+        const uint64_t read_size =
+            std::min<uint64_t>(candidate_bytes + pointer_width - 1,
+                               region.end_address - slab_start);
+        if (!reader.Read(slab_start, static_cast<size_t>(read_size), &slab_buffer)) {
+            ScanPointerWindowDiscreteFallback(reader,
+                                             region,
+                                             slab_start,
+                                             candidate_bytes,
+                                             target_address,
+                                             pointer_width,
+                                             max_offset,
+                                             alignment,
+                                             region_type_key,
+                                             cancel_flag,
+                                             on_progress,
+                                             results);
+            continue;
+        }
+
+        size_t matched_count = 0;
+        uint64_t candidate_address = slab_start;
+        const uint64_t misalignment = (candidate_address - region.start_address) % alignment;
+        if (misalignment != 0) {
+            candidate_address += alignment - misalignment;
+        }
+        const uint64_t slab_candidate_end = slab_start + candidate_bytes;
+        for (; candidate_address < slab_candidate_end; candidate_address += alignment) {
+            const size_t local_offset =
+                static_cast<size_t>(candidate_address - slab_start);
+            const uint64_t base_address =
+                ReadUnsignedLittleEndian(slab_buffer.data() + local_offset, pointer_width);
+            if (target_address < base_address) {
+                continue;
+            }
+            const uint64_t pointer_offset = target_address - base_address;
+            if (pointer_offset > max_offset) {
+                continue;
+            }
+
+            PointerScanResultEntry entry;
+            entry.pointer_address = candidate_address;
+            entry.base_address = base_address;
+            entry.target_address = target_address;
+            entry.offset = pointer_offset;
+            entry.region_start = region.start_address;
+            entry.region_type_key = region_type_key;
+            results->push_back(std::move(entry));
+            ++matched_count;
+        }
+
+        const size_t scanned_entry_count = ResolvePointerRangeEntryCount(
+            region.start_address,
+            slab_start,
+            candidate_bytes,
+            alignment);
+        ReportPointerScanDelta(scanned_entry_count,
+                               static_cast<uint64_t>(scanned_entry_count) *
+                                   static_cast<uint64_t>(pointer_width),
+                               matched_count,
+                               on_progress);
+    }
+}
+
+template <typename ProgressCallback>
+std::vector<PointerScanResultEntry> RunPointerScanSync(
+    int pid,
+    uint64_t target_address,
+    size_t pointer_width,
+    uint64_t max_offset,
+    size_t alignment,
+    const std::vector<MemoryRegion>& readable_regions,
+    const std::shared_ptr<std::atomic_bool>& cancel_flag,
+    const ProgressCallback& on_progress) {
+    uint64_t total_region_bytes = 0;
+    for (const MemoryRegion& region : readable_regions) {
+        total_region_bytes += region.size;
+    }
+    const size_t worker_count =
+        ResolvePointerScanWorkerCount(total_region_bytes, readable_regions.size());
+    const std::vector<std::vector<MemoryRegion>> region_buckets =
+        PartitionRegionsForWorkers(readable_regions, worker_count);
+
+    std::vector<std::vector<PointerScanResultEntry>> worker_results(region_buckets.size());
+    std::vector<std::thread> workers;
+    workers.reserve(region_buckets.size());
+    std::atomic_bool worker_failed{false};
+    std::string worker_error;
+    std::mutex error_mutex;
+
+    for (size_t bucket_index = 0; bucket_index < region_buckets.size(); ++bucket_index) {
+        if (region_buckets[bucket_index].empty()) {
+            continue;
+        }
+
+        workers.emplace_back([&, bucket_index]() {
+            try {
+                ProcessMemoryReader reader(pid);
+                for (const MemoryRegion& region : region_buckets[bucket_index]) {
+                    if ((cancel_flag && cancel_flag->load()) || worker_failed.load()) {
+                        throw PointerScanCancelledException();
+                    }
+                    ScanPointerRegionBuffered(reader,
+                                             region,
+                                             target_address,
+                                             pointer_width,
+                                             max_offset,
+                                             alignment,
+                                             cancel_flag,
+                                             on_progress,
+                                             &worker_results[bucket_index]);
+                }
+            } catch (const PointerScanCancelledException&) {
+            } catch (const std::exception& exception) {
+                std::lock_guard<std::mutex> error_lock(error_mutex);
+                worker_failed.store(true);
+                if (worker_error.empty()) {
+                    worker_error = exception.what();
+                }
+            }
+        });
+    }
+
+    for (std::thread& worker : workers) {
+        if (worker.joinable()) {
+            worker.join();
+        }
+    }
+
+    if (worker_failed.load()) {
+        throw std::runtime_error(worker_error.empty() ? "Pointer scan failed." : worker_error);
+    }
+    if (cancel_flag && cancel_flag->load()) {
+        throw PointerScanCancelledException();
+    }
+
+    size_t result_count = 0;
+    for (const auto& entries : worker_results) {
+        result_count += entries.size();
+    }
+    std::vector<PointerScanResultEntry> results;
+    results.reserve(result_count);
+    for (auto& entries : worker_results) {
+        results.insert(results.end(),
+                       std::make_move_iterator(entries.begin()),
+                       std::make_move_iterator(entries.end()));
+    }
+    std::sort(results.begin(), results.end(), [](const PointerScanResultEntry& left,
+                                                 const PointerScanResultEntry& right) {
+        if (left.offset != right.offset) {
+            return left.offset < right.offset;
+        }
+        return left.pointer_address < right.pointer_address;
+    });
+    return results;
+}
+
+PointerAutoChaseLayerStateView BuildPointerAutoChaseLayer(
+    size_t layer_index,
+    uint64_t target_address,
+    const std::vector<PointerScanResultEntry>& results,
+    const std::string& stop_reason_key,
+    bool is_terminal_layer) {
+    PointerAutoChaseLayerStateView layer;
+    layer.layer_index = layer_index;
+    layer.target_address = target_address;
+    layer.result_count = results.size();
+    layer.has_more = results.size() > kPointerAutoChaseInitialResultLimit;
+    layer.is_terminal_layer = is_terminal_layer;
+    layer.stop_reason_key = stop_reason_key;
+    layer.results = results;
+    const size_t initial_count =
+        std::min(results.size(), static_cast<size_t>(kPointerAutoChaseInitialResultLimit));
+    layer.initial_results.assign(results.begin(),
+                                 results.begin() + static_cast<std::ptrdiff_t>(initial_count));
+    if (const PointerScanResultEntry* best_entry = SelectBestPointerResult(results);
+        best_entry != nullptr) {
+        layer.has_selected_pointer_address = true;
+        layer.selected_pointer_address = best_entry->pointer_address;
+        layer.has_selected_result = true;
+        layer.selected_result = *best_entry;
+    }
+    return layer;
 }
 
 SearchRuntimeMode ToRuntimeMode(SpecialSearchMode mode) {
@@ -445,19 +827,7 @@ PointerScanChaseHintView MemoryToolEngine::GetPointerScanChaseHint() {
         return hint;
     }
 
-    const PointerScanResultEntry* best_entry = nullptr;
-    int best_priority = 0;
-    for (const PointerScanResultEntry& entry : pointer_session_.results) {
-        const int priority = ResolvePointerChaseRegionPriority(entry.region_type_key);
-        if (best_entry == nullptr ||
-            priority < best_priority ||
-            (priority == best_priority && entry.offset < best_entry->offset) ||
-            (priority == best_priority && entry.offset == best_entry->offset &&
-             entry.pointer_address < best_entry->pointer_address)) {
-            best_entry = &entry;
-            best_priority = priority;
-        }
-    }
+    const PointerScanResultEntry* best_entry = SelectBestPointerResult(pointer_session_.results);
 
     if (best_entry != nullptr) {
         hint.has_result = true;
@@ -466,6 +836,36 @@ PointerScanChaseHintView MemoryToolEngine::GetPointerScanChaseHint() {
         hint.stop_reason_key = "noMorePointers";
     }
     return hint;
+}
+
+PointerAutoChaseStateView MemoryToolEngine::GetPointerAutoChaseState() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return BuildPointerAutoChaseStateLocked();
+}
+
+std::vector<PointerScanResultEntry> MemoryToolEngine::GetPointerAutoChaseLayerResults(
+    int layer_index,
+    int offset,
+    int limit) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!pointer_auto_chase_session_.has_active_session) {
+        return {};
+    }
+    if (layer_index < 0 ||
+        static_cast<size_t>(layer_index) >= pointer_auto_chase_session_.layers.size()) {
+        return {};
+    }
+    const auto& results =
+        pointer_auto_chase_session_.layers[static_cast<size_t>(layer_index)].results;
+    if (offset < 0 || limit <= 0 || static_cast<size_t>(offset) >= results.size()) {
+        return {};
+    }
+
+    const size_t start = static_cast<size_t>(offset);
+    const size_t end = std::min(results.size(), start + static_cast<size_t>(limit));
+    return std::vector<PointerScanResultEntry>(
+        results.begin() + static_cast<std::ptrdiff_t>(start),
+        results.begin() + static_cast<std::ptrdiff_t>(end));
 }
 
 std::vector<MemoryValuePreview> MemoryToolEngine::ReadMemoryValues(
@@ -1321,14 +1721,13 @@ void MemoryToolEngine::StartPointerScan(int pid,
     if (readable_regions.empty()) {
         throw std::runtime_error("No readable memory region.");
     }
-    const size_t worker_count = ResolveFirstScanWorkerCount(readable_regions.size());
-    const std::vector<std::vector<MemoryRegion>> region_buckets =
-        PartitionRegionsForWorkers(readable_regions, worker_count);
 
     uint64_t generation = 0;
+    std::shared_ptr<std::atomic_bool> cancel_flag;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         generation = StartPointerTaskLocked(pid);
+        cancel_flag = pointer_task_.cancel_flag;
     }
 
     std::thread([this,
@@ -1339,7 +1738,7 @@ void MemoryToolEngine::StartPointerScan(int pid,
                  max_offset,
                  alignment,
                  readable_regions = std::move(readable_regions),
-                 region_buckets = std::move(region_buckets)]() mutable {
+                 cancel_flag = std::move(cancel_flag)]() mutable {
         try {
             PointerScanSession next_session;
             next_session.has_active_session = true;
@@ -1367,208 +1766,300 @@ void MemoryToolEngine::StartPointerScan(int pid,
                 return;
             }
 
-            std::atomic_size_t processed_region_count{0};
-            std::atomic_size_t processed_entry_count{0};
-            std::atomic_uint64_t processed_byte_count{0};
-            std::atomic_size_t aggregated_result_count{0};
-            std::atomic_bool should_stop{false};
             std::mutex progress_mutex;
-            std::vector<std::vector<PointerScanResultEntry>> worker_results(region_buckets.size());
-            std::vector<std::thread> workers;
-            workers.reserve(region_buckets.size());
-
             const auto report_progress = [this,
                                           generation,
-                                          &readable_regions,
-                                          &processed_region_count,
-                                          &processed_entry_count,
-                                          &processed_byte_count,
-                                          &aggregated_result_count,
-                                          &should_stop,
                                           &progress_mutex,
-                                          &progress_view]() {
+                                          &progress_view](size_t processed_entries,
+                                                          uint64_t processed_bytes,
+                                                          size_t result_count) {
                 std::lock_guard<std::mutex> lock(progress_mutex);
-                if (should_stop.load()) {
-                    return false;
-                }
-
-                PointerScanTaskStateView next_progress = progress_view;
-                next_progress.processed_region_count = processed_region_count.load();
-                next_progress.processed_entry_count = processed_entry_count.load();
-                next_progress.processed_byte_count = processed_byte_count.load();
-                next_progress.result_count = aggregated_result_count.load();
-                next_progress.total_region_count = readable_regions.size();
-
-                if (!UpdatePointerTaskProgress(generation, next_progress)) {
-                    should_stop.store(true);
+                progress_view.processed_entry_count += processed_entries;
+                progress_view.processed_byte_count += processed_bytes;
+                progress_view.result_count += result_count;
+                if (!UpdatePointerTaskProgress(generation, progress_view)) {
                     return false;
                 }
                 return true;
             };
 
-            for (size_t bucket_index = 0; bucket_index < region_buckets.size(); ++bucket_index) {
-                if (region_buckets[bucket_index].empty()) {
-                    continue;
-                }
-
-                workers.emplace_back([&region_buckets,
-                                      &worker_results,
-                                      &processed_region_count,
-                                      &processed_entry_count,
-                                      &processed_byte_count,
-                                      &aggregated_result_count,
-                                      &report_progress,
-                                      &should_stop,
-                                      bucket_index,
-                                      pid,
-                                      target_address,
-                                      pointer_width,
-                                      max_offset,
-                                      alignment]() {
-                    ProcessMemoryReader reader(pid);
-                    FlatReadBatch read_batch;
-                    std::vector<uint64_t> addresses;
-                    addresses.reserve(kPointerBatchEntryCount);
-                    size_t pending_processed_regions = 0;
-                    size_t pending_processed_entries = 0;
-                    uint64_t pending_processed_bytes = 0;
-                    size_t pending_result_count = 0;
-
-                    const auto flush_progress = [&]() {
-                        if (pending_processed_regions == 0 &&
-                            pending_processed_entries == 0 &&
-                            pending_processed_bytes == 0 &&
-                            pending_result_count == 0) {
-                            return true;
-                        }
-
-                        processed_region_count.fetch_add(pending_processed_regions);
-                        processed_entry_count.fetch_add(pending_processed_entries);
-                        processed_byte_count.fetch_add(pending_processed_bytes);
-                        aggregated_result_count.fetch_add(pending_result_count);
-                        pending_processed_regions = 0;
-                        pending_processed_entries = 0;
-                        pending_processed_bytes = 0;
-                        pending_result_count = 0;
-                        return report_progress();
-                    };
-
-                    for (const MemoryRegion& region : region_buckets[bucket_index]) {
-                        if (should_stop.load()) {
-                            return;
-                        }
-
-                        const size_t region_entry_count =
-                            ResolvePointerRegionEntryCount(region, pointer_width, alignment);
-                        const std::string region_type_key = ClassifyMemoryRegion(region);
-                        size_t scanned_in_region = 0;
-
-                        while (scanned_in_region < region_entry_count) {
-                            if (should_stop.load()) {
-                                return;
-                            }
-
-                            addresses.clear();
-                            const size_t remaining = region_entry_count - scanned_in_region;
-                            const size_t batch_count = std::min(kPointerBatchEntryCount, remaining);
-                            for (size_t batch_index = 0; batch_index < batch_count; ++batch_index) {
-                                const uint64_t address =
-                                    region.start_address +
-                                    static_cast<uint64_t>((scanned_in_region + batch_index) *
-                                                          alignment);
-                                addresses.push_back(address);
-                            }
-
-                            reader.ReadManyFlat(addresses, pointer_width, &read_batch);
-                            size_t matched_in_batch = 0;
-                            for (size_t batch_index = 0; batch_index < addresses.size(); ++batch_index) {
-                                if (!read_batch.HasValue(batch_index)) {
-                                    continue;
-                                }
-
-                                const uint8_t* raw_value = read_batch.ValueAt(batch_index);
-                                if (raw_value == nullptr) {
-                                    continue;
-                                }
-                                const uint64_t base_address =
-                                    ReadUnsignedLittleEndian(raw_value, pointer_width);
-                                if (target_address < base_address) {
-                                    continue;
-                                }
-
-                                const uint64_t pointer_offset = target_address - base_address;
-                                if (pointer_offset > max_offset) {
-                                    continue;
-                                }
-
-                                PointerScanResultEntry entry;
-                                entry.pointer_address = addresses[batch_index];
-                                entry.base_address = base_address;
-                                entry.target_address = target_address;
-                                entry.offset = pointer_offset;
-                                entry.region_start = region.start_address;
-                                entry.region_type_key = region_type_key;
-                                worker_results[bucket_index].push_back(std::move(entry));
-                                ++matched_in_batch;
-                            }
-
-                            scanned_in_region += addresses.size();
-                            pending_processed_entries += addresses.size();
-                            pending_processed_bytes +=
-                                static_cast<uint64_t>(addresses.size()) *
-                                static_cast<uint64_t>(pointer_width);
-                            pending_result_count += matched_in_batch;
-
-                            if (pending_processed_entries >= kPointerProgressFlushEntryCount &&
-                                !flush_progress()) {
-                                should_stop.store(true);
-                                return;
-                            }
-                        }
-
-                        ++pending_processed_regions;
-                        if (!flush_progress()) {
-                            should_stop.store(true);
-                            return;
-                        }
-                    }
-                });
-            }
-
-            for (std::thread& worker : workers) {
-                if (worker.joinable()) {
-                    worker.join();
-                }
-            }
-
-            if (should_stop.load()) {
-                return;
-            }
-
-            size_t result_count = 0;
-            for (const auto& entries : worker_results) {
-                result_count += entries.size();
-            }
-            next_session.results.reserve(result_count);
-            for (auto& entries : worker_results) {
-                next_session.results.insert(next_session.results.end(),
-                                            std::make_move_iterator(entries.begin()),
-                                            std::make_move_iterator(entries.end()));
-            }
-            std::sort(
-                next_session.results.begin(),
-                next_session.results.end(),
-                [](const PointerScanResultEntry& left, const PointerScanResultEntry& right) {
-                    if (left.offset != right.offset) {
-                        return left.offset < right.offset;
-                    }
-                    return left.pointer_address < right.pointer_address;
-                });
+            next_session.results = RunPointerScanSync(
+                pid,
+                target_address,
+                pointer_width,
+                max_offset,
+                alignment,
+                readable_regions,
+                cancel_flag,
+                report_progress);
+            progress_view.processed_region_count = readable_regions.size();
+            UpdatePointerTaskProgress(generation, progress_view);
             FinishPointerTaskSuccess(generation, std::move(next_session));
+        } catch (const PointerScanCancelledException&) {
+            return;
         } catch (const std::exception& exception) {
             FinishPointerTaskFailure(generation, exception.what());
         } catch (...) {
             FinishPointerTaskFailure(generation, "Unexpected pointer scan failure.");
+        }
+    }).detach();
+}
+
+void MemoryToolEngine::StartPointerAutoChase(int pid,
+                                             uint64_t target_address,
+                                             size_t pointer_width,
+                                             uint64_t max_offset,
+                                             size_t alignment,
+                                             size_t max_depth,
+                                             const std::vector<std::string>& range_section_keys,
+                                             bool scan_all_readable_regions) {
+    if (pid <= 0) {
+        throw std::runtime_error("Invalid target process.");
+    }
+    if (pointer_width != 4 && pointer_width != 8) {
+        throw std::runtime_error("Pointer width must be 4 or 8.");
+    }
+    if (alignment == 0) {
+        throw std::runtime_error("Alignment must be greater than 0.");
+    }
+    if (max_depth == 0) {
+        throw std::runtime_error("Max depth must be greater than 0.");
+    }
+    if (!IsProcessAlive(pid)) {
+        throw std::runtime_error("Target process is no longer available.");
+    }
+
+    uint64_t generation = 0;
+    uint64_t pointer_task_generation = 0;
+    std::shared_ptr<std::atomic_bool> cancel_flag;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (pointer_task_.cancel_flag) {
+            pointer_task_.cancel_flag->store(true);
+        }
+        ++pointer_task_generation_counter_;
+        pointer_task_ = PointerTaskRuntime{};
+        pointer_task_.generation = pointer_task_generation_counter_;
+        pointer_task_.started_at = std::chrono::steady_clock::now();
+
+        if (pointer_auto_chase_task_.cancel_flag) {
+            pointer_auto_chase_task_.cancel_flag->store(true);
+        }
+        ++pointer_auto_chase_generation_counter_;
+        pointer_auto_chase_task_ = PointerAutoChaseTaskRuntime{};
+        pointer_auto_chase_task_.generation = pointer_auto_chase_generation_counter_;
+        pointer_auto_chase_task_.started_at = std::chrono::steady_clock::now();
+        pointer_auto_chase_task_.cancel_flag = std::make_shared<std::atomic_bool>(false);
+        pointer_auto_chase_task_.view.is_running = true;
+        pointer_auto_chase_task_.view.pid = pid;
+        pointer_auto_chase_task_.view.max_depth = max_depth;
+        pointer_auto_chase_task_.view.current_depth = 0;
+        pointer_auto_chase_task_.view.message.clear();
+
+        pointer_task_.cancel_flag = pointer_auto_chase_task_.cancel_flag;
+        pointer_task_.view.status = SearchTaskStatus::kRunning;
+        pointer_task_.view.pid = pid;
+        pointer_task_.view.can_cancel = true;
+        pointer_task_.view.message.clear();
+
+        pointer_auto_chase_session_.Clear();
+        pointer_auto_chase_session_.has_active_session = true;
+        pointer_auto_chase_session_.pid = pid;
+        pointer_auto_chase_session_.pointer_width = pointer_width;
+        pointer_auto_chase_session_.max_offset = max_offset;
+        pointer_auto_chase_session_.alignment = alignment;
+        pointer_auto_chase_session_.max_depth = max_depth;
+        pointer_auto_chase_session_.range_section_keys = range_section_keys;
+        pointer_auto_chase_session_.scan_all_readable_regions = scan_all_readable_regions;
+
+        generation = pointer_auto_chase_task_.generation;
+        pointer_task_generation = pointer_task_.generation;
+        cancel_flag = pointer_auto_chase_task_.cancel_flag;
+    }
+
+    std::thread([this,
+                 generation,
+                 pointer_task_generation,
+                 pid,
+                 target_address,
+                 pointer_width,
+                 max_offset,
+                 alignment,
+                 max_depth,
+                 range_section_keys,
+                 scan_all_readable_regions,
+                 cancel_flag = std::move(cancel_flag)]() mutable {
+        try {
+            uint64_t current_target_address = target_address;
+            for (size_t layer_index = 0; layer_index < max_depth; ++layer_index) {
+                if (cancel_flag && cancel_flag->load()) {
+                    throw PointerScanCancelledException();
+                }
+                if (!IsProcessAlive(pid)) {
+                    throw std::runtime_error("Target process is no longer available.");
+                }
+
+                std::vector<MemoryRegion> readable_regions =
+                    ReadProcessRegions(pid, true, true, true);
+                if (!scan_all_readable_regions) {
+                    readable_regions =
+                        FilterRegionsByTypeKeys(readable_regions, range_section_keys);
+                }
+                if (readable_regions.empty()) {
+                    throw std::runtime_error("No readable memory region.");
+                }
+
+                PointerScanTaskStateView progress_view;
+                progress_view.status = SearchTaskStatus::kRunning;
+                progress_view.pid = pid;
+                progress_view.total_region_count = readable_regions.size();
+                for (const MemoryRegion& region : readable_regions) {
+                    const size_t entry_count =
+                        ResolvePointerRegionEntryCount(region, pointer_width, alignment);
+                    progress_view.total_entry_count += entry_count;
+                    progress_view.total_byte_count +=
+                        static_cast<uint64_t>(entry_count) * static_cast<uint64_t>(pointer_width);
+                }
+                progress_view.can_cancel = true;
+                progress_view.message.clear();
+                if (!UpdatePointerTaskProgress(pointer_task_generation, progress_view)) {
+                    return;
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    if (pointer_auto_chase_task_.generation != generation) {
+                        return;
+                    }
+                    pointer_auto_chase_task_.view.current_depth = layer_index;
+                }
+
+                std::mutex progress_mutex;
+                const auto report_progress = [this,
+                                              pointer_task_generation,
+                                              &progress_mutex,
+                                              &progress_view](size_t processed_entries,
+                                                              uint64_t processed_bytes,
+                                                              size_t result_count) {
+                    std::lock_guard<std::mutex> lock(progress_mutex);
+                    progress_view.processed_entry_count += processed_entries;
+                    progress_view.processed_byte_count += processed_bytes;
+                    progress_view.result_count += result_count;
+                    if (progress_view.total_entry_count > 0 &&
+                        progress_view.total_region_count > 0) {
+                        const uint64_t estimated_regions =
+                            (static_cast<uint64_t>(progress_view.processed_entry_count) *
+                             static_cast<uint64_t>(progress_view.total_region_count)) /
+                            static_cast<uint64_t>(progress_view.total_entry_count);
+                        progress_view.processed_region_count = static_cast<size_t>(
+                            std::min<uint64_t>(estimated_regions,
+                                               progress_view.total_region_count));
+                    }
+                    return UpdatePointerTaskProgress(pointer_task_generation, progress_view);
+                };
+
+                std::vector<PointerScanResultEntry> layer_results = RunPointerScanSync(
+                    pid,
+                    current_target_address,
+                    pointer_width,
+                    max_offset,
+                    alignment,
+                    readable_regions,
+                    cancel_flag,
+                    report_progress);
+                progress_view.processed_region_count = readable_regions.size();
+                progress_view.processed_entry_count = progress_view.total_entry_count;
+                progress_view.processed_byte_count = progress_view.total_byte_count;
+                progress_view.result_count = layer_results.size();
+                UpdatePointerTaskProgress(pointer_task_generation, progress_view);
+
+                std::string stop_reason_key;
+                bool is_terminal_layer = false;
+                if (layer_results.empty()) {
+                    stop_reason_key = "noMorePointers";
+                } else if (const PointerScanResultEntry* best_entry =
+                               SelectBestPointerResult(layer_results);
+                           best_entry != nullptr &&
+                           IsPointerStaticCandidateRegionKey(best_entry->region_type_key)) {
+                    stop_reason_key = "staticReached";
+                    is_terminal_layer = true;
+                } else if (layer_index + 1 >= max_depth) {
+                    stop_reason_key = "maxDepth";
+                }
+
+                PointerAutoChaseLayerStateView layer = BuildPointerAutoChaseLayer(
+                    layer_index,
+                    current_target_address,
+                    layer_results,
+                    stop_reason_key,
+                    is_terminal_layer);
+
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    if (pointer_auto_chase_task_.generation != generation) {
+                        return;
+                    }
+                    pointer_auto_chase_session_.layers.push_back(layer);
+                    pointer_auto_chase_task_.view.layers = pointer_auto_chase_session_.layers;
+                    pointer_auto_chase_task_.view.current_depth =
+                        pointer_auto_chase_session_.layers.size();
+                }
+
+                if (!stop_reason_key.empty()) {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    if (pointer_auto_chase_task_.generation != generation) {
+                        return;
+                    }
+                    pointer_auto_chase_task_.view.is_running = false;
+                    pointer_auto_chase_task_.view.message.clear();
+                    pointer_task_.view = PointerScanTaskStateView{};
+                    return;
+                }
+
+                const PointerScanResultEntry* best_entry = SelectBestPointerResult(layer_results);
+                if (best_entry == nullptr) {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    if (pointer_auto_chase_task_.generation != generation) {
+                        return;
+                    }
+                    pointer_auto_chase_task_.view.is_running = false;
+                    pointer_auto_chase_task_.view.message.clear();
+                    pointer_task_.view = PointerScanTaskStateView{};
+                    return;
+                }
+                current_target_address = best_entry->pointer_address;
+            }
+
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (pointer_auto_chase_task_.generation != generation) {
+                return;
+            }
+            pointer_auto_chase_task_.view.is_running = false;
+            pointer_auto_chase_task_.view.message.clear();
+            pointer_task_.view = PointerScanTaskStateView{};
+        } catch (const PointerScanCancelledException&) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (pointer_auto_chase_task_.generation != generation) {
+                return;
+            }
+            pointer_task_.view = PointerScanTaskStateView{};
+            return;
+        } catch (const std::exception& exception) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (pointer_auto_chase_task_.generation != generation) {
+                return;
+            }
+            pointer_auto_chase_task_.view.is_running = false;
+            pointer_auto_chase_task_.view.message = exception.what();
+            pointer_task_.view = PointerScanTaskStateView{};
+        } catch (...) {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (pointer_auto_chase_task_.generation != generation) {
+                return;
+            }
+            pointer_auto_chase_task_.view.is_running = false;
+            pointer_auto_chase_task_.view.message = "Pointer auto chase failed.";
+            pointer_task_.view = PointerScanTaskStateView{};
         }
     }).detach();
 }
@@ -1588,6 +2079,17 @@ void MemoryToolEngine::CancelPointerScan() {
     pointer_task_.view.message = "Pointer scan cancelled.";
 }
 
+void MemoryToolEngine::CancelPointerAutoChase() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pointer_auto_chase_task_.cancel_flag) {
+        pointer_auto_chase_task_.cancel_flag->store(true);
+    }
+    pointer_auto_chase_task_.view.is_running = false;
+    pointer_auto_chase_task_.view.current_depth = pointer_auto_chase_session_.layers.size();
+    pointer_auto_chase_task_.view.message.clear();
+    pointer_task_.view = PointerScanTaskStateView{};
+}
+
 void MemoryToolEngine::ResetPointerScanSession() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (pointer_task_.cancel_flag) {
@@ -1596,6 +2098,16 @@ void MemoryToolEngine::ResetPointerScanSession() {
     ++pointer_task_generation_counter_;
     pointer_task_ = PointerTaskRuntime{};
     pointer_session_.Clear();
+}
+
+void MemoryToolEngine::ResetPointerAutoChase() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (pointer_auto_chase_task_.cancel_flag) {
+        pointer_auto_chase_task_.cancel_flag->store(true);
+    }
+    ++pointer_auto_chase_generation_counter_;
+    pointer_auto_chase_task_ = PointerAutoChaseTaskRuntime{};
+    pointer_auto_chase_session_.Clear();
 }
 
 void MemoryToolEngine::EnsureFreezeWorkerLocked() {
@@ -1734,6 +2246,23 @@ PointerScanTaskStateView MemoryToolEngine::BuildPointerTaskStateLocked() const {
     if (state.status == SearchTaskStatus::kRunning ||
         state.status == SearchTaskStatus::kCancelled) {
         state.elapsed_milliseconds = ElapsedMilliseconds(pointer_task_.started_at);
+    }
+    return state;
+}
+
+PointerAutoChaseStateView MemoryToolEngine::BuildPointerAutoChaseStateLocked() const {
+    PointerAutoChaseStateView state = pointer_auto_chase_task_.view;
+    state.layers.clear();
+    state.layers.reserve(pointer_auto_chase_session_.layers.size());
+    for (const auto& layer : pointer_auto_chase_session_.layers) {
+        PointerAutoChaseLayerStateView view = layer;
+        view.results.clear();
+        state.layers.push_back(std::move(view));
+    }
+    if (!pointer_auto_chase_session_.has_active_session && state.layers.empty()) {
+        state.pid = 0;
+        state.max_depth = 0;
+        state.current_depth = 0;
     }
     return state;
 }

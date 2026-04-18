@@ -177,6 +177,59 @@ std::string SerializePointerScanChaseHint(const PointerScanChaseHintView& hint) 
     return stream.str();
 }
 
+std::string SerializePointerAutoChaseState(const PointerAutoChaseStateView& state) {
+    std::ostringstream stream;
+    stream << '{'
+           << "\"isRunning\":" << ToJsonBool(state.is_running) << ','
+           << "\"pid\":" << state.pid << ','
+           << "\"maxDepth\":" << state.max_depth << ','
+           << "\"currentDepth\":" << state.current_depth << ','
+           << "\"layers\":[";
+    for (size_t index = 0; index < state.layers.size(); ++index) {
+        const PointerAutoChaseLayerStateView& layer = state.layers[index];
+        if (index > 0) {
+            stream << ',';
+        }
+        stream << '{'
+               << "\"layerIndex\":" << layer.layer_index << ','
+               << "\"targetAddress\":" << layer.target_address << ','
+               << "\"selectedPointerAddress\":";
+        if (layer.has_selected_pointer_address) {
+            stream << layer.selected_pointer_address;
+        } else {
+            stream << "null";
+        }
+        stream << ','
+               << "\"selectedResult\":";
+        if (layer.has_selected_result) {
+            stream << '{'
+                   << "\"pointerAddress\":" << layer.selected_result.pointer_address << ','
+                   << "\"baseAddress\":" << layer.selected_result.base_address << ','
+                   << "\"targetAddress\":" << layer.selected_result.target_address << ','
+                   << "\"offset\":" << layer.selected_result.offset << ','
+                   << "\"regionStart\":" << layer.selected_result.region_start << ','
+                   << "\"regionTypeKey\":\""
+                   << utils::JsonEscape(layer.selected_result.region_type_key) << "\""
+                   << '}';
+        } else {
+            stream << "null";
+        }
+        stream << ','
+               << "\"resultCount\":" << layer.result_count << ','
+               << "\"hasMore\":" << ToJsonBool(layer.has_more) << ','
+               << "\"isTerminalLayer\":" << ToJsonBool(layer.is_terminal_layer) << ','
+               << "\"stopReasonKey\":\"" << utils::JsonEscape(layer.stop_reason_key)
+               << "\","
+               << "\"initialResults\":"
+               << SerializePointerScanResults(layer.initial_results)
+               << '}';
+    }
+    stream << "],"
+           << "\"message\":\"" << utils::JsonEscape(state.message) << "\""
+           << '}';
+    return stream.str();
+}
+
 std::string SerializeMemoryValuePreviews(const std::vector<MemoryValuePreview>& previews) {
     std::ostringstream stream;
     stream << '[';

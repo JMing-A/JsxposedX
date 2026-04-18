@@ -34,7 +34,7 @@ class MemoryToolOffsetPreviewDialog extends HookConsumerWidget {
     final sourceRawBytes = sourcePreview?.rawBytes ?? result.rawBytes;
     final previewLength = sourceRawBytes.isEmpty ? 1 : sourceRawBytes.length;
     final offsetController = useTextEditingController(text: '0');
-    final isHex = useState(false);
+    final isHex = useState(true);
     useListenable(offsetController);
 
     final rawOffsetInput = offsetController.text.trim();

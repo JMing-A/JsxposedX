@@ -184,6 +184,30 @@ struct PointerScanTaskStateView {
     std::string message;
 };
 
+struct PointerAutoChaseLayerStateView {
+    size_t layer_index = 0;
+    uint64_t target_address = 0;
+    bool has_selected_pointer_address = false;
+    uint64_t selected_pointer_address = 0;
+    bool has_selected_result = false;
+    PointerScanResultEntry selected_result;
+    size_t result_count = 0;
+    bool has_more = false;
+    bool is_terminal_layer = false;
+    std::string stop_reason_key;
+    std::vector<PointerScanResultEntry> initial_results;
+    std::vector<PointerScanResultEntry> results;
+};
+
+struct PointerAutoChaseStateView {
+    bool is_running = false;
+    int pid = 0;
+    size_t max_depth = 0;
+    size_t current_depth = 0;
+    std::vector<PointerAutoChaseLayerStateView> layers;
+    std::string message;
+};
+
 struct FuzzyCandidate {
     uint64_t address = 0;
     uint64_t region_start = 0;
@@ -225,6 +249,20 @@ struct PointerScanSession {
     size_t alignment = 0;
     std::vector<MemoryRegion> regions;
     std::vector<PointerScanResultEntry> results;
+
+    void Clear();
+};
+
+struct PointerAutoChaseSession {
+    bool has_active_session = false;
+    int pid = 0;
+    size_t pointer_width = 0;
+    uint64_t max_offset = 0;
+    size_t alignment = 0;
+    size_t max_depth = 0;
+    std::vector<std::string> range_section_keys;
+    bool scan_all_readable_regions = true;
+    std::vector<PointerAutoChaseLayerStateView> layers;
 
     void Clear();
 };

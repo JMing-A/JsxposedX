@@ -37,6 +37,13 @@ public:
 
     static jstring GetPointerScanChaseHintJson(JNIEnv* env);
 
+    static jstring GetPointerAutoChaseStateJson(JNIEnv* env);
+
+    static jstring GetPointerAutoChaseLayerResultsJson(JNIEnv* env,
+                                                       jint layer_index,
+                                                       jint offset,
+                                                       jint limit);
+
     static jstring ReadMemoryValuesJson(JNIEnv* env,
                                         jlongArray pids,
                                         jlongArray addresses,
@@ -90,9 +97,23 @@ public:
                                  jobjectArray range_section_keys,
                                  jboolean scan_all_readable_regions);
 
+    static void StartPointerAutoChase(JNIEnv* env,
+                                      jlong pid,
+                                      jlong target_address,
+                                      jint pointer_width,
+                                      jlong max_offset,
+                                      jint alignment,
+                                      jint max_depth,
+                                      jobjectArray range_section_keys,
+                                      jboolean scan_all_readable_regions);
+
     static void CancelPointerScan();
 
+    static void CancelPointerAutoChase();
+
     static void ResetPointerScanSession();
+
+    static void ResetPointerAutoChase();
 
 private:
     static SearchValue BuildSearchValue(JNIEnv* env,

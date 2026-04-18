@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.lang.reflect.Method
 
 class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
     private val memoryTool = MemoryTool(context)
@@ -168,9 +167,7 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
     override fun getPointerAutoChaseState(callback: (Result<PointerAutoChaseState>) -> Unit) {
         scope.launch {
             try {
-                val result = invokeOptionalMemoryToolMethod<PointerAutoChaseState>(
-                    methodName = "getPointerAutoChaseState"
-                )
+                val result = memoryTool.getPointerAutoChaseState()
                 withContext(Dispatchers.Main) {
                     callback(Result.success(result))
                 }
@@ -190,8 +187,7 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
     ) {
         scope.launch {
             try {
-                val result = invokeOptionalMemoryToolMethod<List<PointerScanResult>>(
-                    methodName = "getPointerAutoChaseLayerResults",
+                val result = memoryTool.getPointerAutoChaseLayerResults(
                     layerIndex.toInt(),
                     offset.toInt(),
                     limit.toInt()
@@ -378,10 +374,7 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
     ) {
         scope.launch {
             try {
-                invokeOptionalMemoryToolMethod<Unit>(
-                    methodName = "startPointerAutoChase",
-                    request
-                )
+                memoryTool.startPointerAutoChase(request)
                 withContext(Dispatchers.Main) {
                     callback(Result.success(Unit))
                 }
@@ -411,9 +404,7 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
     override fun cancelPointerAutoChase(callback: (Result<Unit>) -> Unit) {
         scope.launch {
             try {
-                invokeOptionalMemoryToolMethod<Unit>(
-                    methodName = "cancelPointerAutoChase"
-                )
+                memoryTool.cancelPointerAutoChase()
                 withContext(Dispatchers.Main) {
                     callback(Result.success(Unit))
                 }
@@ -443,9 +434,7 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
     override fun resetPointerAutoChase(callback: (Result<Unit>) -> Unit) {
         scope.launch {
             try {
-                invokeOptionalMemoryToolMethod<Unit>(
-                    methodName = "resetPointerAutoChase"
-                )
+                memoryTool.resetPointerAutoChase()
                 withContext(Dispatchers.Main) {
                     callback(Result.success(Unit))
                 }
@@ -454,61 +443,6 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
                     callback(Result.failure(e))
                 }
             }
-        }
-    }
-
-    private fun <T> invokeOptionalMemoryToolMethod(
-        methodName: String,
-        vararg args: Any?
-    ): T {
-        val method = findCompatibleMethod(methodName, args.toList())
-            ?: throw UnsupportedOperationException(
-                "Pointer auto chase is unavailable in this build."
-            )
-        @Suppress("UNCHECKED_CAST")
-        return method.invoke(memoryTool, *args) as T
-    }
-
-    private fun findCompatibleMethod(
-        methodName: String,
-        args: List<Any?>
-    ): Method? {
-        return memoryTool.javaClass.methods.firstOrNull { method ->
-            method.name == methodName &&
-                method.parameterTypes.size == args.size &&
-                method.parameterTypes.withIndex().all { (index, parameterType) ->
-                    isCompatibleParameterType(parameterType, args[index])
-                }
-        }
-    }
-
-    private fun isCompatibleParameterType(
-        parameterType: Class<*>,
-        argument: Any?
-    ): Boolean {
-        if (argument == null) {
-            return !parameterType.isPrimitive
-        }
-        val argumentClass = argument.javaClass
-        return if (parameterType.isPrimitive) {
-            primitiveWrapperType(parameterType).isAssignableFrom(argumentClass)
-        } else {
-            parameterType.isAssignableFrom(argumentClass)
-        }
-    }
-
-    private fun primitiveWrapperType(type: Class<*>): Class<*> {
-        return when (type) {
-            java.lang.Boolean.TYPE -> java.lang.Boolean::class.java
-            java.lang.Byte.TYPE -> java.lang.Byte::class.java
-            java.lang.Character.TYPE -> java.lang.Character::class.java
-            java.lang.Double.TYPE -> java.lang.Double::class.java
-            java.lang.Float.TYPE -> java.lang.Float::class.java
-            java.lang.Integer.TYPE -> java.lang.Integer::class.java
-            java.lang.Long.TYPE -> java.lang.Long::class.java
-            java.lang.Short.TYPE -> java.lang.Short::class.java
-            java.lang.Void.TYPE -> java.lang.Void::class.java
-            else -> type
         }
     }
 }

@@ -8,6 +8,8 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/m
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_pointer_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_auto_chase_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_auto_chase_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_search_provider.dart';
@@ -89,7 +91,9 @@ class MemoryToolOverlay extends HookConsumerWidget {
         } catch (_) {}
 
         try {
-          await ref.read(memoryToolPointerControllerProvider.notifier).clear();
+          await ref
+              .read(memoryPointerAutoChaseActionProvider.notifier)
+              .resetPointerAutoChase();
         } catch (_) {}
 
         ref.read(memoryToolSelectedProcessProvider.notifier).clear();
@@ -101,11 +105,14 @@ class MemoryToolOverlay extends HookConsumerWidget {
         ref.invalidate(currentSearchResultsProvider);
         ref.invalidate(currentSearchResultLivePreviewsProvider);
         ref.read(memoryToolBrowseControllerProvider.notifier).clear();
+        await ref.read(memoryToolPointerControllerProvider.notifier).clear();
         ref.invalidate(currentBrowseResultsProvider);
         ref.invalidate(currentBrowseResultLivePreviewsProvider);
         ref.invalidate(getPointerScanSessionStateProvider);
         ref.invalidate(getPointerScanTaskStateProvider);
         ref.invalidate(getPointerScanResultsProvider);
+        ref.invalidate(getPointerAutoChaseStateProvider);
+        ref.invalidate(getPointerAutoChaseLayerResultsProvider);
         ref.invalidate(hasMatchingSearchSessionProvider);
         ref.invalidate(hasRunningSearchTaskProvider);
         ref.invalidate(hasRunningPointerTaskProvider);
@@ -326,6 +333,9 @@ class MemoryToolOverlay extends HookConsumerWidget {
                   ref
                       .read(memoryPointerActionProvider.notifier)
                       .resetPointerScanSession();
+                  ref
+                      .read(memoryPointerAutoChaseActionProvider.notifier)
+                      .resetPointerAutoChase();
                   ref
                       .read(memoryToolSelectedProcessProvider.notifier)
                       .select(process);

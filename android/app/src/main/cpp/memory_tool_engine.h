@@ -39,6 +39,12 @@ public:
 
     PointerScanChaseHintView GetPointerScanChaseHint();
 
+    PointerAutoChaseStateView GetPointerAutoChaseState();
+
+    std::vector<PointerScanResultEntry> GetPointerAutoChaseLayerResults(int layer_index,
+                                                                        int offset,
+                                                                        int limit);
+
     std::vector<MemoryValuePreview> ReadMemoryValues(const std::vector<MemoryReadRequest>& requests);
 
     void WriteMemoryValue(const MemoryWriteRequest& request);
@@ -67,9 +73,22 @@ public:
                           const std::vector<std::string>& range_section_keys,
                           bool scan_all_readable_regions);
 
+    void StartPointerAutoChase(int pid,
+                               uint64_t target_address,
+                               size_t pointer_width,
+                               uint64_t max_offset,
+                               size_t alignment,
+                               size_t max_depth,
+                               const std::vector<std::string>& range_section_keys,
+                               bool scan_all_readable_regions);
+
     void CancelPointerScan();
 
+    void CancelPointerAutoChase();
+
     void ResetPointerScanSession();
+
+    void ResetPointerAutoChase();
 
 private:
     MemoryToolEngine() = default;
@@ -88,6 +107,13 @@ private:
         PointerScanTaskStateView view;
     };
 
+    struct PointerAutoChaseTaskRuntime {
+        uint64_t generation = 0;
+        std::chrono::steady_clock::time_point started_at{};
+        std::shared_ptr<std::atomic_bool> cancel_flag;
+        PointerAutoChaseStateView view;
+    };
+
     SearchSessionStateView BuildSessionStateLocked() const;
 
     SearchTaskStateView BuildTaskStateLocked() const;
@@ -97,6 +123,8 @@ private:
     PointerScanSessionStateView BuildPointerSessionStateLocked() const;
 
     PointerScanTaskStateView BuildPointerTaskStateLocked() const;
+
+    PointerAutoChaseStateView BuildPointerAutoChaseStateLocked() const;
 
     void EnsureActiveSessionLocked() const;
 
@@ -142,11 +170,14 @@ private:
     SearchTaskRuntime task_;
     PointerScanSession pointer_session_;
     PointerTaskRuntime pointer_task_;
+    PointerAutoChaseSession pointer_auto_chase_session_;
+    PointerAutoChaseTaskRuntime pointer_auto_chase_task_;
     std::vector<FrozenWriteEntry> frozen_entries_;
     std::condition_variable freeze_condition_;
     bool freeze_worker_started_ = false;
     uint64_t task_generation_counter_ = 0;
     uint64_t pointer_task_generation_counter_ = 0;
+    uint64_t pointer_auto_chase_generation_counter_ = 0;
     mutable std::mutex mutex_;
 };
 
