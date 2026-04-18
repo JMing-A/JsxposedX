@@ -2120,6 +2120,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memoryToolResultActionOffsetPreview => 'Calculate Offset';
 
   @override
+  String get memoryToolJumpAddressTitle => 'Address Jump';
+
+  @override
+  String get memoryToolJumpAddressFieldLabel => 'Target Address';
+
+  @override
+  String get memoryToolJumpAddressAction => 'Jump to Target Address';
+
+  @override
+  String get memoryToolJumpAddressInvalid => 'Invalid address';
+
+  @override
   String get memoryToolResultActionCopyHex => 'Copy Hexadecimal';
 
   @override

@@ -2078,6 +2078,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memoryToolResultActionOffsetPreview => '偏移量计算';
 
   @override
+  String get memoryToolJumpAddressTitle => '地址跳转';
+
+  @override
+  String get memoryToolJumpAddressFieldLabel => '目标地址';
+
+  @override
+  String get memoryToolJumpAddressAction => '跳转到目标地址';
+
+  @override
+  String get memoryToolJumpAddressInvalid => '地址格式无效';
+
+  @override
   String get memoryToolResultActionCopyHex => '复制十六进制';
 
   @override

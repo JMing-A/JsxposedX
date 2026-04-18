@@ -4112,6 +4112,30 @@ abstract class AppLocalizations {
   /// **'偏移量计算'**
   String get memoryToolResultActionOffsetPreview;
 
+  /// No description provided for @memoryToolJumpAddressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址跳转'**
+  String get memoryToolJumpAddressTitle;
+
+  /// No description provided for @memoryToolJumpAddressFieldLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标地址'**
+  String get memoryToolJumpAddressFieldLabel;
+
+  /// No description provided for @memoryToolJumpAddressAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳转到目标地址'**
+  String get memoryToolJumpAddressAction;
+
+  /// No description provided for @memoryToolJumpAddressInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址格式无效'**
+  String get memoryToolJumpAddressInvalid;
+
   /// No description provided for @memoryToolResultActionCopyHex.
   ///
   /// In zh, this message translates to:

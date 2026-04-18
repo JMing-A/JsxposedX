@@ -1,12 +1,17 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_jump_address_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_result_card.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_task_feedback.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_search_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_result_presenter.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_task_panel.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
 import 'package:flutter/material.dart';
@@ -28,7 +33,9 @@ class MemoryToolSearchTab extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     useAutomaticKeepAlive();
     final isSearchDialogVisible = useState(false);
+    final isJumpAddressDialogVisible = useState(false);
     final selectedPid = ref.watch(memoryToolSelectedProcessProvider)?.pid;
+    final searchFormState = ref.watch(memoryToolSearchFormProvider);
     final sessionStateAsync = ref.watch(getSearchSessionStateProvider);
     final taskStateAsync = ref.watch(getSearchTaskStateProvider);
     final hasMatchingSession = ref.watch(hasMatchingSearchSessionProvider);
@@ -111,6 +118,45 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       return null;
     }, [sessionStateAsync, selectedPid]);
 
+    Future<void> jumpToAddress(int targetAddress) async {
+      if (selectedPid == null) {
+        return;
+      }
+
+      try {
+        await ref
+            .read(memoryToolBrowseControllerProvider.notifier)
+            .previewFromAddress(
+              sourceResult: SearchResult(
+                address: targetAddress,
+                regionStart: 0,
+                regionTypeKey: 'other',
+                type: searchFormState.requestSearchValueType,
+                rawBytes: Uint8List(
+                  _resolveJumpBytesLength(
+                    type: searchFormState.requestSearchValueType,
+                    rawSearchInput: searchFormState.value,
+                  ),
+                ),
+                displayValue: '',
+              ),
+              targetAddress: targetAddress,
+            );
+        if (!context.mounted) {
+          return;
+        }
+        onOpenBrowseTab();
+      } catch (_) {
+        if (!context.mounted) {
+          return;
+        }
+        await ToastOverlayMessage.show(
+          context.l10n.memoryToolOffsetPreviewUnreadable,
+          duration: const Duration(milliseconds: 1200),
+        );
+      }
+    }
+
     final resultCard = MemoryToolSearchResultCard(
       hasMatchingSession: hasMatchingSession,
       sessionStateAsync: sessionStateAsync,
@@ -122,6 +168,9 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       },
       onOpenSearch: () {
         isSearchDialogVisible.value = true;
+      },
+      onOpenJumpAddress: () {
+        isJumpAddressDialogVisible.value = true;
       },
       onOpenBrowseTab: onOpenBrowseTab,
       onOpenPointerTab: onOpenPointerTab,
@@ -158,8 +207,21 @@ class MemoryToolSearchTab extends HookConsumerWidget {
             if (isSearchDialogVisible.value)
               Positioned.fill(
                 child: MemoryToolSearchDialog(
+                  onOpenBrowseTab: onOpenBrowseTab,
                   onClose: () {
                     isSearchDialogVisible.value = false;
+                  },
+                ),
+              ),
+            if (isJumpAddressDialogVisible.value)
+              Positioned.fill(
+                child: MemoryToolJumpAddressDialog(
+                  onConfirm: (targetAddress) async {
+                    isJumpAddressDialogVisible.value = false;
+                    await jumpToAddress(targetAddress);
+                  },
+                  onClose: () {
+                    isJumpAddressDialogVisible.value = false;
                   },
                 ),
               ),
@@ -192,4 +254,22 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       },
     );
   }
+}
+
+int _resolveJumpBytesLength({
+  required SearchValueType type,
+  required String rawSearchInput,
+}) {
+  if (type != SearchValueType.bytes) {
+    return resolveMemoryToolReadLengthForType(type: type, bytesLength: 0);
+  }
+
+  final sanitized = rawSearchInput
+      .replaceAll(RegExp(r'0x', caseSensitive: false), '')
+      .replaceAll(RegExp(r'[^0-9a-fA-F]'), '');
+  final inferredBytesLength = sanitized.isEmpty ? 1 : sanitized.length ~/ 2;
+  return resolveMemoryToolReadLengthForType(
+    type: type,
+    bytesLength: inferredBytesLength < 1 ? 1 : inferredBytesLength,
+  );
 }
