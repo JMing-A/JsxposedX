@@ -158,48 +158,6 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
           Positioned.fill(
             child: MemoryToolSearchResultActionDialog(
               actions: <MemoryToolSearchResultActionItemData>[
-                MemoryToolSearchResultActionItemData(
-                  icon: Icons.save_alt_rounded,
-                  title: context.l10n.memoryToolResultActionSaveToSaved,
-                  onTap: () async {
-                    await saveResultToSaved(dialog.result);
-                    activeResultActionDialog.value = null;
-                  },
-                ),
-                MemoryToolSearchResultActionItemData(
-                  icon: Icons.copy_all_rounded,
-                  title:
-                      '${context.l10n.memoryToolResultDetailActionCopyAddress}: ${formatMemoryToolSearchResultAddress(dialog.result.address)}',
-                  onTap: () async {
-                    await copyText(
-                      formatMemoryToolSearchResultAddress(dialog.result.address),
-                    );
-                    activeResultActionDialog.value = null;
-                  },
-                ),
-                MemoryToolSearchResultActionItemData(
-                  icon: Icons.tune_rounded,
-                  title: context.l10n.memoryToolResultDetailActionCopyValue,
-                  onTap: () async {
-                    activeResultActionDialog.value = null;
-                    activeCopyValueDialog.value = (
-                      result: dialog.result,
-                      displayValue: dialog.displayValue,
-                    );
-                  },
-                ),
-                if (onPreviewMemoryAddress != null)
-                  MemoryToolSearchResultActionItemData(
-                    icon: Icons.calculate_rounded,
-                    title: context.l10n.memoryToolResultActionOffsetPreview,
-                    onTap: () async {
-                      activeResultActionDialog.value = null;
-                      activeOffsetPreviewDialog.value = (
-                        result: dialog.result,
-                        displayValue: dialog.displayValue,
-                      );
-                    },
-                  ),
                 if (onPreviewMemoryAddress != null)
                   MemoryToolSearchResultActionItemData(
                     icon: Icons.preview_rounded,
@@ -214,6 +172,48 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
                       activeResultActionDialog.value = null;
                     },
                   ),
+                if (onPreviewMemoryAddress != null)
+                  MemoryToolSearchResultActionItemData(
+                    icon: Icons.calculate_rounded,
+                    title: context.l10n.memoryToolResultActionOffsetPreview,
+                    onTap: () async {
+                      activeResultActionDialog.value = null;
+                      activeOffsetPreviewDialog.value = (
+                        result: dialog.result,
+                        displayValue: dialog.displayValue,
+                      );
+                    },
+                  ),
+                MemoryToolSearchResultActionItemData(
+                  icon: Icons.save_alt_rounded,
+                  title: context.l10n.memoryToolResultActionSaveToSaved,
+                  onTap: () async {
+                    await saveResultToSaved(dialog.result);
+                    activeResultActionDialog.value = null;
+                  },
+                ),
+                MemoryToolSearchResultActionItemData(
+                  icon: Icons.tune_rounded,
+                  title: context.l10n.memoryToolResultDetailActionCopyValue,
+                  onTap: () async {
+                    activeResultActionDialog.value = null;
+                    activeCopyValueDialog.value = (
+                      result: dialog.result,
+                      displayValue: dialog.displayValue,
+                    );
+                  },
+                ),
+                MemoryToolSearchResultActionItemData(
+                  icon: Icons.copy_all_rounded,
+                  title:
+                      '${context.l10n.memoryToolResultDetailActionCopyAddress}: ${formatMemoryToolSearchResultAddress(dialog.result.address)}',
+                  onTap: () async {
+                    await copyText(
+                      formatMemoryToolSearchResultAddress(dialog.result.address),
+                    );
+                    activeResultActionDialog.value = null;
+                  },
+                ),
                 MemoryToolSearchResultActionItemData(
                   icon: Icons.data_array_rounded,
                   title:
