@@ -122,7 +122,7 @@ class _MemoryToolPointerResultTile extends StatelessWidget {
                     ),
                     SizedBox(height: 4.r),
                     Text(
-                      '${context.l10n.memoryToolPointerBaseAddressLabel}: ${formatMemoryToolSearchResultAddress(result.baseAddress)}',
+                      '${_resolvePointerBaseLabel(context)}: ${formatMemoryToolSearchResultAddress(result.baseAddress)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.textTheme.bodyMedium?.copyWith(
@@ -193,5 +193,12 @@ class _MemoryToolPointerResultTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _resolvePointerBaseLabel(BuildContext context) {
+    if (context.isZh) {
+      return '指向地址';
+    }
+    return 'Pointed Address';
   }
 }

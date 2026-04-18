@@ -198,24 +198,21 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
     }
   }
 
-  Future<void> refreshCurrentLayer() async {
-    final currentLayer = state.currentLayer;
-    if (currentLayer == null) {
-      return;
-    }
-
+  Future<void> refreshLayerForActiveSession() async {
     try {
       final sessionState = await ref.read(getPointerScanSessionStateProvider.future);
-      if (!_matchesSession(currentLayer.request, sessionState)) {
+      final layerIndex = _findLayerIndexBySession(sessionState);
+      if (layerIndex < 0) {
         return;
       }
 
+      final targetLayer = state.layers[layerIndex];
       final results = await ref.read(
         memoryPointerQueryRepositoryProvider,
       ).getPointerScanResults(offset: 0, limit: memoryToolPointerPageSize);
       _updateLayer(
-        state.currentLayerIndex,
-        currentLayer.copyWith(
+        layerIndex,
+        targetLayer.copyWith(
           results: results,
           totalResultCount: sessionState.resultCount,
           isLoadingInitial: false,
@@ -224,13 +221,7 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
         ),
       );
     } catch (error) {
-      _updateLayer(
-        state.currentLayerIndex,
-        currentLayer.copyWith(
-          isLoadingInitial: false,
-          errorText: error.toString(),
-        ),
-      );
+      markActiveScanLayerError(error.toString());
     }
   }
 
@@ -291,11 +282,8 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
       return;
     }
 
+    final targetLayer = state.layers[index];
     state = state.copyWith(currentLayerIndex: index);
-    final targetLayer = state.currentLayer;
-    if (targetLayer == null) {
-      return;
-    }
 
     PointerScanSessionState? sessionState;
     try {
@@ -317,38 +305,21 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
       }
       return;
     }
-
-    _updateLayer(
-      index,
-      targetLayer.copyWith(isLoadingInitial: true, clearErrorText: true),
-    );
-    try {
-      await ref
-          .read(memoryPointerActionProvider.notifier)
-          .startPointerScan(request: targetLayer.request);
-    } catch (error) {
-      _updateLayer(
-        index,
-        targetLayer.copyWith(
-          isLoadingInitial: false,
-          errorText: error.toString(),
-        ),
-      );
-    }
   }
 
   Future<void> clear() async {
     state = const MemoryToolPointerState();
   }
 
-  void markCurrentLayerError(String message) {
-    final currentLayer = state.currentLayer;
-    if (currentLayer == null) {
+  void markActiveScanLayerError(String message) {
+    final layerIndex = _findActiveScanLayerIndex();
+    if (layerIndex < 0) {
       return;
     }
+    final targetLayer = state.layers[layerIndex];
     _updateLayer(
-      state.currentLayerIndex,
-      currentLayer.copyWith(
+      layerIndex,
+      targetLayer.copyWith(
         isLoadingInitial: false,
         isLoadingMore: false,
         errorText: message,
@@ -377,6 +348,28 @@ class MemoryToolPointerController extends _$MemoryToolPointerController {
         request.pointerWidth == sessionState.pointerWidth &&
         request.maxOffset == sessionState.maxOffset &&
         request.alignment == sessionState.alignment;
+  }
+
+  int _findActiveScanLayerIndex() {
+    for (var index = state.layers.length - 1; index >= 0; index -= 1) {
+      final layer = state.layers[index];
+      if (layer.isLoadingInitial || layer.isLoadingMore) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  int _findLayerIndexBySession(PointerScanSessionState sessionState) {
+    if (!sessionState.hasActiveSession) {
+      return -1;
+    }
+    for (var index = state.layers.length - 1; index >= 0; index -= 1) {
+      if (_matchesSession(state.layers[index].request, sessionState)) {
+        return index;
+      }
+    }
+    return -1;
   }
 
   void _updateLayer(int index, PointerChainLayerState nextLayer) {

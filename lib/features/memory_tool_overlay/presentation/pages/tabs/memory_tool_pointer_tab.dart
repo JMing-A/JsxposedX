@@ -82,10 +82,10 @@ class MemoryToolPointerTab extends HookConsumerWidget {
           ref.invalidate(getPointerScanSessionStateProvider);
           ref.invalidate(getPointerScanResultsProvider);
           if (taskState.status == SearchTaskStatus.completed) {
-            pointerController.refreshCurrentLayer();
+            pointerController.refreshLayerForActiveSession();
           } else if (taskState.status == SearchTaskStatus.failed ||
               taskState.status == SearchTaskStatus.cancelled) {
-            pointerController.markCurrentLayerError(taskState.message);
+            pointerController.markActiveScanLayerError(taskState.message);
           }
         }
         previousTaskStatus.value = taskState.status;
