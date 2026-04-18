@@ -184,7 +184,7 @@ final class CurrentSearchResultLivePreviewsProvider
 }
 
 String _$currentSearchResultLivePreviewsHash() =>
-    r'63adf8926e5efbe668b515118a4a4fa1d4069886';
+    r'115ebeeb7ecdc0c66f0836bddbfaf22bf830dc30';
 
 @ProviderFor(MemoryToolResultSelection)
 const memoryToolResultSelectionProvider = MemoryToolResultSelectionProvider._();

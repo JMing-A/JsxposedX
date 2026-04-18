@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:JsxposedX/common/pages/toast.dart';
+import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_pointer_expression.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_jump_address_dialog.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_locate_expression_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_result_card.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_task_feedback.dart';
@@ -34,6 +37,8 @@ class MemoryToolSearchTab extends HookConsumerWidget {
     useAutomaticKeepAlive();
     final isSearchDialogVisible = useState(false);
     final isJumpAddressDialogVisible = useState(false);
+    final isLocateExpressionDialogVisible = useState(false);
+    final isLocateExpressionLoading = useState(false);
     final selectedPid = ref.watch(memoryToolSelectedProcessProvider)?.pid;
     final searchFormState = ref.watch(memoryToolSearchFormProvider);
     final sessionStateAsync = ref.watch(getSearchSessionStateProvider);
@@ -172,6 +177,9 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       onOpenJumpAddress: () {
         isJumpAddressDialogVisible.value = true;
       },
+      onOpenLocateExpression: () {
+        isLocateExpressionDialogVisible.value = true;
+      },
       onOpenBrowseTab: onOpenBrowseTab,
       onOpenPointerTab: onOpenPointerTab,
     );
@@ -225,6 +233,84 @@ class MemoryToolSearchTab extends HookConsumerWidget {
                   },
                 ),
               ),
+            if (isLocateExpressionDialogVisible.value)
+              Positioned.fill(
+                child: MemoryToolLocateExpressionDialog(
+                  onConfirm: (expression) async {
+                    isLocateExpressionDialogVisible.value = false;
+                    if (selectedPid == null) {
+                      return;
+                    }
+                    isLocateExpressionLoading.value = true;
+                    try {
+                      final targetAddress =
+                          await resolveMemoryToolPointerExpressionTargetAddress(
+                            repository: ref.read(memoryQueryRepositoryProvider),
+                            pid: selectedPid,
+                            expression: expression,
+                          );
+                      await jumpToAddress(targetAddress);
+                    } catch (_) {
+                      if (!context.mounted) {
+                        return;
+                      }
+                      await ToastOverlayMessage.show(
+                        context.l10n.memoryToolOffsetPreviewUnreadable,
+                        duration: const Duration(milliseconds: 1200),
+                      );
+                    } finally {
+                      if (context.mounted) {
+                        isLocateExpressionLoading.value = false;
+                      }
+                    }
+                  },
+                  onClose: () {
+                    isLocateExpressionDialogVisible.value = false;
+                  },
+                ),
+              ),
+            if (isLocateExpressionLoading.value)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.34),
+                  child: Center(
+                    child: Container(
+                      width: 180.r,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 18.r,
+                        vertical: 16.r,
+                      ),
+                      decoration: BoxDecoration(
+                        color: context.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(18.r),
+                        border: Border.all(
+                          color: context.colorScheme.outlineVariant.withValues(
+                            alpha: 0.42,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          SizedBox(
+                            width: 52.r,
+                            height: 52.r,
+                            child: const Loading(),
+                          ),
+                          SizedBox(height: 10.r),
+                          Text(
+                            _resolveExpressionLoadingText(context),
+                            textAlign: TextAlign.center,
+                            style: context.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             taskStateAsync.when(
               skipLoadingOnRefresh: true,
               data: (state) {
@@ -272,4 +358,8 @@ int _resolveJumpBytesLength({
     type: type,
     bytesLength: inferredBytesLength < 1 ? 1 : inferredBytesLength,
   );
+}
+
+String _resolveExpressionLoadingText(BuildContext context) {
+  return context.isZh ? '表达式定位中...' : 'Locating expression...';
 }

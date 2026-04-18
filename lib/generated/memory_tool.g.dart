@@ -659,10 +659,13 @@ class PointerScanChaseHint {
 
 class MemoryReadRequest {
   MemoryReadRequest({
+    required this.pid,
     required this.address,
     required this.type,
     required this.length,
   });
+
+  int pid;
 
   int address;
 
@@ -672,6 +675,7 @@ class MemoryReadRequest {
 
   List<Object?> _toList() {
     return <Object?>[
+      pid,
       address,
       type,
       length,
@@ -684,9 +688,10 @@ class MemoryReadRequest {
   static MemoryReadRequest decode(Object result) {
     result as List<Object?>;
     return MemoryReadRequest(
-      address: result[0]! as int,
-      type: result[1]! as SearchValueType,
-      length: result[2]! as int,
+      pid: result[0]! as int,
+      address: result[1]! as int,
+      type: result[2]! as SearchValueType,
+      length: result[3]! as int,
     );
   }
 

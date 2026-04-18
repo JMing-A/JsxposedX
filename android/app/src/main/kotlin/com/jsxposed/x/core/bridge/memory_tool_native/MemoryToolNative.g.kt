@@ -518,6 +518,7 @@ data class PointerScanChaseHint (
 
 /** Generated class from Pigeon that represents data sent in messages. */
 data class MemoryReadRequest (
+  val pid: Long,
   val address: Long,
   val type: SearchValueType,
   val length: Long
@@ -525,14 +526,16 @@ data class MemoryReadRequest (
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): MemoryReadRequest {
-      val address = pigeonVar_list[0] as Long
-      val type = pigeonVar_list[1] as SearchValueType
-      val length = pigeonVar_list[2] as Long
-      return MemoryReadRequest(address, type, length)
+      val pid = pigeonVar_list[0] as Long
+      val address = pigeonVar_list[1] as Long
+      val type = pigeonVar_list[2] as SearchValueType
+      val length = pigeonVar_list[3] as Long
+      return MemoryReadRequest(pid, address, type, length)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
+      pid,
       address,
       type,
       length,

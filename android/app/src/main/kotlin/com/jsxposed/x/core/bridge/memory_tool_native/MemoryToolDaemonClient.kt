@@ -333,6 +333,7 @@ class MemoryToolDaemonClient(
                         requests.forEach { request ->
                             put(
                                 JSONObject().apply {
+                                    put("pid", request.pid)
                                     put("address", request.address)
                                     put("type", request.type.ordinal)
                                     put("length", request.length)

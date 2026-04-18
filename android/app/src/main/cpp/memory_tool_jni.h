@@ -38,6 +38,7 @@ public:
     static jstring GetPointerScanChaseHintJson(JNIEnv* env);
 
     static jstring ReadMemoryValuesJson(JNIEnv* env,
+                                        jlongArray pids,
                                         jlongArray addresses,
                                         jintArray types,
                                         jintArray lengths);
@@ -101,6 +102,7 @@ private:
                                         jboolean little_endian);
 
     static std::vector<MemoryReadRequest> BuildReadRequests(JNIEnv* env,
+                                                            jlongArray pids,
                                                             jlongArray addresses,
                                                             jintArray types,
                                                             jintArray lengths);

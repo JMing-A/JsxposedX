@@ -94,8 +94,9 @@ Future<Map<int, MemoryValuePreview>> currentSearchResultLivePreviews(
   final removedAddresses = ref.watch(
     memoryToolRemovedResultProvider.select((state) => state.removedAddresses),
   );
+  final selectedProcess = ref.watch(memoryToolSelectedProcessProvider);
 
-  if (!hasMatchingSession || !isPanelVisible) {
+  if (!hasMatchingSession || !isPanelVisible || selectedProcess == null) {
     return const <int, MemoryValuePreview>{};
   }
 
@@ -115,7 +116,12 @@ Future<Map<int, MemoryValuePreview>> currentSearchResultLivePreviews(
       .readMemoryValues(
         requests: results
             .take(renderLimit)
-            .map(_buildMemoryReadRequestFromResult)
+            .map(
+              (result) => _buildMemoryReadRequestFromResult(
+                pid: selectedProcess.pid,
+                result: result,
+              ),
+            )
             .toList(growable: false),
       );
 
@@ -244,8 +250,12 @@ class MemoryToolRemovedResult extends _$MemoryToolRemovedResult {
   }
 }
 
-MemoryReadRequest _buildMemoryReadRequestFromResult(SearchResult result) {
+MemoryReadRequest _buildMemoryReadRequestFromResult({
+  required int pid,
+  required SearchResult result,
+}) {
   return MemoryReadRequest(
+    pid: pid,
     address: result.address,
     type: result.type,
     length: result.rawBytes.length,

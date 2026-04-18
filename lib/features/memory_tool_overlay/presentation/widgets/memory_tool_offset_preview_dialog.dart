@@ -29,6 +29,7 @@ class MemoryToolOffsetPreviewDialog extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final selectedPid = ref.watch(memoryToolSelectedProcessProvider)?.pid;
     final sourcePreview = livePreviewsAsync.asData?.value[result.address];
     final sourceRawBytes = sourcePreview?.rawBytes ?? result.rawBytes;
     final previewLength = sourceRawBytes.isEmpty ? 1 : sourceRawBytes.length;
@@ -46,18 +47,24 @@ class MemoryToolOffsetPreviewDialog extends HookConsumerWidget {
         : result.address + resolvedOffset;
     final hasValidTargetAddress = targetAddress != null && targetAddress >= 0;
     final previewRequests = useMemoized(
-      () => hasValidTargetAddress
+      () => hasValidTargetAddress && selectedPid != null
           ? <MemoryReadRequest>[
               MemoryReadRequest(
-                address: targetAddress!,
+                pid: selectedPid,
+                address: targetAddress,
                 type: SearchValueType.bytes,
                 length: previewLength,
               ),
             ]
           : const <MemoryReadRequest>[],
-      <Object>[hasValidTargetAddress, targetAddress ?? -1, previewLength],
+      <Object>[
+        hasValidTargetAddress,
+        selectedPid ?? -1,
+        targetAddress ?? -1,
+        previewLength,
+      ],
     );
-    final targetPreviewAsync = hasValidTargetAddress
+    final targetPreviewAsync = hasValidTargetAddress && selectedPid != null
         ? ref.watch(readMemoryValuesProvider(requests: previewRequests))
         : const AsyncValue.data(<MemoryValuePreview>[]);
     final targetPreviewList = targetPreviewAsync.asData?.value;
@@ -206,7 +213,7 @@ class MemoryToolOffsetPreviewDialog extends HookConsumerWidget {
                     _MemoryToolOffsetPreviewLine(
                       label: context.l10n.memoryToolOffsetPreviewTargetAddress,
                       value: hasValidTargetAddress
-                          ? formatMemoryToolSearchResultAddress(targetAddress!)
+                          ? formatMemoryToolSearchResultAddress(targetAddress)
                           : '--',
                     ),
                     SizedBox(height: 8.r),
@@ -231,7 +238,7 @@ class MemoryToolOffsetPreviewDialog extends HookConsumerWidget {
                     child: FilledButton(
                       onPressed: canConfirm
                           ? () async {
-                              await onConfirm(targetAddress!);
+                              await onConfirm(targetAddress);
                             }
                           : null,
                       child: Text(context.l10n.confirm),

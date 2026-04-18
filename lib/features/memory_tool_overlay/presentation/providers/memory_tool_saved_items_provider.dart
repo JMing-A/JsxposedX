@@ -67,12 +67,13 @@ List<MemoryToolSavedItem> savedItemsForSelectedProcess(Ref ref) {
 @riverpod
 Future<Map<int, MemoryValuePreview>> currentSavedItemLivePreviews(Ref ref) async {
   final savedItems = ref.watch(savedItemsForSelectedProcessProvider);
+  final selectedProcess = ref.watch(memoryToolSelectedProcessProvider);
   final isPanelVisible = ref.watch(
     overlayWindowHostRuntimeProvider.select(
       (state) => state.payload.isPanel && !state.isTransitioningToPanel,
     ),
   );
-  if (!isPanelVisible || savedItems.isEmpty) {
+  if (!isPanelVisible || savedItems.isEmpty || selectedProcess == null) {
     return const <int, MemoryValuePreview>{};
   }
 
@@ -82,6 +83,7 @@ Future<Map<int, MemoryValuePreview>> currentSavedItemLivePreviews(Ref ref) async
         requests: savedItems
             .map(
               (item) => MemoryReadRequest(
+                pid: selectedProcess.pid,
                 address: item.address,
                 type: item.type,
                 length: resolveMemoryToolReadLengthForType(

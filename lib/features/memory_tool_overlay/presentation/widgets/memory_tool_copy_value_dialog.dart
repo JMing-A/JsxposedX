@@ -28,6 +28,7 @@ class MemoryToolCopyValueDialog extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final selectedPid = ref.watch(memoryToolSelectedProcessProvider)?.pid;
     final livePreview = livePreviewsAsync.asData?.value[result.address];
     final currentRawBytes = livePreview?.rawBytes ?? result.rawBytes;
     final currentDisplayValue = livePreview?.displayValue ?? displayValue;
@@ -36,6 +37,7 @@ class MemoryToolCopyValueDialog extends HookConsumerWidget {
       () => SearchValueType.values
           .map(
             (type) => MemoryReadRequest(
+              pid: selectedPid ?? 0,
               address: result.address,
               type: type,
               length: resolveMemoryToolReadLengthForType(
@@ -45,11 +47,11 @@ class MemoryToolCopyValueDialog extends HookConsumerWidget {
             ),
           )
           .toList(growable: false),
-      <Object>[result.address, currentRawBytes.length],
+      <Object>[selectedPid ?? 0, result.address, currentRawBytes.length],
     );
-    final typedPreviewAsync = ref.watch(
-      readMemoryValuesProvider(requests: previewRequests),
-    );
+    final typedPreviewAsync = selectedPid == null
+        ? const AsyncValue.data(<MemoryValuePreview>[])
+        : ref.watch(readMemoryValuesProvider(requests: previewRequests));
     final typedPreviewByType = <SearchValueType, MemoryValuePreview>{
       for (final preview in typedPreviewAsync.asData?.value ?? <MemoryValuePreview>[])
         preview.type: preview,

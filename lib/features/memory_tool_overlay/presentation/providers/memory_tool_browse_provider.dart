@@ -29,13 +29,17 @@ Future<Map<int, MemoryValuePreview>> currentBrowseResultLivePreviews(
 ) async {
   final browseState = ref.watch(memoryToolBrowseControllerProvider);
   final visibleResults = ref.watch(currentBrowseResultsProvider);
+  final selectedProcess = ref.watch(memoryToolSelectedProcessProvider);
   final isPanelVisible = ref.watch(
     overlayWindowHostRuntimeProvider.select(
       (state) => state.payload.isPanel && !state.isTransitioningToPanel,
     ),
   );
 
-  if (!isPanelVisible || !browseState.hasAnchor || visibleResults.isEmpty) {
+  if (!isPanelVisible ||
+      !browseState.hasAnchor ||
+      visibleResults.isEmpty ||
+      selectedProcess == null) {
     return const <int, MemoryValuePreview>{};
   }
 
@@ -45,6 +49,7 @@ Future<Map<int, MemoryValuePreview>> currentBrowseResultLivePreviews(
         requests: visibleResults
             .map(
               (result) => MemoryReadRequest(
+                pid: selectedProcess.pid,
                 address: result.address,
                 type: result.type,
                 length: result.rawBytes.length,
@@ -111,6 +116,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
     }
 
     final targetPreview = await _readTargetPreviewOrNull(
+      selectedPid: selectedProcess.pid,
       address: targetAddress,
       bytesLength: strideBytes,
     );
@@ -140,7 +146,8 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
 
   Future<void> recenter() async {
     final anchorResult = state.anchorResult;
-    if (anchorResult == null || state.regions.isEmpty) {
+    final selectedProcess = ref.read(memoryToolSelectedProcessProvider);
+    if (anchorResult == null || state.regions.isEmpty || selectedProcess == null) {
       return;
     }
 
@@ -153,6 +160,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
 
     try {
       final nextState = await _buildWindowState(
+        selectedPid: selectedProcess.pid,
         anchorResult: anchorResult,
         readableRegions: state.regions,
         preservedHiddenAddresses: state.hiddenAddresses,
@@ -172,8 +180,10 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
 
   Future<void> loadMoreAbove() async {
     final anchorResult = state.anchorResult;
+    final selectedProcess = ref.read(memoryToolSelectedProcessProvider);
     if (anchorResult == null ||
         state.regions.isEmpty ||
+        selectedProcess == null ||
         state.isLoadingAbove ||
         state.reachedTopBoundary) {
       return;
@@ -191,6 +201,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
         regions: state.regions,
       );
       final loadedResults = await _readBrowseResults(
+        selectedPid: selectedProcess.pid,
         anchorResult: anchorResult,
         readableRegions: state.regions,
         addresses: collected.addresses.reversed.toList(growable: false),
@@ -211,8 +222,10 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
 
   Future<void> loadMoreBelow() async {
     final anchorResult = state.anchorResult;
+    final selectedProcess = ref.read(memoryToolSelectedProcessProvider);
     if (anchorResult == null ||
         state.regions.isEmpty ||
+        selectedProcess == null ||
         state.isLoadingBelow ||
         state.reachedBottomBoundary) {
       return;
@@ -230,6 +243,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
         regions: state.regions,
       );
       final loadedResults = await _readBrowseResults(
+        selectedPid: selectedProcess.pid,
         anchorResult: anchorResult,
         readableRegions: state.regions,
         addresses: collected.addresses,
@@ -381,6 +395,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
   }
 
   Future<MemoryToolBrowseState> _buildWindowState({
+    required int selectedPid,
     required SearchResult anchorResult,
     required List<MemoryRegion> readableRegions,
     required Set<int> preservedHiddenAddresses,
@@ -406,11 +421,13 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
       regions: readableRegions,
     );
     final aboveResults = await _readBrowseResults(
+      selectedPid: selectedPid,
       anchorResult: anchorResult,
       readableRegions: readableRegions,
       addresses: aboveCollected.addresses.reversed.toList(growable: false),
     );
     final belowResults = await _readBrowseResults(
+      selectedPid: selectedPid,
       anchorResult: anchorResult,
       readableRegions: readableRegions,
       addresses: belowCollected.addresses,
@@ -459,6 +476,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
   }
 
   Future<List<SearchResult>> _readBrowseResults({
+    required int selectedPid,
     required SearchResult anchorResult,
     required List<MemoryRegion> readableRegions,
     required List<int> addresses,
@@ -475,7 +493,8 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
         .readMemoryValues(
           requests: addresses
               .map(
-                (address) => MemoryReadRequest(
+              (address) => MemoryReadRequest(
+                  pid: selectedPid,
                   address: address,
                   type: SearchValueType.bytes,
                   length: strideBytes,
@@ -519,6 +538,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
   }
 
   Future<List<SearchResult>> _extendResultsAroundAnchor({
+    required int selectedPid,
     required SearchResult anchorResult,
     required MemoryRegion anchorRegion,
     required List<SearchResult> existingResults,
@@ -544,11 +564,13 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
       regions: localRegions,
     );
     final aboveResults = await _readBrowseResults(
+      selectedPid: selectedPid,
       anchorResult: anchorResult,
       readableRegions: localRegions,
       addresses: aboveCollected.addresses.reversed.toList(growable: false),
     );
     final belowResults = await _readBrowseResults(
+      selectedPid: selectedPid,
       anchorResult: anchorResult,
       readableRegions: localRegions,
       addresses: belowCollected.addresses,
@@ -620,6 +642,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
     )) {
       try {
         final nextResults = await _extendResultsAroundAnchor(
+          selectedPid: selectedPid,
           anchorResult: resolvedAnchorResult,
           anchorRegion: nextAnchorRegion!,
           existingResults: state.results,
@@ -672,6 +695,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
       );
       try {
         final nextState = await _buildWindowState(
+          selectedPid: selectedPid,
           anchorResult: resolvedAnchorResult,
           readableRegions: state.regions,
           preservedHiddenAddresses: nextHiddenAddresses,
@@ -728,6 +752,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
               region: finalAnchorRegion,
             );
       final nextState = await _buildWindowState(
+        selectedPid: selectedPid,
         anchorResult: finalAnchorResult,
         readableRegions: readableRegions,
         preservedHiddenAddresses: const <int>{},
@@ -746,6 +771,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
   }
 
   Future<MemoryValuePreview?> _readTargetPreviewOrNull({
+    required int selectedPid,
     required int address,
     required int bytesLength,
   }) async {
@@ -755,6 +781,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
           .readMemoryValues(
             requests: <MemoryReadRequest>[
               MemoryReadRequest(
+                pid: selectedPid,
                 address: address,
                 type: SearchValueType.bytes,
                 length: bytesLength < 1 ? 1 : bytesLength,

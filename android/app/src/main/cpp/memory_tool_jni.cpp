@@ -126,10 +126,11 @@ jstring MemoryToolJniBridge::GetPointerScanChaseHintJson(JNIEnv* env) {
 }
 
 jstring MemoryToolJniBridge::ReadMemoryValuesJson(JNIEnv* env,
+                                                  jlongArray pids,
                                                   jlongArray addresses,
                                                   jintArray types,
                                                   jintArray lengths) {
-    const auto requests = BuildReadRequests(env, addresses, types, lengths);
+    const auto requests = BuildReadRequests(env, pids, addresses, types, lengths);
     const auto previews = MemoryToolEngine::Instance().ReadMemoryValues(requests);
     return env->NewStringUTF(protocol::SerializeMemoryValuePreviews(previews).c_str());
 }
@@ -246,23 +247,27 @@ SearchValue MemoryToolJniBridge::BuildSearchValue(JNIEnv* env,
 }
 
 std::vector<MemoryReadRequest> MemoryToolJniBridge::BuildReadRequests(JNIEnv* env,
+                                                                      jlongArray pids,
                                                                       jlongArray addresses,
                                                                       jintArray types,
                                                                       jintArray lengths) {
-    if (addresses == nullptr || types == nullptr || lengths == nullptr) {
+    if (pids == nullptr || addresses == nullptr || types == nullptr || lengths == nullptr) {
         return {};
     }
 
+    const jsize pid_size = env->GetArrayLength(pids);
     const jsize address_size = env->GetArrayLength(addresses);
     const jsize type_size = env->GetArrayLength(types);
     const jsize length_size = env->GetArrayLength(lengths);
-    if (address_size != type_size || address_size != length_size) {
+    if (pid_size != address_size || address_size != type_size || address_size != length_size) {
         throw std::runtime_error("Read request arrays have mismatched lengths.");
     }
 
+    std::vector<jlong> pid_values(static_cast<size_t>(pid_size));
     std::vector<jlong> address_values(static_cast<size_t>(address_size));
     std::vector<jint> type_values(static_cast<size_t>(type_size));
     std::vector<jint> length_values(static_cast<size_t>(length_size));
+    env->GetLongArrayRegion(pids, 0, pid_size, pid_values.data());
     env->GetLongArrayRegion(addresses, 0, address_size, address_values.data());
     env->GetIntArrayRegion(types, 0, type_size, type_values.data());
     env->GetIntArrayRegion(lengths, 0, length_size, length_values.data());
@@ -271,6 +276,7 @@ std::vector<MemoryReadRequest> MemoryToolJniBridge::BuildReadRequests(JNIEnv* en
     requests.reserve(static_cast<size_t>(address_size));
     for (jsize index = 0; index < address_size; ++index) {
         MemoryReadRequest request;
+        request.pid = static_cast<int>(pid_values[static_cast<size_t>(index)]);
         request.address = static_cast<uint64_t>(address_values[static_cast<size_t>(index)]);
         request.type = ToSearchValueType(type_values[static_cast<size_t>(index)]);
         request.length = static_cast<size_t>(length_values[static_cast<size_t>(index)]);
@@ -448,11 +454,13 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_readMemoryValuesJson(
         JNIEnv* env,
         jobject /* thiz */,
+        jlongArray pids,
         jlongArray addresses,
         jintArray types,
         jintArray lengths) {
     try {
-        return memory_tool::MemoryToolJniBridge::ReadMemoryValuesJson(env, addresses, types, lengths);
+        return memory_tool::MemoryToolJniBridge::ReadMemoryValuesJson(
+            env, pids, addresses, types, lengths);
     } catch (const std::exception& exception) {
         memory_tool::ThrowRuntimeException(env, exception.what());
         return nullptr;

@@ -47,6 +47,7 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
     final readRequests = useMemoized(
       () => <MemoryReadRequest>[
         MemoryReadRequest(
+          pid: processPid ?? 0,
           address: result.address,
           type: selectedType.value,
           length: resolveMemoryToolReadLengthForType(
@@ -55,11 +56,11 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
           ),
         ),
       ],
-      <Object>[result.address, selectedType.value, sourceBytesLength],
+      <Object>[processPid ?? 0, result.address, selectedType.value, sourceBytesLength],
     );
-    final selectedPreviewAsync = ref.watch(
-      readMemoryValuesProvider(requests: readRequests),
-    );
+    final selectedPreviewAsync = processPid == null
+        ? const AsyncValue.data(<MemoryValuePreview>[])
+        : ref.watch(readMemoryValuesProvider(requests: readRequests));
     final selectedPreviewList = selectedPreviewAsync.asData?.value;
     final selectedPreview =
         selectedPreviewList == null || selectedPreviewList.isEmpty
@@ -143,6 +144,7 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
         final selectedPid = ref.read(memoryToolSelectedProcessProvider)?.pid;
         if (selectedPid != null) {
           final updatedPreviewRequest = MemoryReadRequest(
+            pid: selectedPid,
             address: result.address,
             type: selectedType.value,
             length: resolveMemoryToolReadLengthForType(

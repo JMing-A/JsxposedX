@@ -30,6 +30,7 @@ class MemoryToolBatchEditDialog extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final selectedPid = ref.watch(memoryToolSelectedProcessProvider)?.pid;
     final selectedType = useState<SearchValueType>(
       results.isEmpty ? SearchValueType.i32 : results.first.type,
     );
@@ -73,6 +74,9 @@ class MemoryToolBatchEditDialog extends HookConsumerWidget {
       if (localErrorText != null) {
         throw FormatException(localErrorText);
       }
+      if (selectedPid == null) {
+        throw StateError('No selected process.');
+      }
       final sessionState = await ref.read(getSearchSessionStateProvider.future);
       final previewRequests = results
           .map((result) {
@@ -81,6 +85,7 @@ class MemoryToolBatchEditDialog extends HookConsumerWidget {
             final bytesLength =
                 fallbackPreview?.rawBytes.length ?? result.rawBytes.length;
             return MemoryReadRequest(
+              pid: selectedPid,
               address: result.address,
               type: selectedType.value,
               length: resolveMemoryToolReadLengthForType(
@@ -158,9 +163,7 @@ class MemoryToolBatchEditDialog extends HookConsumerWidget {
             .read(memoryValueActionProvider.notifier)
             .setMemoryFreezes(requests: freezeRequests);
       }
-      final selectedPid = ref.read(memoryToolSelectedProcessProvider)?.pid;
       final shouldSyncSavedItems =
-          selectedPid != null &&
           savedSyncMode != MemoryToolBatchEditSavedSyncMode.none &&
           (savedSyncMode == MemoryToolBatchEditSavedSyncMode.all ||
               freezeEnabled.value);

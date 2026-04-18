@@ -162,11 +162,13 @@ class PointerScanChaseHint {
 }
 
 class MemoryReadRequest {
+  final int pid;
   final int address;
   final SearchValueType type;
   final int length;
 
   const MemoryReadRequest({
+    required this.pid,
     required this.address,
     required this.type,
     required this.length,

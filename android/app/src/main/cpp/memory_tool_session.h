@@ -100,6 +100,7 @@ struct PointerScanChaseHintView {
 };
 
 struct MemoryReadRequest {
+    int pid = 0;
     uint64_t address = 0;
     SearchValueType type = SearchValueType::kI32;
     size_t length = 0;

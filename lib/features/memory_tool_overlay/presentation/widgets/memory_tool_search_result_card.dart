@@ -35,6 +35,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
     required this.onRetry,
     required this.onOpenSearch,
     required this.onOpenJumpAddress,
+    required this.onOpenLocateExpression,
     required this.onOpenBrowseTab,
     required this.onOpenPointerTab,
   });
@@ -44,6 +45,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
   final VoidCallback onRetry;
   final VoidCallback onOpenSearch;
   final VoidCallback onOpenJumpAddress;
+  final VoidCallback onOpenLocateExpression;
   final VoidCallback onOpenBrowseTab;
   final VoidCallback onOpenPointerTab;
 
@@ -206,7 +208,11 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                   ),
                   MemoryToolResultSelectionActionData(
                     icon: Icons.travel_explore_rounded,
-                    onTap: onOpenJumpAddress,
+                    onTap: selectedPid == null ? null : onOpenJumpAddress,
+                  ),
+                  MemoryToolResultSelectionActionData(
+                    icon: Icons.data_object_rounded,
+                    onTap: selectedPid == null ? null : onOpenLocateExpression,
                   ),
                   MemoryToolResultSelectionActionData(
                     icon: processPausedAsync.asData?.value ?? false

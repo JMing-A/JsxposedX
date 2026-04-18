@@ -113,6 +113,7 @@ private class MemoryToolDaemonServer(
 
             "readMemoryValues" -> JSONArray(
                 MemoryToolHelperNativeBridge.readMemoryValuesJson(
+                    pids = extractLongArray(params.getJSONArray("requests"), "pid"),
                     addresses = extractLongArray(params.getJSONArray("requests"), "address"),
                     types = extractIntArray(params.getJSONArray("requests"), "type"),
                     lengths = extractIntArray(params.getJSONArray("requests"), "length")

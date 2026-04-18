@@ -234,6 +234,10 @@ class MemoryValueAction extends _$MemoryValueAction {
     required List<int> addresses,
     required bool littleEndian,
   }) async {
+    final selectedPid = ref.read(memoryToolSelectedProcessProvider)?.pid;
+    if (selectedPid == null) {
+      return 0;
+    }
     final historyState = ref.read(memoryValueHistoryProvider);
     final historyEntries = addresses
         .map((address) => historyState[address])
@@ -252,6 +256,7 @@ class MemoryValueAction extends _$MemoryValueAction {
             requests: historyEntries
                 .map(
                   (entry) => MemoryReadRequest(
+                    pid: selectedPid,
                     address: entry.address,
                     type: entry.type,
                     length: resolveMemoryToolReadLengthForType(

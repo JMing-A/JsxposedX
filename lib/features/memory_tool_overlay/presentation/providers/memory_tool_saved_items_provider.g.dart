@@ -99,7 +99,7 @@ final class CurrentSavedItemLivePreviewsProvider
 }
 
 String _$currentSavedItemLivePreviewsHash() =>
-    r'b73dafe1a8109fb181199edef1b34d14fb3b8eb5';
+    r'33e6e22854f3e374c7c03ab7365b589c6b415436';
 
 @ProviderFor(MemoryToolSavedItems)
 const memoryToolSavedItemsProvider = MemoryToolSavedItemsProvider._();

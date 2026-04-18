@@ -471,33 +471,41 @@ PointerScanChaseHintView MemoryToolEngine::GetPointerScanChaseHint() {
 std::vector<MemoryValuePreview> MemoryToolEngine::ReadMemoryValues(
     const std::vector<MemoryReadRequest>& requests) {
     std::lock_guard<std::mutex> lock(mutex_);
-    const int active_pid = session_.has_active_session
-                               ? session_.pid
-                               : pointer_session_.has_active_session ? pointer_session_.pid : 0;
-    if (active_pid <= 0) {
-        throw std::runtime_error("No active memory session.");
-    }
-    if (!IsProcessAlive(active_pid)) {
-        if (session_.pid == active_pid) {
-            session_.Clear();
-            throw std::runtime_error("Search session target process is no longer available.");
-        }
-        pointer_session_.Clear();
-        throw std::runtime_error("Pointer scan target process is no longer available.");
-    }
-
-    const bool use_search_session = session_.pid == active_pid;
-    ProcessMemoryReader reader(active_pid);
     std::vector<MemoryValuePreview> previews;
     previews.reserve(requests.size());
+    int current_pid = 0;
+    bool use_search_session = false;
+    std::unique_ptr<ProcessMemoryReader> reader;
     for (const MemoryReadRequest& request : requests) {
+        if (request.pid <= 0) {
+            throw std::runtime_error("Invalid memory read pid.");
+        }
+        if (reader == nullptr || current_pid != request.pid) {
+            current_pid = request.pid;
+            if (!IsProcessAlive(current_pid)) {
+                if (session_.pid == current_pid) {
+                    session_.Clear();
+                    throw std::runtime_error(
+                        "Search session target process is no longer available.");
+                }
+                if (pointer_session_.pid == current_pid) {
+                    pointer_session_.Clear();
+                    throw std::runtime_error(
+                        "Pointer scan target process is no longer available.");
+                }
+                throw std::runtime_error("Target process is no longer available.");
+            }
+            use_search_session = session_.has_active_session && session_.pid == current_pid;
+            reader = std::make_unique<ProcessMemoryReader>(current_pid);
+        }
+
         const size_t length = ResolveValueByteLength(request.type, request.length);
         if (length == 0) {
             continue;
         }
 
         std::vector<uint8_t> buffer;
-        if (!reader.Read(request.address, length, &buffer)) {
+        if (!reader->Read(request.address, length, &buffer)) {
             continue;
         }
 

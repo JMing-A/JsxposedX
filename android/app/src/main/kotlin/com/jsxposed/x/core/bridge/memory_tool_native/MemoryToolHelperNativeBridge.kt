@@ -25,6 +25,7 @@ object MemoryToolHelperNativeBridge {
     external fun getPointerScanChaseHintJson(): String
 
     external fun readMemoryValuesJson(
+        pids: LongArray,
         addresses: LongArray,
         types: IntArray,
         lengths: IntArray
