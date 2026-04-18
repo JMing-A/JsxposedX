@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:JsxposedX/feature/xposed/domain/models/block_node.dart';
+import 'package:JsxposedX/features/xposed/domain/models/block_node.dart';
 import 'package:flutter/foundation.dart';
 
 /// 递归代码生成器 — 从 BlockNode 树生成 JS 代码

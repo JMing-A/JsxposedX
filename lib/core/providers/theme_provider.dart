@@ -1,4 +1,4 @@
-﻿import 'package:JsxposedX/core/providers/pinia_provider.dart';
+import 'package:JsxposedX/core/providers/pinia_provider.dart';
 import 'package:JsxposedX/core/themes/app_colors.dart';
 import 'package:JsxposedX/core/themes/app_theme.dart';
 import 'package:flutter/material.dart';

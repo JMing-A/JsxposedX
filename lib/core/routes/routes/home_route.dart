@@ -1,21 +1,20 @@
 import 'package:JsxposedX/common/pages/splash_page.dart';
 import 'package:JsxposedX/core/models/app_info.dart';
-import 'package:JsxposedX/feature/ai/presentation/pages/ai_reverse_page.dart';
-import 'package:JsxposedX/feature/apk_analysis/presentation/pages/apk_analysis_page.dart';
-import 'package:JsxposedX/feature/so_analysis/presentation/pages/so_analysis_page.dart';
-import 'package:JsxposedX/feature/home/presentation/pages/home_page.dart';
-import 'package:JsxposedX/feature/project/presentation/pages/crypto/crypto_audit_js_editor_page.dart';
-import 'package:JsxposedX/feature/project/presentation/pages/crypto/crypto_audit_log_page.dart';
-import 'package:JsxposedX/feature/frida/presentation/pages/frida_api_manual_page.dart';
-import 'package:JsxposedX/feature/frida/presentation/pages/frida_editor_page.dart';
-import 'package:JsxposedX/feature/frida/presentation/pages/frida_project_page.dart';
-import 'package:JsxposedX/feature/project/presentation/pages/quick_functions_page.dart';
-import 'package:JsxposedX/feature/xposed/presentation/pages/ai_api_manual_page.dart';
-import 'package:JsxposedX/feature/xposed/presentation/pages/api_manual_page.dart';
-import 'package:JsxposedX/feature/xposed/presentation/pages/xposed_editor_page.dart';
-import 'package:JsxposedX/feature/xposed/presentation/pages/xposed_project_page.dart';
-import 'package:JsxposedX/feature/xposed/presentation/pages/xposed_visual_editor_page.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:JsxposedX/features/ai/presentation/pages/ai_reverse_page.dart';
+import 'package:JsxposedX/features/home/presentation/pages/tabs/repository_tab/pages/script_detail_page.dart';
+import 'package:JsxposedX/features/so_analysis/presentation/pages/so_analysis_page.dart';
+import 'package:JsxposedX/features/home/presentation/pages/home_page.dart';
+import 'package:JsxposedX/features/project/presentation/pages/crypto/crypto_audit_js_editor_page.dart';
+import 'package:JsxposedX/features/project/presentation/pages/crypto/crypto_audit_log_page.dart';
+import 'package:JsxposedX/features/frida/presentation/pages/frida_api_manual_page.dart';
+import 'package:JsxposedX/features/frida/presentation/pages/frida_editor_page.dart';
+import 'package:JsxposedX/features/frida/presentation/pages/frida_project_page.dart';
+import 'package:JsxposedX/features/project/presentation/pages/quick_functions_page.dart';
+import 'package:JsxposedX/features/xposed/presentation/pages/ai_api_manual_page.dart';
+import 'package:JsxposedX/features/xposed/presentation/pages/api_manual_page.dart';
+import 'package:JsxposedX/features/xposed/presentation/pages/xposed_editor_page.dart';
+import 'package:JsxposedX/features/xposed/presentation/pages/xposed_project_page.dart';
+import 'package:JsxposedX/features/xposed/presentation/pages/xposed_visual_editor_page.dart';
 import 'package:go_router/go_router.dart';
 
 /// 主要功能路由
@@ -38,8 +37,9 @@ class HomeRoute {
   static const apiManual = '/apiManual';
   static const aiApiManual = '/aiApiManual/:apiType';
   static const fridaApiManual = '/fridaApiManual';
-  // static const apkAnalysis = '/apkAnalysis/:packageName';
   static const soAnalysis = '/soAnalysis/:packageName';
+  static const scriptDetail = '/scriptDetail/:id';
+  static const login = 'login';
 
   static String toQuickFunctions({required AppInfo app}) => '/quickFunctions';
 
@@ -66,12 +66,11 @@ class HomeRoute {
 
   static String toCryptoAuditJsEditor({required String packageName}) =>
       '/cryptoAuditJsEditor/$packageName';
-  //
-  // static String toApkAnalysis({required String packageName}) =>
-  //     '/apkAnalysis/$packageName';
 
   static String toSoAnalysis({required String packageName}) =>
       '/soAnalysis/$packageName';
+
+  static String toScriptDetail({required int id}) => '/scriptDetail/$id';
 }
 
 List<GoRoute> homeRoutes = [
@@ -161,14 +160,6 @@ List<GoRoute> homeRoutes = [
     path: HomeRoute.fridaApiManual,
     builder: (context, state) => const FridaApiManualPage(),
   ),
-  // GoRoute(
-  //   path: HomeRoute.apkAnalysis,
-  //   builder: (context, state) {
-  //     final packageName = state.pathParameters["packageName"]!;
-  //
-  //     return ApkAnalysisPage(packageName: packageName, sessionId: '',);
-  //   },
-  // ),
   GoRoute(
     path: HomeRoute.soAnalysis,
     builder: (context, state) {
@@ -179,6 +170,13 @@ List<GoRoute> homeRoutes = [
         soPath: extra['soPath']!,
         packageName: packageName,
       );
+    },
+  ),
+  GoRoute(
+    path: HomeRoute.scriptDetail,
+    builder: (context, state) {
+      final id = state.pathParameters["id"]!;
+      return ScriptDetailPage(id: int.tryParse(id) ?? -1);
     },
   ),
 ];

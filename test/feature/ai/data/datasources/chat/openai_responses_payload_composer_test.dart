@@ -1,5 +1,5 @@
-import 'package:JsxposedX/feature/ai/data/datasources/chat/ai_chat_action_datasource.dart';
-import 'package:JsxposedX/feature/ai/data/models/ai_message_dto.dart';
+import 'package:JsxposedX/features/ai/data/datasources/chat/ai_chat_action_datasource.dart';
+import 'package:JsxposedX/features/ai/data/models/ai_message_dto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

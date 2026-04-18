@@ -24,6 +24,57 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repository => '仓库';
 
   @override
+  String get news => '最新';
+
+  @override
+  String get star => '收藏';
+
+  @override
+  String get repositoryAccountInfo => '账号信息';
+
+  @override
+  String get repositoryTokenLogin => 'Token 登录';
+
+  @override
+  String get repositoryReplaceToken => '更换 Token';
+
+  @override
+  String get repositoryTokenHint => '请输入 Token';
+
+  @override
+  String get repositoryTokenEmpty => 'Token 不能为空';
+
+  @override
+  String get repositoryVerifyAndLogin => '验证并登录';
+
+  @override
+  String get repositoryTokenLoginSuccess => 'Token 登录成功';
+
+  @override
+  String get repositoryTokenInvalid => 'Token 无效或已失效';
+
+  @override
+  String get repositoryUnnamedUser => '未命名用户';
+
+  @override
+  String get repositoryMxid => 'MXID';
+
+  @override
+  String get repositoryVip => 'VIP';
+
+  @override
+  String get repositoryVipActive => '已开通';
+
+  @override
+  String get repositoryVipInactive => '未开通';
+
+  @override
+  String get repositoryFavoriteLoginRequired => '请先登录';
+
+  @override
+  String get repositoryFavoriteLoginHint => '登录后才能查看收藏内容';
+
+  @override
   String get settings => '设置';
 
   @override
@@ -1593,4 +1644,520 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiMethodCopyFull => '复制完整类名.方法名';
+
+  @override
+  String get overlayMemoryToolTitle => 'Memory Tool';
+
+  @override
+  String get overlayFloatingToolWindow => '悬浮工具窗口';
+
+  @override
+  String get overlayWindowNotificationContent => '悬浮窗运行中';
+
+  @override
+  String get overlayWindowFallbackTitle => 'Overlay Window';
+
+  @override
+  String get overlayWindowUnknownSceneTitle => '悬浮场景不可用';
+
+  @override
+  String get overlayWindowUnknownSceneDescription => '当前收到的悬浮场景未注册，已阻止继续渲染。';
+
+  @override
+  String get overlayQuickWorkspace => '快速工作区';
+
+  @override
+  String get overlayQuickWorkspaceDescription => '点击悬浮气泡可以展开面板，使用右上角按钮可最小化或关闭。';
+
+  @override
+  String get overlayBubbleFeatureTitle => '悬浮气泡';
+
+  @override
+  String get overlayBubbleFeatureDescription => '单击即可展开面板。';
+
+  @override
+  String get overlayPanelFeatureTitle => '稳定面板';
+
+  @override
+  String get overlayPanelFeatureDescription => '使用普通 Material 渲染，降低显示伪影风险。';
+
+  @override
+  String get overlayConnected => '悬浮窗已连接';
+
+  @override
+  String get memoryToolTabSearch => '搜索';
+
+  @override
+  String get memoryToolTabEdit => '修改';
+
+  @override
+  String get memoryToolTabSaved => '暂存';
+
+  @override
+  String get memoryToolTabWatch => '监视';
+
+  @override
+  String get memoryToolSearchTabTitle => '搜索参数';
+
+  @override
+  String get memoryToolSearchTabSubtitle => '用于放首次搜索、范围缩小和读取入口。';
+
+  @override
+  String get memoryToolSearchModeLabel => '模式';
+
+  @override
+  String get memoryToolActionPanelTitle => '操作入口';
+
+  @override
+  String get memoryToolActionPanelSubtitle => '保留给首次扫描、继续筛选和读取操作。';
+
+  @override
+  String get memoryToolFieldValue => '数值';
+
+  @override
+  String get memoryToolFieldValuePlaceholder => '100.0';
+
+  @override
+  String get memoryToolFieldValueHint => '输入要搜索的值';
+
+  @override
+  String get memoryToolFieldType => '类型';
+
+  @override
+  String get memoryToolFieldTypePlaceholder => 'Int32';
+
+  @override
+  String get memoryToolFieldScope => '范围';
+
+  @override
+  String get memoryToolFieldScopePlaceholder => '全部内存';
+
+  @override
+  String get memoryToolFieldSearchMode => '搜索模式';
+
+  @override
+  String get memoryToolFieldFuzzyMode => '模糊条件';
+
+  @override
+  String get memoryToolFieldValueCategory => '搜索类型';
+
+  @override
+  String get memoryToolFieldValueTypeOption => '搜索格式';
+
+  @override
+  String get memoryToolFieldRangeSection => '自定义区段';
+
+  @override
+  String get memoryToolTextEncodingLabel => '文本编码';
+
+  @override
+  String get memoryToolTextEncodingUtf8 => 'UTF-8';
+
+  @override
+  String get memoryToolTextEncodingUtf16Le => 'UTF-16LE';
+
+  @override
+  String get memoryToolSearchExact => '精确搜索';
+
+  @override
+  String get memoryToolSearchFuzzy => '模糊搜索';
+
+  @override
+  String get memoryToolSearchFuzzyUnknown => '未知初值';
+
+  @override
+  String get memoryToolSearchFuzzyUnchanged => '无变化';
+
+  @override
+  String get memoryToolSearchFuzzyChanged => '有变化';
+
+  @override
+  String get memoryToolSearchFuzzyIncreased => '增加了';
+
+  @override
+  String get memoryToolSearchFuzzyDecreased => '减少了';
+
+  @override
+  String get memoryToolSearchFuzzyHint => '模糊首次扫描可不填数值，继续筛选时再输入当前值。';
+
+  @override
+  String get memoryToolSearchFuzzyUnsupportedHint => '模糊搜索目前只支持固定长度数值类型。';
+
+  @override
+  String get memoryToolSearchBytesHint => '例如 12 34 AB CD';
+
+  @override
+  String get memoryToolSearchTextHint => '输入要搜索的文本';
+
+  @override
+  String get memoryToolSearchTypePendingHint => '当前搜索类型尚未接入扫描内核。';
+
+  @override
+  String get memoryToolRangePresetPendingHint => '当前版本仍按全部可读内存扫描，范围预设暂未下发生效。';
+
+  @override
+  String get memoryToolEndianLabel => '小端序';
+
+  @override
+  String get memoryToolValueCategoryInteger => '整数';
+
+  @override
+  String get memoryToolValueCategoryDecimal => '小数';
+
+  @override
+  String get memoryToolValueCategoryBytes => '字节';
+
+  @override
+  String get memoryToolValueCategoryText => '文本';
+
+  @override
+  String get memoryToolValueCategoryAdvanced => '高级';
+
+  @override
+  String get memoryToolValueTypeI8 => 'I8';
+
+  @override
+  String get memoryToolValueTypeI16 => 'I16';
+
+  @override
+  String get memoryToolValueTypeI32 => 'I32';
+
+  @override
+  String get memoryToolValueTypeI64 => 'I64';
+
+  @override
+  String get memoryToolValueTypeF32 => 'F32';
+
+  @override
+  String get memoryToolValueTypeF64 => 'F64';
+
+  @override
+  String get memoryToolValueTypeBytes => 'AOB';
+
+  @override
+  String get memoryToolValueTypeXor => 'XOR';
+
+  @override
+  String get memoryToolValueTypeAuto => 'AUTO';
+
+  @override
+  String get memoryToolValueTypeText => 'TEXT';
+
+  @override
+  String get memoryToolRangePresetCommon => '常用';
+
+  @override
+  String get memoryToolRangePresetJava => 'Java';
+
+  @override
+  String get memoryToolRangePresetNative => 'Native';
+
+  @override
+  String get memoryToolRangePresetCode => '代码';
+
+  @override
+  String get memoryToolRangePresetAll => '全部';
+
+  @override
+  String get memoryToolRangePresetCustom => '自定义';
+
+  @override
+  String get memoryToolRangeSectionAnonymous => '匿名';
+
+  @override
+  String get memoryToolRangeSectionJava => 'Java';
+
+  @override
+  String get memoryToolRangeSectionJavaHeap => 'Java Heap';
+
+  @override
+  String get memoryToolRangeSectionCAlloc => 'C Alloc';
+
+  @override
+  String get memoryToolRangeSectionCHeap => 'C Heap';
+
+  @override
+  String get memoryToolRangeSectionCData => 'C Data';
+
+  @override
+  String get memoryToolRangeSectionCBss => 'C Bss';
+
+  @override
+  String get memoryToolRangeSectionCodeApp => '应用代码';
+
+  @override
+  String get memoryToolRangeSectionCodeSys => '系统代码';
+
+  @override
+  String get memoryToolRangeSectionStack => '栈';
+
+  @override
+  String get memoryToolRangeSectionAshmem => 'Ashmem';
+
+  @override
+  String get memoryToolRangeSectionOther => '其他';
+
+  @override
+  String get memoryToolRangeSectionBad => 'Bad';
+
+  @override
+  String get memoryToolActionFirstScan => '首次扫描';
+
+  @override
+  String get memoryToolActionNextScan => '继续筛选';
+
+  @override
+  String get memoryToolActionRead => '读取';
+
+  @override
+  String get memoryToolActionReset => '重置会话';
+
+  @override
+  String get memoryToolEditTabTitle => '修改工作区';
+
+  @override
+  String get memoryToolEditTabSubtitle => '这里适合放指定地址写入、批量修改和冻结入口。';
+
+  @override
+  String get memoryToolEditActionWriteValue => '向目标地址写入新数值';
+
+  @override
+  String get memoryToolEditActionFreezeValue => '把结果加入冻结列表并保持值不变';
+
+  @override
+  String get memoryToolEditActionBatchWrite => '对筛选结果执行批量写入';
+
+  @override
+  String get memoryToolPatchTabTitle => '补丁与脚本';
+
+  @override
+  String get memoryToolPatchTabSubtitle => '适合放 Hex 补丁、汇编修改和恢复原值。';
+
+  @override
+  String get memoryToolPatchActionHex => 'Hex Patch 编辑入口';
+
+  @override
+  String get memoryToolPatchActionAsm => '汇编修改入口';
+
+  @override
+  String get memoryToolPatchActionRestore => '恢复原始值与补丁';
+
+  @override
+  String get memoryToolWatchTabTitle => '监视列表';
+
+  @override
+  String get memoryToolWatchTabSubtitle => '这里适合展示常驻监视值和冻结状态。';
+
+  @override
+  String get memoryToolSessionTitle => '搜索会话';
+
+  @override
+  String get memoryToolSessionEmpty => '当前还没有活动会话，先执行一次首次扫描。';
+
+  @override
+  String get memoryToolSessionMismatch => '当前会话不属于这个进程，请重新执行首次扫描。';
+
+  @override
+  String get memoryToolSessionPid => '会话 PID';
+
+  @override
+  String get memoryToolSessionRegionCount => '区段数';
+
+  @override
+  String get memoryToolSessionResultCount => '结果数';
+
+  @override
+  String get memoryToolSessionSelectedCount => '选中数';
+
+  @override
+  String get memoryToolSessionPageCount => '分页数';
+
+  @override
+  String get memoryToolSessionRenderedCount => '当前渲染';
+
+  @override
+  String get memoryToolSessionBoundToCurrent => '已绑定当前进程';
+
+  @override
+  String get memoryToolTaskFirstScanTitle => '首次扫描进行中';
+
+  @override
+  String get memoryToolTaskNextScanTitle => '继续筛选进行中';
+
+  @override
+  String get memoryToolTaskRunningHint => '正在读取目标进程内存，期间可以取消扫描。';
+
+  @override
+  String get memoryToolTaskElapsedLabel => '耗时';
+
+  @override
+  String get memoryToolTaskRegionsLabel => '区段';
+
+  @override
+  String get memoryToolTaskEntriesLabel => '候选';
+
+  @override
+  String get memoryToolTaskBytesLabel => '字节';
+
+  @override
+  String get memoryToolTaskResultCountLabel => '命中';
+
+  @override
+  String get memoryToolTaskCancelAction => '取消扫描';
+
+  @override
+  String get memoryToolTaskCancelled => '扫描已取消。';
+
+  @override
+  String get memoryToolTaskFailedFallback => '扫描失败，请重试。';
+
+  @override
+  String get memoryToolResultTitle => '命中结果';
+
+  @override
+  String get memoryToolResultEmpty => '当前没有命中结果。';
+
+  @override
+  String get memoryToolResultInactiveHint => '执行首次扫描后，这里会显示命中地址。';
+
+  @override
+  String get memoryToolResultAddress => '地址';
+
+  @override
+  String get memoryToolResultRegion => '区段';
+
+  @override
+  String get memoryToolResultType => '类型';
+
+  @override
+  String get memoryToolResultValue => '值';
+
+  @override
+  String get memoryToolResultPreviousValue => '上次值';
+
+  @override
+  String get memoryToolFrozenBadge => '冻结';
+
+  @override
+  String get memoryToolResultDetailTitle => '结果详情';
+
+  @override
+  String get memoryToolResultDetailActionsLabel => '快捷操作';
+
+  @override
+  String get memoryToolResultDetailActionEdit => '编辑';
+
+  @override
+  String get memoryToolResultDetailActionWatch => '加入监视';
+
+  @override
+  String get memoryToolResultDetailActionCopyAddress => '复制地址';
+
+  @override
+  String get memoryToolResultDetailActionCopyValue => '复制数值';
+
+  @override
+  String get memoryToolResultActionTitle => '更多操作';
+
+  @override
+  String get memoryToolResultActionSelectCurrent => '选中当前项';
+
+  @override
+  String get memoryToolResultActionSelectCurrentHint => '把当前结果加入选择集，便于后续统一处理。';
+
+  @override
+  String get memoryToolResultActionStartMultiSelect => '进入多选模式';
+
+  @override
+  String get memoryToolResultActionStartMultiSelectHint => '从当前结果开始进行多选和批量操作。';
+
+  @override
+  String get memoryToolResultActionBatchEdit => '批量修改';
+
+  @override
+  String get memoryToolResultActionBatchEditHint => '为后续批量写入和筛选后的编辑预留入口。';
+
+  @override
+  String get memoryToolResultActionSaveToSaved => '保存到暂存区';
+
+  @override
+  String get memoryToolResultActionSaveToSavedHint => '把当前结果加入暂存区，便于后续集中编辑与冻结。';
+
+  @override
+  String memoryToolSavedToSavedMessage(Object count) {
+    return '已保存 $count 项到暂存区';
+  }
+
+  @override
+  String get memoryToolResultActionAddWatch => '加入监视列表';
+
+  @override
+  String get memoryToolResultActionAddWatchHint => '把当前结果加入监视区，后续持续查看变化。';
+
+  @override
+  String get memoryToolResultActionFreeze => '加入冻结队列';
+
+  @override
+  String get memoryToolResultActionFreezeHint => '为后续冻结和保持数值稳定预留入口。';
+
+  @override
+  String get memoryToolSavedEmpty => '暂无暂存数据';
+
+  @override
+  String get memoryToolResultCalculatorTitle => '偏移 / 异或';
+
+  @override
+  String memoryToolResultCalculatorSummary(
+    Object selectedCount,
+    Object pairCount,
+  ) {
+    return '已选 $selectedCount 项，可计算 $pairCount 组';
+  }
+
+  @override
+  String get memoryToolResultCalculatorNeedAtLeastTwo => '至少选择 2 个整数结果。';
+
+  @override
+  String get memoryToolResultCalculatorValues => '值';
+
+  @override
+  String get memoryToolResultCalculatorCombinations => '组合';
+
+  @override
+  String get memoryToolResultCalculatorOffset => '偏移';
+
+  @override
+  String get memoryToolResultCalculatorXor => '异或';
+
+  @override
+  String get memoryToolTargetProcess => '目标进程';
+
+  @override
+  String get memoryToolValidationValueRequired => '请先输入搜索值。';
+
+  @override
+  String get memoryToolValidationBytesInvalid =>
+      '字节数组格式不正确，请输入偶数位十六进制，例如 12 34 AB。';
+
+  @override
+  String get memoryToolValidationIntegerInvalid => '整数类型只能输入整数值。';
+
+  @override
+  String get memoryToolValidationIntegerOutOfRange => '整数值超出当前类型可搜索的范围。';
+
+  @override
+  String get memoryToolValidationDecimalInvalid => '小数类型请输入有效的数字。';
+
+  @override
+  String get memoryToolValidationTypeUnsupported => '当前搜索类型尚未接入扫描内核。';
+
+  @override
+  String get memoryToolProcessTerminatedTitle => '目标进程已退出';
+
+  @override
+  String get memoryToolProcessTerminatedDescription =>
+      '当前选中的目标进程已经关闭，搜索会话和选择状态已被终止。请重新选择进程后再继续操作。';
+
+  @override
+  String get memoryToolProcessTerminatedAction => '我知道了';
 }

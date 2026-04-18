@@ -4,7 +4,7 @@ description: "flutter for hook"
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 
-version: 5.0.4+504
+version: 5.0.5+505
 
 environment:
   sdk: ^3.9.2
@@ -53,6 +53,17 @@ dependencies:
   custom_pop_up_menu: ^1.2.4
   popover: ^0.4.0
   file_picker: ^10.3.10
+  flutter_staggered_grid_view: ^0.7.0
+  flutter_quill: ^11.5.0
+  flutter_quill_extensions: ^11.0.0
+  flutter_quill_delta_from_html: ^1.5.3
+  flutter_html: ^3.0.0
+  markdown: ^7.3.1
+  marquee: ^2.3.0
+  external_app_launcher: ^4.0.3
+  flutter_floating: ^2.0.2
+  flutter_overlay_window: ^0.5.0
+  liquid_glass_widgets: ^0.5.0
 
 
 
@@ -91,6 +102,10 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: assets/images/logo.png
+
+dependency_overrides:
+  flutter_overlay_window:
+    path: third_party/flutter_overlay_window
 
 
 # Pigeon 配置已迁移至外部文件 pigeon.yaml

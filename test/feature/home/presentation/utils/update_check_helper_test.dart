@@ -1,5 +1,5 @@
 import 'package:JsxposedX/core/models/update.dart';
-import 'package:JsxposedX/feature/home/presentation/utils/update_check_helper.dart';
+import 'package:JsxposedX/features/home/presentation/utils/update_check_helper.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

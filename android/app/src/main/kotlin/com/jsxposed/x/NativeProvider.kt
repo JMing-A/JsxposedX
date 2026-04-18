@@ -9,6 +9,8 @@ import com.jsxposed.x.core.bridge.zygisk_frida_native.ZygiskFridaNativeImpl
 import com.jsxposed.x.core.bridge.status_management_native.StatusManagementNative
 import com.jsxposed.x.core.bridge.status_management_native.StatusManagementNativeImpl
 import com.jsxposed.x.core.bridge.app_native.AppNativeImpl
+import com.jsxposed.x.core.bridge.memory_tool_native.MemoryToolNative
+import com.jsxposed.x.core.bridge.memory_tool_native.MemoryToolNativeImpl
 import com.jsxposed.x.core.bridge.pinia_native.PiniaNative
 import com.jsxposed.x.core.bridge.project_native.ProjectNative
 import com.jsxposed.x.core.bridge.project_native.ProjectNativeImpl
@@ -27,7 +29,7 @@ object NativeProvider {
         val apkAnalysisImpl = ApkAnalysisNativeImpl(context)
         ApkAnalysisNative.setUp(messenger, apkAnalysisImpl)
         SoAnalysisNative.setUp(messenger, SoAnalysisNativeImpl(context, apkAnalysisImpl.sharedSession))
-        // XposedService 连接已在 App.onCreate() 中初始化
+        MemoryToolNative.setUp(messenger, MemoryToolNativeImpl(context))
         LSPosedNative.setUp(messenger, LSPosedNativeImpl(context))
         ZygiskFridaNative.setUp(messenger, ZygiskFridaNativeImpl(context))
     }

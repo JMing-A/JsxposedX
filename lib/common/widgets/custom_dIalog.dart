@@ -54,64 +54,99 @@ class CustomDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      // 1. 设置背景颜色（通常使用主题色，保证暗色模式适配）
-      color: context.colorScheme.surface,
-      // 2. 在 Material 这一层统一设置圆角形状
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      // 3. 开启裁剪，这样内层的 Container 或 child 如果超出圆角会被自动裁掉
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        constraints: BoxConstraints(maxHeight: 0.9.sh, maxWidth: 0.9.sw),
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
-        width: width ?? 0.9.sw,
-        height: height,
-        // 注意：建议这里也包一层 SingleChildScrollView 或使用 MainAxisSize.min，防止内容溢出
-        child: Column(
-          mainAxisSize: MainAxisSize.min, // 让对话框高度自适应内容
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 10.h),
-              child: DefaultTextStyle(
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontFamily: AppFonts.primary,
-                  color: context.textTheme.titleMedium!.color, // 局部定义的标题颜色
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final resolvedMaxWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : 0.9.sw;
+        final resolvedMaxHeight = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : 0.9.sh;
+        final dialogWidth = width == null
+            ? resolvedMaxWidth
+            : width!.clamp(0.0, resolvedMaxWidth).toDouble();
+        final dialogHeight = height?.clamp(0.0, resolvedMaxHeight).toDouble();
+        final content = Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: 8.r,
+            horizontal: 10.r,
+          ),
+          child: Column(
+            mainAxisSize: dialogHeight == null
+                ? MainAxisSize.min
+                : MainAxisSize.max,
+            children: [
+              if (child != null)
+                if (dialogHeight != null)
+                  Expanded(child: child!)
+                else
+                  child!,
+              if (actionButtons != null) ...[
+                if (child != null) SizedBox(height: 8.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  spacing: 5.w,
+                  children: [...actionButtons!],
                 ),
-                child: Row(
-                  children: [
-                    title,
-                    Spacer(),
-                    if (action != null) ...action!,
-                    if (hasClose)
-                      InkWell(
-                        onTap: () => SmartDialog.dismiss(),
-                        child: Icon(Icons.close, color: Colors.grey),
-                      ),
-                  ],
-                ),
-              ),
+              ],
+            ],
+          ),
+        );
+
+        return Material(
+          color: context.colorScheme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: resolvedMaxWidth,
+              maxHeight: resolvedMaxHeight,
             ),
-            if (child != null) const Divider(),
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 10.w),
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 10.r, vertical: 8.r),
+              width: dialogWidth,
+              height: dialogHeight,
               child: Column(
+                mainAxisSize: dialogHeight == null
+                    ? MainAxisSize.min
+                    : MainAxisSize.max,
                 children: [
-                  if (child != null) child!,
-                  if (actionButtons != null) ...[
-                    if (child != null) SizedBox(height: 8.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      spacing: 5.w,
-                      children: [...actionButtons!],
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.r,
+                      horizontal: 10.r,
                     ),
-                  ],
+                    child: DefaultTextStyle(
+                      style: TextStyle(
+                        fontSize: 18.sp,
+                        fontFamily: AppFonts.primary,
+                        color: context.textTheme.titleMedium!.color,
+                      ),
+                      child: Row(
+                        children: [
+                          Flexible(child: title),
+                          const Spacer(),
+                          if (action != null) ...action!,
+                          if (hasClose)
+                            InkWell(
+                              onTap: () => SmartDialog.dismiss(),
+                              child: const Icon(Icons.close, color: Colors.grey),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (child != null) const Divider(),
+                  if (dialogHeight != null)
+                    Expanded(child: content)
+                  else
+                    content,
                 ],
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

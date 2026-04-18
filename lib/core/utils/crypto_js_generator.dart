@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:JsxposedX/feature/project/domain/models/crypto_rule.dart';
+import 'package:JsxposedX/features/project/domain/models/crypto_rule.dart';
 import 'package:flutter/foundation.dart';
 
 class CryptoJsGenerator {

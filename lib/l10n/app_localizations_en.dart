@@ -25,6 +25,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get repository => 'Repository';
 
   @override
+  String get news => 'News';
+
+  @override
+  String get star => 'Star';
+
+  @override
+  String get repositoryAccountInfo => 'Account Info';
+
+  @override
+  String get repositoryTokenLogin => 'Token Login';
+
+  @override
+  String get repositoryReplaceToken => 'Replace Token';
+
+  @override
+  String get repositoryTokenHint => 'Enter token';
+
+  @override
+  String get repositoryTokenEmpty => 'Token cannot be empty';
+
+  @override
+  String get repositoryVerifyAndLogin => 'Verify & Login';
+
+  @override
+  String get repositoryTokenLoginSuccess => 'Token login successful';
+
+  @override
+  String get repositoryTokenInvalid => 'Invalid or expired token';
+
+  @override
+  String get repositoryUnnamedUser => 'Unnamed User';
+
+  @override
+  String get repositoryMxid => 'MXID';
+
+  @override
+  String get repositoryVip => 'VIP';
+
+  @override
+  String get repositoryVipActive => 'Active';
+
+  @override
+  String get repositoryVipInactive => 'Inactive';
+
+  @override
+  String get repositoryFavoriteLoginRequired => 'Login Required';
+
+  @override
+  String get repositoryFavoriteLoginHint => 'Log in to view your favorites';
+
+  @override
   String get settings => 'Settings';
 
   @override
@@ -1615,4 +1666,551 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiMethodCopyFull => 'Copy Full Path';
+
+  @override
+  String get overlayMemoryToolTitle => 'Memory Tool';
+
+  @override
+  String get overlayFloatingToolWindow => 'Floating tool window';
+
+  @override
+  String get overlayWindowNotificationContent => 'Overlay is running';
+
+  @override
+  String get overlayWindowFallbackTitle => 'Overlay Window';
+
+  @override
+  String get overlayWindowUnknownSceneTitle => 'Overlay scene unavailable';
+
+  @override
+  String get overlayWindowUnknownSceneDescription =>
+      'The requested overlay scene is not registered, so rendering was stopped.';
+
+  @override
+  String get overlayQuickWorkspace => 'Quick Workspace';
+
+  @override
+  String get overlayQuickWorkspaceDescription =>
+      'Tap the floating bubble to open this panel. Use the top-right buttons to minimize or close it.';
+
+  @override
+  String get overlayBubbleFeatureTitle => 'Floating Bubble';
+
+  @override
+  String get overlayBubbleFeatureDescription => 'Single tap opens the panel.';
+
+  @override
+  String get overlayPanelFeatureTitle => 'Stable Panel';
+
+  @override
+  String get overlayPanelFeatureDescription =>
+      'Uses plain Material rendering to reduce visual artifacts.';
+
+  @override
+  String get overlayConnected => 'Overlay connected';
+
+  @override
+  String get memoryToolTabSearch => 'Search';
+
+  @override
+  String get memoryToolTabEdit => 'Edit';
+
+  @override
+  String get memoryToolTabSaved => 'Saved';
+
+  @override
+  String get memoryToolTabWatch => 'Watch';
+
+  @override
+  String get memoryToolSearchTabTitle => 'Search Parameters';
+
+  @override
+  String get memoryToolSearchTabSubtitle =>
+      'Use this area for first scan, narrowing, and read entry points.';
+
+  @override
+  String get memoryToolSearchModeLabel => 'Mode';
+
+  @override
+  String get memoryToolActionPanelTitle => 'Action Panel';
+
+  @override
+  String get memoryToolActionPanelSubtitle =>
+      'Reserved for first scan, next scan, and read operations.';
+
+  @override
+  String get memoryToolFieldValue => 'Value';
+
+  @override
+  String get memoryToolFieldValuePlaceholder => '100.0';
+
+  @override
+  String get memoryToolFieldValueHint => 'Enter the value to search';
+
+  @override
+  String get memoryToolFieldType => 'Type';
+
+  @override
+  String get memoryToolFieldTypePlaceholder => 'Int32';
+
+  @override
+  String get memoryToolFieldScope => 'Scope';
+
+  @override
+  String get memoryToolFieldScopePlaceholder => 'All memory';
+
+  @override
+  String get memoryToolFieldSearchMode => 'Search Mode';
+
+  @override
+  String get memoryToolFieldFuzzyMode => 'Fuzzy Filter';
+
+  @override
+  String get memoryToolFieldValueCategory => 'Search Type';
+
+  @override
+  String get memoryToolFieldValueTypeOption => 'Search Format';
+
+  @override
+  String get memoryToolFieldRangeSection => 'Custom Sections';
+
+  @override
+  String get memoryToolTextEncodingLabel => 'Text Encoding';
+
+  @override
+  String get memoryToolTextEncodingUtf8 => 'UTF-8';
+
+  @override
+  String get memoryToolTextEncodingUtf16Le => 'UTF-16LE';
+
+  @override
+  String get memoryToolSearchExact => 'Exact Scan';
+
+  @override
+  String get memoryToolSearchFuzzy => 'Fuzzy Scan';
+
+  @override
+  String get memoryToolSearchFuzzyUnknown => 'Unknown Initial';
+
+  @override
+  String get memoryToolSearchFuzzyUnchanged => 'Unchanged';
+
+  @override
+  String get memoryToolSearchFuzzyChanged => 'Changed';
+
+  @override
+  String get memoryToolSearchFuzzyIncreased => 'Increased';
+
+  @override
+  String get memoryToolSearchFuzzyDecreased => 'Decreased';
+
+  @override
+  String get memoryToolSearchFuzzyHint =>
+      'Fuzzy first scan can start without a value. Enter the current value when filtering next.';
+
+  @override
+  String get memoryToolSearchFuzzyUnsupportedHint =>
+      'Fuzzy scan currently supports fixed-width numeric types only.';
+
+  @override
+  String get memoryToolSearchBytesHint => 'Example: 12 34 AB CD';
+
+  @override
+  String get memoryToolSearchTextHint => 'Enter the text to search';
+
+  @override
+  String get memoryToolSearchTypePendingHint =>
+      'This search type is not wired to the scan core yet.';
+
+  @override
+  String get memoryToolRangePresetPendingHint =>
+      'Current scans still use all readable memory. Range presets are UI-only for now.';
+
+  @override
+  String get memoryToolEndianLabel => 'Little Endian';
+
+  @override
+  String get memoryToolValueCategoryInteger => 'Integer';
+
+  @override
+  String get memoryToolValueCategoryDecimal => 'Decimal';
+
+  @override
+  String get memoryToolValueCategoryBytes => 'Bytes';
+
+  @override
+  String get memoryToolValueCategoryText => 'Text';
+
+  @override
+  String get memoryToolValueCategoryAdvanced => 'Advanced';
+
+  @override
+  String get memoryToolValueTypeI8 => 'I8';
+
+  @override
+  String get memoryToolValueTypeI16 => 'I16';
+
+  @override
+  String get memoryToolValueTypeI32 => 'I32';
+
+  @override
+  String get memoryToolValueTypeI64 => 'I64';
+
+  @override
+  String get memoryToolValueTypeF32 => 'F32';
+
+  @override
+  String get memoryToolValueTypeF64 => 'F64';
+
+  @override
+  String get memoryToolValueTypeBytes => 'AOB';
+
+  @override
+  String get memoryToolValueTypeXor => 'XOR';
+
+  @override
+  String get memoryToolValueTypeAuto => 'AUTO';
+
+  @override
+  String get memoryToolValueTypeText => 'TEXT';
+
+  @override
+  String get memoryToolRangePresetCommon => 'Common';
+
+  @override
+  String get memoryToolRangePresetJava => 'Java';
+
+  @override
+  String get memoryToolRangePresetNative => 'Native';
+
+  @override
+  String get memoryToolRangePresetCode => 'Code';
+
+  @override
+  String get memoryToolRangePresetAll => 'All';
+
+  @override
+  String get memoryToolRangePresetCustom => 'Custom';
+
+  @override
+  String get memoryToolRangeSectionAnonymous => 'Anonymous';
+
+  @override
+  String get memoryToolRangeSectionJava => 'Java';
+
+  @override
+  String get memoryToolRangeSectionJavaHeap => 'Java Heap';
+
+  @override
+  String get memoryToolRangeSectionCAlloc => 'C Alloc';
+
+  @override
+  String get memoryToolRangeSectionCHeap => 'C Heap';
+
+  @override
+  String get memoryToolRangeSectionCData => 'C Data';
+
+  @override
+  String get memoryToolRangeSectionCBss => 'C Bss';
+
+  @override
+  String get memoryToolRangeSectionCodeApp => 'App Code';
+
+  @override
+  String get memoryToolRangeSectionCodeSys => 'System Code';
+
+  @override
+  String get memoryToolRangeSectionStack => 'Stack';
+
+  @override
+  String get memoryToolRangeSectionAshmem => 'Ashmem';
+
+  @override
+  String get memoryToolRangeSectionOther => 'Other';
+
+  @override
+  String get memoryToolRangeSectionBad => 'Bad';
+
+  @override
+  String get memoryToolActionFirstScan => 'First Scan';
+
+  @override
+  String get memoryToolActionNextScan => 'Next Scan';
+
+  @override
+  String get memoryToolActionRead => 'Read';
+
+  @override
+  String get memoryToolActionReset => 'Reset Session';
+
+  @override
+  String get memoryToolEditTabTitle => 'Edit Workspace';
+
+  @override
+  String get memoryToolEditTabSubtitle =>
+      'A good place for address writes, batch edits, and freeze entry points.';
+
+  @override
+  String get memoryToolEditActionWriteValue =>
+      'Write a new value to the target address';
+
+  @override
+  String get memoryToolEditActionFreezeValue =>
+      'Add the result to the freeze list and keep it stable';
+
+  @override
+  String get memoryToolEditActionBatchWrite =>
+      'Apply a batch write to filtered results';
+
+  @override
+  String get memoryToolPatchTabTitle => 'Patches & Scripts';
+
+  @override
+  String get memoryToolPatchTabSubtitle =>
+      'Suitable for hex patches, asm edits, and restore actions.';
+
+  @override
+  String get memoryToolPatchActionHex => 'Hex patch entry';
+
+  @override
+  String get memoryToolPatchActionAsm => 'Assembly edit entry';
+
+  @override
+  String get memoryToolPatchActionRestore =>
+      'Restore original values and patches';
+
+  @override
+  String get memoryToolWatchTabTitle => 'Watch List';
+
+  @override
+  String get memoryToolWatchTabSubtitle =>
+      'Use this tab for persistent watch values and freeze states.';
+
+  @override
+  String get memoryToolSessionTitle => 'Search Session';
+
+  @override
+  String get memoryToolSessionEmpty =>
+      'No active session yet. Start with a first scan.';
+
+  @override
+  String get memoryToolSessionMismatch =>
+      'The current session belongs to another process. Run first scan again.';
+
+  @override
+  String get memoryToolSessionPid => 'Session PID';
+
+  @override
+  String get memoryToolSessionRegionCount => 'Regions';
+
+  @override
+  String get memoryToolSessionResultCount => 'Results';
+
+  @override
+  String get memoryToolSessionSelectedCount => 'Selected';
+
+  @override
+  String get memoryToolSessionPageCount => 'Pages';
+
+  @override
+  String get memoryToolSessionRenderedCount => 'Rendered';
+
+  @override
+  String get memoryToolSessionBoundToCurrent => 'Bound to current process';
+
+  @override
+  String get memoryToolTaskFirstScanTitle => 'First Scan In Progress';
+
+  @override
+  String get memoryToolTaskNextScanTitle => 'Next Scan In Progress';
+
+  @override
+  String get memoryToolTaskRunningHint =>
+      'Reading the target process memory. You can cancel the scan at any time.';
+
+  @override
+  String get memoryToolTaskElapsedLabel => 'Elapsed';
+
+  @override
+  String get memoryToolTaskRegionsLabel => 'Regions';
+
+  @override
+  String get memoryToolTaskEntriesLabel => 'Candidates';
+
+  @override
+  String get memoryToolTaskBytesLabel => 'Bytes';
+
+  @override
+  String get memoryToolTaskResultCountLabel => 'Results';
+
+  @override
+  String get memoryToolTaskCancelAction => 'Cancel Scan';
+
+  @override
+  String get memoryToolTaskCancelled => 'Scan cancelled.';
+
+  @override
+  String get memoryToolTaskFailedFallback => 'Scan failed. Please try again.';
+
+  @override
+  String get memoryToolResultTitle => 'Matched Results';
+
+  @override
+  String get memoryToolResultEmpty => 'There are no matched results yet.';
+
+  @override
+  String get memoryToolResultInactiveHint =>
+      'Run a first scan and matched addresses will appear here.';
+
+  @override
+  String get memoryToolResultAddress => 'Address';
+
+  @override
+  String get memoryToolResultRegion => 'Region';
+
+  @override
+  String get memoryToolResultType => 'Type';
+
+  @override
+  String get memoryToolResultValue => 'Value';
+
+  @override
+  String get memoryToolResultPreviousValue => 'Previous';
+
+  @override
+  String get memoryToolFrozenBadge => 'Frozen';
+
+  @override
+  String get memoryToolResultDetailTitle => 'Result Details';
+
+  @override
+  String get memoryToolResultDetailActionsLabel => 'Quick Actions';
+
+  @override
+  String get memoryToolResultDetailActionEdit => 'Edit';
+
+  @override
+  String get memoryToolResultDetailActionWatch => 'Add to Watch';
+
+  @override
+  String get memoryToolResultDetailActionCopyAddress => 'Copy Address';
+
+  @override
+  String get memoryToolResultDetailActionCopyValue => 'Copy Value';
+
+  @override
+  String get memoryToolResultActionTitle => 'More Actions';
+
+  @override
+  String get memoryToolResultActionSelectCurrent => 'Select Current';
+
+  @override
+  String get memoryToolResultActionSelectCurrentHint =>
+      'Add the current result to the selection set for later unified actions.';
+
+  @override
+  String get memoryToolResultActionStartMultiSelect => 'Enter Multi-Select';
+
+  @override
+  String get memoryToolResultActionStartMultiSelectHint =>
+      'Start multi-select and batch operations from the current result.';
+
+  @override
+  String get memoryToolResultActionBatchEdit => 'Batch Edit';
+
+  @override
+  String get memoryToolResultActionBatchEditHint =>
+      'Reserve an entry point for future batch write and filtered edit flows.';
+
+  @override
+  String get memoryToolResultActionSaveToSaved => 'Save to Saved';
+
+  @override
+  String get memoryToolResultActionSaveToSavedHint =>
+      'Add the current result to the saved list for later edits and freeze actions.';
+
+  @override
+  String memoryToolSavedToSavedMessage(Object count) {
+    return 'Added $count item(s) to Saved';
+  }
+
+  @override
+  String get memoryToolResultActionAddWatch => 'Add to Watch List';
+
+  @override
+  String get memoryToolResultActionAddWatchHint =>
+      'Add the current result to the watch area for continuous observation.';
+
+  @override
+  String get memoryToolResultActionFreeze => 'Add to Freeze Queue';
+
+  @override
+  String get memoryToolResultActionFreezeHint =>
+      'Reserve an entry point for future freeze and keep-value-stable actions.';
+
+  @override
+  String get memoryToolSavedEmpty => 'No saved items';
+
+  @override
+  String get memoryToolResultCalculatorTitle => 'Offset / XOR';
+
+  @override
+  String memoryToolResultCalculatorSummary(
+    Object selectedCount,
+    Object pairCount,
+  ) {
+    return '$selectedCount selected, $pairCount pairs';
+  }
+
+  @override
+  String get memoryToolResultCalculatorNeedAtLeastTwo =>
+      'Select at least 2 integer results.';
+
+  @override
+  String get memoryToolResultCalculatorValues => 'Values';
+
+  @override
+  String get memoryToolResultCalculatorCombinations => 'Combinations';
+
+  @override
+  String get memoryToolResultCalculatorOffset => 'Offset';
+
+  @override
+  String get memoryToolResultCalculatorXor => 'XOR';
+
+  @override
+  String get memoryToolTargetProcess => 'Target Process';
+
+  @override
+  String get memoryToolValidationValueRequired => 'Enter a search value first.';
+
+  @override
+  String get memoryToolValidationBytesInvalid =>
+      'Invalid byte pattern. Use even-length hex such as 12 34 AB.';
+
+  @override
+  String get memoryToolValidationIntegerInvalid =>
+      'Integer types only accept whole numbers.';
+
+  @override
+  String get memoryToolValidationIntegerOutOfRange =>
+      'The integer value is outside the supported range for this type.';
+
+  @override
+  String get memoryToolValidationDecimalInvalid =>
+      'Enter a valid decimal number for this type.';
+
+  @override
+  String get memoryToolValidationTypeUnsupported =>
+      'This search type is not wired to the scan core yet.';
+
+  @override
+  String get memoryToolProcessTerminatedTitle => 'Target Process Closed';
+
+  @override
+  String get memoryToolProcessTerminatedDescription =>
+      'The selected target process has exited. The current search session and selections were cleared. Please pick a process again before continuing.';
+
+  @override
+  String get memoryToolProcessTerminatedAction => 'OK';
 }

@@ -1,4 +1,4 @@
-import 'package:JsxposedX/feature/xposed/domain/models/block_node.dart';
+import 'package:JsxposedX/features/xposed/domain/models/block_node.dart';
 
 /// 变量信息
 class VariableInfo {

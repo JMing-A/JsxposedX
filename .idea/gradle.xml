@@ -22,15 +22,19 @@
           <set>
             <option value="E:/.pub-cache/hosted/pub.dev/device_info_plus-12.3.0/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/file_picker-10.3.10/android" />
+            <option value="E:/.pub-cache/hosted/pub.dev/flutter_keyboard_visibility_temp_fork-0.1.5/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/flutter_plugin_android_lifecycle-2.0.33/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/fluttertoast-8.2.14/android" />
+            <option value="E:/.pub-cache/hosted/pub.dev/image_picker_android-0.8.13+16/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/package_info_plus-9.0.0/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/path_provider_android-2.2.22/android" />
+            <option value="E:/.pub-cache/hosted/pub.dev/quill_native_bridge_android-0.0.1+2/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.20/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/sqflite_android-2.4.2+2/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/sqlite3_flutter_libs-0.5.41/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/storage_space-1.2.0/android" />
             <option value="E:/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.28/android" />
+            <option value="E:/.pub-cache/hosted/pub.dev/video_player_android-2.9.5/android" />
             <option value="$PROJECT_DIR$/android" />
             <option value="$PROJECT_DIR$/android/app" />
             <option value="$PROJECT_DIR$/android/libxposed" />

@@ -43,6 +43,18 @@ if(EXISTS ${LIEF_LIB})
         so_analysis_jni.cpp
     )
 
+    add_library(memory_tool SHARED
+        memory_tool_jni.cpp
+        memory_tool_engine.cpp
+        memory_tool_protocol.cpp
+        memory_tool_reader.cpp
+        memory_tool_regions.cpp
+        memory_tool_scanner.cpp
+        memory_tool_session.cpp
+        memory_tool_utils.cpp
+        memory_tool_value.cpp
+    )
+
     target_include_directories(so_analysis PRIVATE
         ${CMAKE_SOURCE_DIR}/../jniLibs/lief/include
         ${capstone_SOURCE_DIR}/include
@@ -56,11 +68,18 @@ if(EXISTS ${LIEF_LIB})
         z
     )
 
-    target_compile_options(so_analysis PRIVATE
-        -fexceptions
-        -frtti
-        -std=c++17
+    target_link_libraries(memory_tool
+        android
+        log
     )
+
+    foreach(native_target so_analysis memory_tool)
+        target_compile_options(${native_target} PRIVATE
+            -fexceptions
+            -frtti
+            -std=c++17
+        )
+    endforeach()
 else()
-    message(STATUS "LIEF not found for ${ANDROID_ABI}, skipping so_analysis")
+    message(STATUS "LIEF not found for ${ANDROID_ABI}, skipping so_analysis and memory_tool")
 endif()
