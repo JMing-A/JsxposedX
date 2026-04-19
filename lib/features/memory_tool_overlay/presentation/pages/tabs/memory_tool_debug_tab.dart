@@ -612,18 +612,38 @@ class MemoryToolDebugTab extends HookConsumerWidget {
                 ? context.l10n.memoryToolResultActionSaveToSaved
                 : (context.isZh ? '更新暂存区' : 'Update Saved Patch'),
             onTap: () async {
-              savedInstructionPatchesNotifier.saveOne(
-                pid: pid,
-                address: address,
-                instructionText: trimmedCurrent,
-                result: SearchResult(
+              SearchResult savedResult;
+              try {
+                final previews = await ref
+                    .read(memoryQueryRepositoryProvider)
+                    .disassembleMemory(
+                      pid: pid,
+                      addresses: <int>[address],
+                    );
+                final preview = previews.isEmpty ? null : previews.first;
+                savedResult = SearchResult(
+                  address: address,
+                  regionStart: address,
+                  regionTypeKey: 'other',
+                  type: SearchValueType.bytes,
+                  rawBytes: preview?.rawBytes ?? Uint8List(0),
+                  displayValue: preview?.instructionText ?? trimmedCurrent,
+                );
+              } catch (_) {
+                savedResult = SearchResult(
                   address: address,
                   regionStart: address,
                   regionTypeKey: 'other',
                   type: SearchValueType.bytes,
                   rawBytes: Uint8List(0),
                   displayValue: trimmedCurrent,
-                ),
+                );
+              }
+              savedInstructionPatchesNotifier.saveOne(
+                pid: pid,
+                address: address,
+                instructionText: trimmedCurrent,
+                result: savedResult,
               );
               activeDetailActions.value = null;
               await ToastOverlayMessage.show(
