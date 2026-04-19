@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:JsxposedX/common/pages/toast.dart';
+import 'package:JsxposedX/core/utils/format_utils.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_query_provider.dart';
@@ -62,7 +64,12 @@ class MemoryToolPointerTab extends HookConsumerWidget {
 
     final currentTaskState = taskStateAsync.asData?.value;
     final isRunningTask = currentTaskState?.status == SearchTaskStatus.running;
-    final shouldPollTaskState = isRunningTask || pointerState.isAutoChasing;
+    final isManualScanLoading =
+        !pointerState.isAutoChasing &&
+        currentLayer != null &&
+        (currentLayer.isLoadingInitial || currentLayer.isLoadingMore);
+    final shouldPollTaskState =
+        isRunningTask || pointerState.isAutoChasing || isManualScanLoading;
 
     useEffect(() {
       if (!shouldPollTaskState) {
@@ -264,9 +271,9 @@ class MemoryToolPointerTab extends HookConsumerWidget {
                           ),
                         ),
                       )
-                    : currentLayer.results.isEmpty && !isRunningTask
+                    : currentLayer.results.isEmpty && !isManualScanLoading && !isRunningTask
                     ? const SizedBox.shrink()
-                    : filteredResults.isEmpty && !isRunningTask
+                    : filteredResults.isEmpty && !isManualScanLoading && !isRunningTask
                     ? const SizedBox.shrink()
                     : MemoryToolPointerResultList(
                         results: filteredResults,
@@ -305,11 +312,10 @@ class MemoryToolPointerTab extends HookConsumerWidget {
               onCancel: pointerController.cancelAutoChase,
             ),
           ),
-        if (!pointerState.isAutoChasing &&
-            currentTaskState?.status == SearchTaskStatus.running)
+        if (!pointerState.isAutoChasing && isManualScanLoading)
           Positioned.fill(
             child: _MemoryToolPointerTaskMask(
-              taskState: currentTaskState!,
+              taskState: currentTaskState,
               onCancel: () {
                 ref
                     .read(memoryPointerActionProvider.notifier)
@@ -332,61 +338,190 @@ class _MemoryToolPointerTaskMask extends StatelessWidget {
     required this.onCancel,
   });
 
-  final PointerScanTaskState taskState;
+  final PointerScanTaskState? taskState;
   final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
+    final progress = _resolvePointerTaskProgress(taskState);
+    final message = taskState?.message.trim() ?? '';
+
     return ColoredBox(
-      color: Colors.black.withValues(alpha: 0.22),
-      child: Center(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: context.colorScheme.surface.withValues(alpha: 0.96),
-            borderRadius: BorderRadius.circular(18.r),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(16.r),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  context.l10n.memoryToolPointerTaskRunningTitle,
-                  style: context.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
+      color: Colors.black.withValues(alpha: 0.34),
+      child: SafeArea(
+        minimum: EdgeInsets.all(12.r),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxPanelHeight = (constraints.maxHeight - 12.r)
+                .clamp(220.r, double.infinity)
+                .toDouble();
+
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 340.r,
+                  minWidth: 240.r,
+                  maxHeight: maxPanelHeight,
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: context.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(20.r),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 18.r,
+                        offset: Offset(0, 10.r),
+                      ),
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(16.r),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          context.l10n.memoryToolPointerTaskRunningTitle,
+                          style: context.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 6.r),
+                        Text(
+                          context.l10n.memoryToolTaskRunningHint,
+                          style: context.textTheme.bodySmall?.copyWith(
+                            color: context.colorScheme.onSurface.withValues(
+                              alpha: 0.68,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 14.r),
+                        progress == null
+                            ? SizedBox(
+                                width: 28.r,
+                                height: 28.r,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4.r,
+                                ),
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(999.r),
+                                    child: LinearProgressIndicator(
+                                      value: progress,
+                                      minHeight: 8.r,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.r),
+                                  Text(
+                                    '${(progress * 100).toStringAsFixed(1)}%',
+                                    style: context.textTheme.labelLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                        if (message.isNotEmpty) ...<Widget>[
+                          SizedBox(height: 12.r),
+                          Text(
+                            message,
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: context.colorScheme.onSurface.withValues(
+                                alpha: 0.72,
+                              ),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                        SizedBox(height: 14.r),
+                        Wrap(
+                          spacing: 8.r,
+                          runSpacing: 8.r,
+                          children: <Widget>[
+                            if ((taskState?.elapsedMilliseconds ?? 0) > 0)
+                              _MemoryToolPointerTaskMetricChip(
+                                label: context.l10n.memoryToolTaskElapsedLabel,
+                                value: formatDurationShort(
+                                  taskState!.elapsedMilliseconds,
+                                ),
+                              ),
+                            if ((taskState?.totalRegions ?? 0) > 0)
+                              _MemoryToolPointerTaskMetricChip(
+                                label: context.l10n.memoryToolTaskRegionsLabel,
+                                value:
+                                    '${taskState!.processedRegions}/${taskState!.totalRegions}',
+                              ),
+                            if ((taskState?.totalEntries ?? 0) > 0)
+                              _MemoryToolPointerTaskMetricChip(
+                                label: context.l10n.memoryToolTaskEntriesLabel,
+                                value:
+                                    '${taskState!.processedEntries}/${taskState!.totalEntries}',
+                              ),
+                            if ((taskState?.totalBytes ?? 0) > 0)
+                              _MemoryToolPointerTaskMetricChip(
+                                label: context.l10n.memoryToolTaskBytesLabel,
+                                value:
+                                    '${formatBytesCompact(taskState!.processedBytes)}/${formatBytesCompact(taskState!.totalBytes)}',
+                              ),
+                            _MemoryToolPointerTaskMetricChip(
+                              label: context.l10n.memoryToolTaskResultCountLabel,
+                              value: (taskState?.resultCount ?? 0).toString(),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 14.r),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton.tonal(
+                            onPressed: taskState?.canCancel ?? true
+                                ? onCancel
+                                : null,
+                            child: Text(
+                              context.l10n.memoryToolTaskCancelAction,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                SizedBox(height: 10.r),
-                SizedBox(
-                  width: 28.r,
-                  height: 28.r,
-                  child: CircularProgressIndicator(strokeWidth: 2.4.r),
-                ),
-                SizedBox(height: 12.r),
-                Text(
-                  '${context.l10n.memoryToolTaskRegionsLabel}: ${taskState.processedRegions}/${taskState.totalRegions}',
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 4.r),
-                Text(
-                  '${context.l10n.memoryToolTaskResultCountLabel}: ${taskState.resultCount}',
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 12.r),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: OutlinedButton(
-                    onPressed: onCancel,
-                    child: Text(context.l10n.memoryToolTaskCancelAction),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _MemoryToolPointerTaskMetricChip extends StatelessWidget {
+  const _MemoryToolPointerTaskMetricChip({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.72,
+        ),
+        borderRadius: BorderRadius.circular(999.r),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 10.r, vertical: 8.r),
+        child: Text(
+          '$label $value',
+          style: context.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),
@@ -766,4 +901,20 @@ class _PointerFilterPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+double? _resolvePointerTaskProgress(PointerScanTaskState? state) {
+  if (state == null) {
+    return null;
+  }
+  if (state.totalBytes > 0) {
+    return math.min(1.0, state.processedBytes / state.totalBytes);
+  }
+  if (state.totalEntries > 0) {
+    return math.min(1.0, state.processedEntries / state.totalEntries);
+  }
+  if (state.totalRegions > 0) {
+    return math.min(1.0, state.processedRegions / state.totalRegions);
+  }
+  return null;
 }
