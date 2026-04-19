@@ -46,6 +46,18 @@ SearchMatchMode ToSearchMatchMode(jint raw_mode) {
     return SearchMatchMode::kExact;
 }
 
+MemoryBreakpointAccessType ToMemoryBreakpointAccessType(jint raw_type) {
+    switch (raw_type) {
+        case 0:
+            return MemoryBreakpointAccessType::kRead;
+        case 2:
+            return MemoryBreakpointAccessType::kReadWrite;
+        case 1:
+        default:
+            return MemoryBreakpointAccessType::kWrite;
+    }
+}
+
 }  // namespace
 
 jlong MemoryToolJniBridge::GetPid(JNIEnv* env, jstring package_name) {
@@ -137,6 +149,68 @@ jstring MemoryToolJniBridge::GetPointerAutoChaseLayerResultsJson(JNIEnv* env,
     const auto results =
         MemoryToolEngine::Instance().GetPointerAutoChaseLayerResults(layer_index, offset, limit);
     return env->NewStringUTF(protocol::SerializePointerScanResults(results).c_str());
+}
+
+jstring MemoryToolJniBridge::AddMemoryBreakpointJson(JNIEnv* env,
+                                                     jlong pid,
+                                                     jlong address,
+                                                     jint type,
+                                                     jint length,
+                                                     jint access_type,
+                                                     jboolean enabled,
+                                                     jboolean pause_process_on_hit) {
+    AddMemoryBreakpointRequest request;
+    request.pid = static_cast<int>(pid);
+    request.address = static_cast<uint64_t>(address);
+    request.type = ToSearchValueType(type);
+    request.length = static_cast<size_t>(length);
+    request.access_type = ToMemoryBreakpointAccessType(access_type);
+    request.enabled = enabled == JNI_TRUE;
+    request.pause_process_on_hit = pause_process_on_hit == JNI_TRUE;
+    const auto breakpoint = MemoryToolEngine::Instance().AddMemoryBreakpoint(request);
+    return env->NewStringUTF(protocol::SerializeMemoryBreakpoints({breakpoint}).c_str());
+}
+
+void MemoryToolJniBridge::RemoveMemoryBreakpoint(JNIEnv* env, jstring breakpoint_id) {
+    MemoryToolEngine::Instance().RemoveMemoryBreakpoint(JStringToUtf8(env, breakpoint_id));
+}
+
+void MemoryToolJniBridge::SetMemoryBreakpointEnabled(JNIEnv* env,
+                                                     jstring breakpoint_id,
+                                                     jboolean enabled) {
+    MemoryToolEngine::Instance().SetMemoryBreakpointEnabled(JStringToUtf8(env, breakpoint_id),
+                                                            enabled == JNI_TRUE);
+}
+
+jstring MemoryToolJniBridge::ListMemoryBreakpointsJson(JNIEnv* env, jlong pid) {
+    const auto breakpoints =
+        MemoryToolEngine::Instance().ListMemoryBreakpoints(static_cast<int>(pid));
+    return env->NewStringUTF(protocol::SerializeMemoryBreakpoints(breakpoints).c_str());
+}
+
+jstring MemoryToolJniBridge::GetMemoryBreakpointStateJson(JNIEnv* env, jlong pid) {
+    const auto state =
+        MemoryToolEngine::Instance().GetMemoryBreakpointState(static_cast<int>(pid));
+    return env->NewStringUTF(protocol::SerializeMemoryBreakpointState(state).c_str());
+}
+
+jstring MemoryToolJniBridge::GetMemoryBreakpointHitsJson(JNIEnv* env,
+                                                         jlong pid,
+                                                         jint offset,
+                                                         jint limit) {
+    const auto hits = MemoryToolEngine::Instance().GetMemoryBreakpointHits(
+        static_cast<int>(pid),
+        offset,
+        limit);
+    return env->NewStringUTF(protocol::SerializeMemoryBreakpointHits(hits).c_str());
+}
+
+void MemoryToolJniBridge::ClearMemoryBreakpointHits(jlong pid) {
+    MemoryToolEngine::Instance().ClearMemoryBreakpointHits(static_cast<int>(pid));
+}
+
+void MemoryToolJniBridge::ResumeAfterBreakpoint(jlong pid) {
+    MemoryToolEngine::Instance().ResumeAfterBreakpoint(static_cast<int>(pid));
 }
 
 jstring MemoryToolJniBridge::ReadMemoryValuesJson(JNIEnv* env,
@@ -522,6 +596,130 @@ Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridg
     } catch (const std::exception& exception) {
         memory_tool::ThrowRuntimeException(env, exception.what());
         return nullptr;
+    }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_addMemoryBreakpointJson(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jlong pid,
+        jlong address,
+        jint type,
+        jint length,
+        jint access_type,
+        jboolean enabled,
+        jboolean pause_process_on_hit) {
+    try {
+        return memory_tool::MemoryToolJniBridge::AddMemoryBreakpointJson(
+            env,
+            pid,
+            address,
+            type,
+            length,
+            access_type,
+            enabled,
+            pause_process_on_hit);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+        return nullptr;
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_removeMemoryBreakpoint(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jstring breakpoint_id) {
+    try {
+        memory_tool::MemoryToolJniBridge::RemoveMemoryBreakpoint(env, breakpoint_id);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_setMemoryBreakpointEnabled(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jstring breakpoint_id,
+        jboolean enabled) {
+    try {
+        memory_tool::MemoryToolJniBridge::SetMemoryBreakpointEnabled(
+            env,
+            breakpoint_id,
+            enabled);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+    }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_listMemoryBreakpointsJson(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jlong pid) {
+    try {
+        return memory_tool::MemoryToolJniBridge::ListMemoryBreakpointsJson(env, pid);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+        return nullptr;
+    }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_getMemoryBreakpointStateJson(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jlong pid) {
+    try {
+        return memory_tool::MemoryToolJniBridge::GetMemoryBreakpointStateJson(env, pid);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+        return nullptr;
+    }
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_getMemoryBreakpointHitsJson(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jlong pid,
+        jint offset,
+        jint limit) {
+    try {
+        return memory_tool::MemoryToolJniBridge::GetMemoryBreakpointHitsJson(
+            env,
+            pid,
+            offset,
+            limit);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+        return nullptr;
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_clearMemoryBreakpointHits(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jlong pid) {
+    try {
+        memory_tool::MemoryToolJniBridge::ClearMemoryBreakpointHits(pid);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_jsxposed_x_core_bridge_memory_1tool_1native_MemoryToolHelperNativeBridge_resumeAfterBreakpoint(
+        JNIEnv* env,
+        jobject /* thiz */,
+        jlong pid) {
+    try {
+        memory_tool::MemoryToolJniBridge::ResumeAfterBreakpoint(pid);
+    } catch (const std::exception& exception) {
+        memory_tool::ThrowRuntimeException(env, exception.what());
     }
 }
 

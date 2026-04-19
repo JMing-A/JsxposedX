@@ -20,6 +20,10 @@ int ToRawTaskStatus(SearchTaskStatus status) {
     return static_cast<int>(status);
 }
 
+int ToRawBreakpointAccessType(MemoryBreakpointAccessType type) {
+    return static_cast<int>(type);
+}
+
 }  // namespace
 
 std::string SerializeMemoryRegions(const std::vector<MemoryRegion>& regions) {
@@ -227,6 +231,81 @@ std::string SerializePointerAutoChaseState(const PointerAutoChaseStateView& stat
     stream << "],"
            << "\"message\":\"" << utils::JsonEscape(state.message) << "\""
            << '}';
+    return stream.str();
+}
+
+std::string SerializeMemoryBreakpoints(const std::vector<MemoryBreakpointView>& breakpoints) {
+    std::ostringstream stream;
+    stream << '[';
+    for (size_t index = 0; index < breakpoints.size(); ++index) {
+        const MemoryBreakpointView& breakpoint = breakpoints[index];
+        if (index > 0) {
+            stream << ',';
+        }
+        stream << '{'
+               << "\"id\":\"" << utils::JsonEscape(breakpoint.id) << "\","
+               << "\"pid\":" << breakpoint.pid << ','
+               << "\"address\":" << breakpoint.address << ','
+               << "\"type\":" << ToRawType(breakpoint.type) << ','
+               << "\"length\":" << breakpoint.length << ','
+               << "\"accessType\":" << ToRawBreakpointAccessType(breakpoint.access_type) << ','
+               << "\"enabled\":" << ToJsonBool(breakpoint.enabled) << ','
+               << "\"pauseProcessOnHit\":"
+               << ToJsonBool(breakpoint.pause_process_on_hit) << ','
+               << "\"hitCount\":" << breakpoint.hit_count << ','
+               << "\"createdAtMillis\":" << breakpoint.created_at_millis << ','
+               << "\"lastHitAtMillis\":";
+        if (breakpoint.has_last_hit_at) {
+            stream << breakpoint.last_hit_at_millis;
+        } else {
+            stream << "null";
+        }
+        stream << ','
+               << "\"lastError\":\"" << utils::JsonEscape(breakpoint.last_error) << "\""
+               << '}';
+    }
+    stream << ']';
+    return stream.str();
+}
+
+std::string SerializeMemoryBreakpointState(const MemoryBreakpointStateView& state) {
+    std::ostringstream stream;
+    stream << '{'
+           << "\"isSupported\":" << ToJsonBool(state.is_supported) << ','
+           << "\"isProcessPaused\":" << ToJsonBool(state.is_process_paused) << ','
+           << "\"activeBreakpointCount\":" << state.active_breakpoint_count << ','
+           << "\"pendingHitCount\":" << state.pending_hit_count << ','
+           << "\"architecture\":\"" << utils::JsonEscape(state.architecture) << "\","
+           << "\"lastError\":\"" << utils::JsonEscape(state.last_error) << "\""
+           << '}';
+    return stream.str();
+}
+
+std::string SerializeMemoryBreakpointHits(const std::vector<MemoryBreakpointHitView>& hits) {
+    std::ostringstream stream;
+    stream << '[';
+    for (size_t index = 0; index < hits.size(); ++index) {
+        const MemoryBreakpointHitView& hit = hits[index];
+        if (index > 0) {
+            stream << ',';
+        }
+        stream << '{'
+               << "\"breakpointId\":\"" << utils::JsonEscape(hit.breakpoint_id) << "\","
+               << "\"pid\":" << hit.pid << ','
+               << "\"address\":" << hit.address << ','
+               << "\"accessType\":" << ToRawBreakpointAccessType(hit.access_type) << ','
+               << "\"threadId\":" << hit.thread_id << ','
+               << "\"timestampMillis\":" << hit.timestamp_millis << ','
+               << "\"oldValueHex\":\"" << utils::HexEncode(hit.old_value) << "\","
+               << "\"newValueHex\":\"" << utils::HexEncode(hit.new_value) << "\","
+               << "\"pc\":" << hit.pc << ','
+               << "\"moduleName\":\"" << utils::JsonEscape(hit.module_name) << "\","
+               << "\"moduleBase\":" << hit.module_base << ','
+               << "\"moduleOffset\":" << hit.module_offset << ','
+               << "\"instructionText\":\"" << utils::JsonEscape(hit.instruction_text) << "\""
+               << '}';
+    }
+    stream << ']';
     return stream.str();
 }
 

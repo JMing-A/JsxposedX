@@ -203,6 +203,148 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
         }
     }
 
+    override fun addMemoryBreakpoint(
+        request: AddMemoryBreakpointRequest,
+        callback: (Result<MemoryBreakpoint>) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = memoryTool.addMemoryBreakpoint(request)
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(result))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun removeMemoryBreakpoint(breakpointId: String, callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            try {
+                memoryTool.removeMemoryBreakpoint(breakpointId)
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(Unit))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun setMemoryBreakpointEnabled(
+        breakpointId: String,
+        enabled: Boolean,
+        callback: (Result<Unit>) -> Unit
+    ) {
+        scope.launch {
+            try {
+                memoryTool.setMemoryBreakpointEnabled(breakpointId, enabled)
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(Unit))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun listMemoryBreakpoints(
+        pid: Long,
+        callback: (Result<List<MemoryBreakpoint>>) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = memoryTool.listMemoryBreakpoints(pid.toInt())
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(result))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun getMemoryBreakpointState(
+        pid: Long,
+        callback: (Result<MemoryBreakpointState>) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = memoryTool.getMemoryBreakpointState(pid.toInt())
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(result))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun getMemoryBreakpointHits(
+        pid: Long,
+        offset: Long,
+        limit: Long,
+        callback: (Result<List<MemoryBreakpointHit>>) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val result = memoryTool.getMemoryBreakpointHits(
+                    pid.toInt(),
+                    offset.toInt(),
+                    limit.toInt()
+                )
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(result))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun clearMemoryBreakpointHits(pid: Long, callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            try {
+                memoryTool.clearMemoryBreakpointHits(pid.toInt())
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(Unit))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
+    override fun resumeAfterBreakpoint(pid: Long, callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            try {
+                memoryTool.resumeAfterBreakpoint(pid.toInt())
+                withContext(Dispatchers.Main) {
+                    callback(Result.success(Unit))
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    callback(Result.failure(e))
+                }
+            }
+        }
+    }
+
     override fun readMemoryValues(requests: List<MemoryReadRequest>, callback: (Result<List<MemoryValuePreview>>) -> Unit) {
         scope.launch {
             try {

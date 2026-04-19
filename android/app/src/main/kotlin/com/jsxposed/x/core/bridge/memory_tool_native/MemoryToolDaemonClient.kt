@@ -20,6 +20,14 @@ class MemoryToolDaemonClient(
         private const val METHOD_GET_POINTER_SCAN_CHASE_HINT = "getPointerScanChaseHint"
         private const val METHOD_GET_POINTER_AUTO_CHASE_STATE = "getPointerAutoChaseState"
         private const val METHOD_GET_POINTER_AUTO_CHASE_LAYER_RESULTS = "getPointerAutoChaseLayerResults"
+        private const val METHOD_ADD_MEMORY_BREAKPOINT = "addMemoryBreakpoint"
+        private const val METHOD_REMOVE_MEMORY_BREAKPOINT = "removeMemoryBreakpoint"
+        private const val METHOD_SET_MEMORY_BREAKPOINT_ENABLED = "setMemoryBreakpointEnabled"
+        private const val METHOD_LIST_MEMORY_BREAKPOINTS = "listMemoryBreakpoints"
+        private const val METHOD_GET_MEMORY_BREAKPOINT_STATE = "getMemoryBreakpointState"
+        private const val METHOD_GET_MEMORY_BREAKPOINT_HITS = "getMemoryBreakpointHits"
+        private const val METHOD_CLEAR_MEMORY_BREAKPOINT_HITS = "clearMemoryBreakpointHits"
+        private const val METHOD_RESUME_AFTER_BREAKPOINT = "resumeAfterBreakpoint"
         private const val METHOD_READ_MEMORY_VALUES = "readMemoryValues"
         private const val METHOD_WRITE_MEMORY_VALUE = "writeMemoryValue"
         private const val METHOD_SET_MEMORY_FREEZE = "setMemoryFreeze"
@@ -376,6 +384,128 @@ class MemoryToolDaemonClient(
         }
     }
 
+    fun addMemoryBreakpoint(request: AddMemoryBreakpointRequest): MemoryBreakpoint {
+        helperManager.ensureDaemon()
+        val result = sendOrThrow(
+            METHOD_ADD_MEMORY_BREAKPOINT,
+            JSONObject().apply {
+                put("pid", request.pid)
+                put("address", request.address)
+                put("type", request.type.ordinal)
+                put("length", request.length)
+                put("accessType", request.accessType.ordinal)
+                put("enabled", request.enabled)
+                put("pauseProcessOnHit", request.pauseProcessOnHit)
+            }
+        ).optJSONArray("result") ?: JSONArray()
+        require(result.length() > 0) { "Empty breakpoint result." }
+        return buildMemoryBreakpoint(result.getJSONObject(0))
+    }
+
+    fun removeMemoryBreakpoint(breakpointId: String) {
+        if (!helperManager.isDaemonAlive()) {
+            return
+        }
+        sendOrThrow(
+            METHOD_REMOVE_MEMORY_BREAKPOINT,
+            JSONObject().apply {
+                put("breakpointId", breakpointId)
+            }
+        )
+    }
+
+    fun setMemoryBreakpointEnabled(breakpointId: String, enabled: Boolean) {
+        helperManager.ensureDaemon()
+        sendOrThrow(
+            METHOD_SET_MEMORY_BREAKPOINT_ENABLED,
+            JSONObject().apply {
+                put("breakpointId", breakpointId)
+                put("enabled", enabled)
+            }
+        )
+    }
+
+    fun listMemoryBreakpoints(pid: Int): List<MemoryBreakpoint> {
+        if (!helperManager.isDaemonAlive()) {
+            return emptyList()
+        }
+        val result = sendOrThrow(
+            METHOD_LIST_MEMORY_BREAKPOINTS,
+            JSONObject().apply {
+                put("pid", pid)
+            }
+        ).optJSONArray("result") ?: JSONArray()
+        return List(result.length()) { index ->
+            buildMemoryBreakpoint(result.getJSONObject(index))
+        }
+    }
+
+    fun getMemoryBreakpointState(pid: Int): MemoryBreakpointState {
+        if (!helperManager.isDaemonAlive()) {
+            return MemoryBreakpointState(
+                isSupported = false,
+                isProcessPaused = false,
+                activeBreakpointCount = 0,
+                pendingHitCount = 0,
+                architecture = "",
+                lastError = ""
+            )
+        }
+        val item = sendOrThrow(
+            METHOD_GET_MEMORY_BREAKPOINT_STATE,
+            JSONObject().apply {
+                put("pid", pid)
+            }
+        ).getJSONObject("result")
+        return MemoryBreakpointState(
+            isSupported = item.optBoolean("isSupported", false),
+            isProcessPaused = item.optBoolean("isProcessPaused", false),
+            activeBreakpointCount = item.optLong("activeBreakpointCount"),
+            pendingHitCount = item.optLong("pendingHitCount"),
+            architecture = item.optString("architecture"),
+            lastError = item.optString("lastError")
+        )
+    }
+
+    fun getMemoryBreakpointHits(pid: Int, offset: Int, limit: Int): List<MemoryBreakpointHit> {
+        if (!helperManager.isDaemonAlive()) {
+            return emptyList()
+        }
+        val result = sendOrThrow(
+            METHOD_GET_MEMORY_BREAKPOINT_HITS,
+            JSONObject().apply {
+                put("pid", pid)
+                put("offset", offset)
+                put("limit", limit)
+            }
+        ).optJSONArray("result") ?: JSONArray()
+        return List(result.length()) { index ->
+            buildMemoryBreakpointHit(result.getJSONObject(index))
+        }
+    }
+
+    fun clearMemoryBreakpointHits(pid: Int) {
+        if (!helperManager.isDaemonAlive()) {
+            return
+        }
+        sendOrThrow(
+            METHOD_CLEAR_MEMORY_BREAKPOINT_HITS,
+            JSONObject().apply {
+                put("pid", pid)
+            }
+        )
+    }
+
+    fun resumeAfterBreakpoint(pid: Int) {
+        helperManager.ensureDaemon()
+        sendOrThrow(
+            METHOD_RESUME_AFTER_BREAKPOINT,
+            JSONObject().apply {
+                put("pid", pid)
+            }
+        )
+    }
+
     fun readMemoryValues(requests: List<MemoryReadRequest>): List<MemoryValuePreview> {
         if (requests.isEmpty()) {
             return emptyList()
@@ -641,5 +771,41 @@ class MemoryToolDaemonClient(
                 regionTypeKey = item.optString("regionTypeKey", "other")
             )
         }
+    }
+
+    private fun buildMemoryBreakpoint(item: JSONObject): MemoryBreakpoint {
+        return MemoryBreakpoint(
+            id = item.getString("id"),
+            pid = item.getLong("pid"),
+            address = item.getLong("address"),
+            type = SearchValueType.entries[item.getInt("type")],
+            length = item.getLong("length"),
+            accessType = MemoryBreakpointAccessType.entries[item.getInt("accessType")],
+            enabled = item.optBoolean("enabled", true),
+            pauseProcessOnHit = item.optBoolean("pauseProcessOnHit", true),
+            hitCount = item.optLong("hitCount"),
+            createdAtMillis = item.optLong("createdAtMillis"),
+            lastHitAtMillis = item.optLong("lastHitAtMillis")
+                .takeIf { item.has("lastHitAtMillis") && !item.isNull("lastHitAtMillis") },
+            lastError = item.optString("lastError")
+        )
+    }
+
+    private fun buildMemoryBreakpointHit(item: JSONObject): MemoryBreakpointHit {
+        return MemoryBreakpointHit(
+            breakpointId = item.getString("breakpointId"),
+            pid = item.getLong("pid"),
+            address = item.getLong("address"),
+            accessType = MemoryBreakpointAccessType.entries[item.getInt("accessType")],
+            threadId = item.getLong("threadId"),
+            timestampMillis = item.getLong("timestampMillis"),
+            oldValue = decodeHex(item.optString("oldValueHex")),
+            newValue = decodeHex(item.optString("newValueHex")),
+            pc = item.optLong("pc"),
+            moduleName = item.optString("moduleName"),
+            moduleBase = item.optLong("moduleBase"),
+            moduleOffset = item.optLong("moduleOffset"),
+            instructionText = item.optString("instructionText")
+        )
     }
 }

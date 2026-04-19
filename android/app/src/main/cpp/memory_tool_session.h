@@ -31,6 +31,12 @@ enum class SearchTaskStatus : int {
     kFailed = 4,
 };
 
+enum class MemoryBreakpointAccessType : int {
+    kRead = 0,
+    kWrite = 1,
+    kReadWrite = 2,
+};
+
 enum class SearchRuntimeMode : int {
     kStandard = 0,
     kXor = 1,
@@ -182,6 +188,57 @@ struct PointerScanTaskStateView {
     uint64_t elapsed_milliseconds = 0;
     bool can_cancel = false;
     std::string message;
+};
+
+struct AddMemoryBreakpointRequest {
+    int pid = 0;
+    uint64_t address = 0;
+    SearchValueType type = SearchValueType::kI32;
+    size_t length = 0;
+    MemoryBreakpointAccessType access_type = MemoryBreakpointAccessType::kWrite;
+    bool enabled = true;
+    bool pause_process_on_hit = true;
+};
+
+struct MemoryBreakpointView {
+    std::string id;
+    int pid = 0;
+    uint64_t address = 0;
+    SearchValueType type = SearchValueType::kI32;
+    size_t length = 0;
+    MemoryBreakpointAccessType access_type = MemoryBreakpointAccessType::kWrite;
+    bool enabled = false;
+    bool pause_process_on_hit = true;
+    uint64_t hit_count = 0;
+    uint64_t created_at_millis = 0;
+    bool has_last_hit_at = false;
+    uint64_t last_hit_at_millis = 0;
+    std::string last_error;
+};
+
+struct MemoryBreakpointHitView {
+    std::string breakpoint_id;
+    int pid = 0;
+    uint64_t address = 0;
+    MemoryBreakpointAccessType access_type = MemoryBreakpointAccessType::kWrite;
+    int thread_id = 0;
+    uint64_t timestamp_millis = 0;
+    std::vector<uint8_t> old_value;
+    std::vector<uint8_t> new_value;
+    uint64_t pc = 0;
+    std::string module_name;
+    uint64_t module_base = 0;
+    uint64_t module_offset = 0;
+    std::string instruction_text;
+};
+
+struct MemoryBreakpointStateView {
+    bool is_supported = false;
+    bool is_process_paused = false;
+    size_t active_breakpoint_count = 0;
+    size_t pending_hit_count = 0;
+    std::string architecture;
+    std::string last_error;
 };
 
 struct PointerAutoChaseLayerStateView {

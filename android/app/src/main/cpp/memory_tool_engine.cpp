@@ -868,6 +868,42 @@ std::vector<PointerScanResultEntry> MemoryToolEngine::GetPointerAutoChaseLayerRe
         results.begin() + static_cast<std::ptrdiff_t>(end));
 }
 
+MemoryBreakpointView MemoryToolEngine::AddMemoryBreakpoint(
+    const AddMemoryBreakpointRequest& request) {
+    return breakpoint_controller_.AddBreakpoint(request);
+}
+
+void MemoryToolEngine::RemoveMemoryBreakpoint(const std::string& breakpoint_id) {
+    breakpoint_controller_.RemoveBreakpoint(breakpoint_id);
+}
+
+void MemoryToolEngine::SetMemoryBreakpointEnabled(const std::string& breakpoint_id,
+                                                  bool enabled) {
+    breakpoint_controller_.SetBreakpointEnabled(breakpoint_id, enabled);
+}
+
+std::vector<MemoryBreakpointView> MemoryToolEngine::ListMemoryBreakpoints(int pid) {
+    return breakpoint_controller_.ListBreakpoints(pid);
+}
+
+MemoryBreakpointStateView MemoryToolEngine::GetMemoryBreakpointState(int pid) {
+    return breakpoint_controller_.GetState(pid);
+}
+
+std::vector<MemoryBreakpointHitView> MemoryToolEngine::GetMemoryBreakpointHits(int pid,
+                                                                               int offset,
+                                                                               int limit) {
+    return breakpoint_controller_.GetHits(pid, offset, limit);
+}
+
+void MemoryToolEngine::ClearMemoryBreakpointHits(int pid) {
+    breakpoint_controller_.ClearHits(pid);
+}
+
+void MemoryToolEngine::ResumeAfterBreakpoint(int pid) {
+    breakpoint_controller_.ResumeAfterBreakpoint(pid);
+}
+
 std::vector<MemoryValuePreview> MemoryToolEngine::ReadMemoryValues(
     const std::vector<MemoryReadRequest>& requests) {
     std::lock_guard<std::mutex> lock(mutex_);

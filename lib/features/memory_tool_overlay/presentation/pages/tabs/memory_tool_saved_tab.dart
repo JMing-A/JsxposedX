@@ -1,12 +1,14 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_saved_item.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_pointer_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_saved_items_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_pointer_utils.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_batch_edit_dialog.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_breakpoint_config_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_copy_value_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_offset_preview_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_pointer_scan_dialog.dart';
@@ -31,10 +33,12 @@ class MemoryToolSavedTab extends HookConsumerWidget {
     super.key,
     required this.onOpenBrowseTab,
     required this.onOpenPointerTab,
+    required this.onOpenDebugTab,
   });
 
   final VoidCallback onOpenBrowseTab;
   final VoidCallback onOpenPointerTab;
+  final VoidCallback onOpenDebugTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -64,6 +68,7 @@ class MemoryToolSavedTab extends HookConsumerWidget {
         useState<({MemoryToolSavedItem item, String displayValue})?>(null);
     final activeAutoChaseDialog = useState<MemoryToolSavedItem?>(null);
     final activePointerScanDialog = useState<MemoryToolSavedItem?>(null);
+    final activeBreakpointDialog = useState<MemoryToolSavedItem?>(null);
 
     useEffect(() {
       selectionNotifier.retainVisible(
@@ -357,6 +362,14 @@ class MemoryToolSavedTab extends HookConsumerWidget {
                   },
                 ),
                 MemoryToolSearchResultActionItemData(
+                  icon: Icons.bug_report_rounded,
+                  title: context.isZh ? '断点调试' : 'Breakpoint Debug',
+                  onTap: () async {
+                    activeActionDialog.value = null;
+                    activeBreakpointDialog.value = dialog.item;
+                  },
+                ),
+                MemoryToolSearchResultActionItemData(
                   icon: Icons.subdirectory_arrow_right_rounded,
                   title: context.l10n.memoryToolResultActionJumpToPointer,
                   onTap: () async {
@@ -474,6 +487,27 @@ class MemoryToolSavedTab extends HookConsumerWidget {
               },
               onClose: () {
                 activePointerScanDialog.value = null;
+              },
+            ),
+          ),
+        if (activeBreakpointDialog.value case final item?)
+          Positioned.fill(
+            child: MemoryToolBreakpointConfigDialog(
+              pid: item.pid,
+              result: item.toSearchResult(),
+              preview: previewMap[item.address],
+              onConfirm: (request) async {
+                final created = await ref
+                    .read(memoryBreakpointActionProvider.notifier)
+                    .addMemoryBreakpoint(request: request);
+                ref
+                    .read(memoryBreakpointSelectedIdProvider.notifier)
+                    .set(created.id);
+                onOpenDebugTab();
+                activeBreakpointDialog.value = null;
+              },
+              onClose: () {
+                activeBreakpointDialog.value = null;
               },
             ),
           ),

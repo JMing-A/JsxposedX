@@ -41,4 +41,29 @@ class MemoryActionDatasource {
   }) async {
     await _native.setProcessPaused(pid, paused);
   }
+
+  Future<MemoryBreakpoint> addMemoryBreakpoint({
+    required AddMemoryBreakpointRequest request,
+  }) async {
+    return await _native.addMemoryBreakpoint(request);
+  }
+
+  Future<void> removeMemoryBreakpoint({required String breakpointId}) async {
+    await _native.removeMemoryBreakpoint(breakpointId);
+  }
+
+  Future<void> setMemoryBreakpointEnabled({
+    required String breakpointId,
+    required bool enabled,
+  }) async {
+    await _native.setMemoryBreakpointEnabled(breakpointId, enabled);
+  }
+
+  Future<void> clearMemoryBreakpointHits({required int pid}) async {
+    await _native.clearMemoryBreakpointHits(pid);
+  }
+
+  Future<void> resumeAfterBreakpoint({required int pid}) async {
+    await _native.resumeAfterBreakpoint(pid);
+  }
 }

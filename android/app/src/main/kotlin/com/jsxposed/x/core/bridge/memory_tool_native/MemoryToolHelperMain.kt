@@ -123,6 +123,67 @@ private class MemoryToolDaemonServer(
                 )
             )
 
+            "addMemoryBreakpoint" -> JSONArray(
+                MemoryToolHelperNativeBridge.addMemoryBreakpointJson(
+                    pid = params.getLong("pid"),
+                    address = params.getLong("address"),
+                    type = params.getInt("type"),
+                    length = params.getInt("length"),
+                    accessType = params.getInt("accessType"),
+                    enabled = params.optBoolean("enabled", true),
+                    pauseProcessOnHit = params.optBoolean("pauseProcessOnHit", true)
+                )
+            )
+
+            "removeMemoryBreakpoint" -> {
+                MemoryToolHelperNativeBridge.removeMemoryBreakpoint(
+                    breakpointId = params.getString("breakpointId")
+                )
+                JSONObject.NULL
+            }
+
+            "setMemoryBreakpointEnabled" -> {
+                MemoryToolHelperNativeBridge.setMemoryBreakpointEnabled(
+                    breakpointId = params.getString("breakpointId"),
+                    enabled = params.getBoolean("enabled")
+                )
+                JSONObject.NULL
+            }
+
+            "listMemoryBreakpoints" -> JSONArray(
+                MemoryToolHelperNativeBridge.listMemoryBreakpointsJson(
+                    pid = params.getLong("pid")
+                )
+            )
+
+            "getMemoryBreakpointState" -> JSONObject(
+                MemoryToolHelperNativeBridge.getMemoryBreakpointStateJson(
+                    pid = params.getLong("pid")
+                )
+            )
+
+            "getMemoryBreakpointHits" -> JSONArray(
+                MemoryToolHelperNativeBridge.getMemoryBreakpointHitsJson(
+                    pid = params.getLong("pid"),
+                    offset = params.getInt("offset"),
+                    limit = params.getInt("limit")
+                )
+            )
+
+            "clearMemoryBreakpointHits" -> {
+                MemoryToolHelperNativeBridge.clearMemoryBreakpointHits(
+                    pid = params.getLong("pid")
+                )
+                JSONObject.NULL
+            }
+
+            "resumeAfterBreakpoint" -> {
+                MemoryToolHelperNativeBridge.resumeAfterBreakpoint(
+                    pid = params.getLong("pid")
+                )
+                JSONObject.NULL
+            }
+
             "readMemoryValues" -> JSONArray(
                 MemoryToolHelperNativeBridge.readMemoryValuesJson(
                     pids = extractLongArray(params.getJSONArray("requests"), "pid"),

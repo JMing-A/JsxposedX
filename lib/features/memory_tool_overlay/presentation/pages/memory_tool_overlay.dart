@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_window.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/memory_tool_browse_tab.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/memory_tool_pointer_tab.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
@@ -16,7 +17,7 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/me
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_process_terminated_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/process_avatar.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/process_picker_dialog.dart';
-import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/memory_tool_edit_tab.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/memory_tool_debug_tab.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/memory_tool_saved_tab.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/memory_tool_search_tab.dart';
 import 'package:JsxposedX/features/overlay_window/domain/models/overlay_window_presentation.dart';
@@ -113,6 +114,12 @@ class MemoryToolOverlay extends HookConsumerWidget {
         ref.invalidate(getPointerScanResultsProvider);
         ref.invalidate(getPointerAutoChaseStateProvider);
         ref.invalidate(getPointerAutoChaseLayerResultsProvider);
+        if (selectedProcess != null) {
+          ref.invalidate(getMemoryBreakpointsProvider(pid: selectedProcess.pid));
+          ref.invalidate(getMemoryBreakpointStateProvider(pid: selectedProcess.pid));
+          ref.invalidate(getMemoryBreakpointHitsProvider(pid: selectedProcess.pid));
+        }
+        ref.read(memoryBreakpointSelectedIdProvider.notifier).clear();
         ref.invalidate(hasMatchingSearchSessionProvider);
         ref.invalidate(hasRunningSearchTaskProvider);
         ref.invalidate(hasRunningPointerTaskProvider);
@@ -263,7 +270,7 @@ class MemoryToolOverlay extends HookConsumerWidget {
                   const Tab(icon: Icon(Icons.search_rounded)),
                   const Tab(icon: Icon(Icons.visibility_rounded)),
                   const Tab(icon: Icon(Icons.timeline_rounded)),
-                  const Tab(icon: Icon(Icons.edit_rounded)),
+                  const Tab(icon: Icon(Icons.bug_report_rounded)),
                   const Tab(icon: Icon(Icons.bookmark_rounded)),
                 ],
               ),
@@ -295,10 +302,16 @@ class MemoryToolOverlay extends HookConsumerWidget {
                           onOpenPointerTab: () {
                             tabController.animateTo(2);
                           },
+                          onOpenDebugTab: () {
+                            tabController.animateTo(3);
+                          },
                         ),
                         MemoryToolBrowseTab(
                           onOpenPointerTab: () {
                             tabController.animateTo(2);
+                          },
+                          onOpenDebugTab: () {
+                            tabController.animateTo(3);
                           },
                         ),
                         MemoryToolPointerTab(
@@ -306,13 +319,16 @@ class MemoryToolOverlay extends HookConsumerWidget {
                             tabController.animateTo(1);
                           },
                         ),
-                        const MemoryToolEditTab(),
+                        const MemoryToolDebugTab(),
                         MemoryToolSavedTab(
                           onOpenBrowseTab: () {
                             tabController.animateTo(1);
                           },
                           onOpenPointerTab: () {
                             tabController.animateTo(2);
+                          },
+                          onOpenDebugTab: () {
+                            tabController.animateTo(3);
                           },
                         ),
                       ],
@@ -336,6 +352,7 @@ class MemoryToolOverlay extends HookConsumerWidget {
                   ref
                       .read(memoryPointerAutoChaseActionProvider.notifier)
                       .resetPointerAutoChase();
+                  ref.read(memoryBreakpointSelectedIdProvider.notifier).clear();
                   ref
                       .read(memoryToolSelectedProcessProvider.notifier)
                       .select(process);

@@ -6,6 +6,8 @@ enum SearchMatchMode { exact }
 
 enum SearchTaskStatus { idle, running, completed, cancelled, failed }
 
+enum MemoryBreakpointAccessType { read, write, readWrite }
+
 class ProcessInfo {
   final int pid;
   final String name;
@@ -225,6 +227,106 @@ class PointerAutoChaseState {
   });
 }
 
+class AddMemoryBreakpointRequest {
+  final int pid;
+  final int address;
+  final SearchValueType type;
+  final int length;
+  final MemoryBreakpointAccessType accessType;
+  final bool enabled;
+  final bool pauseProcessOnHit;
+
+  const AddMemoryBreakpointRequest({
+    required this.pid,
+    required this.address,
+    required this.type,
+    required this.length,
+    required this.accessType,
+    required this.enabled,
+    required this.pauseProcessOnHit,
+  });
+}
+
+class MemoryBreakpoint {
+  final String id;
+  final int pid;
+  final int address;
+  final SearchValueType type;
+  final int length;
+  final MemoryBreakpointAccessType accessType;
+  final bool enabled;
+  final bool pauseProcessOnHit;
+  final int hitCount;
+  final int createdAtMillis;
+  final int? lastHitAtMillis;
+  final String lastError;
+
+  const MemoryBreakpoint({
+    required this.id,
+    required this.pid,
+    required this.address,
+    required this.type,
+    required this.length,
+    required this.accessType,
+    required this.enabled,
+    required this.pauseProcessOnHit,
+    required this.hitCount,
+    required this.createdAtMillis,
+    this.lastHitAtMillis,
+    required this.lastError,
+  });
+}
+
+class MemoryBreakpointState {
+  final bool isSupported;
+  final bool isProcessPaused;
+  final int activeBreakpointCount;
+  final int pendingHitCount;
+  final String architecture;
+  final String lastError;
+
+  const MemoryBreakpointState({
+    required this.isSupported,
+    required this.isProcessPaused,
+    required this.activeBreakpointCount,
+    required this.pendingHitCount,
+    required this.architecture,
+    required this.lastError,
+  });
+}
+
+class MemoryBreakpointHit {
+  final String breakpointId;
+  final int pid;
+  final int address;
+  final MemoryBreakpointAccessType accessType;
+  final int threadId;
+  final int timestampMillis;
+  final Uint8List oldValue;
+  final Uint8List newValue;
+  final int pc;
+  final String moduleName;
+  final int moduleBase;
+  final int moduleOffset;
+  final String instructionText;
+
+  const MemoryBreakpointHit({
+    required this.breakpointId,
+    required this.pid,
+    required this.address,
+    required this.accessType,
+    required this.threadId,
+    required this.timestampMillis,
+    required this.oldValue,
+    required this.newValue,
+    required this.pc,
+    required this.moduleName,
+    required this.moduleBase,
+    required this.moduleOffset,
+    required this.instructionText,
+  });
+}
+
 class MemoryReadRequest {
   final int pid;
   final int address;
@@ -433,6 +535,30 @@ abstract class MemoryToolNative {
     int offset,
     int limit,
   );
+
+  @async
+  MemoryBreakpoint addMemoryBreakpoint(AddMemoryBreakpointRequest request);
+
+  @async
+  void removeMemoryBreakpoint(String breakpointId);
+
+  @async
+  void setMemoryBreakpointEnabled(String breakpointId, bool enabled);
+
+  @async
+  List<MemoryBreakpoint> listMemoryBreakpoints(int pid);
+
+  @async
+  MemoryBreakpointState getMemoryBreakpointState(int pid);
+
+  @async
+  List<MemoryBreakpointHit> getMemoryBreakpointHits(int pid, int offset, int limit);
+
+  @async
+  void clearMemoryBreakpointHits(int pid);
+
+  @async
+  void resumeAfterBreakpoint(int pid);
 
   @async
   List<MemoryValuePreview> readMemoryValues(List<MemoryReadRequest> requests);

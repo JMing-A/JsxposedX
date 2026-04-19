@@ -186,6 +186,38 @@ class MemoryTool(private val context: Context) {
         return daemonClient.getPointerAutoChaseLayerResults(layerIndex, offset, limit)
     }
 
+    fun addMemoryBreakpoint(request: AddMemoryBreakpointRequest): MemoryBreakpoint {
+        return daemonClient.addMemoryBreakpoint(request)
+    }
+
+    fun removeMemoryBreakpoint(breakpointId: String) {
+        daemonClient.removeMemoryBreakpoint(breakpointId)
+    }
+
+    fun setMemoryBreakpointEnabled(breakpointId: String, enabled: Boolean) {
+        daemonClient.setMemoryBreakpointEnabled(breakpointId, enabled)
+    }
+
+    fun listMemoryBreakpoints(pid: Int): List<MemoryBreakpoint> {
+        return daemonClient.listMemoryBreakpoints(pid)
+    }
+
+    fun getMemoryBreakpointState(pid: Int): MemoryBreakpointState {
+        return daemonClient.getMemoryBreakpointState(pid)
+    }
+
+    fun getMemoryBreakpointHits(pid: Int, offset: Int, limit: Int): List<MemoryBreakpointHit> {
+        return daemonClient.getMemoryBreakpointHits(pid, offset, limit)
+    }
+
+    fun clearMemoryBreakpointHits(pid: Int) {
+        daemonClient.clearMemoryBreakpointHits(pid)
+    }
+
+    fun resumeAfterBreakpoint(pid: Int) {
+        daemonClient.resumeAfterBreakpoint(pid)
+    }
+
     fun readMemoryValues(requests: List<MemoryReadRequest>): List<MemoryValuePreview> {
         return daemonClient.readMemoryValues(requests)
     }

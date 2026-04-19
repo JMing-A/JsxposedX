@@ -6,7 +6,7 @@ include(FetchContent)
 set(CAPSTONE_ARCHITECTURE_DEFAULT OFF)
 set(CAPSTONE_ARM_SUPPORT ON)
 set(CAPSTONE_ARM64_SUPPORT ON)
-set(CAPSTONE_X86_SUPPORT OFF)
+set(CAPSTONE_X86_SUPPORT ON)
 set(CAPSTONE_MIPS_SUPPORT OFF)
 set(CAPSTONE_PPC_SUPPORT OFF)
 set(CAPSTONE_SPARC_SUPPORT OFF)
@@ -44,6 +44,7 @@ if(EXISTS ${LIEF_LIB})
     )
 
     add_library(memory_tool SHARED
+        memory_tool_breakpoint.cpp
         memory_tool_jni.cpp
         memory_tool_engine.cpp
         memory_tool_protocol.cpp
@@ -69,6 +70,7 @@ if(EXISTS ${LIEF_LIB})
     )
 
     target_link_libraries(memory_tool
+        capstone
         android
         log
     )

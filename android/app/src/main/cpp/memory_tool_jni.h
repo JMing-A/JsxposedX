@@ -44,6 +44,34 @@ public:
                                                        jint offset,
                                                        jint limit);
 
+    static jstring AddMemoryBreakpointJson(JNIEnv* env,
+                                           jlong pid,
+                                           jlong address,
+                                           jint type,
+                                           jint length,
+                                           jint access_type,
+                                           jboolean enabled,
+                                           jboolean pause_process_on_hit);
+
+    static void RemoveMemoryBreakpoint(JNIEnv* env, jstring breakpoint_id);
+
+    static void SetMemoryBreakpointEnabled(JNIEnv* env,
+                                           jstring breakpoint_id,
+                                           jboolean enabled);
+
+    static jstring ListMemoryBreakpointsJson(JNIEnv* env, jlong pid);
+
+    static jstring GetMemoryBreakpointStateJson(JNIEnv* env, jlong pid);
+
+    static jstring GetMemoryBreakpointHitsJson(JNIEnv* env,
+                                               jlong pid,
+                                               jint offset,
+                                               jint limit);
+
+    static void ClearMemoryBreakpointHits(jlong pid);
+
+    static void ResumeAfterBreakpoint(jlong pid);
+
     static jstring ReadMemoryValuesJson(JNIEnv* env,
                                         jlongArray pids,
                                         jlongArray addresses,

@@ -32,6 +32,30 @@ object MemoryToolHelperNativeBridge {
         limit: Int
     ): String
 
+    external fun addMemoryBreakpointJson(
+        pid: Long,
+        address: Long,
+        type: Int,
+        length: Int,
+        accessType: Int,
+        enabled: Boolean,
+        pauseProcessOnHit: Boolean
+    ): String
+
+    external fun removeMemoryBreakpoint(breakpointId: String)
+
+    external fun setMemoryBreakpointEnabled(breakpointId: String, enabled: Boolean)
+
+    external fun listMemoryBreakpointsJson(pid: Long): String
+
+    external fun getMemoryBreakpointStateJson(pid: Long): String
+
+    external fun getMemoryBreakpointHitsJson(pid: Long, offset: Int, limit: Int): String
+
+    external fun clearMemoryBreakpointHits(pid: Long)
+
+    external fun resumeAfterBreakpoint(pid: Long)
+
     external fun readMemoryValuesJson(
         pids: LongArray,
         addresses: LongArray,

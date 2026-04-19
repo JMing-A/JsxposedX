@@ -24,9 +24,11 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
   const MemoryToolBrowseTab({
     super.key,
     required this.onOpenPointerTab,
+    required this.onOpenDebugTab,
   });
 
   final VoidCallback onOpenPointerTab;
+  final VoidCallback onOpenDebugTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -261,6 +263,7 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
                   .read(memoryToolPointerControllerProvider.notifier)
                   .startRootScan(request: request);
             },
+            onOpenDebugTab: onOpenDebugTab,
           )
         : _MemoryToolBrowseEmptyState(
             message: context.l10n.memoryToolBrowseEmpty,

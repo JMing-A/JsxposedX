@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "memory_tool_breakpoint.h"
 #include "memory_tool_scanner.h"
 #include "memory_tool_session.h"
 
@@ -44,6 +45,22 @@ public:
     std::vector<PointerScanResultEntry> GetPointerAutoChaseLayerResults(int layer_index,
                                                                         int offset,
                                                                         int limit);
+
+    MemoryBreakpointView AddMemoryBreakpoint(const AddMemoryBreakpointRequest& request);
+
+    void RemoveMemoryBreakpoint(const std::string& breakpoint_id);
+
+    void SetMemoryBreakpointEnabled(const std::string& breakpoint_id, bool enabled);
+
+    std::vector<MemoryBreakpointView> ListMemoryBreakpoints(int pid);
+
+    MemoryBreakpointStateView GetMemoryBreakpointState(int pid);
+
+    std::vector<MemoryBreakpointHitView> GetMemoryBreakpointHits(int pid, int offset, int limit);
+
+    void ClearMemoryBreakpointHits(int pid);
+
+    void ResumeAfterBreakpoint(int pid);
 
     std::vector<MemoryValuePreview> ReadMemoryValues(const std::vector<MemoryReadRequest>& requests);
 
@@ -173,6 +190,7 @@ private:
     PointerAutoChaseSession pointer_auto_chase_session_;
     PointerAutoChaseTaskRuntime pointer_auto_chase_task_;
     std::vector<FrozenWriteEntry> frozen_entries_;
+    MemoryToolBreakpointController breakpoint_controller_;
     std::condition_variable freeze_condition_;
     bool freeze_worker_started_ = false;
     uint64_t task_generation_counter_ = 0;

@@ -24,10 +24,12 @@ class MemoryToolSearchTab extends HookConsumerWidget {
     super.key,
     required this.onOpenBrowseTab,
     required this.onOpenPointerTab,
+    required this.onOpenDebugTab,
   });
 
   final VoidCallback onOpenBrowseTab;
   final VoidCallback onOpenPointerTab;
+  final VoidCallback onOpenDebugTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -176,6 +178,7 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       },
       onOpenBrowseTab: onOpenBrowseTab,
       onOpenPointerTab: onOpenPointerTab,
+      onOpenDebugTab: onOpenDebugTab,
     );
 
     return LayoutBuilder(

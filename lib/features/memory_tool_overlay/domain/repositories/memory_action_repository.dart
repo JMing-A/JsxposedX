@@ -18,4 +18,19 @@ abstract class MemoryActionRepository {
   Future<bool> isProcessPaused({required int pid});
 
   Future<void> setProcessPaused({required int pid, required bool paused});
+
+  Future<MemoryBreakpoint> addMemoryBreakpoint({
+    required AddMemoryBreakpointRequest request,
+  });
+
+  Future<void> removeMemoryBreakpoint({required String breakpointId});
+
+  Future<void> setMemoryBreakpointEnabled({
+    required String breakpointId,
+    required bool enabled,
+  });
+
+  Future<void> clearMemoryBreakpointHits({required int pid});
+
+  Future<void> resumeAfterBreakpoint({required int pid});
 }
