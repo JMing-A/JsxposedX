@@ -2,9 +2,10 @@ import 'package:JsxposedX/core/enums/ai_api_type.dart';
 import 'package:JsxposedX/core/models/ai_config.dart';
 
 const String builtinAiConfigId = 'builtin_closeai_default';
-const String builtinAiConfigName = '帕帝接口';
-const String builtinAiConfigBaseUrl = 'https://padi.closeai.hk/v1';
-const String builtinKimiAiConfigId = 'builtin_closeai_kimi_k25';
+const String builtinAiConfigName = '沐雪接口';
+const String builtinAiConfigBaseUrl = 'https://muxueai.pro';
+const String builtinLegacyBuiltinAiConfigId = 'builtin_closeai_kimi_k25';
+const String builtinKimiAiConfigId = builtinLegacyBuiltinAiConfigId;
 
 class BuiltinAiConfigSpec {
   const BuiltinAiConfigSpec({
@@ -61,11 +62,11 @@ const List<BuiltinAiConfigSpec> builtinAiConfigSpecs = [
     maxToken: 4096,
     temperature: 1.0,
     memoryRounds: 6,
-    apiType: AiApiType.openaiResponses,
+    apiType: AiApiType.openai,
     apiKeyStorageKey: 'ai_builtin_api_key',
     statusLabel: 'GPT-MAX',
     badgeLabels: ['Codex', 'GPT5.4MAX'],
-    purchaseUrl: 'https://shop.zmfaka.cn/shop/5W176EN1',
+    purchaseUrl: 'https://shop.zmfaka.cn/shop/SQGJ7S7P',
     supportsPadiOptions: true,
   ),
   BuiltinAiConfigSpec(
@@ -79,7 +80,7 @@ const List<BuiltinAiConfigSpec> builtinAiConfigSpecs = [
     apiType: AiApiType.openai,
     apiKeyStorageKey: 'ai_builtin_api_key_builtin_closeai_kimi_k25',
     statusLabel: 'Evil',
-    badgeLabels: ["Evil"],
+    badgeLabels: ['Evil'],
     purchaseUrl: 'https://shop.zmfaka.cn/shop/5W176EN1',
   ),
 ];
@@ -120,7 +121,5 @@ bool isBuiltinAiConfigId(String id) => getBuiltinAiConfigSpecById(id) != null;
 bool isBuiltinAiConfig(AiConfig config) => isBuiltinAiConfigId(config.id);
 
 bool shouldUseBuiltinPadiOptions(AiConfig config) {
-  return (getBuiltinAiConfigSpecById(config.id)?.supportsPadiOptions ??
-          false) &&
-      config.apiType == AiApiType.openaiResponses;
+  return getBuiltinAiConfigSpecById(config.id)?.supportsPadiOptions ?? false;
 }

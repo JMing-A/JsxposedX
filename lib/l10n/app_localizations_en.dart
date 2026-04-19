@@ -989,13 +989,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiTutorial => 'Tutorial';
 
   @override
-  String get aiBuiltinConfigName => 'PadiApi';
+  String get aiBuiltinConfigName => 'Muxue API';
 
   @override
-  String get aiBuiltinUseConfig => 'Use Built-in Endpoint';
+  String get aiBuiltinUseConfig => 'Use Muxue Endpoint';
 
   @override
-  String get aiBuiltinSwitching => 'Switching to built-in default endpoint';
+  String get aiBuiltinSwitching => 'Switching to the built-in Muxue endpoint';
 
   @override
   String get aiBuyCardSecret => 'Buy Access Code';

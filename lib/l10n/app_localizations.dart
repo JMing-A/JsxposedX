@@ -1979,19 +1979,19 @@ abstract class AppLocalizations {
   /// No description provided for @aiBuiltinConfigName.
   ///
   /// In zh, this message translates to:
-  /// **'帕帝接口'**
+  /// **'沐雪接口'**
   String get aiBuiltinConfigName;
 
   /// No description provided for @aiBuiltinUseConfig.
   ///
   /// In zh, this message translates to:
-  /// **'使用内置接口'**
+  /// **'使用沐雪接口'**
   String get aiBuiltinUseConfig;
 
   /// No description provided for @aiBuiltinSwitching.
   ///
   /// In zh, this message translates to:
-  /// **'正在切换到内置默认接口'**
+  /// **'正在切换到沐雪内置接口'**
   String get aiBuiltinSwitching;
 
   /// No description provided for @aiBuyCardSecret.

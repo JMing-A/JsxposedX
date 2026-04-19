@@ -48,6 +48,7 @@ class AiChatActionDatasource {
         return _postOpenAiChatCompletionsStream(
           config: config,
           messages: messages,
+          padiChatOptions: padiChatOptions,
           tools: tools,
           cancelToken: cancelToken,
         );
@@ -159,11 +160,13 @@ class AiChatActionDatasource {
   Stream<AiMessageDto> _postOpenAiChatCompletionsStream({
     required AiConfig config,
     required List<AiMessageDto> messages,
+    PadiChatOptions? padiChatOptions,
     List<Map<String, dynamic>>? tools,
     CancelToken? cancelToken,
   }) async* {
+    final effectiveModel = padiChatOptions?.model ?? config.moduleName;
     final request = <String, dynamic>{
-      'model': config.moduleName,
+      'model': effectiveModel,
       'messages': messages.map(_mapOpenAiMessage).toList(),
       'stream': true,
       'temperature': config.temperature,
@@ -746,19 +749,19 @@ class AiChatActionDatasource {
   }
 
   Future<String> _testOpenAiChatCompletionsConnection(AiConfig config) async {
-    return _testStreamingConnection(
+    return _testRequestConnection(
       url: config.fullApiUrl,
       headers: {
         if (config.apiKey.isNotEmpty) 'Authorization': 'Bearer ${config.apiKey}',
         'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
+        'Accept': 'application/json',
       },
       request: {
         'model': config.moduleName,
         'messages': const [
           {'role': 'user', 'content': 'Hi'},
         ],
-        'stream': true,
+        'stream': false,
         'temperature': 0.0,
         'max_tokens': 1,
       },
@@ -771,12 +774,12 @@ class AiChatActionDatasource {
       headers: {
         if (config.apiKey.isNotEmpty) 'Authorization': 'Bearer ${config.apiKey}',
         'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
+        'Accept': 'application/json',
       },
       request: {
         'model': config.moduleName,
         'input': 'Hi',
-        'stream': true,
+        'stream': false,
         'store': false,
         'reasoning': const {
           'effort': _defaultResponsesReasoningEffort,
@@ -787,20 +790,20 @@ class AiChatActionDatasource {
   }
 
   Future<String> _testAnthropicConnection(AiConfig config) async {
-    return _testStreamingConnection(
+    return _testRequestConnection(
       url: config.fullApiUrl,
       headers: {
         'x-api-key': config.apiKey,
         'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
-        'Accept': 'text/event-stream',
+        'Accept': 'application/json',
       },
       request: {
         'model': config.moduleName,
         'messages': const [
           {'role': 'user', 'content': 'Hi'},
         ],
-        'stream': true,
+        'stream': false,
         'temperature': 0.0,
         'max_tokens': 1,
       },

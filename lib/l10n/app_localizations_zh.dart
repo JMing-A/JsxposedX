@@ -974,13 +974,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiTutorial => '教程';
 
   @override
-  String get aiBuiltinConfigName => '帕帝接口';
+  String get aiBuiltinConfigName => '沐雪接口';
 
   @override
-  String get aiBuiltinUseConfig => '使用内置接口';
+  String get aiBuiltinUseConfig => '使用沐雪接口';
 
   @override
-  String get aiBuiltinSwitching => '正在切换到内置默认接口';
+  String get aiBuiltinSwitching => '正在切换到沐雪内置接口';
 
   @override
   String get aiBuyCardSecret => '购买卡密';
