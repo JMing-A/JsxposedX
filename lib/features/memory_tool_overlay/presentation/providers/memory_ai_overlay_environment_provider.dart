@@ -38,8 +38,7 @@ MemoryAiOverlayEnvironmentAdapter memoryAiOverlayEnvironment(
   Ref ref,
   MemoryAiOverlayEnvironmentArgs args,
 ) {
-  final scopeId =
-      'memory_overlay_${args.processInfo.packageName}_${args.processInfo.pid}';
+  final scopeId = 'memory_overlay_${args.processInfo.packageName}';
   return MemoryAiOverlayEnvironmentAdapter(
     processInfo: args.processInfo,
     isZh: args.isZh,

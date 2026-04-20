@@ -128,8 +128,7 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
   requestUserChoice;
 
   @override
-  String get scopeId =>
-      'memory_overlay_${processInfo.packageName}_${processInfo.pid}';
+  String get scopeId => 'memory_overlay_${processInfo.packageName}';
 
   @override
   String get environmentVersion =>
