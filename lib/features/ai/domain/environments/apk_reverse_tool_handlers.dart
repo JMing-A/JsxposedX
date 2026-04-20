@@ -52,7 +52,10 @@ class _GetManifestToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'get_manifest';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final manifest = await context.repo.parseManifest(context.sessionId);
     final apkContext = AiApkContext.fromManifest(manifest);
     return apkContext.toPromptText(isZh: true);
@@ -66,7 +69,10 @@ class _DecompileClassToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'decompile_class';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final className = call.getString('className');
     if (className.isEmpty) {
       throw ArgumentError('className 不能为空');
@@ -86,7 +92,10 @@ class _GetSmaliToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'get_smali';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final className = call.getString('className');
     if (className.isEmpty) {
       throw ArgumentError('className 不能为空');
@@ -106,7 +115,10 @@ class _ListPackagesToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'list_packages';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final prefix = call.getString('prefix');
     final packages = await context.repo.getDexPackages(
       context.sessionId,
@@ -127,7 +139,10 @@ class _ListClassesToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'list_classes';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final packageName = call.getString('packageName');
     final classes = await context.repo.getDexClasses(
       context.sessionId,
@@ -169,7 +184,10 @@ class _SearchClassesToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'search_classes';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final keyword = call.getString('keyword');
     if (keyword.isEmpty) {
       throw ArgumentError('keyword 不能为空');
@@ -193,7 +211,10 @@ class _ListApkFilesToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'list_apk_files';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final path = call.getString('path');
     try {
       final items = await context.repo.getApkAssetsAt(context.sessionId, path);
@@ -227,7 +248,10 @@ class _GetSoInfoToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'get_so_info';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final soPath = call.getString('soPath');
     if (soPath.isEmpty) {
       throw ArgumentError('soPath 不能为空');
@@ -290,7 +314,10 @@ class _SearchSoSymbolsToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'search_so_symbols';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final soPath = call.getString('soPath');
     final keyword = call.getString('keyword');
     if (soPath.isEmpty) {
@@ -355,7 +382,10 @@ class _GetJniFunctionsToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'get_jni_functions';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final soPath = call.getString('soPath');
     if (soPath.isEmpty) {
       throw ArgumentError('soPath 不能为空');
@@ -396,7 +426,10 @@ class _SearchSoStringsToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'search_so_strings';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final soPath = call.getString('soPath');
     final keyword = call.getString('keyword');
     if (soPath.isEmpty) {
@@ -444,7 +477,10 @@ class _GenerateSoHookToolHandler extends _ApkReverseToolHandlerBase {
   String get toolName => 'generate_so_hook';
 
   @override
-  Future<String> handle(AiToolCall call) async {
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final soPath = call.getString('soPath');
     final symbolName = call.getString('symbolName');
     final address = call.getString('address');

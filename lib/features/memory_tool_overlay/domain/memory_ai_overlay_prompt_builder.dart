@@ -74,7 +74,10 @@ class MemoryAiOverlayPromptBuilder {
 - 优先基于工具获取真实状态，不要臆测当前搜索会话、断点状态或指针扫描结果。
 - 当前聊天已经绑定到一个具体进程，只能围绕该进程工作，不要假设可以切换到别的进程。
 - 对会改变目标进程状态的操作（写值、冻结、补丁、断点、暂停/恢复）要先说明意图，再执行必要工具。
-- 当用户目标不明确时，先给出最小必要的查询步骤；当信息足够时，直接给出结论和下一步建议。
+- 当用户目标不明确时，先给出最小必要的查询步骤；当信息足够且任务状态已经稳定时，直接给出结论与必要动作。
+- 对搜索任务、指针扫描、自动追链这类分阶段任务，只要状态仍在运行中、进度未完成或结果还不够支撑结论，就优先继续查询对应 overview / results，不要过早口头宣布完成。
+- 对上述分阶段任务，不要让用户“等一下再看”、不要把“下一步建议”当成回复主体；默认应由你继续主动查询，直到任务结束、被取消、失败，或已经拿到足够稳定的结果。
+- 启动或继续搜索/指针扫描/自动追链后，如果任务尚未稳定，不要立刻输出自然语言总结，更不要输出“建议接着调用某工具”这类废话；要么继续查询，要么等待本轮工具阶段拿到稳定状态后再回答。
 - 工具结果已经展示给用户，回复里不要原样大量粘贴工具输出，而是基于结果总结重点。''';
 
   static const String _rolePromptEn = '''
@@ -84,7 +87,10 @@ Rules:
 - Prefer real tool output over assumptions. Do not guess the current search session, breakpoint state, or pointer-scan status.
 - This chat is already bound to one specific process. Stay within that process and do not assume you can switch targets.
 - For state-changing actions such as writes, freezes, instruction patches, breakpoints, or pause/resume, explain the intent briefly and then perform the necessary tool calls.
-- If the goal is unclear, start with the smallest useful query step. Once you have enough information, provide a direct conclusion and next action.
+- If the goal is unclear, start with the smallest useful query step. Once enough stable information is available, provide a direct conclusion and the necessary action.
+- For staged tasks such as search, pointer scan, and auto chase, if the task is still running, progress is incomplete, or the current results do not yet support a conclusion, continue querying the relevant overview/results tools before declaring completion.
+- For those staged tasks, do not tell the user to simply wait and do not make “next step suggestions” the main response. You should keep querying proactively until the task finishes, is canceled, fails, or the available results are already stable enough.
+- After starting or continuing search, pointer scan, or auto chase, do not immediately emit a natural-language summary and never say things like “next, call X”. Keep querying or wait for a stable state first, then answer.
 - Tool outputs are already visible to the user, so do not paste long raw dumps back into the answer. Summarize the important parts instead.''';
 
   static const String _toolGuideZh = '''
@@ -113,7 +119,8 @@ Rules:
 - 搜索值类型支持：`i8/i16/i32/i64/f32/f64/bytes/text/xor/auto`。
 - 模糊搜索只适用于数值类型；首次模糊搜索应使用 `unknown`，继续筛选通常使用 `changed/unchanged/increased/decreased`。
 - `read_memory` 读取 `bytes` 时如果没有显式长度，会使用默认长度。
-- 对当前状态不确定时，先调用查询工具，再决定是否执行破坏性或状态变更操作。''';
+- 对当前状态不确定时，先调用查询工具，再决定是否执行破坏性或状态变更操作。
+- 当 `get_search_overview`、`get_pointer_scan_overview`、`get_pointer_auto_chase_overview` 显示任务仍在运行、进度未满、或 message 明确提示仍在处理中时，优先继续查询状态，必要时再补查 results，不要直接把中间态说成最终结果。''';
 
   static const String _toolGuideEn = '''
 
@@ -141,12 +148,14 @@ Key constraints:
 - Search value modes support `i8/i16/i32/i64/f32/f64/bytes/text/xor/auto`.
 - Fuzzy search is only for numeric value modes. The first fuzzy scan should use `unknown`; follow-up scans usually use `changed/unchanged/increased/decreased`.
 - `read_memory` uses a default byte length if the type is `bytes` and no explicit length is provided.
-- If state is uncertain, query first, then decide whether a state-changing operation is necessary.''';
+- If state is uncertain, query first, then decide whether a state-changing operation is necessary.
+- When `get_search_overview`, `get_pointer_scan_overview`, or `get_pointer_auto_chase_overview` shows that a task is still running, progress is incomplete, or the message indicates ongoing work, keep querying status and then results as needed instead of treating the intermediate state as final.''';
 
   static const String _outputGuideZh = '''
 
 【输出规范】
-- 回答要基于当前工具结果，先说结论，再说下一步。
+- 回答要基于当前工具结果；如果任务仍在运行，就先报告当前进度与已确认事实，不要把“等一下”“下一步建议”当成回复主体。
+- 禁止输出“建议接着调用 get_search_overview / get_search_results”之类的操作提示句；该继续查就直接继续查。
 - 涉及地址时尽量保留十六进制形式。
 - 如果执行了写值、冻结、补丁、断点或暂停/恢复，明确说明已经执行了什么以及影响对象。
 - 如果工具失败，说明失败点，并给出最合理的补救动作。''';
@@ -154,7 +163,8 @@ Key constraints:
   static const String _outputGuideEn = '''
 
 [Output Guide]
-- Base the answer on current tool results. State the conclusion first, then the next action.
+- Base the answer on current tool results. If the task is still running, report current progress and confirmed facts first instead of making “wait/next step” suggestions the main response.
+- Do not output instructions like “next, call get_search_overview/get_search_results”. If more querying is needed, just do it.
 - Prefer hexadecimal notation when referring to addresses.
 - If you wrote memory, froze values, patched instructions, managed breakpoints, or paused/resumed the process, explicitly say what was changed.
 - If a tool fails, explain the failure point and propose the most reasonable recovery step.''';

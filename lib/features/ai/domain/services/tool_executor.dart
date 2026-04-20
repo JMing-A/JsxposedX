@@ -12,14 +12,17 @@ class ToolExecutor implements AiChatToolExecutorContract {
   final Map<String, AiChatToolHandler> _handlers;
 
   @override
-  Future<AiToolResult> execute(AiToolCall call) async {
+  Future<AiToolResult> execute(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
     final handler = _handlers[call.name];
     if (handler == null) {
       return AiToolResult.error(call.id, call.name, '未知工具: ${call.name}');
     }
 
     try {
-      final result = await handler.handle(call);
+      final result = await handler.handle(call, onProgress: onProgress);
       return AiToolResult.ok(call.id, call.name, result);
     } catch (error) {
       return AiToolResult.error(call.id, call.name, error.toString());

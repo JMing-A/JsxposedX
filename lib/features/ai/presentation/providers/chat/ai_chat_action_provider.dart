@@ -636,10 +636,11 @@ class AiChatAction extends _$AiChatAction {
       return;
     }
 
+    final shouldHidePreToolDisplay = _shouldHidePreToolDisplayContent();
     final assistantToolMessage = AiMessage(
       id: const Uuid().v4(),
       role: 'assistant',
-      content: initialContent,
+      content: shouldHidePreToolDisplay ? '' : initialContent,
       reasoningContent: _normalizeReasoningContentForProtocol(
         reasoningItems: reasoningItems,
         thinkingContent: config.apiType == AiApiType.openai
@@ -662,7 +663,9 @@ class AiChatAction extends _$AiChatAction {
       recoveryMode: AiChatRecoveryMode.resumeToolPhase,
     );
 
-    if (initialDisplayContent.isNotEmpty) {
+    if (shouldHidePreToolDisplay) {
+      _removeDisplayMessage(placeholderId);
+    } else if (initialDisplayContent.isNotEmpty) {
       _updateDisplayMessage(placeholderId, content: initialDisplayContent);
     } else {
       _removeDisplayMessage(placeholderId);
@@ -678,17 +681,27 @@ class AiChatAction extends _$AiChatAction {
       }
 
       final bubbleId = const Uuid().v4();
+      final initialToolBubbleContent = shouldHidePreToolDisplay
+          ? '⏳ `${call.name}`:'
+          : '调用 `${call.name}`${call.arguments.isNotEmpty ? '(${call.arguments.entries.map((entry) => '${entry.key}: ${entry.value}').join(', ')})' : ''}...';
       _appendDisplayMessage(
         AiMessage(
           id: bubbleId,
           role: 'assistant',
-          content:
-              '调用 `${call.name}`${call.arguments.isNotEmpty ? '(${call.arguments.entries.map((entry) => '${entry.key}: ${entry.value}').join(', ')})' : ''}...',
+          content: initialToolBubbleContent,
           isToolResultBubble: true,
         ),
       );
 
-      final result = await toolExecutor.execute(call);
+      final result = await toolExecutor.execute(
+        call,
+        onProgress: (progressContent) {
+          _updateDisplayMessage(
+            bubbleId,
+            content: '⏳ `${call.name}`:\n\n$progressContent',
+          );
+        },
+      );
       _updateDisplayMessage(
         bubbleId,
         content:
@@ -2246,6 +2259,10 @@ class AiChatAction extends _$AiChatAction {
 
   AiChatToolExecutorContract? _getToolExecutor() {
     return state.toolExecutor;
+  }
+
+  bool _shouldHidePreToolDisplayContent() {
+    return packageName.startsWith('memory_overlay_');
   }
 
   bool _isCriticalTool(String toolName) {

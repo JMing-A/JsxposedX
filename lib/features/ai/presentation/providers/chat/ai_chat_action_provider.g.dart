@@ -187,7 +187,7 @@ final class AiChatActionProvider
   }
 }
 
-String _$aiChatActionHash() => r'0735c7fb9fbbba51fb01988ad3c397bf2772912f';
+String _$aiChatActionHash() => r'05d87ac1700f08caae424401fb78bbc05357a4a7';
 
 final class AiChatActionFamily extends $Family
     with

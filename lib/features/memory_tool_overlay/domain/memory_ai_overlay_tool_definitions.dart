@@ -67,7 +67,7 @@ class MemoryAiOverlayToolDefinitions {
 
   static final getSearchOverview = AiToolDefinition(
     name: 'get_search_overview',
-    description: '获取当前搜索会话与搜索任务状态，确认是否已有结果、是否仍在运行以及是否属于当前进程',
+    description: '获取当前搜索会话与搜索任务状态；只要搜索仍在运行或进度未完成，就应优先继续使用本工具确认状态，不要把中间态当成最终完成',
     parameters: ToolParametersBuilder.empty(),
   );
 
@@ -82,7 +82,7 @@ class MemoryAiOverlayToolDefinitions {
 
   static final startFirstScan = AiToolDefinition(
     name: 'start_first_scan',
-    description: '对当前进程发起首次内存搜索，支持精确搜索、文本搜索、XOR 搜索、自动类型搜索和数值模糊搜索',
+    description: '对当前进程发起首次内存搜索。发起后应继续调用 get_search_overview，并在任务结束后再结合 get_search_results 下结论',
     parameters: (ToolParametersBuilder()
           ..addString(
             'valueType',
@@ -117,7 +117,7 @@ class MemoryAiOverlayToolDefinitions {
 
   static final continueNextScan = AiToolDefinition(
     name: 'continue_next_scan',
-    description: '基于当前搜索会话继续筛选结果，参数与首次搜索类似，但 fuzzy 模式通常应传 changed/unchanged/increased/decreased',
+    description: '基于当前搜索会话继续筛选结果。发起后应继续调用 get_search_overview，并在任务结束后再读取最新结果',
     parameters: (ToolParametersBuilder()
           ..addString(
             'valueType',
@@ -329,7 +329,7 @@ class MemoryAiOverlayToolDefinitions {
 
   static final getPointerScanOverview = AiToolDefinition(
     name: 'get_pointer_scan_overview',
-    description: '获取当前指针扫描会话和任务状态',
+    description: '获取当前指针扫描会话和任务状态；只要扫描仍在运行或进度未完成，就应优先继续查询本工具而不是提前宣布完成',
     parameters: ToolParametersBuilder.empty(),
   );
 
@@ -350,7 +350,7 @@ class MemoryAiOverlayToolDefinitions {
 
   static final startPointerScan = AiToolDefinition(
     name: 'start_pointer_scan',
-    description: '从目标地址开始进行指针扫描',
+    description: '从目标地址开始进行指针扫描。发起后应继续调用 get_pointer_scan_overview，任务结束后再读取结果',
     parameters: (ToolParametersBuilder()
           ..addString('targetAddress', '目标地址', required: true)
           ..addInteger('pointerWidth', '指针宽度，一般为 4 或 8', required: true)
@@ -381,7 +381,7 @@ class MemoryAiOverlayToolDefinitions {
 
   static final getPointerAutoChaseOverview = AiToolDefinition(
     name: 'get_pointer_auto_chase_overview',
-    description: '获取当前自动追链状态，包括层数、进度、是否仍在运行和停止原因',
+    description: '获取当前自动追链状态，包括层数、进度、是否仍在运行和停止原因；任务未结束时应优先继续查询本工具',
     parameters: ToolParametersBuilder.empty(),
   );
 
@@ -397,7 +397,7 @@ class MemoryAiOverlayToolDefinitions {
 
   static final startPointerAutoChase = AiToolDefinition(
     name: 'start_pointer_auto_chase',
-    description: '从目标地址开始执行自动指针追链',
+    description: '从目标地址开始执行自动指针追链。发起后应继续调用 get_pointer_auto_chase_overview，任务结束后再读取层结果',
     parameters: (ToolParametersBuilder()
           ..addString('targetAddress', '目标地址', required: true)
           ..addInteger('pointerWidth', '指针宽度，一般为 4 或 8', required: true)

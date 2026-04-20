@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -99,7 +100,7 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
   );
   yield _MemoryAiOverlayCallbackToolHandler(
     toolName: 'start_first_scan',
-    onHandle: (call) async {
+    onHandleWithProgress: (call, {onProgress}) async {
       final request = FirstScanRequest(
         pid: context.pid,
         value: _buildSearchValueFromToolCall(call, isFirstScan: true),
@@ -111,19 +112,49 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
           true,
         ),
       );
-      await context.memoryActionRepository.firstScan(request: request);
-      return '首次搜索已发起。建议接着调用 get_search_overview 或 get_search_results 查看状态与结果。';
+      final startTracker = _trackBackgroundAction(
+        context.memoryActionRepository.firstScan(request: request),
+      );
+      final task = await _waitForSearchTaskToSettle(
+        context,
+        title: '首次搜索',
+        onProgress: onProgress,
+        startTracker: startTracker,
+      );
+      startTracker.throwIfFailed();
+      final session = await context.memoryQueryRepository.getSearchSessionState();
+      return _buildSearchTaskCompletionResult(
+        context: context,
+        title: '首次搜索',
+        task: task,
+        session: session,
+      );
     },
   );
   yield _MemoryAiOverlayCallbackToolHandler(
     toolName: 'continue_next_scan',
-    onHandle: (call) async {
+    onHandleWithProgress: (call, {onProgress}) async {
       final request = NextScanRequest(
         value: _buildSearchValueFromToolCall(call, isFirstScan: false),
         matchMode: SearchMatchMode.exact,
       );
-      await context.memoryActionRepository.nextScan(request: request);
-      return '继续筛选已发起。建议接着调用 get_search_overview 或 get_search_results 查看新的结果。';
+      final startTracker = _trackBackgroundAction(
+        context.memoryActionRepository.nextScan(request: request),
+      );
+      final task = await _waitForSearchTaskToSettle(
+        context,
+        title: '继续筛选',
+        onProgress: onProgress,
+        startTracker: startTracker,
+      );
+      startTracker.throwIfFailed();
+      final session = await context.memoryQueryRepository.getSearchSessionState();
+      return _buildSearchTaskCompletionResult(
+        context: context,
+        title: '继续筛选',
+        task: task,
+        session: session,
+      );
     },
   );
   yield _MemoryAiOverlayCallbackToolHandler(
@@ -430,12 +461,26 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
   );
   yield _MemoryAiOverlayCallbackToolHandler(
     toolName: 'start_pointer_scan',
-    onHandle: (call) async {
+    onHandleWithProgress: (call, {onProgress}) async {
       final request = _buildPointerScanRequest(call, context);
-      await context.memoryPointerActionRepository.startPointerScan(
-        request: request,
+      final startTracker = _trackBackgroundAction(
+        context.memoryPointerActionRepository.startPointerScan(
+          request: request,
+        ),
       );
-      return '指针扫描已启动。建议接着调用 get_pointer_scan_overview 查看任务进度。';
+      final task = await _waitForPointerScanTaskToSettle(
+        context,
+        onProgress: onProgress,
+        startTracker: startTracker,
+      );
+      startTracker.throwIfFailed();
+      final session = await context.memoryPointerQueryRepository
+          .getPointerScanSessionState();
+      return _buildPointerScanCompletionResult(
+        context: context,
+        task: task,
+        session: session,
+      );
     },
   );
   yield _MemoryAiOverlayCallbackToolHandler(
@@ -486,25 +531,33 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
   );
   yield _MemoryAiOverlayCallbackToolHandler(
     toolName: 'start_pointer_auto_chase',
-    onHandle: (call) async {
+    onHandleWithProgress: (call, {onProgress}) async {
       final baseRequest = _buildPointerScanRequest(call, context);
       final maxDepth = _getOptionalInt(call, 'maxDepth', 0);
       if (maxDepth < 1) {
         throw ArgumentError('maxDepth 必须是大于等于 1 的整数');
       }
-      await context.memoryPointerAutoChaseActionRepository.startPointerAutoChase(
-        request: PointerAutoChaseRequest(
-          pid: baseRequest.pid,
-          targetAddress: baseRequest.targetAddress,
-          pointerWidth: baseRequest.pointerWidth,
-          maxOffset: baseRequest.maxOffset,
-          alignment: baseRequest.alignment,
-          maxDepth: maxDepth,
-          rangeSectionKeys: baseRequest.rangeSectionKeys,
-          scanAllReadableRegions: baseRequest.scanAllReadableRegions,
+      final startTracker = _trackBackgroundAction(
+        context.memoryPointerAutoChaseActionRepository.startPointerAutoChase(
+          request: PointerAutoChaseRequest(
+            pid: baseRequest.pid,
+            targetAddress: baseRequest.targetAddress,
+            pointerWidth: baseRequest.pointerWidth,
+            maxOffset: baseRequest.maxOffset,
+            alignment: baseRequest.alignment,
+            maxDepth: maxDepth,
+            rangeSectionKeys: baseRequest.rangeSectionKeys,
+            scanAllReadableRegions: baseRequest.scanAllReadableRegions,
+          ),
         ),
       );
-      return '自动指针追链已启动。建议接着调用 get_pointer_auto_chase_overview 查看状态。';
+      final state = await _waitForPointerAutoChaseToSettle(
+        context,
+        onProgress: onProgress,
+        startTracker: startTracker,
+      );
+      startTracker.throwIfFailed();
+      return _buildPointerAutoChaseCompletionResult(state);
     },
   );
   yield _MemoryAiOverlayCallbackToolHandler(
@@ -526,18 +579,49 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
 class _MemoryAiOverlayCallbackToolHandler implements AiChatToolHandler {
   const _MemoryAiOverlayCallbackToolHandler({
     required this.toolName,
-    required Future<String> Function(AiToolCall call) onHandle,
-  }) : _onHandle = onHandle;
+    Future<String> Function(AiToolCall call)? onHandle,
+    Future<String> Function(
+      AiToolCall call, {
+      AiToolProgressCallback? onProgress,
+    })? onHandleWithProgress,
+  }) : _onHandle = onHandle,
+       _onHandleWithProgress = onHandleWithProgress;
 
   @override
   final String toolName;
 
-  final Future<String> Function(AiToolCall call) _onHandle;
+  final Future<String> Function(AiToolCall call)? _onHandle;
+  final Future<String> Function(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  })? _onHandleWithProgress;
 
   @override
-  Future<String> handle(AiToolCall call) {
-    return _onHandle(call);
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
+    try {
+      if (_onHandleWithProgress != null) {
+        return await _onHandleWithProgress!(call, onProgress: onProgress);
+      }
+      if (_onHandle != null) {
+        return await _onHandle!(call);
+      }
+      throw const _MemoryAiOverlayToolException('工具处理器未实现。');
+    } catch (error) {
+      throw _MemoryAiOverlayToolException(_normalizeToolError(error));
+    }
   }
+}
+
+class _MemoryAiOverlayToolException implements Exception {
+  const _MemoryAiOverlayToolException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 Future<String> _buildProcessSummary(
@@ -795,6 +879,10 @@ String _formatSearchSessionState(
 }
 
 String _formatSearchTaskState(SearchTaskState state) {
+  final message = _normalizeTaskMessage(
+    state.message,
+    domain: _TaskMessageDomain.search,
+  );
   return [
     '- status: ${state.status.name}',
     '- processedRegions: ${state.processedRegions}/${state.totalRegions}',
@@ -802,7 +890,7 @@ String _formatSearchTaskState(SearchTaskState state) {
     '- resultCount: ${state.resultCount}',
     '- elapsedMs: ${state.elapsedMilliseconds}',
     '- canCancel: ${state.canCancel}',
-    if (state.message.trim().isNotEmpty) '- message: ${state.message.trim()}',
+    if (message.isNotEmpty) '- message: $message',
   ].join('\n');
 }
 
@@ -909,6 +997,10 @@ String _formatPointerScanSession(
 }
 
 String _formatPointerScanTask(PointerScanTaskState state) {
+  final message = _normalizeTaskMessage(
+    state.message,
+    domain: _TaskMessageDomain.pointerScan,
+  );
   return [
     '- status: ${state.status.name}',
     '- processedRegions: ${state.processedRegions}/${state.totalRegions}',
@@ -917,7 +1009,7 @@ String _formatPointerScanTask(PointerScanTaskState state) {
     '- resultCount: ${state.resultCount}',
     '- elapsedMs: ${state.elapsedMilliseconds}',
     '- canCancel: ${state.canCancel}',
-    if (state.message.trim().isNotEmpty) '- message: ${state.message.trim()}',
+    if (message.isNotEmpty) '- message: $message',
   ].join('\n');
 }
 
@@ -941,12 +1033,16 @@ String _formatPointerChaseHint(PointerScanChaseHint hint) {
 }
 
 String _formatPointerAutoChaseState(PointerAutoChaseState state) {
+  final message = _normalizeTaskMessage(
+    state.message,
+    domain: _TaskMessageDomain.autoChase,
+  );
   final buffer = StringBuffer()
     ..writeln('- isRunning: ${state.isRunning}')
     ..writeln('- pid: ${state.pid}')
     ..writeln('- currentDepth: ${state.currentDepth}/${state.maxDepth}');
-  if (state.message.trim().isNotEmpty) {
-    buffer.writeln('- message: ${state.message.trim()}');
+  if (message.isNotEmpty) {
+    buffer.writeln('- message: $message');
   }
   if (state.layers.isEmpty) {
     buffer.writeln('- 当前没有追链层数据');
@@ -1188,6 +1284,416 @@ Uint8List _encodeUtf16Le(String value) {
     bytes.add((unit >> 8) & 0xFF);
   }
   return Uint8List.fromList(bytes);
+}
+
+Future<SearchTaskState> _waitForSearchTaskToSettle(
+  MemoryAiOverlayToolRuntimeContext context, {
+  required String title,
+  AiToolProgressCallback? onProgress,
+  _BackgroundActionTracker? startTracker,
+}) async {
+  const timeout = Duration(minutes: 5);
+  const pollInterval = Duration(milliseconds: 400);
+  const startupGrace = Duration(seconds: 2);
+  final startedAt = DateTime.now();
+  var observedRunning = false;
+  String? lastProgressContent;
+
+  while (true) {
+    startTracker?.throwIfFailed();
+    final latest = await context.memoryQueryRepository.getSearchTaskState();
+    final session = await context.memoryQueryRepository.getSearchSessionState();
+    if (latest.status == SearchTaskStatus.running) {
+      observedRunning = true;
+    }
+    final progressContent = _buildSearchTaskProgressResult(
+      context: context,
+      title: title,
+      task: latest,
+      session: session,
+    );
+    if (progressContent != lastProgressContent) {
+      lastProgressContent = progressContent;
+      onProgress?.call(progressContent);
+    }
+
+    final elapsed = DateTime.now().difference(startedAt);
+    final isTerminal =
+        latest.status == SearchTaskStatus.completed ||
+        latest.status == SearchTaskStatus.cancelled ||
+        latest.status == SearchTaskStatus.failed;
+
+    if (isTerminal && (observedRunning || elapsed >= startupGrace)) {
+      startTracker?.throwIfFailed();
+      return latest;
+    }
+    if (latest.status == SearchTaskStatus.idle && elapsed < startupGrace) {
+      await Future.delayed(pollInterval);
+      continue;
+    }
+    if (latest.status != SearchTaskStatus.running &&
+        latest.status != SearchTaskStatus.idle) {
+      return latest;
+    }
+    if (elapsed >= timeout) {
+      throw const _MemoryAiOverlayToolException('等待搜索任务完成超时。');
+    }
+    await Future.delayed(pollInterval);
+  }
+}
+
+Future<PointerScanTaskState> _waitForPointerScanTaskToSettle(
+  MemoryAiOverlayToolRuntimeContext context, {
+  AiToolProgressCallback? onProgress,
+  _BackgroundActionTracker? startTracker,
+}) async {
+  const timeout = Duration(minutes: 5);
+  const pollInterval = Duration(milliseconds: 400);
+  const startupGrace = Duration(seconds: 2);
+  final startedAt = DateTime.now();
+  var observedRunning = false;
+  String? lastProgressContent;
+
+  while (true) {
+    startTracker?.throwIfFailed();
+    final latest = await context.memoryPointerQueryRepository
+        .getPointerScanTaskState();
+    final session = await context.memoryPointerQueryRepository
+        .getPointerScanSessionState();
+    if (latest.status == SearchTaskStatus.running) {
+      observedRunning = true;
+    }
+    final progressContent = _buildPointerScanProgressResult(
+      context: context,
+      task: latest,
+      session: session,
+    );
+    if (progressContent != lastProgressContent) {
+      lastProgressContent = progressContent;
+      onProgress?.call(progressContent);
+    }
+
+    final elapsed = DateTime.now().difference(startedAt);
+    final isTerminal =
+        latest.status == SearchTaskStatus.completed ||
+        latest.status == SearchTaskStatus.cancelled ||
+        latest.status == SearchTaskStatus.failed;
+
+    if (isTerminal && (observedRunning || elapsed >= startupGrace)) {
+      startTracker?.throwIfFailed();
+      return latest;
+    }
+    if (latest.status == SearchTaskStatus.idle && elapsed < startupGrace) {
+      await Future.delayed(pollInterval);
+      continue;
+    }
+    if (latest.status != SearchTaskStatus.running &&
+        latest.status != SearchTaskStatus.idle) {
+      return latest;
+    }
+    if (elapsed >= timeout) {
+      throw const _MemoryAiOverlayToolException('等待指针扫描完成超时。');
+    }
+    await Future.delayed(pollInterval);
+  }
+}
+
+Future<PointerAutoChaseState> _waitForPointerAutoChaseToSettle(
+  MemoryAiOverlayToolRuntimeContext context, {
+  AiToolProgressCallback? onProgress,
+  _BackgroundActionTracker? startTracker,
+}) async {
+  const timeout = Duration(minutes: 5);
+  const pollInterval = Duration(milliseconds: 400);
+  const startupGrace = Duration(seconds: 2);
+  final startedAt = DateTime.now();
+  var observedRunning = false;
+  String? lastProgressContent;
+
+  while (true) {
+    startTracker?.throwIfFailed();
+    final latest = await context.memoryPointerAutoChaseQueryRepository
+        .getPointerAutoChaseState();
+    if (latest.isRunning) {
+      observedRunning = true;
+    }
+    final progressContent = _buildPointerAutoChaseProgressResult(latest);
+    if (progressContent != lastProgressContent) {
+      lastProgressContent = progressContent;
+      onProgress?.call(progressContent);
+    }
+
+    final elapsed = DateTime.now().difference(startedAt);
+    if (!latest.isRunning && (observedRunning || elapsed >= startupGrace)) {
+      startTracker?.throwIfFailed();
+      return latest;
+    }
+    if (elapsed >= timeout) {
+      throw const _MemoryAiOverlayToolException('等待自动追链完成超时。');
+    }
+    await Future.delayed(pollInterval);
+  }
+}
+
+_BackgroundActionTracker _trackBackgroundAction(Future<void> future) {
+  final tracker = _BackgroundActionTracker();
+  unawaited(
+    future.then(tracker.complete).catchError(
+      tracker.completeError,
+      test: (_) => true,
+    ),
+  );
+  return tracker;
+}
+
+class _BackgroundActionTracker {
+  bool _isCompleted = false;
+  Object? _error;
+  StackTrace? _stackTrace;
+
+  bool get isCompleted => _isCompleted;
+
+  void complete([Object? _]) {
+    _isCompleted = true;
+  }
+
+  void completeError(Object error, StackTrace stackTrace) {
+    _error = error;
+    _stackTrace = stackTrace;
+    _isCompleted = true;
+  }
+
+  void throwIfFailed() {
+    if (!_isCompleted || _error == null) {
+      return;
+    }
+    Error.throwWithStackTrace(_error!, _stackTrace ?? StackTrace.current);
+  }
+}
+
+String _buildSearchTaskCompletionResult({
+  required MemoryAiOverlayToolRuntimeContext context,
+  required String title,
+  required SearchTaskState task,
+  required SearchSessionState session,
+}) {
+  final summary = switch (task.status) {
+    SearchTaskStatus.completed => '$title已完成。',
+    SearchTaskStatus.cancelled => '$title已取消。',
+    SearchTaskStatus.failed => '$title失败。',
+    SearchTaskStatus.running => '$title仍在运行。',
+    SearchTaskStatus.idle => '$title未开始。',
+  };
+  return [
+    summary,
+    '搜索会话：',
+    _formatSearchSessionState(session, currentPid: context.pid),
+    '搜索任务：',
+    _formatSearchTaskState(task),
+  ].join('\n');
+}
+
+String _buildSearchTaskProgressResult({
+  required MemoryAiOverlayToolRuntimeContext context,
+  required String title,
+  required SearchTaskState task,
+  required SearchSessionState session,
+}) {
+  final summary = switch (task.status) {
+    SearchTaskStatus.running => '$title进行中。',
+    SearchTaskStatus.completed => '$title已完成。',
+    SearchTaskStatus.cancelled => '$title已取消。',
+    SearchTaskStatus.failed => '$title失败。',
+    SearchTaskStatus.idle => '$title准备中。',
+  };
+  return [
+    summary,
+    '搜索会话：',
+    _formatSearchSessionState(session, currentPid: context.pid),
+    '搜索任务：',
+    _formatSearchTaskState(task),
+  ].join('\n');
+}
+
+String _buildPointerScanCompletionResult({
+  required MemoryAiOverlayToolRuntimeContext context,
+  required PointerScanTaskState task,
+  required PointerScanSessionState session,
+}) {
+  final summary = switch (task.status) {
+    SearchTaskStatus.completed => '指针扫描已完成。',
+    SearchTaskStatus.cancelled => '指针扫描已取消。',
+    SearchTaskStatus.failed => '指针扫描失败。',
+    SearchTaskStatus.running => '指针扫描仍在运行。',
+    SearchTaskStatus.idle => '指针扫描未开始。',
+  };
+  return [
+    summary,
+    '指针扫描会话：',
+    _formatPointerScanSession(session, currentPid: context.pid),
+    '指针扫描任务：',
+    _formatPointerScanTask(task),
+  ].join('\n');
+}
+
+String _buildPointerScanProgressResult({
+  required MemoryAiOverlayToolRuntimeContext context,
+  required PointerScanTaskState task,
+  required PointerScanSessionState session,
+}) {
+  final summary = switch (task.status) {
+    SearchTaskStatus.running => '指针扫描进行中。',
+    SearchTaskStatus.completed => '指针扫描已完成。',
+    SearchTaskStatus.cancelled => '指针扫描已取消。',
+    SearchTaskStatus.failed => '指针扫描失败。',
+    SearchTaskStatus.idle => '指针扫描准备中。',
+  };
+  return [
+    summary,
+    '指针扫描会话：',
+    _formatPointerScanSession(session, currentPid: context.pid),
+    '指针扫描任务：',
+    _formatPointerScanTask(task),
+  ].join('\n');
+}
+
+String _buildPointerAutoChaseCompletionResult(PointerAutoChaseState state) {
+  final summary = state.isRunning ? '自动指针追链仍在运行。' : '自动指针追链已完成。';
+  return [
+    summary,
+    '自动追链：',
+    _formatPointerAutoChaseState(state),
+  ].join('\n');
+}
+
+String _buildPointerAutoChaseProgressResult(PointerAutoChaseState state) {
+  final summary = state.isRunning ? '自动指针追链进行中。' : '自动指针追链已完成。';
+  return [
+    summary,
+    '自动追链：',
+    _formatPointerAutoChaseState(state),
+  ].join('\n');
+}
+
+enum _TaskMessageDomain { search, pointerScan, autoChase }
+
+String _normalizeTaskMessage(
+  String rawMessage, {
+  required _TaskMessageDomain domain,
+}) {
+  final message = rawMessage.trim();
+  if (message.isEmpty) {
+    return '';
+  }
+
+  final normalized = message.toLowerCase();
+  switch (domain) {
+    case _TaskMessageDomain.search:
+      if (normalized == 'first scan is running.') {
+        return '首次搜索进行中';
+      }
+      if (normalized == 'next scan is running.') {
+        return '继续筛选进行中';
+      }
+      if (normalized == 'search task completed.') {
+        return '搜索任务已完成';
+      }
+      if (normalized == 'search task cancelled.') {
+        return '搜索任务已取消';
+      }
+      if (normalized == 'search task failed.') {
+        return '搜索任务失败';
+      }
+      if (normalized == 'no active search session.') {
+        return '当前没有活动搜索会话';
+      }
+      return message;
+    case _TaskMessageDomain.pointerScan:
+      if (normalized == 'pointer scan is running.') {
+        return '指针扫描进行中';
+      }
+      if (normalized == 'pointer scan completed.') {
+        return '指针扫描已完成';
+      }
+      if (normalized == 'pointer scan cancelled.') {
+        return '指针扫描已取消';
+      }
+      if (normalized == 'pointer scan failed.') {
+        return '指针扫描失败';
+      }
+      return message;
+    case _TaskMessageDomain.autoChase:
+      if (normalized == 'pointer auto chase is running.') {
+        return '自动追链进行中';
+      }
+      if (normalized == 'pointer auto chase completed.') {
+        return '自动追链已完成';
+      }
+      if (normalized == 'pointer auto chase cancelled.') {
+        return '自动追链已取消';
+      }
+      if (normalized == 'pointer auto chase failed.') {
+        return '自动追链失败';
+      }
+      return message;
+  }
+}
+
+String _normalizeToolError(Object error) {
+  var message = error.toString().trim();
+  if (message.isEmpty) {
+    return '工具执行失败。';
+  }
+
+  final platformExceptionMatch = RegExp(
+    r'PlatformException\([^,]+,\s*([^,\)]+)',
+    caseSensitive: false,
+  ).firstMatch(message);
+  if (platformExceptionMatch != null) {
+    message = platformExceptionMatch.group(1)?.trim() ?? message;
+  }
+
+  message = message
+      .replaceFirst(RegExp(r'^Bad state:\s*', caseSensitive: false), '')
+      .replaceFirst(RegExp(r'^Exception:\s*', caseSensitive: false), '')
+      .replaceFirst(
+        RegExp(r'^java\.lang\.[A-Za-z0-9_$.]+:\s*', caseSensitive: false),
+        '',
+      )
+      .replaceFirst(RegExp(r'^Invalid argument\(s\):\s*'), '')
+      .trim();
+
+  final lines = message
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .where(
+        (line) =>
+            !line.startsWith('at ') &&
+            !line.startsWith('#0') &&
+            !line.startsWith('#1') &&
+            !line.startsWith('#2') &&
+            !line.startsWith('dart:') &&
+            !line.startsWith('package:'),
+      )
+      .toList(growable: false);
+
+  if (lines.isEmpty) {
+    return '工具执行失败。';
+  }
+
+  final primary = lines.first;
+  final normalized = primary.toLowerCase();
+  if (normalized.contains('no active search session')) {
+    return '当前没有活动搜索会话。';
+  }
+  if (normalized.contains('no active pointer scan session')) {
+    return '当前没有活动指针扫描会话。';
+  }
+  if (normalized.contains('no active pointer auto chase')) {
+    return '当前没有活动自动追链任务。';
+  }
+  return primary;
 }
 
 const Set<String> _supportedFuzzyModes = <String>{
