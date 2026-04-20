@@ -25,11 +25,13 @@ class MemoryToolSearchTab extends HookConsumerWidget {
     required this.onOpenBrowseTab,
     required this.onOpenPointerTab,
     required this.onOpenDebugTab,
+    required this.onOpenSavedTab,
   });
 
   final VoidCallback onOpenBrowseTab;
   final VoidCallback onOpenPointerTab;
   final VoidCallback onOpenDebugTab;
+  final VoidCallback onOpenSavedTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -114,9 +116,13 @@ class MemoryToolSearchTab extends HookConsumerWidget {
         final previousPid = previousSessionPid.value;
         final currentSessionPid = state.hasActiveSession ? state.pid : null;
         final hadMatchingSession =
-            selectedPid != null && previousPid != null && previousPid == selectedPid;
+            selectedPid != null &&
+            previousPid != null &&
+            previousPid == selectedPid;
         final hasExactMatchingSession =
-            state.hasActiveSession && selectedPid != null && state.pid == selectedPid;
+            state.hasActiveSession &&
+            selectedPid != null &&
+            state.pid == selectedPid;
 
         if (hadMatchingSession && !hasExactMatchingSession) {
           scheduleSelectionClear();
@@ -179,6 +185,7 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       onOpenBrowseTab: onOpenBrowseTab,
       onOpenPointerTab: onOpenPointerTab,
       onOpenDebugTab: onOpenDebugTab,
+      onOpenSavedTab: onOpenSavedTab,
     );
 
     return LayoutBuilder(
@@ -243,9 +250,8 @@ class MemoryToolSearchTab extends HookConsumerWidget {
                       final browseNotifier = ref.read(
                         memoryToolBrowseControllerProvider.notifier,
                       );
-                      final readableRegions = await browseNotifier.ensureReadableRegions(
-                        pid: selectedPid,
-                      );
+                      final readableRegions = await browseNotifier
+                          .ensureReadableRegions(pid: selectedPid);
                       final targetAddress =
                           await resolveMemoryToolPointerExpressionTargetAddress(
                             repository: ref.read(memoryQueryRepositoryProvider),

@@ -40,6 +40,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
     required this.onOpenBrowseTab,
     required this.onOpenPointerTab,
     required this.onOpenDebugTab,
+    required this.onOpenSavedTab,
   });
 
   final bool hasMatchingSession;
@@ -51,6 +52,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
   final VoidCallback onOpenBrowseTab;
   final VoidCallback onOpenPointerTab;
   final VoidCallback onOpenDebugTab;
+  final VoidCallback onOpenSavedTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -146,6 +148,9 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
         previewsByAddress: previewsByAddress,
         frozenAddresses: frozenResultAddresses,
       );
+      if (context.mounted) {
+        onOpenSavedTab();
+      }
       await showSavedToast(resultList.length);
     }
 
@@ -446,6 +451,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                                       .startRootScan(request: request);
                                 },
                             onOpenDebugTab: onOpenDebugTab,
+                            onOpenSavedTab: onOpenSavedTab,
                           );
                         },
                         error: (error, _) =>

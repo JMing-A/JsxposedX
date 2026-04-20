@@ -117,9 +117,15 @@ class MemoryToolOverlay extends HookConsumerWidget {
         ref.invalidate(getPointerAutoChaseStateProvider);
         ref.invalidate(getPointerAutoChaseLayerResultsProvider);
         if (selectedProcess != null) {
-          ref.invalidate(getMemoryBreakpointsProvider(pid: selectedProcess.pid));
-          ref.invalidate(getMemoryBreakpointStateProvider(pid: selectedProcess.pid));
-          ref.invalidate(getMemoryBreakpointHitsProvider(pid: selectedProcess.pid));
+          ref.invalidate(
+            getMemoryBreakpointsProvider(pid: selectedProcess.pid),
+          );
+          ref.invalidate(
+            getMemoryBreakpointStateProvider(pid: selectedProcess.pid),
+          );
+          ref.invalidate(
+            getMemoryBreakpointHitsProvider(pid: selectedProcess.pid),
+          );
         }
         ref.read(memoryBreakpointSelectedIdProvider.notifier).clear();
         ref.invalidate(hasMatchingSearchSessionProvider);
@@ -240,157 +246,161 @@ class MemoryToolOverlay extends HookConsumerWidget {
     return Stack(
       children: [
         OverlayWindowScaffold(
-            overlayConfig: overlayConfig,
-            overlayBar: OverlayWindowBar(
-              backgroundColor: context.colorScheme.surface.withValues(
-                alpha: 0.3,
-              ),
-              toolbarHeight: 52.r,
-              titleSpacing: 0,
-              leadingWidth: 48.r,
-              leading: IconButton(
-                padding: EdgeInsets.zero,
-                onPressed: () {
-                  openProcessPicker();
-                },
-                icon: ProcessAvatar(process: selectedProcess),
-              ),
-              title: TabBar(
-                controller: tabController,
-                dividerColor: Colors.transparent,
-                indicatorSize: TabBarIndicatorSize.tab,
-                indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14.r),
-                  color: context.colorScheme.primary.withValues(alpha: 0.14),
-                ),
-                labelColor: context.colorScheme.primary,
-                unselectedLabelColor: context.colorScheme.onSurfaceVariant,
-                labelStyle: context.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-                tabs: <Widget>[
-                  const Tab(icon: Icon(Icons.search_rounded)),
-                  const Tab(icon: Icon(Icons.visibility_rounded)),
-                  const Tab(icon: Icon(Icons.timeline_rounded)),
-                  const Tab(icon: Icon(Icons.bug_report_rounded)),
-                  const Tab(icon: Icon(Icons.bookmark_rounded)),
-                ],
-              ),
-              showMinimizeAction: true,
-              showCloseAction: false,
+          overlayConfig: overlayConfig,
+          overlayBar: OverlayWindowBar(
+            backgroundColor: context.colorScheme.surface.withValues(alpha: 0.3),
+            toolbarHeight: 52.r,
+            titleSpacing: 0,
+            leadingWidth: 48.r,
+            leading: IconButton(
+              padding: EdgeInsets.zero,
+              onPressed: () {
+                openProcessPicker();
+              },
+              icon: ProcessAvatar(process: selectedProcess),
             ),
-            backgroundColor: context.colorScheme.surface.withValues(alpha: 0.6),
-            padding: EdgeInsets.only(top: portraitTopInset),
-            body: PageStorage(
-              bucket: _pageStorageBucket,
-              child: selectedProcess == null
-                  ? Center(
-                      child: Text(
-                        context.l10n.selectApp,
-                        style: TextStyle(
-                          color: context.colorScheme.onSurface.withValues(
-                            alpha: 0.65,
-                          ),
+            title: TabBar(
+              controller: tabController,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                borderRadius: BorderRadius.circular(14.r),
+                color: context.colorScheme.primary.withValues(alpha: 0.14),
+              ),
+              labelColor: context.colorScheme.primary,
+              unselectedLabelColor: context.colorScheme.onSurfaceVariant,
+              labelStyle: context.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+              tabs: <Widget>[
+                const Tab(icon: Icon(Icons.search_rounded)),
+                const Tab(icon: Icon(Icons.visibility_rounded)),
+                const Tab(icon: Icon(Icons.timeline_rounded)),
+                const Tab(icon: Icon(Icons.bug_report_rounded)),
+                const Tab(icon: Icon(Icons.bookmark_rounded)),
+              ],
+            ),
+            showMinimizeAction: true,
+            showCloseAction: false,
+          ),
+          backgroundColor: context.colorScheme.surface.withValues(alpha: 0.6),
+          padding: EdgeInsets.only(top: portraitTopInset),
+          body: PageStorage(
+            bucket: _pageStorageBucket,
+            child: selectedProcess == null
+                ? Center(
+                    child: Text(
+                      context.l10n.selectApp,
+                      style: TextStyle(
+                        color: context.colorScheme.onSurface.withValues(
+                          alpha: 0.65,
                         ),
                       ),
-                    )
-                  : TabBarView(
-                      controller: tabController,
-                      children: <Widget>[
-                        MemoryToolSearchTab(
-                          onOpenBrowseTab: () {
-                            tabController.animateTo(1);
-                          },
-                          onOpenPointerTab: () {
-                            tabController.animateTo(2);
-                          },
-                          onOpenDebugTab: () {
-                            tabController.animateTo(3);
-                          },
-                        ),
-                        MemoryToolBrowseTab(
-                          onOpenPointerTab: () {
-                            tabController.animateTo(2);
-                          },
-                          onOpenDebugTab: () {
-                            tabController.animateTo(3);
-                          },
-                        ),
-                        MemoryToolPointerTab(
-                          onOpenBrowseTab: () {
-                            tabController.animateTo(1);
-                          },
-                        ),
-                        MemoryToolDebugTab(
-                          onOpenBrowseTab: () {
-                            tabController.animateTo(1);
-                          },
-                          onOpenPointerTab: () {
-                            tabController.animateTo(2);
-                          },
-                        ),
-                        MemoryToolSavedTab(
-                          onOpenBrowseTab: () {
-                            tabController.animateTo(1);
-                          },
-                          onOpenPointerTab: () {
-                            tabController.animateTo(2);
-                          },
-                          onOpenDebugTab: () {
-                            tabController.animateTo(3);
-                          },
-                        ),
-                      ],
                     ),
+                  )
+                : TabBarView(
+                    controller: tabController,
+                    children: <Widget>[
+                      MemoryToolSearchTab(
+                        onOpenBrowseTab: () {
+                          tabController.animateTo(1);
+                        },
+                        onOpenPointerTab: () {
+                          tabController.animateTo(2);
+                        },
+                        onOpenDebugTab: () {
+                          tabController.animateTo(3);
+                        },
+                        onOpenSavedTab: () {
+                          tabController.animateTo(4);
+                        },
+                      ),
+                      MemoryToolBrowseTab(
+                        onOpenPointerTab: () {
+                          tabController.animateTo(2);
+                        },
+                        onOpenDebugTab: () {
+                          tabController.animateTo(3);
+                        },
+                      ),
+                      MemoryToolPointerTab(
+                        onOpenBrowseTab: () {
+                          tabController.animateTo(1);
+                        },
+                      ),
+                      MemoryToolDebugTab(
+                        onOpenBrowseTab: () {
+                          tabController.animateTo(1);
+                        },
+                        onOpenPointerTab: () {
+                          tabController.animateTo(2);
+                        },
+                      ),
+                      MemoryToolSavedTab(
+                        onOpenBrowseTab: () {
+                          tabController.animateTo(1);
+                        },
+                        onOpenPointerTab: () {
+                          tabController.animateTo(2);
+                        },
+                        onOpenDebugTab: () {
+                          tabController.animateTo(3);
+                        },
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+        if (isPickerVisible.value)
+          Positioned.fill(
+            child: MemoryToolProcessPickerDialog(
+              onClose: () {
+                isPickerVisible.value = false;
+              },
+              onSelected: (process) {
+                final browseNotifier = ref.read(
+                  memoryToolBrowseControllerProvider.notifier,
+                );
+                browseNotifier.clear();
+                ref.read(memoryToolPointerControllerProvider.notifier).clear();
+                ref
+                    .read(memoryPointerActionProvider.notifier)
+                    .resetPointerScanSession();
+                ref
+                    .read(memoryPointerAutoChaseActionProvider.notifier)
+                    .resetPointerAutoChase();
+                ref.read(memoryBreakpointSelectedIdProvider.notifier).clear();
+                ref
+                    .read(memoryToolSelectedProcessProvider.notifier)
+                    .select(process);
+                Future<void>.microtask(() async {
+                  try {
+                    await browseNotifier.ensureReadableRegions(
+                      pid: process.pid.toInt(),
+                    );
+                  } catch (_) {}
+                });
+                isPickerVisible.value = false;
+              },
+              onRetry: () {
+                ref.invalidate(
+                  getProcessInfoProvider(
+                    offset: 0,
+                    limit: MemoryToolProcessPickerDialog.initialPageSize,
+                  ),
+                );
+              },
             ),
           ),
-          if (isPickerVisible.value)
-            Positioned.fill(
-              child: MemoryToolProcessPickerDialog(
-                onClose: () {
-                  isPickerVisible.value = false;
-                },
-                onSelected: (process) {
-                  final browseNotifier =
-                      ref.read(memoryToolBrowseControllerProvider.notifier);
-                  browseNotifier.clear();
-                  ref.read(memoryToolPointerControllerProvider.notifier).clear();
-                  ref
-                      .read(memoryPointerActionProvider.notifier)
-                      .resetPointerScanSession();
-                  ref
-                      .read(memoryPointerAutoChaseActionProvider.notifier)
-                      .resetPointerAutoChase();
-                  ref.read(memoryBreakpointSelectedIdProvider.notifier).clear();
-                  ref
-                      .read(memoryToolSelectedProcessProvider.notifier)
-                      .select(process);
-                  Future<void>.microtask(() async {
-                    try {
-                      await browseNotifier.ensureReadableRegions(pid: process.pid.toInt());
-                    } catch (_) {}
-                  });
-                  isPickerVisible.value = false;
-                },
-                onRetry: () {
-                  ref.invalidate(
-                    getProcessInfoProvider(
-                      offset: 0,
-                      limit: MemoryToolProcessPickerDialog.initialPageSize,
-                    ),
-                  );
-                },
-              ),
+        if (isProcessTerminatedDialogVisible.value)
+          Positioned.fill(
+            child: MemoryToolProcessTerminatedDialog(
+              onConfirm: () {
+                isProcessTerminatedDialogVisible.value = false;
+              },
             ),
-          if (isProcessTerminatedDialogVisible.value)
-            Positioned.fill(
-              child: MemoryToolProcessTerminatedDialog(
-                onConfirm: () {
-                  isProcessTerminatedDialogVisible.value = false;
-                },
-              ),
-            ),
-          const Positioned.fill(child: AiOverlay()),
+          ),
+        const Positioned.fill(child: AiOverlay()),
       ],
     );
   }

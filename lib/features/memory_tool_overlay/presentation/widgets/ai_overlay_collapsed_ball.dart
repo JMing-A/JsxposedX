@@ -24,45 +24,47 @@ class AiOverlayCollapsedBall extends StatelessWidget {
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(14.r);
     final innerRadius = BorderRadius.circular(12.r);
-    final innerBall = Material(
-      color: Colors.transparent,
-      child: InkWell(
+    final innerBall = Container(
+      key: innerBallKey,
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.center,
+          radius: 0.95,
+          colors: <Color>[
+            context.colorScheme.primary,
+            Color.lerp(
+                  context.colorScheme.primary,
+                  context.colorScheme.primaryContainer,
+                  0.58,
+                ) ??
+                context.colorScheme.primaryContainer,
+          ],
+          stops: const <double>[0.38, 1],
+        ),
         borderRadius: innerRadius,
-        onTap: onTap,
-        child: Ink(
-          key: innerBallKey,
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.center,
-              radius: 0.95,
-              colors: <Color>[
-                context.colorScheme.primary,
-                Color.lerp(
-                      context.colorScheme.primary,
-                      context.colorScheme.primaryContainer,
-                      0.58,
-                    ) ??
-                    context.colorScheme.primaryContainer,
-              ],
-              stops: const <double>[0.38, 1],
-            ),
-            borderRadius: innerRadius,
-            border: Border.all(
-              color: context.colorScheme.onPrimary.withValues(alpha: 0.22),
-            ),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: context.colorScheme.primary.withValues(alpha: 0.18),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-              BoxShadow(
-                color: context.colorScheme.primary.withValues(alpha: 0.32),
-                blurRadius: 14,
-                spreadRadius: 1.2,
-              ),
-            ],
+        border: Border.all(
+          color: context.colorScheme.onPrimary.withValues(alpha: 0.22),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: context.colorScheme.primary.withValues(alpha: 0.18),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
+          BoxShadow(
+            color: context.colorScheme.primary.withValues(alpha: 0.32),
+            blurRadius: 14,
+            spreadRadius: 1.2,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: innerRadius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          borderRadius: innerRadius,
+          onTap: onTap,
           child: Center(
             child: Icon(
               Icons.auto_awesome_rounded,

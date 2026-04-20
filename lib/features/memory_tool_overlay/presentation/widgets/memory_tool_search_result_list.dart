@@ -41,6 +41,7 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
     this.onStartAutoChase,
     this.onStartPointerScan,
     this.onOpenDebugTab,
+    this.onOpenSavedTab,
     this.showPreviewMemoryBlockAction = true,
     this.itemKeyBuilder,
   });
@@ -61,22 +62,26 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
     SearchResult result,
     MemoryValuePreview? preview,
     String displayValue,
-  )? onPreviewMemoryBlock;
+  )?
+  onPreviewMemoryBlock;
   final Future<void> Function(
     SearchResult result,
     MemoryValuePreview? preview,
     String displayValue,
     int targetAddress,
-  )? onNavigateToAddress;
+  )?
+  onNavigateToAddress;
   final Future<void> Function(
     SearchResult result,
     MemoryValuePreview? preview,
     String displayValue,
-  )? onJumpToPointer;
+  )?
+  onJumpToPointer;
   final Future<void> Function(PointerScanRequest request, int maxDepth)?
-      onStartAutoChase;
+  onStartAutoChase;
   final Future<void> Function(PointerScanRequest request)? onStartPointerScan;
   final VoidCallback? onOpenDebugTab;
+  final VoidCallback? onOpenSavedTab;
   final bool showPreviewMemoryBlockAction;
 
   @override
@@ -96,9 +101,9 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
 
     Future<void> copyText(String value) async {
       final copied = await FlutterOverlayWindow.setClipboardData(value);
-      ref.read(overlayWindowHostRuntimeProvider.notifier).showToast(
-        copied ? context.l10n.codeCopied : context.l10n.error,
-      );
+      ref
+          .read(overlayWindowHostRuntimeProvider.notifier)
+          .showToast(copied ? context.l10n.codeCopied : context.l10n.error);
     }
 
     Future<void> saveResultToSaved(SearchResult result) async {
@@ -113,6 +118,7 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
         preview: livePreviewsAsync.asData?.value[result.address],
         isFrozen: initialFrozenStateByAddress[result.address] ?? false,
       );
+      onOpenSavedTab?.call();
       await ToastOverlayMessage.show(
         context.l10n.memoryToolSavedToSavedMessage(1),
         duration: const Duration(milliseconds: 1200),
@@ -235,7 +241,8 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
                     onPreviewMemoryBlock != null)
                   MemoryToolSearchResultActionItemData(
                     icon: Icons.preview_rounded,
-                    title: context.l10n.memoryToolResultActionPreviewMemoryBlock,
+                    title:
+                        context.l10n.memoryToolResultActionPreviewMemoryBlock,
                     onTap: () async {
                       await onPreviewMemoryBlock!(
                         dialog.result,
@@ -261,8 +268,8 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
                   icon: Icons.save_alt_rounded,
                   title: context.l10n.memoryToolResultActionSaveToSaved,
                   onTap: () async {
-                    await saveResultToSaved(dialog.result);
                     activeResultActionDialog.value = null;
+                    await saveResultToSaved(dialog.result);
                   },
                 ),
                 MemoryToolSearchResultActionItemData(
@@ -282,7 +289,9 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
                       '${context.l10n.memoryToolResultDetailActionCopyAddress}: ${formatMemoryToolSearchResultAddress(dialog.result.address)}',
                   onTap: () async {
                     await copyText(
-                      formatMemoryToolSearchResultAddress(dialog.result.address),
+                      formatMemoryToolSearchResultAddress(
+                        dialog.result.address,
+                      ),
                     );
                     activeResultActionDialog.value = null;
                   },
@@ -359,9 +368,15 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
                     .read(memoryBreakpointActionProvider.notifier)
                     .addMemoryBreakpoint(request: request);
                 if (processPid != null) {
-                  ref.invalidate(getMemoryBreakpointsProvider(pid: processPid!));
-                  ref.invalidate(getMemoryBreakpointStateProvider(pid: processPid!));
-                  ref.invalidate(getMemoryBreakpointHitsProvider(pid: processPid!));
+                  ref.invalidate(
+                    getMemoryBreakpointsProvider(pid: processPid!),
+                  );
+                  ref.invalidate(
+                    getMemoryBreakpointStateProvider(pid: processPid!),
+                  );
+                  ref.invalidate(
+                    getMemoryBreakpointHitsProvider(pid: processPid!),
+                  );
                 }
                 ref
                     .read(memoryBreakpointSelectedIdProvider.notifier)
