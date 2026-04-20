@@ -14,6 +14,7 @@ import com.jsxposed.x.core.bridge.memory_tool_native.MemoryToolNativeImpl
 import com.jsxposed.x.core.bridge.pinia_native.PiniaNative
 import com.jsxposed.x.core.bridge.project_native.ProjectNative
 import com.jsxposed.x.core.bridge.project_native.ProjectNativeImpl
+import com.jsxposed.x.core.bridge.url_helper_native.UrlHelperNative
 import com.jsxposed.x.core.bridge.so_analysis_native.SoAnalysisNative
 import com.jsxposed.x.core.bridge.so_analysis_native.SoAnalysisNativeImpl
 import com.jsxposed.x.core.bridge.lsposed_native.LSPosedNative
@@ -32,5 +33,6 @@ object NativeProvider {
         MemoryToolNative.setUp(messenger, MemoryToolNativeImpl(context))
         LSPosedNative.setUp(messenger, LSPosedNativeImpl(context))
         ZygiskFridaNative.setUp(messenger, ZygiskFridaNativeImpl(context))
+        UrlHelperNative.register(context, messenger)
     }
 }
