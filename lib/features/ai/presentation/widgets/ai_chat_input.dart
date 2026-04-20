@@ -122,6 +122,10 @@ class AiChatInput extends HookConsumerWidget {
     final actionIconSize = (effectiveCompact ? 18 : 22) * scopeScale;
     final sendButtonMargin = (effectiveCompact ? 6 : 8) * scopeScale;
     final maxInputLines = effectiveCompact ? 3 : 5;
+    final popupMenuColor =
+        (useOverlayFilePicker || isEmbedded)
+            ? context.colorScheme.surface
+            : context.theme.cardColor;
 
     Future<void> handleSend() async {
       final notifier = ref.read(
@@ -359,7 +363,10 @@ class AiChatInput extends HookConsumerWidget {
                         PopupMenuButton<_AiInputMenuAction>(
                           tooltip: context.isZh ? '更多操作' : 'More actions',
                           offset: const Offset(0, -180),
-                          color: context.theme.cardColor,
+                          color: popupMenuColor,
+                          surfaceTintColor: Colors.transparent,
+                          shadowColor: Colors.black.withValues(alpha: 0.18),
+                          clipBehavior: Clip.antiAlias,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
                               14 * scopeScale,
