@@ -104,8 +104,8 @@ class _AiOverlayViewport extends HookConsumerWidget {
     final safePadding = 12.r;
     final expandedBorderRadius = 20.r;
     final collapsedBorderRadius = 14.r;
-    final resizeHandleHighlightExtent = 28.r;
-    final resizeHandleHitExtent = 34.r;
+    final resizeHandleHighlightExtent = 40.r;
+    final resizeHandleHitExtent = 52.r;
     final displayTitle = selectedProcess.name.trim().isEmpty
         ? selectedProcess.packageName
         : selectedProcess.name;
@@ -505,27 +505,6 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                         ],
                                       ),
                                     ),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 8.r,
-                                        vertical: 4.r,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: context.colorScheme.primary
-                                            .withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(
-                                          999.r,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        context.isZh ? 'AI 对话' : 'AI Chat',
-                                        style: TextStyle(
-                                          fontSize: 10.5.sp,
-                                          fontWeight: FontWeight.w700,
-                                          color: context.colorScheme.primary,
-                                        ),
-                                      ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -535,8 +514,8 @@ class _AiOverlayViewport extends HookConsumerWidget {
                             padding: EdgeInsets.fromLTRB(
                               10.r,
                               56.r,
-                              10.r,
-                              6.r,
+                              12.r,
+                              12.r,
                             ),
                             child: Column(
                               children: [
@@ -558,16 +537,17 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                 AiChatInput(
                                   packageName: chatScopeId,
                                   showQuickActions: false,
+                                  isEmbedded: true,
                                   onRetryInitialization: initializeOverlayChat,
                                 ),
                               ],
                             ),
                           ),
                           Positioned(
-                            right: 0,
-                            bottom: 0,
+                            right: 2.r,
+                            bottom: 2.r,
                             child: GestureDetector(
-                              behavior: HitTestBehavior.opaque,
+                              behavior: HitTestBehavior.translucent,
                               onPanStart: (details) {
                                 isResizing.value = true;
                                 resizeStartGlobal.value = details.globalPosition;

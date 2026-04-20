@@ -20,6 +20,7 @@ class AiChatInput extends HookConsumerWidget {
   final String packageName;
   final String? systemPrompt;
   final bool showQuickActions;
+  final bool isEmbedded;
   final Future<void> Function()? onRetryInitialization;
   final VoidCallback? onOpenAnalysis;
 
@@ -28,6 +29,7 @@ class AiChatInput extends HookConsumerWidget {
     required this.packageName,
     this.systemPrompt,
     this.showQuickActions = true,
+    this.isEmbedded = false,
     this.onRetryInitialization,
     this.onOpenAnalysis,
   });
@@ -190,34 +192,47 @@ class AiChatInput extends HookConsumerWidget {
             child: PadiChatOptionsBar(packageName: packageName),
           ),
         Container(
-          padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 20.h),
+          padding: isEmbedded
+              ? EdgeInsets.zero
+              : EdgeInsets.fromLTRB(16.w, 4.h, 16.w, 20.h),
           decoration: BoxDecoration(
-            color: context.isDark
-                ? context.theme.scaffoldBackgroundColor
-                : Colors.transparent,
+            color: isEmbedded
+                ? Colors.transparent
+                : (context.isDark
+                      ? context.theme.scaffoldBackgroundColor
+                      : Colors.transparent),
           ),
           child: Container(
             decoration: BoxDecoration(
-              color: context.isDark
-                  ? context.colorScheme.surfaceContainerLow
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(12.r),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              color: isEmbedded
+                  ? Colors.transparent
+                  : (context.isDark
+                        ? context.colorScheme.surfaceContainerLow
+                        : Colors.white),
+              borderRadius: BorderRadius.circular(isEmbedded ? 0 : 12.r),
+              boxShadow: isEmbedded
+                  ? const []
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
             ),
             child: Padding(
-              padding: EdgeInsets.all(4.w),
+              padding: EdgeInsets.all(isEmbedded ? 0 : 4.w),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (pendingAttachments.value.isNotEmpty)
                     Padding(
-                      padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 2.h),
+                      padding: EdgeInsets.fromLTRB(
+                        isEmbedded ? 0 : 8.w,
+                        isEmbedded ? 0 : 8.h,
+                        isEmbedded ? 0 : 8.w,
+                        isEmbedded ? 8.h : 2.h,
+                      ),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Wrap(
@@ -245,134 +260,145 @@ class AiChatInput extends HookConsumerWidget {
                         ),
                       ),
                     ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      PopupMenuButton<_AiInputMenuAction>(
-                        tooltip: context.isZh ? '更多操作' : 'More actions',
-                        offset: const Offset(0, -180),
-                        color: context.theme.cardColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14.r),
-                        ),
-                        onSelected: handleMenuAction,
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: _AiInputMenuAction.previewContext,
-                            enabled: hasContextDetails,
-                            child: _AiInputMenuItem(
-                              icon: Icons.data_object_rounded,
-                              title: context.isZh ? '查看上下文' : 'Preview context',
-                              subtitle: context.isZh
-                                  ? '预览自动压缩后的对话上下文'
-                                  : 'Preview the current compressed context',
-                            ),
+                  Container(
+                    padding: isEmbedded
+                        ? EdgeInsets.fromLTRB(0, 0, 0, 2.h)
+                        : EdgeInsets.zero,
+                    decoration: BoxDecoration(
+                      color: isEmbedded
+                          ? Colors.transparent
+                          : null,
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        PopupMenuButton<_AiInputMenuAction>(
+                          tooltip: context.isZh ? '更多操作' : 'More actions',
+                          offset: const Offset(0, -180),
+                          color: context.theme.cardColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14.r),
                           ),
-                          PopupMenuItem(
-                            value: _AiInputMenuAction.uploadImage,
-                            child: _AiInputMenuItem(
-                              icon: Icons.image_outlined,
-                              title: context.isZh ? '上传图片' : 'Upload image',
-                              subtitle: context.isZh
-                                  ? '添加图片到待发送附件'
-                                  : 'Add an image as a pending attachment',
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: _AiInputMenuAction.uploadFile,
-                            child: _AiInputMenuItem(
-                              icon: Icons.attach_file_rounded,
-                              title: context.isZh ? '上传文件' : 'Upload file',
-                              subtitle: context.isZh
-                                  ? '添加文件到待发送附件'
-                                  : 'Add a file as a pending attachment',
-                            ),
-                          ),
-                        ],
-                        child: Container(
-                          width: 36.w,
-                          height: 36.w,
-                          margin: EdgeInsets.only(left: 6.w),
-                          decoration: BoxDecoration(
-                            color: context.isDark
-                                ? context.colorScheme.surfaceContainerLow
-                                : context.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(10.r),
-                            border: Border.all(
-                              color: context.colorScheme.outlineVariant
-                                  .withValues(
-                                    alpha: context.isDark ? 0.55 : 0.8,
-                                  ),
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.add_rounded,
-                            size: 20.sp,
-                            color: context.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 14.w),
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 10.h),
-                          child: TextField(
-                            controller: textController,
-                            enabled:
-                                chatState.sessionInitState ==
-                                AiSessionInitState.ready,
-                            onSubmitted: (_) async {
-                              if (!canSend) {
-                                return;
-                              }
-                              await handleSend();
-                            },
-                            style: TextStyle(
-                              fontSize: 15.sp,
-                              height: 1.4,
-                              color: context.textTheme.bodyLarge?.color,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: hintText,
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              disabledBorder: InputBorder.none,
-                              isDense: true,
-                              filled: true,
-                              fillColor: Colors.transparent,
-                              contentPadding: EdgeInsets.zero,
-                              hintStyle: TextStyle(
-                                color: context.theme.hintColor,
-                                fontSize: 15.sp,
+                          onSelected: handleMenuAction,
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: _AiInputMenuAction.previewContext,
+                              enabled: hasContextDetails,
+                              child: _AiInputMenuItem(
+                                icon: Icons.data_object_rounded,
+                                title: context.isZh ? '查看上下文' : 'Preview context',
+                                subtitle: context.isZh
+                                    ? '预览自动压缩后的对话上下文'
+                                    : 'Preview the current compressed context',
                               ),
                             ),
-                            maxLines: 5,
-                            minLines: 1,
-                          ),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: handleSend,
-                        child: Container(
-                          width: 44.w,
-                          height: 44.w,
-                          margin: EdgeInsets.only(left: 8.w),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: actionColor,
-                          ),
-                          child: Tooltip(
-                            message: actionLabel,
+                            PopupMenuItem(
+                              value: _AiInputMenuAction.uploadImage,
+                              child: _AiInputMenuItem(
+                                icon: Icons.image_outlined,
+                                title: context.isZh ? '上传图片' : 'Upload image',
+                                subtitle: context.isZh
+                                    ? '添加图片到待发送附件'
+                                    : 'Add an image as a pending attachment',
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: _AiInputMenuAction.uploadFile,
+                              child: _AiInputMenuItem(
+                                icon: Icons.attach_file_rounded,
+                                title: context.isZh ? '上传文件' : 'Upload file',
+                                subtitle: context.isZh
+                                    ? '添加文件到待发送附件'
+                                    : 'Add a file as a pending attachment',
+                              ),
+                            ),
+                          ],
+                          child: Container(
+                            width: 36.w,
+                            height: 36.w,
+                            margin: EdgeInsets.only(left: isEmbedded ? 0 : 6.w),
+                            decoration: BoxDecoration(
+                              color: context.isDark
+                                  ? context.colorScheme.surfaceContainerLow
+                                  : context.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(10.r),
+                              border: Border.all(
+                                color: context.colorScheme.outlineVariant
+                                    .withValues(
+                                      alpha: context.isDark ? 0.55 : 0.8,
+                                    ),
+                              ),
+                            ),
                             child: Icon(
-                              actionIcon,
-                              color: Colors.white,
-                              size: 22.sp,
+                              Icons.add_rounded,
+                              size: 20.sp,
+                              color: context.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        SizedBox(width: isEmbedded ? 10.w : 14.w),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 10.h),
+                            child: TextField(
+                              controller: textController,
+                              enabled:
+                                  chatState.sessionInitState ==
+                                  AiSessionInitState.ready,
+                              onSubmitted: (_) async {
+                                if (!canSend) {
+                                  return;
+                                }
+                                await handleSend();
+                              },
+                              style: TextStyle(
+                                fontSize: 15.sp,
+                                height: 1.4,
+                                color: context.textTheme.bodyLarge?.color,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: hintText,
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                                isDense: true,
+                                filled: true,
+                                fillColor: Colors.transparent,
+                                contentPadding: EdgeInsets.zero,
+                                hintStyle: TextStyle(
+                                  color: context.theme.hintColor,
+                                  fontSize: 15.sp,
+                                ),
+                              ),
+                              maxLines: 5,
+                              minLines: 1,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: handleSend,
+                          child: Container(
+                            width: 44.w,
+                            height: 44.w,
+                            margin: EdgeInsets.only(left: 8.w),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: actionColor,
+                            ),
+                            child: Tooltip(
+                              message: actionLabel,
+                              child: Icon(
+                                actionIcon,
+                                color: Colors.white,
+                                size: 22.sp,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

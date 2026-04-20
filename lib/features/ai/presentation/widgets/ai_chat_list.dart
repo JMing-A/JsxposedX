@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/models/ai_message.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_response_issue.dart';
@@ -29,40 +31,43 @@ class AiChatList extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (messages.isEmpty) {
-      return Container(
-        height: 0.5.sh,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  context.colorScheme.primary,
-                  context.colorScheme.secondary,
-                ],
-              ).createShader(bounds),
-              child: Icon(Icons.auto_awesome, size: 80.w, color: Colors.white),
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompact = constraints.maxHeight < 220.h;
+          final horizontalPadding = 20.w;
+          final topPadding = isCompact ? 10.h : 18.h;
+          final bottomPadding = 12.h;
+          final bubbleMaxWidth = math.max(
+            0.0,
+            constraints.maxWidth - (horizontalPadding * 2) - 22.w,
+          );
+
+          return SingleChildScrollView(
+            controller: scrollController,
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              topPadding,
+              horizontalPadding,
+              bottomPadding,
             ),
-            SizedBox(height: 24.h),
-            Text(
-              customTitle ?? context.l10n.aiAssistantTitle,
-              style: TextStyle(
-                color: context.textTheme.titleLarge?.color?.withValues(alpha: 0.8),
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: math.max(
+                  0,
+                  constraints.maxHeight - topPadding - bottomPadding,
+                ),
+              ),
+              child: Align(
+                alignment: isCompact ? Alignment.topLeft : Alignment.centerLeft,
+                child: _EmptyChatState(
+                  title: customTitle ?? context.l10n.aiAssistantTitle,
+                  subtitle: customSubtitle ?? context.l10n.aiAssistantSubtitle,
+                  maxBubbleWidth: bubbleMaxWidth,
+                ),
               ),
             ),
-            SizedBox(height: 8.h),
-            Text(
-              customSubtitle ?? context.l10n.aiAssistantSubtitle,
-              style: TextStyle(
-                color: context.theme.hintColor,
-                fontSize: 13.sp,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       );
     }
 
@@ -139,6 +144,164 @@ class AiChatList extends HookConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _EmptyChatState extends StatelessWidget {
+  const _EmptyChatState({
+    required this.title,
+    required this.subtitle,
+    required this.maxBubbleWidth,
+  });
+
+  final String title;
+  final String subtitle;
+  final double maxBubbleWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final promptHints = context.isZh
+        ? const [
+            '描述一下你现在想解决的问题',
+            '把现象或报错直接贴给我',
+            '让我先帮你拆排查步骤',
+          ]
+        : const [
+            'Describe what you want to solve',
+            'Paste the symptom or error directly',
+            'Ask me to break down the next steps',
+          ];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 28.w,
+              height: 28.w,
+              decoration: BoxDecoration(
+                color: context.colorScheme.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                size: 16.sp,
+                color: context.colorScheme.primary,
+              ),
+            ),
+            SizedBox(width: 8.w),
+            Text(
+              context.isZh ? '助手' : 'Assistant',
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: context.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 10.h),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+          child: Container(
+            padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 14.h),
+            decoration: BoxDecoration(
+              color: context.isDark
+                  ? context.colorScheme.surfaceContainer
+                  : Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20.r),
+                topRight: Radius.circular(20.r),
+                bottomLeft: Radius.circular(6.r),
+                bottomRight: Radius.circular(20.r),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12.r,
+                  offset: Offset(0, 4.h),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                    color: context.colorScheme.onSurface,
+                  ),
+                ),
+                SizedBox(height: 6.h),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12.5.sp,
+                    height: 1.45,
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                SizedBox(height: 10.h),
+                Text(
+                  context.isZh
+                      ? '直接输入目标、现象或假设，我会按当前环境继续对话。'
+                      : 'Describe your goal, symptom, or hypothesis and I will continue from the current environment.',
+                  style: TextStyle(
+                    fontSize: 12.5.sp,
+                    height: 1.5,
+                    color: context.colorScheme.onSurface.withValues(alpha: 0.86),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 12.h),
+        Wrap(
+          spacing: 8.w,
+          runSpacing: 8.h,
+          children: [
+            for (final hint in promptHints) _EmptyPromptChip(label: hint),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyPromptChip extends StatelessWidget {
+  const _EmptyPromptChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 7.h),
+      decoration: BoxDecoration(
+        color: context.colorScheme.surfaceContainerHighest.withValues(
+          alpha: context.isDark ? 0.4 : 0.72,
+        ),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: context.colorScheme.outlineVariant.withValues(alpha: 0.72),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11.5.sp,
+          height: 1.35,
+          color: context.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
