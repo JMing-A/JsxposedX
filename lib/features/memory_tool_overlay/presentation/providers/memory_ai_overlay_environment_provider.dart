@@ -1,4 +1,10 @@
 import 'package:JsxposedX/features/memory_tool_overlay/domain/memory_ai_overlay_environment_adapter.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_auto_chase_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_auto_chase_query_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_query_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -32,5 +38,17 @@ MemoryAiOverlayEnvironmentAdapter memoryAiOverlayEnvironment(
   return MemoryAiOverlayEnvironmentAdapter(
     processInfo: args.processInfo,
     isZh: args.isZh,
+    memoryQueryRepository: ref.watch(memoryQueryRepositoryProvider),
+    memoryActionRepository: ref.watch(memoryActionRepositoryProvider),
+    memoryPointerQueryRepository: ref.watch(memoryPointerQueryRepositoryProvider),
+    memoryPointerActionRepository: ref.watch(
+      memoryPointerActionRepositoryProvider,
+    ),
+    memoryPointerAutoChaseQueryRepository: ref.watch(
+      memoryPointerAutoChaseQueryRepositoryProvider,
+    ),
+    memoryPointerAutoChaseActionRepository: ref.watch(
+      memoryPointerAutoChaseActionRepositoryProvider,
+    ),
   );
 }
