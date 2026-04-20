@@ -272,6 +272,7 @@ class AiChatAction extends _$AiChatAction {
   Future<void> createSession(String name) async {
     final sessionId = const Uuid().v4();
     final defaultPadiChatOptions = PadiChatOptions.defaults();
+    final sessionRules = state.systemPrompt ?? '';
     final session = AiSession(
       id: sessionId,
       name: name,
@@ -281,10 +282,6 @@ class AiChatAction extends _$AiChatAction {
     );
 
     final updatedSessions = [session, ...state.sessions];
-    await ref
-        .read(aiChatActionRepositoryProvider)
-        .saveSessions(packageName, updatedSessions);
-
     state = state.copyWith(
       currentSessionId: sessionId,
       sessions: List<AiSession>.unmodifiable(updatedSessions),
@@ -295,13 +292,16 @@ class AiChatAction extends _$AiChatAction {
       isStreaming: false,
       lastResponseIssue: null,
       sessionContext: AiChatSessionContext(
-        sessionRules: state.systemPrompt ?? '',
+        sessionRules: sessionRules,
       ),
       contextStats: const AiChatContextStats(),
       contextVersion: AiChatSessionContext.currentVersion,
       currentPadiChatOptions: defaultPadiChatOptions,
     );
 
+    await ref
+        .read(aiChatActionRepositoryProvider)
+        .saveSessions(packageName, updatedSessions);
     await ref
         .read(aiChatActionRepositoryProvider)
         .savePadiChatOptions(packageName, sessionId, defaultPadiChatOptions);
