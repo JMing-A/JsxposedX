@@ -64,6 +64,11 @@ class AiChatAction extends _$AiChatAction {
   static const int _contextHardBudgetChars = 16000;
   static const int _contextTargetBudgetChars = 9000;
   static const int _recentUserRoundsToKeep = 3;
+  static const int _defaultTransientRetryCount = 5;
+  static const Duration _transientRetryBaseDelay = Duration(
+    milliseconds: 800,
+  );
+  static const Duration _transientRetryMaxDelay = Duration(seconds: 3);
 
   bool _isDisposed = false;
   bool _stopRequested = false;
@@ -363,7 +368,7 @@ class AiChatAction extends _$AiChatAction {
         content: text,
       ),
       baseProtocolMessages: state.protocolMessages,
-      retriesRemaining: 2,
+      retriesRemaining: _defaultTransientRetryCount,
       recoveryMode: AiChatRecoveryMode.retryLastTurn,
     );
   }
@@ -419,7 +424,7 @@ class AiChatAction extends _$AiChatAction {
       config: config,
       userMessage: updatedUserMessage,
       baseProtocolMessages: baseProtocolMessages,
-      retriesRemaining: 2,
+      retriesRemaining: _defaultTransientRetryCount,
       recoveryMode: AiChatRecoveryMode.retryLastTurn,
     );
   }
@@ -476,11 +481,11 @@ class AiChatAction extends _$AiChatAction {
 
     if (response.issue == AiResponseIssue.emptyResponse &&
         retriesRemaining > 0) {
-      await _runAssistantTurn(
+      await _retryAssistantTurn(
         config: config,
         protocolMessages: contextAssembly.sanitizedProtocolMessages,
         placeholderId: placeholderId,
-        retriesRemaining: retriesRemaining - 1,
+        retriesRemaining: retriesRemaining,
         toolsJson: toolsJson,
         recoveryMode: recoveryMode,
       );
@@ -506,21 +511,49 @@ class AiChatAction extends _$AiChatAction {
     }
 
     if (response.issue == AiResponseIssue.networkError) {
+      if (retriesRemaining > 0 && _isRetryableCollectedIssue(response)) {
+        await _retryAssistantTurn(
+          config: config,
+          protocolMessages: contextAssembly.sanitizedProtocolMessages,
+          placeholderId: placeholderId,
+          retriesRemaining: retriesRemaining,
+          toolsJson: toolsJson,
+          recoveryMode: recoveryMode,
+        );
+        return;
+      }
       _markDisplayMessageError(
         placeholderId,
-        response.errorMessage ?? 'AI 请求失败。',
+        response.errorMessage ?? 'AI 请求失败，自动重试后仍未恢复。',
         AiResponseIssue.networkError,
       );
       return;
     }
 
     if (response.issue == AiResponseIssue.partialResponse) {
-      final partialContent = response.content.isEmpty
-          ? (response.errorMessage ?? 'AI 响应中断，内容可能不完整。')
-          : _composeDisplayContent(
-              thinkingContent: response.thinkingContent,
-              answerContent: response.content,
-            );
+      final partialDisplayContent = _composeDisplayContent(
+        thinkingContent: response.thinkingContent,
+        answerContent: response.content,
+      );
+      final fallbackMessage = response.errorMessage ?? 'AI 响应中断，内容可能不完整。';
+      final partialContent = partialDisplayContent.isEmpty
+          ? fallbackMessage
+          : partialDisplayContent;
+      if (retriesRemaining > 0 && _isRetryableCollectedIssue(response)) {
+        final recovered = await _tryAutoRecoverPartialResponse(
+          config: config,
+          protocolMessages: contextAssembly.sanitizedProtocolMessages,
+          placeholderId: placeholderId,
+          retriesRemaining: retriesRemaining,
+          toolsJson: toolsJson,
+          recoveryMode: recoveryMode,
+          partialAnswerContent: response.content,
+          partialDisplayContent: partialDisplayContent,
+        );
+        if (recovered) {
+          return;
+        }
+      }
       _updateDisplayMessage(
         placeholderId,
         content: partialContent,
@@ -727,7 +760,7 @@ class AiChatAction extends _$AiChatAction {
           config: config,
           protocolMessages: state.protocolMessages,
           placeholderId: newPlaceholder.id,
-          retriesRemaining: 2,
+          retriesRemaining: _defaultTransientRetryCount,
           toolsJson: toolsJson,
           recoveryMode: AiChatRecoveryMode.resumeToolPhase,
         );
@@ -832,36 +865,39 @@ class AiChatAction extends _$AiChatAction {
                   ),
                   issue: AiResponseIssue.partialResponse,
                   errorMessage: _describePlatformException(error),
+                  retryableIssue: true,
                 ),
               );
               return;
             }
             completer.complete(
-              _CollectedAssistantResponse(
-                content: bufferedContent,
-                thinkingContent: thinkingBuffer.toString(),
-                responsesReasoningItems: List<String>.unmodifiable(
-                  responsesReasoningItems,
+                _CollectedAssistantResponse(
+                  content: bufferedContent,
+                  thinkingContent: thinkingBuffer.toString(),
+                  responsesReasoningItems: List<String>.unmodifiable(
+                    responsesReasoningItems,
+                  ),
+                  issue: _classifyPlatformIssue(error),
+                  errorMessage: _describePlatformException(error),
+                  retryableIssue: _isRetryablePlatformException(error),
                 ),
-                issue: _classifyPlatformIssue(error),
-                errorMessage: _describePlatformException(error),
-              ),
-            );
+              );
             return;
           }
 
           if (bufferedContent.isNotEmpty) {
             completer.complete(
-              _CollectedAssistantResponse(
-                content: bufferedContent,
-                thinkingContent: thinkingBuffer.toString(),
-                responsesReasoningItems: List<String>.unmodifiable(
-                  responsesReasoningItems,
+                _CollectedAssistantResponse(
+                  content: bufferedContent,
+                  thinkingContent: thinkingBuffer.toString(),
+                  responsesReasoningItems: List<String>.unmodifiable(
+                    responsesReasoningItems,
+                  ),
+                  issue: AiResponseIssue.partialResponse,
+                  errorMessage: error.toString(),
+                  retryableIssue: true,
                 ),
-                issue: AiResponseIssue.partialResponse,
-                errorMessage: error.toString(),
-              ),
-            );
+              );
             return;
           }
 
@@ -873,6 +909,7 @@ class AiChatAction extends _$AiChatAction {
               ),
               issue: AiResponseIssue.networkError,
               errorMessage: error.toString(),
+              retryableIssue: _looksRetryableNetworkErrorText(error.toString()),
             ),
           );
         },
@@ -1109,7 +1146,7 @@ class AiChatAction extends _$AiChatAction {
           config: config,
           protocolMessages: contextAssembly.sanitizedProtocolMessages,
           placeholderId: placeholder.id,
-          retriesRemaining: 1,
+          retriesRemaining: _defaultTransientRetryCount,
           toolsJson: _buildToolsJson(),
           recoveryMode: AiChatRecoveryMode.continueGeneration,
         );
@@ -1699,6 +1736,183 @@ class AiChatAction extends _$AiChatAction {
         '已输出内容如下：\n$partialContent';
   }
 
+  Future<void> _retryAssistantTurn({
+    required AiConfig config,
+    required List<AiMessage> protocolMessages,
+    required String placeholderId,
+    required int retriesRemaining,
+    required AiChatRecoveryMode recoveryMode,
+    List<Map<String, dynamic>>? toolsJson,
+    String? interimContent,
+  }) async {
+    if (interimContent != null && interimContent.trim().isNotEmpty) {
+      _updateDisplayMessage(
+        placeholderId,
+        content: interimContent,
+        isError: false,
+      );
+    }
+    await _delayBeforeTransientRetry(retriesRemaining);
+    if (_isDisposed || _stopRequested) {
+      return;
+    }
+    await _runAssistantTurn(
+      config: config,
+      protocolMessages: protocolMessages,
+      placeholderId: placeholderId,
+      retriesRemaining: retriesRemaining - 1,
+      toolsJson: toolsJson,
+      recoveryMode: recoveryMode,
+    );
+  }
+
+  Future<bool> _tryAutoRecoverPartialResponse({
+    required AiConfig config,
+    required List<AiMessage> protocolMessages,
+    required String placeholderId,
+    required int retriesRemaining,
+    required AiChatRecoveryMode recoveryMode,
+    required String partialAnswerContent,
+    required String partialDisplayContent,
+    List<Map<String, dynamic>>? toolsJson,
+  }) async {
+    final trimmedAnswer = partialAnswerContent.trim();
+    if (trimmedAnswer.isEmpty || state.sessionContext.hasPendingToolPhase) {
+      await _retryAssistantTurn(
+        config: config,
+        protocolMessages: protocolMessages,
+        placeholderId: placeholderId,
+        retriesRemaining: retriesRemaining,
+        toolsJson: toolsJson,
+        recoveryMode: recoveryMode,
+        interimContent: partialDisplayContent,
+      );
+      return true;
+    }
+
+    final checkpoint = state.sessionContext.checkpoint;
+    if (checkpoint == null || checkpoint.lastUserMessage == null) {
+      await _retryAssistantTurn(
+        config: config,
+        protocolMessages: protocolMessages,
+        placeholderId: placeholderId,
+        retriesRemaining: retriesRemaining,
+        toolsJson: toolsJson,
+        recoveryMode: recoveryMode,
+        interimContent: partialDisplayContent,
+      );
+      return true;
+    }
+
+    final continuationProtocolMessages = List<AiMessage>.from(
+      checkpoint.protocolMessages,
+    );
+    final lastUserIndex = continuationProtocolMessages.lastIndexWhere(
+      (message) => message.id == checkpoint.lastUserMessage!.id,
+    );
+    if (lastUserIndex == -1) {
+      await _retryAssistantTurn(
+        config: config,
+        protocolMessages: protocolMessages,
+        placeholderId: placeholderId,
+        retriesRemaining: retriesRemaining,
+        toolsJson: toolsJson,
+        recoveryMode: recoveryMode,
+        interimContent: partialDisplayContent,
+      );
+      return true;
+    }
+
+    continuationProtocolMessages[lastUserIndex] =
+        continuationProtocolMessages[lastUserIndex].copyWith(
+          content: AiMultimodalMessageCodec.appendUserText(
+            continuationProtocolMessages[lastUserIndex].content,
+            _buildContinuationPrompt(trimmedAnswer),
+          ),
+        );
+
+    final contextAssembly = _assembleContext(
+      protocolMessages: continuationProtocolMessages,
+      previousContext: state.sessionContext,
+      config: config,
+      recoveryMode: AiChatRecoveryMode.continueGeneration,
+    );
+    final checkpointForContinuation = checkpoint.copyWith(
+      protocolMessages: contextAssembly.sanitizedProtocolMessages,
+      recoveryMode: AiChatRecoveryMode.continueGeneration,
+    );
+
+    final updatedMessages = List<AiMessage>.from(state.messages);
+    final placeholderIndex = updatedMessages.indexWhere(
+      (message) => message.id == placeholderId,
+    );
+    if (placeholderIndex == -1) {
+      await _retryAssistantTurn(
+        config: config,
+        protocolMessages: protocolMessages,
+        placeholderId: placeholderId,
+        retriesRemaining: retriesRemaining,
+        toolsJson: toolsJson,
+        recoveryMode: recoveryMode,
+        interimContent: partialDisplayContent,
+      );
+      return true;
+    }
+
+    updatedMessages[placeholderIndex] = updatedMessages[placeholderIndex].copyWith(
+      content: partialDisplayContent,
+      isError: false,
+    );
+    final continuationPlaceholder = AiMessage(
+      id: const Uuid().v4(),
+      role: 'assistant',
+      content: '',
+    );
+    updatedMessages.add(continuationPlaceholder);
+
+    state = state.copyWith(
+      messages: List<AiMessage>.unmodifiable(updatedMessages),
+      protocolMessages: List<AiMessage>.unmodifiable(
+        contextAssembly.sanitizedProtocolMessages,
+      ),
+      isStreaming: true,
+      error: null,
+      lastResponseIssue: null,
+      sessionContext: contextAssembly.context.copyWith(
+        checkpoint: checkpointForContinuation,
+      ),
+      contextStats: contextAssembly.context.stats,
+      contextVersion: contextAssembly.context.version,
+    );
+    await _saveChatHistory();
+    await _delayBeforeTransientRetry(retriesRemaining);
+    if (_isDisposed || _stopRequested) {
+      return true;
+    }
+    await _runAssistantTurn(
+      config: config,
+      protocolMessages: contextAssembly.sanitizedProtocolMessages,
+      placeholderId: continuationPlaceholder.id,
+      retriesRemaining: retriesRemaining - 1,
+      toolsJson: toolsJson,
+      recoveryMode: AiChatRecoveryMode.continueGeneration,
+    );
+    return true;
+  }
+
+  Future<void> _delayBeforeTransientRetry(int retriesRemaining) {
+    final retryIndex =
+        (_defaultTransientRetryCount - retriesRemaining + 1).clamp(
+              1,
+              _defaultTransientRetryCount + 1,
+            );
+    final delayCandidate = _transientRetryBaseDelay * retryIndex;
+    final delay = delayCandidate.compareTo(_transientRetryMaxDelay) > 0
+        ? _transientRetryMaxDelay
+        : delayCandidate;
+    return Future<void>.delayed(delay);
+  }
+
   List<String> _extractToolCallIds(List<Map<String, dynamic>>? toolCalls) {
     if (toolCalls == null || toolCalls.isEmpty) {
       return const [];
@@ -1789,6 +2003,101 @@ class AiChatAction extends _$AiChatAction {
         normalized.contains('model does not support vision') ||
         normalized.contains('image input is not enabled') ||
         normalized.contains('multimodal') && normalized.contains('not support');
+  }
+
+  bool _isRetryableCollectedIssue(_CollectedAssistantResponse response) {
+    if (response.userStopped) {
+      return false;
+    }
+    if (response.issue == AiResponseIssue.emptyResponse ||
+        response.issue == AiResponseIssue.partialResponse) {
+      return true;
+    }
+    if (response.issue != AiResponseIssue.networkError) {
+      return false;
+    }
+    if (response.retryableIssue) {
+      return true;
+    }
+    final message = response.errorMessage?.trim();
+    if (message == null || message.isEmpty) {
+      return true;
+    }
+    return _looksRetryableNetworkErrorText(message);
+  }
+
+  bool _isRetryablePlatformException(PlatformException error) {
+    if (_classifyPlatformIssue(error) != AiResponseIssue.networkError) {
+      return false;
+    }
+    final combinedText = [
+      error.code,
+      error.message,
+      if (error.details != null) error.details.toString(),
+    ].join('\n');
+    return _looksRetryableNetworkErrorText(combinedText);
+  }
+
+  bool _looksRetryableNetworkErrorText(String text) {
+    final normalized = text.toLowerCase();
+    if (normalized.isEmpty) {
+      return true;
+    }
+    if (_looksPermanentRequestFailureText(normalized)) {
+      return false;
+    }
+    if (normalized.contains('timeout') ||
+        normalized.contains('timed out') ||
+        normalized.contains('connection') ||
+        normalized.contains('reset') ||
+        normalized.contains('closed') ||
+        normalized.contains('broken pipe') ||
+        normalized.contains('socket') ||
+        normalized.contains('eof') ||
+        normalized.contains('stream') ||
+        normalized.contains('network') ||
+        normalized.contains('gateway') ||
+        normalized.contains('proxy') ||
+        normalized.contains('dns') ||
+        normalized.contains('temporarily unavailable') ||
+        normalized.contains('service unavailable') ||
+        normalized.contains('bad gateway') ||
+        normalized.contains('502') ||
+        normalized.contains('503') ||
+        normalized.contains('504') ||
+        normalized.contains('429') ||
+        normalized.contains('rate limit') ||
+        normalized.contains('too many requests') ||
+        normalized.contains('unavailable') ||
+        normalized.contains('aborted') ||
+        normalized.contains('interrupted') ||
+        normalized.contains('unexpected end')) {
+      return true;
+    }
+    return true;
+  }
+
+  bool _looksPermanentRequestFailureText(String text) {
+    return text.contains('invalid api key') ||
+        text.contains('api key') && text.contains('invalid') ||
+        text.contains('unauthorized') ||
+        text.contains('forbidden') ||
+        text.contains('authentication') && text.contains('failed') ||
+        text.contains('鉴权失败') ||
+        text.contains('认证失败') ||
+        text.contains('insufficient_quota') ||
+        text.contains('quota exceeded') ||
+        text.contains('billing') ||
+        text.contains('余额不足') ||
+        text.contains('model_not_found') ||
+        text.contains('model not found') ||
+        text.contains('invalid request') ||
+        text.contains('unsupported media type') ||
+        text.contains('status code 400') ||
+        text.contains('status code 401') ||
+        text.contains('status code 403') ||
+        text.contains('status code 404') ||
+        text.contains('status code 422');
   }
 
   bool _looksExplicitlyTextOnlyModel(String modelName) {
@@ -2333,7 +2642,7 @@ class AiChatAction extends _$AiChatAction {
           config: config,
           protocolMessages: contextAssembly.sanitizedProtocolMessages,
           placeholderId: placeholder.id,
-          retriesRemaining: 1,
+          retriesRemaining: _defaultTransientRetryCount,
           toolsJson: _buildToolsJson(),
           recoveryMode: recoveryMode,
         );
@@ -2379,6 +2688,7 @@ class _CollectedAssistantResponse {
     this.issue,
     this.errorMessage,
     this.userStopped = false,
+    this.retryableIssue = false,
   });
 
   final String content;
@@ -2388,4 +2698,5 @@ class _CollectedAssistantResponse {
   final AiResponseIssue? issue;
   final String? errorMessage;
   final bool userStopped;
+  final bool retryableIssue;
 }

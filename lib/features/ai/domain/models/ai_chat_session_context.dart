@@ -27,11 +27,12 @@ enum AiChatRecoveryMode {
 }
 
 class AiChatSessionContext {
-  static const int currentVersion = 2;
+  static const int currentVersion = 3;
 
   const AiChatSessionContext({
     this.version = currentVersion,
     this.sessionRules = '',
+    this.pinnedContext = const [],
     this.sessionMemory = const AiChatSessionMemory(),
     this.taskState = const AiChatTaskState(),
     this.recentMessages = const [],
@@ -43,6 +44,7 @@ class AiChatSessionContext {
 
   final int version;
   final String sessionRules;
+  final List<AiPinnedContextItem> pinnedContext;
   final AiChatSessionMemory sessionMemory;
   final AiChatTaskState taskState;
   final List<AiMessage> recentMessages;
@@ -51,13 +53,15 @@ class AiChatSessionContext {
   final AiChatContextStats stats;
   final bool migratedFromLegacySummary;
 
-  bool get hasStructuredMemory => sessionMemory.hasContent || taskState.hasContent;
+  bool get hasStructuredMemory =>
+      pinnedContext.isNotEmpty || sessionMemory.hasContent || taskState.hasContent;
 
   bool get hasPendingToolPhase => toolTrace.hasPendingToolResults;
 
   AiChatSessionContext copyWith({
     int? version,
     String? sessionRules,
+    List<AiPinnedContextItem>? pinnedContext,
     AiChatSessionMemory? sessionMemory,
     AiChatTaskState? taskState,
     List<AiMessage>? recentMessages,
@@ -69,6 +73,7 @@ class AiChatSessionContext {
     return AiChatSessionContext(
       version: version ?? this.version,
       sessionRules: sessionRules ?? this.sessionRules,
+      pinnedContext: pinnedContext ?? this.pinnedContext,
       sessionMemory: sessionMemory ?? this.sessionMemory,
       taskState: taskState ?? this.taskState,
       recentMessages: recentMessages ?? this.recentMessages,
@@ -86,6 +91,9 @@ class AiChatSessionContext {
     return {
       'version': version,
       'session_rules': sessionRules,
+      'pinned_context': pinnedContext
+          .map((item) => item.toStorageJson())
+          .toList(growable: false),
       'session_memory': sessionMemory.toStorageJson(),
       'task_state': taskState.toStorageJson(),
       'recent_messages': recentMessages
@@ -100,9 +108,18 @@ class AiChatSessionContext {
 
   factory AiChatSessionContext.fromStorageJson(Map<String, dynamic> json) {
     final rawRecentMessages = json['recent_messages'] as List?;
+    final rawPinnedContext = json['pinned_context'] as List?;
     return AiChatSessionContext(
       version: json['version'] as int? ?? currentVersion,
       sessionRules: json['session_rules']?.toString() ?? '',
+      pinnedContext: rawPinnedContext
+              ?.map(
+                (item) => AiPinnedContextItem.fromStorageJson(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
+              .toList(growable: false) ??
+          const [],
       sessionMemory: AiChatSessionMemory.fromStorageJson(
         Map<String, dynamic>.from(
           json['session_memory'] as Map? ?? const <String, dynamic>{},
@@ -138,6 +155,76 @@ class AiChatSessionContext {
       ),
       migratedFromLegacySummary:
           json['migrated_from_legacy_summary'] == true,
+    );
+  }
+}
+
+enum AiPinnedContextSource {
+  userRule('user_rule'),
+  workflowConstraint('workflow_constraint'),
+  environmentConstraint('environment_constraint');
+
+  const AiPinnedContextSource(this.storageValue);
+
+  final String storageValue;
+
+  static AiPinnedContextSource fromStorage(String? value) {
+    return switch (value) {
+      'workflow_constraint' => AiPinnedContextSource.workflowConstraint,
+      'environment_constraint' => AiPinnedContextSource.environmentConstraint,
+      _ => AiPinnedContextSource.userRule,
+    };
+  }
+}
+
+class AiPinnedContextItem {
+  const AiPinnedContextItem({
+    required this.id,
+    required this.content,
+    required this.source,
+    required this.priority,
+    required this.createdAtIso,
+  });
+
+  final String id;
+  final String content;
+  final AiPinnedContextSource source;
+  final int priority;
+  final String createdAtIso;
+
+  AiPinnedContextItem copyWith({
+    String? id,
+    String? content,
+    AiPinnedContextSource? source,
+    int? priority,
+    String? createdAtIso,
+  }) {
+    return AiPinnedContextItem(
+      id: id ?? this.id,
+      content: content ?? this.content,
+      source: source ?? this.source,
+      priority: priority ?? this.priority,
+      createdAtIso: createdAtIso ?? this.createdAtIso,
+    );
+  }
+
+  Map<String, dynamic> toStorageJson() {
+    return {
+      'id': id,
+      'content': content,
+      'source': source.storageValue,
+      'priority': priority,
+      'created_at_iso': createdAtIso,
+    };
+  }
+
+  factory AiPinnedContextItem.fromStorageJson(Map<String, dynamic> json) {
+    return AiPinnedContextItem(
+      id: json['id']?.toString() ?? '',
+      content: json['content']?.toString() ?? '',
+      source: AiPinnedContextSource.fromStorage(json['source']?.toString()),
+      priority: json['priority'] as int? ?? 80,
+      createdAtIso: json['created_at_iso']?.toString() ?? '',
     );
   }
 }
@@ -453,6 +540,9 @@ class AiChatContextStats {
     this.repairedToolContext = false,
     this.migratedLegacySummary = false,
     this.recentRoundsKept = 0,
+    this.pinnedCount = 0,
+    this.retrievedSnippetCount = 0,
+    this.retrievedBundlesCount = 0,
     this.includedLayers = const [],
   });
 
@@ -464,6 +554,9 @@ class AiChatContextStats {
   final bool repairedToolContext;
   final bool migratedLegacySummary;
   final int recentRoundsKept;
+  final int pinnedCount;
+  final int retrievedSnippetCount;
+  final int retrievedBundlesCount;
   final List<String> includedLayers;
 
   AiChatContextStats copyWith({
@@ -475,6 +568,9 @@ class AiChatContextStats {
     bool? repairedToolContext,
     bool? migratedLegacySummary,
     int? recentRoundsKept,
+    int? pinnedCount,
+    int? retrievedSnippetCount,
+    int? retrievedBundlesCount,
     List<String>? includedLayers,
   }) {
     return AiChatContextStats(
@@ -489,6 +585,11 @@ class AiChatContextStats {
       migratedLegacySummary:
           migratedLegacySummary ?? this.migratedLegacySummary,
       recentRoundsKept: recentRoundsKept ?? this.recentRoundsKept,
+      pinnedCount: pinnedCount ?? this.pinnedCount,
+      retrievedSnippetCount:
+          retrievedSnippetCount ?? this.retrievedSnippetCount,
+      retrievedBundlesCount:
+          retrievedBundlesCount ?? this.retrievedBundlesCount,
       includedLayers: includedLayers ?? this.includedLayers,
     );
   }
@@ -503,6 +604,9 @@ class AiChatContextStats {
       'repaired_tool_context': repairedToolContext,
       'migrated_legacy_summary': migratedLegacySummary,
       'recent_rounds_kept': recentRoundsKept,
+      'pinned_count': pinnedCount,
+      'retrieved_snippet_count': retrievedSnippetCount,
+      'retrieved_bundles_count': retrievedBundlesCount,
       'included_layers': includedLayers,
     };
   }
@@ -517,6 +621,9 @@ class AiChatContextStats {
       repairedToolContext: json['repaired_tool_context'] == true,
       migratedLegacySummary: json['migrated_legacy_summary'] == true,
       recentRoundsKept: json['recent_rounds_kept'] as int? ?? 0,
+      pinnedCount: json['pinned_count'] as int? ?? 0,
+      retrievedSnippetCount: json['retrieved_snippet_count'] as int? ?? 0,
+      retrievedBundlesCount: json['retrieved_bundles_count'] as int? ?? 0,
       includedLayers: _readStringList(json['included_layers']),
     );
   }
