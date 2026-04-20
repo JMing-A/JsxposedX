@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:JsxposedX/common/widgets/custom_text_field.dart';
@@ -15,6 +15,7 @@ import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/ai_overlay_ui_state_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_overlay_environment_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_overlay_selection_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/ai_overlay_collapsed_ball.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_ai_message_bubble.dart';
@@ -48,7 +49,9 @@ class AiOverlay extends HookConsumerWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewportSize = Size(
-          constraints.hasBoundedWidth ? constraints.maxWidth : mediaQuery.size.width,
+          constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : mediaQuery.size.width,
           constraints.hasBoundedHeight
               ? constraints.maxHeight
               : mediaQuery.size.height,
@@ -80,8 +83,11 @@ class _AiOverlayViewport extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overlayState = ref.watch(aiOverlayUiStateControllerProvider);
-    final overlayStateNotifier = ref.read(aiOverlayUiStateControllerProvider.notifier);
+    final overlayStateNotifier = ref.read(
+      aiOverlayUiStateControllerProvider.notifier,
+    );
     final isExpanded = overlayState.isExpanded;
+    final hasSelectedValue = ref.watch(memoryAiOverlayHasSelectedValueProvider);
     final offset = overlayState.offset;
     final persistedPanelSize = overlayState.panelSize;
     final dragStartGlobal = useRef<Offset?>(null);
@@ -135,7 +141,9 @@ class _AiOverlayViewport extends HookConsumerWidget {
       await initializeAiChatEnvironment(
         notifier: chatNotifier,
         environment: environment,
-        initErrorPrefix: context.isZh ? '内存会话初始化失败' : 'Memory session init failed',
+        initErrorPrefix: context.isZh
+            ? '内存会话初始化失败'
+            : 'Memory session init failed',
       );
     }
 
@@ -172,10 +180,9 @@ class _AiOverlayViewport extends HookConsumerWidget {
         size.width
             .clamp(effectiveMinExpandedWidth, availableExpandedWidth)
             .toDouble(),
-        size.height.clamp(
-          effectiveMinExpandedHeight,
-          availableExpandedHeight,
-        ).toDouble(),
+        size.height
+            .clamp(effectiveMinExpandedHeight, availableExpandedHeight)
+            .toDouble(),
       );
     }
 
@@ -183,14 +190,11 @@ class _AiOverlayViewport extends HookConsumerWidget {
       persistedPanelSize ?? defaultExpandedSize,
     );
 
-    Size currentSize() => isExpanded
-        ? expandedSize
-        : Size(collapsedDiameter, collapsedDiameter);
+    Size currentSize() =>
+        isExpanded ? expandedSize : Size(collapsedDiameter, collapsedDiameter);
 
-    Offset defaultOffset(Size size) => Offset(
-      viewportSize.width - size.width - 20.0,
-      portraitTopInset + 88.0,
-    );
+    Offset defaultOffset(Size size) =>
+        Offset(viewportSize.width - size.width - 20.0, portraitTopInset + 88.0);
 
     Offset clampOffset(Offset value, Size size) {
       final minX = safePadding;
@@ -307,7 +311,9 @@ class _AiOverlayViewport extends HookConsumerWidget {
 
     useEffect(() {
       const followThreshold = 80.0;
-      final subscription = chatNotifier.streamingContentStream.listen((content) {
+      final subscription = chatNotifier.streamingContentStream.listen((
+        content,
+      ) {
         if (content.isEmpty || !scrollController.hasClients) {
           return;
         }
@@ -341,10 +347,13 @@ class _AiOverlayViewport extends HookConsumerWidget {
     final panelBaseSize = isLandscapePanel
         ? const Size(420.0, 300.0)
         : const Size(320.0, 420.0);
-    final contentScale = math.min(
-      resolvedSize.width / panelBaseSize.width,
-      resolvedSize.height / panelBaseSize.height,
-    ).clamp(isLandscapePanel ? 0.58 : 0.54, 1.0).toDouble();
+    final contentScale = math
+        .min(
+          resolvedSize.width / panelBaseSize.width,
+          resolvedSize.height / panelBaseSize.height,
+        )
+        .clamp(isLandscapePanel ? 0.58 : 0.54, 1.0)
+        .toDouble();
     final isCompactPanel =
         isLandscapePanel ||
         contentScale < 0.96 ||
@@ -356,16 +365,13 @@ class _AiOverlayViewport extends HookConsumerWidget {
     final headerClosePadding = (isCompactPanel ? 3.0 : 4.0) * contentScale;
     final headerCloseIconSize = (isCompactPanel ? 14.0 : 16.0) * contentScale;
     final headerGap = (isCompactPanel ? 8.0 : 10.0) * contentScale;
-    final headerTitleFontSize =
-        (isCompactPanel ? 11.5 : 13.0) * contentScale;
-    final headerSubtitleFontSize =
-        (isCompactPanel ? 9.5 : 11.0) * contentScale;
+    final headerTitleFontSize = (isCompactPanel ? 11.5 : 13.0) * contentScale;
+    final headerSubtitleFontSize = (isCompactPanel ? 9.5 : 11.0) * contentScale;
     final headerSubtitleGap = (isCompactPanel ? 1.0 : 2.0) * contentScale;
     final contentLeftPadding = (isCompactPanel ? 8.0 : 10.0) * contentScale;
     final contentTopPadding = (isCompactPanel ? 42.0 : 56.0) * contentScale;
     final contentRightPadding = (isCompactPanel ? 8.0 : 12.0) * contentScale;
-    final contentBottomPadding =
-        (isCompactPanel ? 8.0 : 12.0) * contentScale;
+    final contentBottomPadding = (isCompactPanel ? 8.0 : 12.0) * contentScale;
 
     void startDragging(Offset globalPosition) {
       if (isResizing.value) {
@@ -411,14 +417,18 @@ class _AiOverlayViewport extends HookConsumerWidget {
                       : (details) => startDragging(details.globalPosition),
                   onPanUpdate: showExpandedPanel
                       ? null
-                      : (details) =>
-                            updateDragging(details.globalPosition, resolvedSize),
+                      : (details) => updateDragging(
+                          details.globalPosition,
+                          resolvedSize,
+                        ),
                   onPanEnd: showExpandedPanel ? null : (_) => stopDragging(),
                   onPanCancel: showExpandedPanel ? null : stopDragging,
                   child: CustomPaint(
                     foregroundPainter: showExpandedPanel
                         ? _AiOverlayResizeBorderHighlightPainter(
-                            color: context.colorScheme.primary.withValues(alpha: 0.94),
+                            color: context.colorScheme.primary.withValues(
+                              alpha: 0.94,
+                            ),
                             borderRadius: expandedBorderRadius,
                             clipExtent: resizeHandleHighlightExtent,
                           )
@@ -428,369 +438,371 @@ class _AiOverlayViewport extends HookConsumerWidget {
                       height: resolvedSize.height,
                       decoration: BoxDecoration(
                         color: showExpandedPanel
-                            ? context.colorScheme.surfaceContainerHighest.withValues(
-                                alpha: 0.76,
-                              )
+                            ? context.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.76)
                             : null,
-                        gradient: showExpandedPanel
-                            ? null
-                            : RadialGradient(
-                                center: Alignment.center,
-                                radius: 0.95,
-                                colors: <Color>[
-                                  context.colorScheme.primary,
-                                  Color.lerp(
-                                        context.colorScheme.primary,
-                                        context.colorScheme.primaryContainer,
-                                        0.58,
-                                      ) ??
-                                      context.colorScheme.primaryContainer,
-                                ],
-                                stops: const <double>[0.38, 1],
-                              ),
+                        gradient: null,
                         borderRadius: BorderRadius.circular(
                           showExpandedPanel
                               ? expandedBorderRadius
                               : collapsedBorderRadius,
                         ),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color:
-                                (showExpandedPanel
-                                        ? Colors.black
-                                        : context.colorScheme.primary)
-                                    .withValues(alpha: showExpandedPanel ? 0.1 : 0.18),
-                            blurRadius: showExpandedPanel ? 16 : 10,
-                            offset: Offset(0, showExpandedPanel ? 6 : 4),
-                          ),
-                          if (!showExpandedPanel)
-                            BoxShadow(
-                              color: context.colorScheme.primary.withValues(alpha: 0.32),
-                              blurRadius: 14,
-                              spreadRadius: 1.2,
-                            ),
-                        ],
-                        border: Border.all(
-                          color: showExpandedPanel
-                              ? context.colorScheme.outlineVariant.withValues(
-                                  alpha: 0.34,
-                                )
-                              : context.colorScheme.onPrimary.withValues(alpha: 0.22),
-                          width: 1,
-                        ),
+                        boxShadow: showExpandedPanel
+                            ? <BoxShadow>[
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ]
+                            : null,
+                        border: showExpandedPanel
+                            ? Border.all(
+                                color: context.colorScheme.outlineVariant
+                                    .withValues(alpha: 0.34),
+                                width: 1,
+                              )
+                            : null,
                       ),
-                      clipBehavior: Clip.antiAlias,
+                      clipBehavior: showExpandedPanel
+                          ? Clip.antiAlias
+                          : Clip.none,
                       child: showExpandedPanel
                           ? Stack(
                               children: <Widget>[
-                          Positioned.fill(
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                              child: ColoredBox(
-                                color: context.colorScheme.surface.withValues(
-                                  alpha: 0.08,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            left: 0,
-                            top: 0,
-                            right: resizeHandleHitExtent,
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.translucent,
-                              onPanStart: (details) {
-                                startDragging(details.globalPosition);
-                              },
-                              onPanUpdate: (details) {
-                                updateDragging(
-                                  details.globalPosition,
-                                  resolvedSize,
-                                );
-                              },
-                              onPanEnd: (_) {
-                                stopDragging();
-                              },
-                              onPanCancel: stopDragging,
-                              child: Padding(
-                                padding: EdgeInsets.fromLTRB(
-                                  headerLeftPadding,
-                                  headerTopPadding,
-                                  headerRightPadding,
-                                  0,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Material(
-                                      color: context.colorScheme.surface
-                                          .withValues(alpha: 0.28),
-                                      borderRadius: BorderRadius.circular(
-                                        12.0 * contentScale,
-                                      ),
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(
-                                          12.0 * contentScale,
-                                        ),
-                                        onTap: () {
-                                          overlayStateNotifier.setExpanded(
-                                            false,
-                                          );
-                                        },
-                                        child: Padding(
-                                          padding: EdgeInsets.all(
-                                            headerClosePadding,
-                                          ),
-                                          child: Icon(
-                                            Icons.remove_rounded,
-                                            size: headerCloseIconSize,
-                                            color: context.colorScheme.onSurface
-                                                .withValues(alpha: 0.82),
-                                          ),
-                                        ),
-                                      ),
+                                Positioned.fill(
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(
+                                      sigmaX: 8,
+                                      sigmaY: 8,
                                     ),
-                                    SizedBox(width: headerGap),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
+                                    child: ColoredBox(
+                                      color: context.colorScheme.surface
+                                          .withValues(alpha: 0.08),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 0,
+                                  top: 0,
+                                  right: resizeHandleHitExtent,
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.translucent,
+                                    onPanStart: (details) {
+                                      startDragging(details.globalPosition);
+                                    },
+                                    onPanUpdate: (details) {
+                                      updateDragging(
+                                        details.globalPosition,
+                                        resolvedSize,
+                                      );
+                                    },
+                                    onPanEnd: (_) {
+                                      stopDragging();
+                                    },
+                                    onPanCancel: stopDragging,
+                                    child: Padding(
+                                      padding: EdgeInsets.fromLTRB(
+                                        headerLeftPadding,
+                                        headerTopPadding,
+                                        headerRightPadding,
+                                        0,
+                                      ),
+                                      child: Row(
                                         children: [
-                                          Text(
-                                            displayTitle,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize: headerTitleFontSize,
-                                              fontWeight: FontWeight.w700,
-                                              color:
-                                                  context.colorScheme.onSurface,
+                                          Material(
+                                            color: context.colorScheme.surface
+                                                .withValues(alpha: 0.28),
+                                            borderRadius: BorderRadius.circular(
+                                              12.0 * contentScale,
+                                            ),
+                                            child: InkWell(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                    12.0 * contentScale,
+                                                  ),
+                                              onTap: () {
+                                                overlayStateNotifier
+                                                    .setExpanded(false);
+                                              },
+                                              child: Padding(
+                                                padding: EdgeInsets.all(
+                                                  headerClosePadding,
+                                                ),
+                                                child: Icon(
+                                                  Icons.remove_rounded,
+                                                  size: headerCloseIconSize,
+                                                  color: context
+                                                      .colorScheme
+                                                      .onSurface
+                                                      .withValues(alpha: 0.82),
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                          SizedBox(height: headerSubtitleGap),
-                                          Text(
-                                            displaySubtitle,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontSize:
-                                                  headerSubtitleFontSize,
-                                              color: context
-                                                  .colorScheme
-                                                  .onSurfaceVariant,
+                                          SizedBox(width: headerGap),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  displayTitle,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize:
+                                                        headerTitleFontSize,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: context
+                                                        .colorScheme
+                                                        .onSurface,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: headerSubtitleGap,
+                                                ),
+                                                Text(
+                                                  displaySubtitle,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize:
+                                                        headerSubtitleFontSize,
+                                                    color: context
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
+                                          ),
+                                          SizedBox(width: headerGap),
+                                          _AiOverlaySessionActions(
+                                            chatScopeId: chatScopeId,
+                                            sessions: sessions,
+                                            currentSession: currentSession,
+                                            isCompact: isCompactPanel,
+                                            contentScale: contentScale,
+                                            onCreateSession: () {
+                                              isCreateSessionDialogOpen.value =
+                                                  true;
+                                            },
+                                            onDeleteCurrentSession:
+                                                currentSession == null
+                                                ? null
+                                                : () async {
+                                                    final shouldDelete =
+                                                        await showDialog<bool>(
+                                                          context: context,
+                                                          builder: (dialogContext) => AlertDialog(
+                                                            title: Text(
+                                                              context
+                                                                  .l10n
+                                                                  .aiDeleteConfirmTitle,
+                                                            ),
+                                                            content: Text(
+                                                              currentSession
+                                                                  .name,
+                                                            ),
+                                                            actions: [
+                                                              TextButton(
+                                                                onPressed: () =>
+                                                                    Navigator.pop(
+                                                                      dialogContext,
+                                                                      false,
+                                                                    ),
+                                                                child: Text(
+                                                                  context
+                                                                      .l10n
+                                                                      .cancel,
+                                                                ),
+                                                              ),
+                                                              TextButton(
+                                                                onPressed: () =>
+                                                                    Navigator.pop(
+                                                                      dialogContext,
+                                                                      true,
+                                                                    ),
+                                                                child: Text(
+                                                                  context
+                                                                      .l10n
+                                                                      .delete,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ) ??
+                                                        false;
+                                                    if (!shouldDelete) {
+                                                      return;
+                                                    }
+                                                    await ref
+                                                        .read(
+                                                          aiChatRuntimeProvider(
+                                                            packageName:
+                                                                chatScopeId,
+                                                          ).notifier,
+                                                        )
+                                                        .deleteSession(
+                                                          currentSession.id,
+                                                        );
+                                                  },
                                           ),
                                         ],
                                       ),
                                     ),
-                                    SizedBox(width: headerGap),
-                                    _AiOverlaySessionActions(
-                                      chatScopeId: chatScopeId,
-                                      sessions: sessions,
-                                      currentSession: currentSession,
-                                      isCompact: isCompactPanel,
-                                      contentScale: contentScale,
-                                      onCreateSession: () {
-                                        isCreateSessionDialogOpen.value = true;
-                                      },
-                                      onDeleteCurrentSession: currentSession == null
-                                          ? null
-                                          : () async {
-                                              final shouldDelete =
-                                                  await showDialog<bool>(
-                                                    context: context,
-                                                    builder: (dialogContext) =>
-                                                        AlertDialog(
-                                                          title: Text(
-                                                            context
-                                                                .l10n
-                                                                .aiDeleteConfirmTitle,
-                                                          ),
-                                                          content: Text(
-                                                            currentSession.name,
-                                                          ),
-                                                          actions: [
-                                                            TextButton(
-                                                              onPressed: () =>
-                                                                  Navigator.pop(
-                                                                    dialogContext,
-                                                                    false,
-                                                                  ),
-                                                              child: Text(
-                                                                context
-                                                                    .l10n
-                                                                    .cancel,
-                                                              ),
-                                                            ),
-                                                            TextButton(
-                                                              onPressed: () =>
-                                                                  Navigator.pop(
-                                                                    dialogContext,
-                                                                    true,
-                                                                  ),
-                                                              child: Text(
-                                                                context
-                                                                    .l10n
-                                                                    .delete,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                  ) ??
-                                                  false;
-                                              if (!shouldDelete) {
-                                                return;
-                                              }
-                                              await ref
-                                                  .read(
-                                                    aiChatRuntimeProvider(
-                                                      packageName: chatScopeId,
-                                                    ).notifier,
-                                                  )
-                                                  .deleteSession(
-                                                    currentSession.id,
-                                                  );
-                                            },
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              contentLeftPadding,
-                              contentTopPadding,
-                              contentRightPadding,
-                              contentBottomPadding,
-                            ),
-                            child: AiChatCompactScope(
-                              enabled: isCompactPanel,
-                              scale: contentScale,
-                              child: Column(
-                                children: [
-                                  _AiOverlayInitBanner(
-                                    chatState: chatState,
-                                    onRetry: initializeOverlayChat,
-                                    isCompact: isCompactPanel,
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    contentLeftPadding,
+                                    contentTopPadding,
+                                    contentRightPadding,
+                                    contentBottomPadding,
                                   ),
-                                  Expanded(
-                                    child: AiChatList(
-                                      messages: chatState.visibleMessages,
-                                      scrollController: scrollController,
-                                      packageName: chatScopeId,
-                                      isCompact: isCompactPanel,
-                                      customTitle: context.isZh
-                                          ? '内存调试助手'
-                                          : 'Memory Assistant',
-                                      customSubtitle: displaySubtitle,
-                                      bubbleBuilder: ({
-                                        required message,
-                                        required retryLabel,
-                                        required onRetry,
-                                        required packageName,
-                                      }) => MemoryAiChatBubble(
-                                        key: ValueKey(message.id),
-                                        content: message.content,
-                                        role: message.role,
-                                        isError: message.isError,
-                                        isToolCalling:
-                                            message.isToolResultBubble &&
-                                            !message.content.startsWith('✅') &&
-                                            !message.content.startsWith('❌'),
-                                        isToolResultBubble:
-                                            message.isToolResultBubble,
-                                        retryLabel: retryLabel,
-                                        onRetry: onRetry,
-                                        packageName: packageName,
-                                      ),
-                                      streamingBubbleBuilder: ({
-                                        required message,
-                                        required retryLabel,
-                                        required onRetry,
-                                        required packageName,
-                                        required streamingContentStream,
-                                        required streamingThinkingStream,
-                                      }) => MemoryAiStreamingChatBubble(
-                                        key: ValueKey(message.id),
-                                        role: message.role,
-                                        isError: message.isError,
-                                        isToolCalling: message.isToolResultBubble,
-                                        isToolResultBubble:
-                                            message.isToolResultBubble,
-                                        retryLabel: retryLabel,
-                                        onRetry: onRetry,
-                                        packageName: packageName,
-                                        streamingContentStream:
-                                            streamingContentStream,
-                                        streamingThinkingStream:
-                                            streamingThinkingStream,
-                                      ),
+                                  child: AiChatCompactScope(
+                                    enabled: isCompactPanel,
+                                    scale: contentScale,
+                                    child: Column(
+                                      children: [
+                                        _AiOverlayInitBanner(
+                                          chatState: chatState,
+                                          onRetry: initializeOverlayChat,
+                                          isCompact: isCompactPanel,
+                                        ),
+                                        Expanded(
+                                          child: AiChatList(
+                                            messages: chatState.visibleMessages,
+                                            scrollController: scrollController,
+                                            packageName: chatScopeId,
+                                            isCompact: isCompactPanel,
+                                            customTitle: context.isZh
+                                                ? '内存调试助手'
+                                                : 'Memory Assistant',
+                                            customSubtitle: displaySubtitle,
+                                            bubbleBuilder:
+                                                ({
+                                                  required message,
+                                                  required retryLabel,
+                                                  required onRetry,
+                                                  required packageName,
+                                                }) => MemoryAiChatBubble(
+                                                  key: ValueKey(message.id),
+                                                  content: message.content,
+                                                  role: message.role,
+                                                  isError: message.isError,
+                                                  isToolCalling:
+                                                      message
+                                                          .isToolResultBubble &&
+                                                      !message.content
+                                                          .startsWith('✅') &&
+                                                      !message.content
+                                                          .startsWith('❌'),
+                                                  isToolResultBubble: message
+                                                      .isToolResultBubble,
+                                                  retryLabel: retryLabel,
+                                                  onRetry: onRetry,
+                                                  packageName: packageName,
+                                                ),
+                                            streamingBubbleBuilder:
+                                                ({
+                                                  required message,
+                                                  required retryLabel,
+                                                  required onRetry,
+                                                  required packageName,
+                                                  required streamingContentStream,
+                                                  required streamingThinkingStream,
+                                                }) => MemoryAiStreamingChatBubble(
+                                                  key: ValueKey(message.id),
+                                                  role: message.role,
+                                                  isError: message.isError,
+                                                  isToolCalling: message
+                                                      .isToolResultBubble,
+                                                  isToolResultBubble: message
+                                                      .isToolResultBubble,
+                                                  retryLabel: retryLabel,
+                                                  onRetry: onRetry,
+                                                  packageName: packageName,
+                                                  streamingContentStream:
+                                                      streamingContentStream,
+                                                  streamingThinkingStream:
+                                                      streamingThinkingStream,
+                                                ),
+                                          ),
+                                        ),
+                                        AiChatInput(
+                                          packageName: chatScopeId,
+                                          useOverlayFilePicker: true,
+                                          showQuickActions: false,
+                                          isEmbedded: true,
+                                          isCompact: isCompactPanel,
+                                          showBuiltinOptions: true,
+                                          builtinOptionsCompact: true,
+                                          onRetryInitialization:
+                                              initializeOverlayChat,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  AiChatInput(
-                                    packageName: chatScopeId,
-                                    useOverlayFilePicker: true,
-                                    showQuickActions: false,
-                                    isEmbedded: true,
-                                    isCompact: isCompactPanel,
-                                    showBuiltinOptions: true,
-                                    builtinOptionsCompact: true,
-                                    onRetryInitialization:
-                                        initializeOverlayChat,
+                                ),
+                                Positioned(
+                                  right: 2,
+                                  bottom: 2,
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.translucent,
+                                    onPanStart: (details) {
+                                      isResizing.value = true;
+                                      resizeStartGlobal.value =
+                                          details.globalPosition;
+                                      resizeStartSize.value = expandedSize;
+                                    },
+                                    onPanUpdate: (details) {
+                                      final startGlobal =
+                                          resizeStartGlobal.value;
+                                      final startSize = resizeStartSize.value;
+                                      if (startGlobal == null ||
+                                          startSize == null) {
+                                        return;
+                                      }
+                                      final delta =
+                                          details.globalPosition - startGlobal;
+                                      final nextSize = clampExpandedSize(
+                                        Size(
+                                          startSize.width + delta.dx,
+                                          startSize.height + delta.dy,
+                                        ),
+                                      );
+                                      overlayStateNotifier.setPanelSize(
+                                        nextSize,
+                                      );
+                                      overlayStateNotifier.setOffset(
+                                        clampOffset(resolvedOffset, nextSize),
+                                      );
+                                    },
+                                    onPanEnd: (_) {
+                                      resizeStartGlobal.value = null;
+                                      resizeStartSize.value = null;
+                                      isResizing.value = false;
+                                    },
+                                    onPanCancel: () {
+                                      resizeStartGlobal.value = null;
+                                      resizeStartSize.value = null;
+                                      isResizing.value = false;
+                                    },
+                                    child: SizedBox(
+                                      width: resizeHandleHitExtent,
+                                      height: resizeHandleHitExtent,
+                                    ),
                                   ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            right: 2,
-                            bottom: 2,
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.translucent,
-                              onPanStart: (details) {
-                                isResizing.value = true;
-                                resizeStartGlobal.value = details.globalPosition;
-                                resizeStartSize.value = expandedSize;
-                              },
-                              onPanUpdate: (details) {
-                                final startGlobal = resizeStartGlobal.value;
-                                final startSize = resizeStartSize.value;
-                                if (startGlobal == null || startSize == null) {
-                                  return;
-                                }
-                                final delta =
-                                    details.globalPosition - startGlobal;
-                                final nextSize = clampExpandedSize(
-                                  Size(
-                                    startSize.width + delta.dx,
-                                    startSize.height + delta.dy,
-                                  ),
-                                );
-                                overlayStateNotifier.setPanelSize(nextSize);
-                                overlayStateNotifier.setOffset(
-                                  clampOffset(resolvedOffset, nextSize),
-                                );
-                              },
-                              onPanEnd: (_) {
-                                resizeStartGlobal.value = null;
-                                resizeStartSize.value = null;
-                                isResizing.value = false;
-                              },
-                              onPanCancel: () {
-                                resizeStartGlobal.value = null;
-                                resizeStartSize.value = null;
-                                isResizing.value = false;
-                              },
-                              child: SizedBox(
-                                width: resizeHandleHitExtent,
-                                height: resizeHandleHitExtent,
-                              ),
-                            ),
-                          ),
+                                ),
                               ],
                             )
                           : AiOverlayCollapsedBall(
+                              isHighlighted: hasSelectedValue,
                               onTap: () {
                                 overlayStateNotifier.setExpanded(true);
                               },
@@ -841,7 +853,9 @@ class _AiOverlaySessionActions extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final borderRadius = BorderRadius.circular(12.0 * contentScale);
     final surfaceColor = context.colorScheme.surface.withValues(alpha: 0.3);
-    final borderColor = context.colorScheme.outlineVariant.withValues(alpha: 0.34);
+    final borderColor = context.colorScheme.outlineVariant.withValues(
+      alpha: 0.34,
+    );
     final foregroundColor = context.colorScheme.onSurface;
     final labelFontSize = (isCompact ? 10.0 : 11.5) * contentScale;
     final iconSize = (isCompact ? 14.0 : 16.0) * contentScale;
@@ -988,8 +1002,7 @@ class _AiOverlayCreateSessionDialog extends HookConsumerWidget {
     final isSubmitting = useState(false);
     useListenable(controller);
 
-    final canConfirm =
-        !isSubmitting.value && controller.text.trim().isNotEmpty;
+    final canConfirm = !isSubmitting.value && controller.text.trim().isNotEmpty;
 
     return OverlayPanelDialog.card(
       onClose: isSubmitting.value ? null : onClose,
@@ -1098,9 +1111,7 @@ class _AiOverlayInitBanner extends StatelessWidget {
     final message = isInitializing
         ? (context.isZh ? '正在准备当前进程的 AI 会话…' : 'Preparing AI session…')
         : (chatState.error ??
-              (context.isZh
-                  ? '当前进程的 AI 会话初始化失败'
-                  : 'AI session init failed'));
+              (context.isZh ? '当前进程的 AI 会话初始化失败' : 'AI session init failed'));
 
     return Container(
       width: double.infinity,

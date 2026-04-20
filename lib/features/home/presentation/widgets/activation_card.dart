@@ -1,4 +1,5 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/core/themes/ai_activation_theme.dart';
 import 'package:JsxposedX/core/themes/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -25,16 +26,14 @@ class ActivationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final aiGradient = const LinearGradient(
-      colors: [Color(0xFF70D7F9), Color(0xFFAD98FF), Color(0xFFFFB385)],
-    );
-
     if (!isAI) {
       final accentColor = _accentColor(context);
       final statusText = isActivated
           ? context.l10n.activated
           : context.l10n.notActivated;
-      final subtitleText = subTitle == null ? statusText : '$statusText ($subTitle)';
+      final subtitleText = subTitle == null
+          ? statusText
+          : '$statusText ($subTitle)';
 
       return Container(
         margin: EdgeInsets.symmetric(horizontal: 10.w),
@@ -46,7 +45,9 @@ class ActivationCard extends StatelessWidget {
           border: Border.all(color: accentColor.withValues(alpha: 0.18)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: context.isDark ? 0.18 : 0.06),
+              color: Colors.black.withValues(
+                alpha: context.isDark ? 0.18 : 0.06,
+              ),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -64,7 +65,9 @@ class ActivationCard extends StatelessWidget {
               child: Icon(
                 _statusIcon(),
                 size: 23.sp,
-                color: isActivated ? accentColor : accentColor.withValues(alpha: 0.72),
+                color: isActivated
+                    ? accentColor
+                    : accentColor.withValues(alpha: 0.72),
               ),
             ),
             SizedBox(width: 14.w),
@@ -134,27 +137,12 @@ class ActivationCard extends StatelessWidget {
       decoration: isAI
           ? BoxDecoration(
               borderRadius: BorderRadius.circular(16.r),
-              boxShadow: isActivated
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF70D7F9).withValues(alpha: 0.3),
-                        blurRadius: 15,
-                        spreadRadius: 2,
-                      ),
-                      BoxShadow(
-                        color: const Color(0xFFAD98FF).withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(5, 5),
-                      ),
-                    ]
-                  : null,
-              gradient: isActivated ? aiGradient : null,
+              boxShadow: isActivated ? buildAiActivationGlowShadows() : null,
+              gradient: isActivated ? aiActivationGradient : null,
               color: isActivated ? null : Colors.grey.withValues(alpha: 0.2),
             )
           : null,
-      padding: (isAI && isActivated)
-          ? EdgeInsets.all(2.w)
-          : EdgeInsets.zero,
+      padding: (isAI && isActivated) ? EdgeInsets.all(2.w) : EdgeInsets.zero,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 11.h),
         decoration: BoxDecoration(
@@ -178,7 +166,8 @@ class ActivationCard extends StatelessWidget {
           children: [
             if (isAI && isActivated)
               ShaderMask(
-                shaderCallback: (bounds) => aiGradient.createShader(bounds),
+                shaderCallback: (bounds) =>
+                    aiActivationGradient.createShader(bounds),
                 child: Icon(Icons.check, size: 42.sp, color: Colors.white),
               )
             else
@@ -198,7 +187,7 @@ class ActivationCard extends StatelessWidget {
                   if (isAI && isActivated)
                     ShaderMask(
                       shaderCallback: (bounds) =>
-                          aiGradient.createShader(bounds),
+                          aiActivationGradient.createShader(bounds),
                       child: Text(
                         title,
                         style: TextStyle(
@@ -224,7 +213,7 @@ class ActivationCard extends StatelessWidget {
                   if (isAI && isActivated)
                     ShaderMask(
                       shaderCallback: (bounds) =>
-                          aiGradient.createShader(bounds),
+                          aiActivationGradient.createShader(bounds),
                       child: Text(
                         context.l10n.activated,
                         style: TextStyle(fontSize: 12.sp, color: Colors.white),
