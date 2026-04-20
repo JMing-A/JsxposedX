@@ -6,9 +6,9 @@ import 'package:JsxposedX/features/ai/domain/constants/builtin_ai_config.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_multimodal_message_codec.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
-import 'package:JsxposedX/features/ai/presentation/states/ai_chat_action_state.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_quick_actions.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/padi_chat_options_bar.dart';
 import 'package:flutter/material.dart';
@@ -36,7 +36,7 @@ class AiChatInput extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final textController = useTextEditingController();
     final pendingAttachments = useState<List<PickedFileData>>(const []);
-    final chatState = ref.watch(aiChatActionProvider(packageName: packageName));
+    final chatState = ref.watch(aiChatRuntimeProvider(packageName: packageName));
     final aiConfigAsync = ref.watch(aiConfigProvider);
 
     final textValue = useValueListenable(textController);
@@ -89,7 +89,7 @@ class AiChatInput extends HookConsumerWidget {
 
     Future<void> handleSend() async {
       final notifier = ref.read(
-        aiChatActionProvider(packageName: packageName).notifier,
+        aiChatRuntimeProvider(packageName: packageName).notifier,
       );
       if (isStreaming) {
         await notifier.stopStreaming();
@@ -521,7 +521,7 @@ class _PendingAttachmentChip extends StatelessWidget {
 class _ContextSheet extends StatelessWidget {
   const _ContextSheet({required this.chatState});
 
-  final AiChatActionState chatState;
+  final AiChatRuntimeState chatState;
 
   @override
   Widget build(BuildContext context) {

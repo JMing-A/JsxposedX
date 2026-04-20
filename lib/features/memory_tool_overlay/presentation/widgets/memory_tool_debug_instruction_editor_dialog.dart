@@ -6,8 +6,8 @@ import 'package:JsxposedX/common/widgets/overlay_window/overlay_text_input_conte
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/models/ai_message.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_thinking_markup.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/ai_chat_bubble.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_container.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/bubble_content.dart';
@@ -266,7 +266,7 @@ class _MemoryToolInstructionPseudocodeDialog extends HookConsumerWidget {
             ),
           ];
 
-          final stream = ref.read(aiChatActionRepositoryProvider).getChatStream(
+          final stream = ref.read(aiChatRuntimeRepositoryProvider).getChatStream(
             config: config,
             messages: messages,
           );

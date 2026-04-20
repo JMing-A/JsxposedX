@@ -9,7 +9,9 @@ import 'package:JsxposedX/core/providers/pinia_provider.dart';
 import 'package:JsxposedX/features/ai/data/datasources/chat/ai_chat_action_datasource.dart';
 import 'package:JsxposedX/features/ai/data/repositories/chat/ai_chat_action_repository_impl.dart';
 import 'package:JsxposedX/features/ai/domain/constants/builtin_ai_config.dart';
+import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tool_executor_contract.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_chat_environment_snapshot.dart';
 import 'package:JsxposedX/features/ai/domain/models/padi_chat_options.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_response_issue.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
@@ -18,13 +20,9 @@ import 'package:JsxposedX/features/ai/domain/models/ai_tool_call.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/chat/ai_chat_action_repository.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_chat_context_assembler.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_multimodal_message_codec.dart';
-import 'package:JsxposedX/features/ai/domain/services/prompt_builder.dart';
-import 'package:JsxposedX/features/ai/domain/services/tool_executor.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_action_state.dart';
-import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_query_provider.dart';
-import 'package:JsxposedX/features/so_analysis/presentation/providers/so_analysis_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -110,8 +108,8 @@ class AiChatAction extends _$AiChatAction {
       sessionInitState: AiSessionInitState.initializing,
       error: null,
       lastResponseIssue: null,
-      apkSessionId: null,
-      dexPaths: const [],
+      toolsSpec: null,
+      toolExecutor: null,
     );
   }
 
@@ -132,8 +130,8 @@ class AiChatAction extends _$AiChatAction {
       error: message,
       lastResponseIssue: AiResponseIssue.toolInitError,
       isStreaming: false,
-      apkSessionId: null,
-      dexPaths: const [],
+      toolsSpec: null,
+      toolExecutor: null,
     );
   }
 
@@ -144,10 +142,25 @@ class AiChatAction extends _$AiChatAction {
     );
   }
 
+  @Deprecated('Use applyEnvironmentSnapshot instead.')
   void setApkSession(String sessionId, List<String> dexPaths) {
+    // Environment-specific runtime state has moved out of the generic chat state.
+  }
+
+  void applyEnvironmentSnapshot(AiChatEnvironmentSnapshot snapshot) {
+    _clearStreamingThinking();
     state = state.copyWith(
-      apkSessionId: sessionId,
-      dexPaths: List<String>.unmodifiable(dexPaths),
+      systemPrompt: snapshot.systemPrompt,
+      sessionInitState: snapshot.sessionInitState,
+      error: snapshot.error,
+      lastResponseIssue: snapshot.sessionInitState == AiSessionInitState.failed
+          ? AiResponseIssue.toolInitError
+          : null,
+      toolsSpec: snapshot.toolsSpec,
+      toolExecutor: snapshot.toolExecutor,
+      sessionContext: state.sessionContext.copyWith(
+        sessionRules: snapshot.systemPrompt,
+      ),
     );
   }
 
@@ -973,19 +986,17 @@ class AiChatAction extends _$AiChatAction {
   }
 
   List<Map<String, dynamic>>? _buildToolsJson() {
-    if (state.apkSessionId == null || state.apkSessionId!.isEmpty) {
+    final toolsSpec = state.toolsSpec;
+    if (toolsSpec == null) {
       return null;
     }
     if (state.sessionInitState != AiSessionInitState.ready) {
       return null;
     }
 
-    final isZh = state.systemPrompt?.contains('你是') ?? true;
     final apiType =
         ref.read(aiConfigProvider).value?.apiType ?? AiApiType.openai;
-    return PromptBuilder(
-      isZh: isZh,
-    ).withTools().withSoTools().buildToolsJson(apiType: apiType);
+    return toolsSpec.buildToolsJson(apiType: apiType);
   }
 
   Future<void> retryByMessageId(String messageId) async {
@@ -1924,18 +1935,8 @@ class AiChatAction extends _$AiChatAction {
     return true;
   }
 
-  ToolExecutor? _getToolExecutor() {
-    final sessionId = state.apkSessionId;
-    if (sessionId == null || sessionId.isEmpty) {
-      return null;
-    }
-
-    return ToolExecutor(
-      repo: ref.read(apkAnalysisQueryRepositoryProvider),
-      soDataSource: ref.read(soAnalysisDatasourceProvider),
-      sessionId: sessionId,
-      dexPaths: state.dexPaths,
-    );
+  AiChatToolExecutorContract? _getToolExecutor() {
+    return state.toolExecutor;
   }
 
   bool _isCriticalTool(String toolName) {

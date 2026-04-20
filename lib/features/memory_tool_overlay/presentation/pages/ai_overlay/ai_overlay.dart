@@ -2,10 +2,18 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
+import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/ai_overlay_ui_state_provider.dart';
-import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/ai_overlay_collapsed_ball.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_overlay_environment_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/ai_overlay_collapsed_ball.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_host_runtime_provider.dart';
+import 'package:JsxposedX/generated/memory_tool.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -40,7 +48,7 @@ class AiOverlay extends HookConsumerWidget {
               : mediaQuery.size.height,
         );
         return _AiOverlayViewport(
-          selectedPid: selectedProcess.pid,
+          selectedProcess: selectedProcess,
           viewportSize: viewportSize,
           portraitTopInset: portraitTopInset,
         );
@@ -51,12 +59,12 @@ class AiOverlay extends HookConsumerWidget {
 
 class _AiOverlayViewport extends HookConsumerWidget {
   const _AiOverlayViewport({
-    required this.selectedPid,
+    required this.selectedProcess,
     required this.viewportSize,
     required this.portraitTopInset,
   });
 
-  final int selectedPid;
+  final ProcessInfo selectedProcess;
   final Size viewportSize;
   final double portraitTopInset;
 
@@ -74,14 +82,44 @@ class _AiOverlayViewport extends HookConsumerWidget {
     final isResizing = useRef(false);
     final pendingBoundPid = useRef<int?>(null);
     final pendingLayoutKey = useRef<String?>(null);
+    final environment = ref.watch(
+      memoryAiOverlayEnvironmentProvider(
+        MemoryAiOverlayEnvironmentArgs(
+          processInfo: selectedProcess,
+          isZh: context.isZh,
+        ),
+      ),
+    );
+    final chatScopeId = environment.scopeId;
+    final chatNotifier = ref.read(
+      aiChatRuntimeProvider(packageName: chatScopeId).notifier,
+    );
+    final chatState = ref.watch(
+      aiChatRuntimeProvider(packageName: chatScopeId),
+    );
+    final scrollController = useScrollController();
     final collapsedDiameter = 44.r;
-    final defaultExpandedSize = Size(236.r, 156.r);
-    final minExpandedSize = Size(190.r, 128.r);
+    final defaultExpandedSize = Size(320.r, 420.r);
+    final minExpandedSize = Size(260.r, 280.r);
     final safePadding = 12.r;
     final expandedBorderRadius = 20.r;
     final collapsedBorderRadius = 14.r;
     final resizeHandleHighlightExtent = 28.r;
     final resizeHandleHitExtent = 34.r;
+    final displayTitle = selectedProcess.name.trim().isEmpty
+        ? selectedProcess.packageName
+        : selectedProcess.name;
+    final displaySubtitle =
+        '${selectedProcess.packageName} · PID ${selectedProcess.pid}';
+
+    Future<void> initializeOverlayChat() async {
+      await initializeAiChatEnvironment(
+        notifier: chatNotifier,
+        environment: environment,
+        initErrorPrefix: context.isZh ? '内存会话初始化失败' : 'Memory session init failed',
+      );
+    }
+
     final availableExpandedWidth = math.max(
       viewportSize.width - (safePadding * 2),
       collapsedDiameter,
@@ -139,23 +177,30 @@ class _AiOverlayViewport extends HookConsumerWidget {
     useEffect(() {
       final size = Size(collapsedDiameter, collapsedDiameter);
       final nextOffset = clampOffset(defaultOffset(size), size);
-      if (pendingBoundPid.value == selectedPid) {
+      if (pendingBoundPid.value == selectedProcess.pid) {
         return null;
       }
-      pendingBoundPid.value = selectedPid;
+      pendingBoundPid.value = selectedProcess.pid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         pendingBoundPid.value = null;
         if (!context.mounted) {
           return;
         }
         overlayStateNotifier.bindProcess(
-          pid: selectedPid,
+          pid: selectedProcess.pid,
           initialOffset: nextOffset,
           initialPanelSize: clampExpandedSize(defaultExpandedSize),
         );
       });
       return null;
-    }, [selectedPid]);
+    }, [selectedProcess.pid]);
+
+    useEffect(() {
+      Future.microtask(() async {
+        await initializeOverlayChat();
+      });
+      return null;
+    }, [environment, chatScopeId]);
 
     useEffect(
       () {
@@ -195,6 +240,56 @@ class _AiOverlayViewport extends HookConsumerWidget {
       ],
     );
 
+    final lastMessageId = useRef<String?>(null);
+    useEffect(() {
+      final visibleMessages = chatState.visibleMessages;
+      if (visibleMessages.isEmpty) {
+        return null;
+      }
+
+      final currentLastId = visibleMessages.last.id;
+      final isNewMessage = lastMessageId.value != currentLastId;
+      lastMessageId.value = currentLastId;
+      if (!scrollController.hasClients || !isNewMessage) {
+        return null;
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!scrollController.hasClients) {
+          return;
+        }
+        scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      });
+      return null;
+    }, [chatState.visibleMessages.length]);
+
+    useEffect(() {
+      const followThreshold = 80.0;
+      final subscription = chatNotifier.streamingContentStream.listen((content) {
+        if (content.isEmpty || !scrollController.hasClients) {
+          return;
+        }
+        if (scrollController.offset > followThreshold) {
+          return;
+        }
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!scrollController.hasClients) {
+            return;
+          }
+          if (scrollController.offset > followThreshold) {
+            return;
+          }
+          scrollController.jumpTo(0);
+        });
+      });
+      return subscription.cancel;
+    }, [chatNotifier, scrollController]);
+
     final resolvedSize = currentSize();
     final resolvedOffset = clampOffset(
       offset ?? defaultOffset(resolvedSize),
@@ -205,6 +300,32 @@ class _AiOverlayViewport extends HookConsumerWidget {
         resolvedSize.width > (collapsedDiameter + 4.r) &&
         resolvedSize.height > (collapsedDiameter + 4.r);
 
+    void startDragging(Offset globalPosition) {
+      if (isResizing.value) {
+        return;
+      }
+      dragStartGlobal.value = globalPosition;
+      dragStartOffset.value = resolvedOffset;
+    }
+
+    void updateDragging(Offset globalPosition, Size size) {
+      if (isResizing.value) {
+        return;
+      }
+      final startGlobal = dragStartGlobal.value;
+      final startOffset = dragStartOffset.value;
+      if (startGlobal == null || startOffset == null) {
+        return;
+      }
+      final delta = globalPosition - startGlobal;
+      overlayStateNotifier.setOffset(clampOffset(startOffset + delta, size));
+    }
+
+    void stopDragging() {
+      dragStartGlobal.value = null;
+      dragStartOffset.value = null;
+    }
+
     return Stack(
       children: [
         Positioned(
@@ -212,35 +333,15 @@ class _AiOverlayViewport extends HookConsumerWidget {
           top: resolvedOffset.dy,
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onPanStart: (details) {
-              if (isResizing.value) {
-                return;
-              }
-              dragStartGlobal.value = details.globalPosition;
-              dragStartOffset.value = resolvedOffset;
-            },
-            onPanUpdate: (details) {
-              if (isResizing.value) {
-                return;
-              }
-              final startGlobal = dragStartGlobal.value;
-              final startOffset = dragStartOffset.value;
-              if (startGlobal == null || startOffset == null) {
-                return;
-              }
-              final delta = details.globalPosition - startGlobal;
-              overlayStateNotifier.setOffset(
-                clampOffset(startOffset + delta, resolvedSize),
-              );
-            },
-            onPanEnd: (_) {
-              dragStartGlobal.value = null;
-              dragStartOffset.value = null;
-            },
-            onPanCancel: () {
-              dragStartGlobal.value = null;
-              dragStartOffset.value = null;
-            },
+            onPanStart: showExpandedPanel
+                ? null
+                : (details) => startDragging(details.globalPosition),
+            onPanUpdate: showExpandedPanel
+                ? null
+                : (details) =>
+                      updateDragging(details.globalPosition, resolvedSize),
+            onPanEnd: showExpandedPanel ? null : (_) => stopDragging(),
+            onPanCancel: showExpandedPanel ? null : stopDragging,
             child: CustomPaint(
               foregroundPainter: showExpandedPanel
                   ? _AiOverlayResizeBorderHighlightPainter(
@@ -319,31 +420,147 @@ class _AiOverlayViewport extends HookConsumerWidget {
                               ),
                             ),
                           ),
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(14.r, 12.r, 12.r, 12.r),
-                            child: Align(
-                              alignment: Alignment.topLeft,
-                              child: Material(
-                                color: context.colorScheme.surface.withValues(
-                                  alpha: 0.28,
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            right: resizeHandleHitExtent,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onPanStart: (details) {
+                                startDragging(details.globalPosition);
+                              },
+                              onPanUpdate: (details) {
+                                updateDragging(
+                                  details.globalPosition,
+                                  resolvedSize,
+                                );
+                              },
+                              onPanEnd: (_) {
+                                stopDragging();
+                              },
+                              onPanCancel: stopDragging,
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  14.r,
+                                  12.r,
+                                  12.r,
+                                  0,
                                 ),
-                                borderRadius: BorderRadius.circular(12.r),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  onTap: () {
-                                    overlayStateNotifier.setExpanded(false);
-                                  },
-                                  child: Padding(
-                                    padding: EdgeInsets.all(4.r),
-                                    child: Icon(
-                                      Icons.remove_rounded,
-                                      size: 16.r,
-                                      color: context.colorScheme.onSurface
-                                          .withValues(alpha: 0.82),
+                                child: Row(
+                                  children: [
+                                    Material(
+                                      color: context.colorScheme.surface
+                                          .withValues(alpha: 0.28),
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(
+                                          12.r,
+                                        ),
+                                        onTap: () {
+                                          overlayStateNotifier.setExpanded(
+                                            false,
+                                          );
+                                        },
+                                        child: Padding(
+                                          padding: EdgeInsets.all(4.r),
+                                          child: Icon(
+                                            Icons.remove_rounded,
+                                            size: 16.r,
+                                            color: context.colorScheme.onSurface
+                                                .withValues(alpha: 0.82),
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    SizedBox(width: 10.r),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            displayTitle,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 13.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color:
+                                                  context.colorScheme.onSurface,
+                                            ),
+                                          ),
+                                          SizedBox(height: 2.r),
+                                          Text(
+                                            displaySubtitle,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11.sp,
+                                              color: context
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8.r,
+                                        vertical: 4.r,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: context.colorScheme.primary
+                                            .withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(
+                                          999.r,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        context.isZh ? 'AI 对话' : 'AI Chat',
+                                        style: TextStyle(
+                                          fontSize: 10.5.sp,
+                                          fontWeight: FontWeight.w700,
+                                          color: context.colorScheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              10.r,
+                              56.r,
+                              10.r,
+                              6.r,
+                            ),
+                            child: Column(
+                              children: [
+                                _AiOverlayInitBanner(
+                                  chatState: chatState,
+                                  onRetry: initializeOverlayChat,
+                                ),
+                                Expanded(
+                                  child: AiChatList(
+                                    messages: chatState.visibleMessages,
+                                    scrollController: scrollController,
+                                    packageName: chatScopeId,
+                                    customTitle: context.isZh
+                                        ? '内存调试助手'
+                                        : 'Memory Assistant',
+                                    customSubtitle: displaySubtitle,
+                                  ),
+                                ),
+                                AiChatInput(
+                                  packageName: chatScopeId,
+                                  showQuickActions: false,
+                                  onRetryInitialization: initializeOverlayChat,
+                                ),
+                              ],
                             ),
                           ),
                           Positioned(
@@ -403,6 +620,81 @@ class _AiOverlayViewport extends HookConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AiOverlayInitBanner extends StatelessWidget {
+  const _AiOverlayInitBanner({
+    required this.chatState,
+    required this.onRetry,
+  });
+
+  final AiChatRuntimeState chatState;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    if (chatState.sessionInitState == AiSessionInitState.ready) {
+      return const SizedBox.shrink();
+    }
+
+    final isInitializing =
+        chatState.sessionInitState == AiSessionInitState.initializing;
+    final backgroundColor = isInitializing
+        ? context.colorScheme.primaryContainer.withValues(alpha: 0.78)
+        : context.colorScheme.errorContainer.withValues(alpha: 0.84);
+    final foregroundColor = isInitializing
+        ? context.colorScheme.onPrimaryContainer
+        : context.colorScheme.onErrorContainer;
+    final message = isInitializing
+        ? (context.isZh ? '正在准备当前进程的 AI 会话…' : 'Preparing AI session…')
+        : (chatState.error ??
+              (context.isZh
+                  ? '当前进程的 AI 会话初始化失败'
+                  : 'AI session init failed'));
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.fromLTRB(6.r, 0, 6.r, 8.r),
+      padding: EdgeInsets.symmetric(horizontal: 12.r, vertical: 10.r),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isInitializing
+                ? Icons.hourglass_top_rounded
+                : Icons.error_outline_rounded,
+            size: 16.r,
+            color: foregroundColor,
+          ),
+          SizedBox(width: 8.r),
+          Expanded(
+            child: Text(
+              message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5.sp,
+                color: foregroundColor,
+              ),
+            ),
+          ),
+          if (!isInitializing)
+            TextButton(
+              onPressed: () async {
+                await onRetry();
+              },
+              child: Text(
+                context.l10n.retry,
+                style: TextStyle(color: foregroundColor),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

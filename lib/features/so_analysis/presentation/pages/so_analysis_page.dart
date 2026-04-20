@@ -2,7 +2,7 @@ import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/common/widgets/ref_error.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/so_analysis/presentation/providers/so_analysis_provider.dart';
 import 'package:JsxposedX/generated/so_analysis.g.dart';
 import 'package:flutter/material.dart';
@@ -252,7 +252,7 @@ class _SymbolTile extends HookConsumerWidget {
         onPressed: () {
           final soName = soPath.split('/').last;
           final prompt = '分析 $soName 中的符号 ${sym.name}，地址 0x${sym.address.toRadixString(16)}，类型 ${sym.type}，请解释其用途并生成 Frida Hook 代码';
-          ref.read(aiChatActionProvider(packageName: packageName).notifier).send(prompt);
+          ref.read(aiChatRuntimeProvider(packageName: packageName).notifier).send(prompt);
           ToastMessage.show(context.l10n.soSentToAi(sym.name));
         },
       ),
@@ -331,7 +331,7 @@ class _JniTab extends HookConsumerWidget {
                     onPressed: () {
                       final soName = soPath.split('/').last;
                       final prompt = '分析 $soName 中的 JNI 函数 ${fn.symbolName}，对应 Java 方法 ${fn.javaClass}.${fn.javaMethod}，地址 0x${fn.address.toRadixString(16)}，请解释其用途并生成 Frida Hook 代码';
-                      ref.read(aiChatActionProvider(packageName: packageName).notifier).send(prompt);
+                      ref.read(aiChatRuntimeProvider(packageName: packageName).notifier).send(prompt);
                       ToastMessage.show(context.l10n.soSentToAi(fn.symbolName));
                     },
                   ),

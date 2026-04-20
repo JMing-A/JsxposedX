@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:JsxposedX/core/models/ai_message.dart';
 import 'package:JsxposedX/core/providers/pinia_provider.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_query_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -160,7 +160,7 @@ Future<ClassFlowData> apkClassMap(
   ];
 
   final stream = ref
-      .read(aiChatActionRepositoryProvider)
+      .read(aiChatRuntimeRepositoryProvider)
       .getChatStream(config: config, messages: messages);
 
   final buffer = StringBuffer();

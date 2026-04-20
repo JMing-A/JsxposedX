@@ -1,6 +1,6 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/ai/domain/models/padi_chat_options.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -17,9 +17,9 @@ class PadiChatOptionsBar extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final expanded = useState(false);
-    final chatState = ref.watch(aiChatActionProvider(packageName: packageName));
+    final chatState = ref.watch(aiChatRuntimeProvider(packageName: packageName));
     final notifier = ref.read(
-      aiChatActionProvider(packageName: packageName).notifier,
+      aiChatRuntimeProvider(packageName: packageName).notifier,
     );
     final supportedEfforts = PadiChatOptions.supportedEffortsForModel(
       chatState.currentPadiModel,

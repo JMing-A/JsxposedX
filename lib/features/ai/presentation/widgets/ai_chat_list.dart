@@ -1,7 +1,7 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/models/ai_message.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_response_issue.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/ai_chat_bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -66,8 +66,10 @@ class AiChatList extends HookConsumerWidget {
       );
     }
 
-    final chatState = ref.watch(aiChatActionProvider(packageName: packageName));
-    final chatNotifier = ref.read(aiChatActionProvider(packageName: packageName).notifier);
+    final chatState = ref.watch(aiChatRuntimeProvider(packageName: packageName));
+    final chatNotifier = ref.read(
+      aiChatRuntimeProvider(packageName: packageName).notifier,
+    );
     final totalVisibleCount = chatState.totalVisibleMessagesCount;
     final hasMore = messages.length < totalVisibleCount;
     final remainingCount = (totalVisibleCount - messages.length).clamp(0, totalVisibleCount);

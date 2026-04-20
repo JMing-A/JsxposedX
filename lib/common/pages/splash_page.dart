@@ -8,7 +8,7 @@ import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/providers/status_management_provider.dart';
 import 'package:JsxposedX/core/routes/routes/home_route.dart';
 import 'package:JsxposedX/core/utils/procedure_utils.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/project/presentation/providers/project_action_provider.dart';
 import 'package:JsxposedX/features/project/presentation/providers/project_query_provider.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +24,7 @@ class SplashPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final aiStatusAsync = ref.watch(aiStatusProvider);
+    final aiStatusAsync = ref.watch(aiChatRuntimeStatusProvider);
     // 跳过按钮显示状态
     final showSkipButton = useState(false);
 
@@ -85,7 +85,7 @@ class SplashPage extends HookConsumerWidget {
       Future.microtask(() async {
         // 再并行检测其他状态
         Future.wait([
-          ref.read(aiStatusProvider.future),
+          ref.read(aiChatRuntimeStatusProvider.future),
           ref.read(isRootProvider.future),
           ref.read(isHookProvider.future),
           ref.read(isFridaProvider.future),

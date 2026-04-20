@@ -83,7 +83,7 @@ final class ApkClassMapProvider
   }
 }
 
-String _$apkClassMapHash() => r'7c60696e45cc8a6032b6ec9d5f86cf35416f82a1';
+String _$apkClassMapHash() => r'63abc0f4b51d125684063d170bd84e738dd2aa24';
 
 final class ApkClassMapFamily extends $Family
     with

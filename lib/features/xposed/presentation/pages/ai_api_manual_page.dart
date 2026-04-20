@@ -1,8 +1,10 @@
 import 'package:JsxposedX/common/widgets/custom_dIalog.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/models/ai_session.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
-import 'package:JsxposedX/features/ai/presentation/states/ai_chat_action_state.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/environments/api_manual_chat_environment_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
+import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:flutter/material.dart';
@@ -43,21 +45,33 @@ class AiApiManualPage extends HookConsumerWidget {
     final systemPrompt = _buildSystemPrompt(mdSnapshot.data!, isZh, apiType.value);
 
     final packageName = 'jsxposed_api_manual_${apiType.value}';
+    final environment = ref.watch(
+      apiManualChatEnvironmentProvider(
+        ApiManualChatEnvironmentArgs(
+          scopeId: packageName,
+          systemPrompt: systemPrompt,
+        ),
+      ),
+    );
 
     final chatState = ref.watch(
-      aiChatActionProvider(packageName: packageName),
+      aiChatRuntimeProvider(packageName: packageName),
     );
     final scrollController = useScrollController();
 
     // 加载完成后设置 system prompt
     useEffect(() {
       Future.microtask(() {
-        ref
-            .read(aiChatActionProvider(packageName: packageName).notifier)
-            .setSystemPrompt(systemPrompt);
+        initializeAiChatEnvironment(
+          notifier: ref.read(
+            aiChatRuntimeProvider(packageName: packageName).notifier,
+          ),
+          environment: environment,
+          initErrorPrefix: 'API 文档会话初始化失败',
+        );
       });
       return null;
-    }, [packageName, systemPrompt]);
+    }, [environment, packageName, systemPrompt]);
 
     // 自动滚动逻辑（同 AiReversePage）
     final lastMessageId = useRef<String?>(null);
@@ -115,12 +129,12 @@ class AiApiManualPage extends HookConsumerWidget {
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
     WidgetRef ref,
-    AiChatActionState chatState,
+    AiChatRuntimeState chatState,
     String systemPrompt,
     ValueNotifier<String> apiType,
   ) {
     final packageName = 'jsxposed_api_manual_${apiType.value}';
-    final providerKey = aiChatActionProvider(packageName: packageName);
+    final providerKey = aiChatRuntimeProvider(packageName: packageName);
 
     return AppBar(
       title: Text(context.l10n.aiApiManualTitle),
@@ -263,7 +277,7 @@ class AiApiManualPage extends HookConsumerWidget {
     );
     if (name != null && name.isNotEmpty) {
       ref
-          .read(aiChatActionProvider(packageName: packageName).notifier)
+          .read(aiChatRuntimeProvider(packageName: packageName).notifier)
           .createSession(name);
     }
   }
@@ -293,7 +307,7 @@ class AiApiManualPage extends HookConsumerWidget {
     );
     if (confirm == true) {
       ref
-          .read(aiChatActionProvider(packageName: packageName).notifier)
+          .read(aiChatRuntimeProvider(packageName: packageName).notifier)
           .deleteHistory();
     }
   }
