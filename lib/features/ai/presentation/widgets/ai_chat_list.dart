@@ -137,7 +137,8 @@ class AiChatList extends HookConsumerWidget {
             index == 0 &&
             chatState.isStreaming &&
             message.role == 'assistant' &&
-            !message.isError;
+            !message.isError &&
+            !message.isToolResultBubble;
 
         if (shouldShowStreaming) {
           if (streamingBubbleBuilder != null) {
