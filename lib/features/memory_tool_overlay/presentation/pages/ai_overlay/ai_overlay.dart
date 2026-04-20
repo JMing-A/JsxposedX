@@ -6,6 +6,7 @@ import 'package:JsxposedX/common/widgets/overlay_window/overlay_panel_dialog.dar
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_text_input_context_menu.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/models/ai_session.dart';
+import 'package:JsxposedX/core/themes/ai_activation_theme.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
@@ -543,7 +544,7 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                 Positioned(
                                   left: 0,
                                   top: 0,
-                                  right: resizeHandleHitExtent,
+                                  right: 0,
                                   child: GestureDetector(
                                     behavior: HitTestBehavior.translucent,
                                     onPanStart: (details) {
@@ -600,42 +601,16 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                           ),
                                           SizedBox(width: headerGap),
                                           Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  displayTitle,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize:
-                                                        headerTitleFontSize,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: context
-                                                        .colorScheme
-                                                        .onSurface,
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  height: headerSubtitleGap,
-                                                ),
-                                                Text(
-                                                  displaySubtitle,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: TextStyle(
-                                                    fontSize:
-                                                        headerSubtitleFontSize,
-                                                    color: context
-                                                        .colorScheme
-                                                        .onSurfaceVariant,
-                                                  ),
-                                                ),
-                                              ],
+                                            child: _AiOverlayHeaderIdentity(
+                                              displayTitle: displayTitle,
+                                              displaySubtitle: displaySubtitle,
+                                              contentScale: contentScale,
+                                              isCompact: isCompactPanel,
+                                              titleFontSize:
+                                                  headerTitleFontSize,
+                                              subtitleFontSize:
+                                                  headerSubtitleFontSize,
+                                              subtitleGap: headerSubtitleGap,
                                             ),
                                           ),
                                           SizedBox(width: headerGap),
@@ -909,6 +884,100 @@ class _AiOverlayViewport extends HookConsumerWidget {
   }
 }
 
+class _AiOverlayHeaderIdentity extends StatelessWidget {
+  const _AiOverlayHeaderIdentity({
+    required this.displayTitle,
+    required this.displaySubtitle,
+    required this.contentScale,
+    required this.isCompact,
+    required this.titleFontSize,
+    required this.subtitleFontSize,
+    required this.subtitleGap,
+  });
+
+  final String displayTitle;
+  final String displaySubtitle;
+  final double contentScale;
+  final bool isCompact;
+  final double titleFontSize;
+  final double subtitleFontSize;
+  final double subtitleGap;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconExtent = (isCompact ? 28.0 : 32.0) * contentScale;
+    final iconInnerExtent =
+        iconExtent - (isCompact ? 3.0 : 4.0) * contentScale;
+    final iconRadius = BorderRadius.circular(
+      (isCompact ? 10.0 : 12.0) * contentScale,
+    );
+    final surfaceTint = context.colorScheme.surface.withValues(alpha: 0.44);
+
+    return Row(
+      children: [
+        Container(
+          width: iconExtent,
+          height: iconExtent,
+          padding: EdgeInsets.all((isCompact ? 1.2 : 1.4) * contentScale),
+          decoration: BoxDecoration(
+            gradient: aiActivationGradient,
+            borderRadius: iconRadius,
+            boxShadow: buildAiActivationGlowShadows(compact: true),
+          ),
+          child: Container(
+            width: iconInnerExtent,
+            height: iconInnerExtent,
+            decoration: BoxDecoration(
+              color: surfaceTint,
+              borderRadius: BorderRadius.circular(
+                (isCompact ? 9.0 : 11.0) * contentScale,
+              ),
+            ),
+            child: Icon(
+              Icons.auto_awesome_rounded,
+              size: (isCompact ? 14.0 : 16.0) * contentScale,
+              color: context.colorScheme.onSurface,
+            ),
+          ),
+        ),
+        SizedBox(width: (isCompact ? 8.0 : 10.0) * contentScale),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                displayTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w700,
+                  color: context.colorScheme.onSurface,
+                  height: 1.05,
+                ),
+              ),
+              SizedBox(height: subtitleGap),
+              Text(
+                displaySubtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: subtitleFontSize,
+                  color: context.colorScheme.onSurfaceVariant,
+                  height: 1.15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+enum _AiOverlayHeaderAction { createSession, deleteCurrentSession }
+
 class _AiOverlaySessionActions extends HookConsumerWidget {
   const _AiOverlaySessionActions({
     required this.chatScopeId,
@@ -939,52 +1008,11 @@ class _AiOverlaySessionActions extends HookConsumerWidget {
     final labelFontSize = (isCompact ? 10.0 : 11.5) * contentScale;
     final iconSize = (isCompact ? 14.0 : 16.0) * contentScale;
     final currentName = currentSession?.name ?? context.l10n.aiNewSession;
+    final menuButtonExtent = (isCompact ? 30.0 : 34.0) * contentScale;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Tooltip(
-          message: context.l10n.aiNewSession,
-          child: Material(
-            color: surfaceColor,
-            borderRadius: borderRadius,
-            child: InkWell(
-              borderRadius: borderRadius,
-              onTap: onCreateSession,
-              child: Padding(
-                padding: EdgeInsets.all((isCompact ? 6.0 : 7.0) * contentScale),
-                child: Icon(
-                  Icons.add_comment_rounded,
-                  size: iconSize,
-                  color: foregroundColor.withValues(alpha: 0.86),
-                ),
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
-        Tooltip(
-          message: context.l10n.delete,
-          child: Material(
-            color: surfaceColor,
-            borderRadius: borderRadius,
-            child: InkWell(
-              borderRadius: borderRadius,
-              onTap: onDeleteCurrentSession,
-              child: Padding(
-                padding: EdgeInsets.all((isCompact ? 6.0 : 7.0) * contentScale),
-                child: Icon(
-                  Icons.delete_outline_rounded,
-                  size: iconSize,
-                  color: foregroundColor.withValues(
-                    alpha: onDeleteCurrentSession == null ? 0.32 : 0.78,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
         PopupMenuButton<AiSession>(
           enabled: sessions.isNotEmpty,
           tooltip: context.l10n.aiSwitchSession,
@@ -1021,8 +1049,8 @@ class _AiOverlaySessionActions extends HookConsumerWidget {
               .toList(),
           child: Container(
             constraints: BoxConstraints(
-              minWidth: (isCompact ? 92.0 : 112.0) * contentScale,
-              maxWidth: (isCompact ? 128.0 : 160.0) * contentScale,
+              minWidth: (isCompact ? 96.0 : 112.0) * contentScale,
+              maxWidth: (isCompact ? 132.0 : 160.0) * contentScale,
             ),
             padding: EdgeInsets.symmetric(
               horizontal: (isCompact ? 8.0 : 10.0) * contentScale,
@@ -1031,7 +1059,11 @@ class _AiOverlaySessionActions extends HookConsumerWidget {
             decoration: BoxDecoration(
               color: surfaceColor,
               borderRadius: borderRadius,
-              border: Border.all(color: borderColor),
+              border: Border.all(
+                color: sessions.isEmpty
+                    ? borderColor
+                    : aiActivationGradientColors[1].withValues(alpha: 0.22),
+              ),
             ),
             child: Row(
               children: [
@@ -1056,6 +1088,69 @@ class _AiOverlaySessionActions extends HookConsumerWidget {
                   color: foregroundColor.withValues(alpha: 0.72),
                 ),
               ],
+            ),
+          ),
+        ),
+        SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
+        PopupMenuButton<_AiOverlayHeaderAction>(
+          tooltip: context.isZh ? '更多操作' : 'More actions',
+          onSelected: (action) async {
+            switch (action) {
+              case _AiOverlayHeaderAction.createSession:
+                onCreateSession();
+                break;
+              case _AiOverlayHeaderAction.deleteCurrentSession:
+                await onDeleteCurrentSession?.call();
+                break;
+            }
+          },
+          itemBuilder: (menuContext) => [
+            PopupMenuItem<_AiOverlayHeaderAction>(
+              value: _AiOverlayHeaderAction.createSession,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.add_comment_rounded,
+                    size: iconSize,
+                    color: menuContext.colorScheme.onSurfaceVariant,
+                  ),
+                  SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
+                  Text(context.l10n.aiNewSession),
+                ],
+              ),
+            ),
+            PopupMenuItem<_AiOverlayHeaderAction>(
+              value: _AiOverlayHeaderAction.deleteCurrentSession,
+              enabled: onDeleteCurrentSession != null,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.delete_outline_rounded,
+                    size: iconSize,
+                    color: onDeleteCurrentSession == null
+                        ? menuContext.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.4,
+                          )
+                        : menuContext.colorScheme.onSurfaceVariant,
+                  ),
+                  SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
+                  Text(context.l10n.delete),
+                ],
+              ),
+            ),
+          ],
+          child: Container(
+            width: menuButtonExtent,
+            height: menuButtonExtent,
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: borderRadius,
+              border: Border.all(color: borderColor),
+            ),
+            child: Icon(
+              Icons.more_horiz_rounded,
+              size: iconSize,
+              color: foregroundColor.withValues(alpha: 0.82),
             ),
           ),
         ),
