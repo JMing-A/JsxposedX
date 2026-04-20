@@ -31,7 +31,7 @@ class AiOverlay extends HookConsumerWidget {
       ),
     );
 
-    if (!isPanelVisible || selectedProcess == null) {
+    if (selectedProcess == null) {
       return const SizedBox.shrink();
     }
 
@@ -51,6 +51,7 @@ class AiOverlay extends HookConsumerWidget {
           selectedProcess: selectedProcess,
           viewportSize: viewportSize,
           portraitTopInset: portraitTopInset,
+          isPanelVisible: isPanelVisible,
         );
       },
     );
@@ -62,11 +63,13 @@ class _AiOverlayViewport extends HookConsumerWidget {
     required this.selectedProcess,
     required this.viewportSize,
     required this.portraitTopInset,
+    required this.isPanelVisible,
   });
 
   final ProcessInfo selectedProcess;
   final Size viewportSize;
   final double portraitTopInset;
+  final bool isPanelVisible;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -119,6 +122,14 @@ class _AiOverlayViewport extends HookConsumerWidget {
         initErrorPrefix: context.isZh ? '内存会话初始化失败' : 'Memory session init failed',
       );
     }
+
+    final hasEnvironmentSnapshot =
+        (chatState.systemPrompt?.trim().isNotEmpty ?? false) ||
+        chatState.toolsSpec != null ||
+        chatState.toolExecutor != null;
+    final shouldAutoInitializeChat =
+        !hasEnvironmentSnapshot &&
+        chatState.sessionInitState == AiSessionInitState.ready;
 
     final availableExpandedWidth = math.max(
       viewportSize.width - (safePadding * 2),
@@ -201,11 +212,14 @@ class _AiOverlayViewport extends HookConsumerWidget {
     }, [selectedProcess.pid]);
 
     useEffect(() {
+      if (!shouldAutoInitializeChat) {
+        return null;
+      }
       Future.microtask(() async {
         await initializeOverlayChat();
       });
       return null;
-    }, [environment, chatScopeId]);
+    }, [chatScopeId, shouldAutoInitializeChat]);
 
     useEffect(
       () {
@@ -360,90 +374,96 @@ class _AiOverlayViewport extends HookConsumerWidget {
       dragStartOffset.value = null;
     }
 
-    return Stack(
-      children: [
-        Positioned(
-          left: resolvedOffset.dx,
-          top: resolvedOffset.dy,
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onPanStart: showExpandedPanel
-                ? null
-                : (details) => startDragging(details.globalPosition),
-            onPanUpdate: showExpandedPanel
-                ? null
-                : (details) =>
-                      updateDragging(details.globalPosition, resolvedSize),
-            onPanEnd: showExpandedPanel ? null : (_) => stopDragging(),
-            onPanCancel: showExpandedPanel ? null : stopDragging,
-            child: CustomPaint(
-              foregroundPainter: showExpandedPanel
-                  ? _AiOverlayResizeBorderHighlightPainter(
-                      color: context.colorScheme.primary.withValues(alpha: 0.94),
-                      borderRadius: expandedBorderRadius,
-                      clipExtent: resizeHandleHighlightExtent,
-                    )
-                  : null,
-              child: Container(
-                width: resolvedSize.width,
-                height: resolvedSize.height,
-                decoration: BoxDecoration(
-                  color: showExpandedPanel
-                      ? context.colorScheme.surfaceContainerHighest.withValues(
-                          alpha: 0.76,
-                        )
-                      : null,
-                  gradient: showExpandedPanel
+    return Offstage(
+      offstage: !isPanelVisible,
+      child: TickerMode(
+        enabled: isPanelVisible,
+        child: IgnorePointer(
+          ignoring: !isPanelVisible,
+          child: Stack(
+            children: [
+              Positioned(
+                left: resolvedOffset.dx,
+                top: resolvedOffset.dy,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanStart: showExpandedPanel
                       ? null
-                      : RadialGradient(
-                          center: Alignment.center,
-                          radius: 0.95,
-                          colors: <Color>[
-                            context.colorScheme.primary,
-                            Color.lerp(
-                                  context.colorScheme.primary,
-                                  context.colorScheme.primaryContainer,
-                                  0.58,
-                                ) ??
-                                context.colorScheme.primaryContainer,
-                          ],
-                          stops: const <double>[0.38, 1],
-                        ),
-                  borderRadius: BorderRadius.circular(
-                    showExpandedPanel
-                        ? expandedBorderRadius
-                        : collapsedBorderRadius,
-                  ),
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color:
-                          (showExpandedPanel
-                                  ? Colors.black
-                                  : context.colorScheme.primary)
-                              .withValues(alpha: showExpandedPanel ? 0.1 : 0.18),
-                      blurRadius: showExpandedPanel ? 16 : 10,
-                      offset: Offset(0, showExpandedPanel ? 6 : 4),
-                    ),
-                    if (!showExpandedPanel)
-                      BoxShadow(
-                        color: context.colorScheme.primary.withValues(alpha: 0.32),
-                        blurRadius: 14,
-                        spreadRadius: 1.2,
-                      ),
-                  ],
-                  border: Border.all(
-                    color: showExpandedPanel
-                        ? context.colorScheme.outlineVariant.withValues(
-                            alpha: 0.34,
+                      : (details) => startDragging(details.globalPosition),
+                  onPanUpdate: showExpandedPanel
+                      ? null
+                      : (details) =>
+                            updateDragging(details.globalPosition, resolvedSize),
+                  onPanEnd: showExpandedPanel ? null : (_) => stopDragging(),
+                  onPanCancel: showExpandedPanel ? null : stopDragging,
+                  child: CustomPaint(
+                    foregroundPainter: showExpandedPanel
+                        ? _AiOverlayResizeBorderHighlightPainter(
+                            color: context.colorScheme.primary.withValues(alpha: 0.94),
+                            borderRadius: expandedBorderRadius,
+                            clipExtent: resizeHandleHighlightExtent,
                           )
-                        : context.colorScheme.onPrimary.withValues(alpha: 0.22),
-                    width: 1,
-                  ),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: showExpandedPanel
-                    ? Stack(
-                        children: <Widget>[
+                        : null,
+                    child: Container(
+                      width: resolvedSize.width,
+                      height: resolvedSize.height,
+                      decoration: BoxDecoration(
+                        color: showExpandedPanel
+                            ? context.colorScheme.surfaceContainerHighest.withValues(
+                                alpha: 0.76,
+                              )
+                            : null,
+                        gradient: showExpandedPanel
+                            ? null
+                            : RadialGradient(
+                                center: Alignment.center,
+                                radius: 0.95,
+                                colors: <Color>[
+                                  context.colorScheme.primary,
+                                  Color.lerp(
+                                        context.colorScheme.primary,
+                                        context.colorScheme.primaryContainer,
+                                        0.58,
+                                      ) ??
+                                      context.colorScheme.primaryContainer,
+                                ],
+                                stops: const <double>[0.38, 1],
+                              ),
+                        borderRadius: BorderRadius.circular(
+                          showExpandedPanel
+                              ? expandedBorderRadius
+                              : collapsedBorderRadius,
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color:
+                                (showExpandedPanel
+                                        ? Colors.black
+                                        : context.colorScheme.primary)
+                                    .withValues(alpha: showExpandedPanel ? 0.1 : 0.18),
+                            blurRadius: showExpandedPanel ? 16 : 10,
+                            offset: Offset(0, showExpandedPanel ? 6 : 4),
+                          ),
+                          if (!showExpandedPanel)
+                            BoxShadow(
+                              color: context.colorScheme.primary.withValues(alpha: 0.32),
+                              blurRadius: 14,
+                              spreadRadius: 1.2,
+                            ),
+                        ],
+                        border: Border.all(
+                          color: showExpandedPanel
+                              ? context.colorScheme.outlineVariant.withValues(
+                                  alpha: 0.34,
+                                )
+                              : context.colorScheme.onPrimary.withValues(alpha: 0.22),
+                          width: 1,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: showExpandedPanel
+                          ? Stack(
+                              children: <Widget>[
                           Positioned.fill(
                             child: BackdropFilter(
                               filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
@@ -638,18 +658,21 @@ class _AiOverlayViewport extends HookConsumerWidget {
                               ),
                             ),
                           ),
-                        ],
-                      )
-                    : AiOverlayCollapsedBall(
-                        onTap: () {
-                          overlayStateNotifier.setExpanded(true);
-                        },
-                      ),
+                              ],
+                            )
+                          : AiOverlayCollapsedBall(
+                              onTap: () {
+                                overlayStateNotifier.setExpanded(true);
+                              },
+                            ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
