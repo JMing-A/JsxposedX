@@ -1,11 +1,7 @@
 import 'dart:typed_data';
 
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
-
-enum MemoryToolDisplayItemKind {
-  value,
-  instruction,
-}
 
 class MemoryToolDisplayItem {
   const MemoryToolDisplayItem({
@@ -15,9 +11,13 @@ class MemoryToolDisplayItem {
     required this.type,
     required this.rawBytes,
     required this.displayValue,
-    this.kind = MemoryToolDisplayItemKind.value,
+    this.entryKind = MemoryToolEntryKind.value,
     this.instructionText,
-  });
+  }) : assert(
+         entryKind != MemoryToolEntryKind.instruction ||
+             instructionText != null,
+         'instruction entries require instructionText',
+       );
 
   final int address;
   final int regionStart;
@@ -25,10 +25,10 @@ class MemoryToolDisplayItem {
   final SearchValueType type;
   final Uint8List rawBytes;
   final String displayValue;
-  final MemoryToolDisplayItemKind kind;
+  final MemoryToolEntryKind entryKind;
   final String? instructionText;
 
-  bool get isInstruction => kind == MemoryToolDisplayItemKind.instruction;
+  bool get isInstruction => entryKind == MemoryToolEntryKind.instruction;
 
   String get effectiveDisplayValue {
     final resolvedInstruction = instructionText?.trim();
@@ -40,7 +40,7 @@ class MemoryToolDisplayItem {
 
   factory MemoryToolDisplayItem.fromSearchResult({
     required SearchResult result,
-    MemoryToolDisplayItemKind kind = MemoryToolDisplayItemKind.value,
+    MemoryToolEntryKind entryKind = MemoryToolEntryKind.value,
     String? instructionText,
   }) {
     return MemoryToolDisplayItem(
@@ -50,7 +50,7 @@ class MemoryToolDisplayItem {
       type: result.type,
       rawBytes: result.rawBytes,
       displayValue: instructionText ?? result.displayValue,
-      kind: kind,
+      entryKind: entryKind,
       instructionText: instructionText,
     );
   }
@@ -62,7 +62,7 @@ class MemoryToolDisplayItem {
     SearchValueType? type,
     Uint8List? rawBytes,
     String? displayValue,
-    MemoryToolDisplayItemKind? kind,
+    MemoryToolEntryKind? entryKind,
     String? instructionText,
   }) {
     return MemoryToolDisplayItem(
@@ -72,7 +72,7 @@ class MemoryToolDisplayItem {
       type: type ?? this.type,
       rawBytes: rawBytes ?? this.rawBytes,
       displayValue: displayValue ?? this.displayValue,
-      kind: kind ?? this.kind,
+      entryKind: entryKind ?? this.entryKind,
       instructionText: instructionText ?? this.instructionText,
     );
   }

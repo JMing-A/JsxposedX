@@ -1,4 +1,5 @@
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_display_item.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_saved_items_provider.dart';
@@ -126,6 +127,12 @@ List<MemoryAiOverlaySelectionTag> _collectSavedTags(Ref ref) {
         data: (previews) => previews,
         orElse: () => const <int, MemoryValuePreview>{},
       );
+  final savedInstructionPreviews = ref
+      .watch(currentSavedInstructionPreviewsProvider)
+      .maybeWhen(
+        data: (previews) => previews,
+        orElse: () => const <int, MemoryInstructionPreview>{},
+      );
   final itemByAddress = {for (final item in savedItems) item.address: item};
 
   return [
@@ -135,11 +142,17 @@ List<MemoryAiOverlaySelectionTag> _collectSavedTags(Ref ref) {
           source: MemoryAiOverlaySelectionSource.saved,
           address: address,
           addressLabel: '0x${formatMemoryToolSearchResultAddress(address)}',
-          valueLabel: savedPreviews[address]?.displayValue ?? item.displayValue,
-          typeLabel: mapMemoryToolSearchResultTypeLabel(
+          valueLabel: item.isInstruction
+              ? (savedInstructionPreviews[address]?.instructionText ??
+                    item.effectiveInstructionText)
+              : (savedPreviews[address]?.displayValue ?? item.displayValue),
+          typeLabel: mapMemoryToolEntryTypeLabel(
             type: item.type,
-            displayValue:
-                savedPreviews[address]?.displayValue ?? item.displayValue,
+            entryKind: item.entryKind,
+            displayValue: item.isInstruction
+                ? (savedInstructionPreviews[address]?.instructionText ??
+                      item.effectiveInstructionText)
+                : (savedPreviews[address]?.displayValue ?? item.displayValue),
           ),
         ),
   ];
@@ -159,8 +172,9 @@ MemoryAiOverlaySelectionTag _buildSearchTag({
     address: result.address,
     addressLabel: '0x${formatMemoryToolSearchResultAddress(result.address)}',
     valueLabel: displayValue,
-    typeLabel: mapMemoryToolSearchResultTypeLabel(
+    typeLabel: mapMemoryToolEntryTypeLabel(
       type: result.type,
+      entryKind: MemoryToolEntryKind.value,
       displayValue: displayValue,
     ),
   );
@@ -178,8 +192,9 @@ MemoryAiOverlaySelectionTag _buildBrowseTag({
     address: result.address,
     addressLabel: '0x${formatMemoryToolSearchResultAddress(result.address)}',
     valueLabel: displayValue,
-    typeLabel: mapMemoryToolSearchResultTypeLabel(
+    typeLabel: mapMemoryToolEntryTypeLabel(
       type: result.type,
+      entryKind: result.entryKind,
       displayValue: displayValue,
     ),
   );

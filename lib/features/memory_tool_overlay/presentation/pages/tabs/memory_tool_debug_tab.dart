@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_saved_item.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/debug_tabs/memory_tool_debug_breakpoints_tab.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/debug_tabs/memory_tool_debug_detail_tab.dart';
@@ -104,7 +105,7 @@ class MemoryToolDebugTab extends HookConsumerWidget {
     final allHits = hitsAsync.asData?.value ?? const <MemoryBreakpointHit>[];
     final savedInstructionItems = <int, MemoryToolSavedItem>{
       for (final item in savedItems)
-        if (item.isInstructionPatch) item.address: item,
+        if (item.isInstruction) item.address: item,
     };
 
     useEffect(() {
@@ -361,11 +362,12 @@ class MemoryToolDebugTab extends HookConsumerWidget {
       if (selectedBreakpoint == null || selectedValueInfo == null) {
         return;
       }
-      savedItemsNotifier.saveOne(
+      savedItemsNotifier.saveEntry(
         pid: pid,
         result: selectedValueInfo.result,
         preview: selectedValueInfo.preview,
         isFrozen: false,
+        entryKind: MemoryToolEntryKind.value,
       );
       await ToastOverlayMessage.show(
         context.l10n.memoryToolSavedToSavedMessage(1),
@@ -693,11 +695,11 @@ class MemoryToolDebugTab extends HookConsumerWidget {
                   displayValue: trimmedCurrent,
                 );
               }
-              savedItemsNotifier.saveOne(
+              savedItemsNotifier.saveEntry(
                 pid: pid,
                 result: savedResult,
                 isFrozen: false,
-                isInstructionPatch: true,
+                entryKind: MemoryToolEntryKind.instruction,
                 instructionText: trimmedCurrent,
               );
               activeDetailActions.value = null;

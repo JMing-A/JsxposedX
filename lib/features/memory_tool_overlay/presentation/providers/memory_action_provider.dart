@@ -1,6 +1,7 @@
 import 'package:JsxposedX/features/memory_tool_overlay/data/datasources/memory_action_datasource.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/data/repositories/memory_action_repository_impl.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memory_action_repository.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_saved_items_provider.dart';
@@ -135,6 +136,7 @@ class MemoryValueAction extends _$MemoryValueAction {
   Future<void> writeMemoryValue({
     required MemoryWriteRequest request,
     MemoryValuePreview? previousPreview,
+    int? syncPid,
   }) async {
     state = const AsyncValue.loading();
     final nextState = await AsyncValue.guard(() async {
@@ -146,6 +148,13 @@ class MemoryValueAction extends _$MemoryValueAction {
             .read(memoryValueHistoryProvider.notifier)
             .recordPreview(previousPreview);
       }
+      await _syncSavedItemsForPid(
+        pid: syncPid,
+        addresses: <int>[request.address],
+        valueTypesByAddress: <int, SearchValueType>{
+          request.address: request.value.type,
+        },
+      );
       _invalidateValueQueries();
     });
     state = nextState;
@@ -159,6 +168,7 @@ class MemoryValueAction extends _$MemoryValueAction {
 
   Future<MemoryInstructionPatchResult> patchMemoryInstruction({
     required MemoryInstructionPatchRequest request,
+    int? syncPid,
   }) async {
     state = const AsyncValue.loading();
     MemoryInstructionPatchResult? result;
@@ -166,6 +176,13 @@ class MemoryValueAction extends _$MemoryValueAction {
       result = await ref
           .read(memoryActionRepositoryProvider)
           .patchMemoryInstruction(request: request);
+      await _syncInstructionEntriesForPid(
+        pid: syncPid,
+        addresses: <int>[request.address],
+      );
+      ref.invalidate(getMemoryBreakpointStateProvider(pid: request.pid));
+      ref.invalidate(getMemoryBreakpointsProvider(pid: request.pid));
+      ref.invalidate(getMemoryBreakpointHitsProvider(pid: request.pid));
       _invalidateValueQueries();
     });
     state = nextState;
@@ -178,12 +195,23 @@ class MemoryValueAction extends _$MemoryValueAction {
     return result!;
   }
 
-  Future<void> setMemoryFreeze({required MemoryFreezeRequest request}) async {
+  Future<void> setMemoryFreeze({
+    required MemoryFreezeRequest request,
+    int? syncPid,
+  }) async {
     state = const AsyncValue.loading();
     final nextState = await AsyncValue.guard(() async {
       await ref
           .read(memoryActionRepositoryProvider)
           .setMemoryFreeze(request: request);
+      await _syncSavedItemsForPid(
+        pid: syncPid,
+        addresses: <int>[request.address],
+        frozenStatesByAddress: <int, bool>{request.address: request.enabled},
+        valueTypesByAddress: <int, SearchValueType>{
+          request.address: request.value.type,
+        },
+      );
       _invalidateValueQueries();
     });
     state = nextState;
@@ -197,6 +225,7 @@ class MemoryValueAction extends _$MemoryValueAction {
 
   Future<void> setMemoryFreezes({
     required List<MemoryFreezeRequest> requests,
+    int? syncPid,
   }) async {
     if (requests.isEmpty) {
       return;
@@ -208,6 +237,16 @@ class MemoryValueAction extends _$MemoryValueAction {
       for (final request in requests) {
         await repository.setMemoryFreeze(request: request);
       }
+      await _syncSavedItemsForPid(
+        pid: syncPid,
+        addresses: requests.map((request) => request.address),
+        frozenStatesByAddress: <int, bool>{
+          for (final request in requests) request.address: request.enabled,
+        },
+        valueTypesByAddress: <int, SearchValueType>{
+          for (final request in requests) request.address: request.value.type,
+        },
+      );
       _invalidateValueQueries();
     });
     state = nextState;
@@ -222,6 +261,7 @@ class MemoryValueAction extends _$MemoryValueAction {
   Future<void> writeMemoryValues({
     required List<MemoryWriteRequest> requests,
     required List<MemoryValuePreview> previousPreviews,
+    int? syncPid,
   }) async {
     if (requests.isEmpty) {
       return;
@@ -243,6 +283,13 @@ class MemoryValueAction extends _$MemoryValueAction {
         }
       }
 
+      await _syncSavedItemsForPid(
+        pid: syncPid,
+        addresses: requests.map((request) => request.address),
+        valueTypesByAddress: <int, SearchValueType>{
+          for (final request in requests) request.address: request.value.type,
+        },
+      );
       _invalidateValueQueries();
     });
     state = nextState;
@@ -257,8 +304,9 @@ class MemoryValueAction extends _$MemoryValueAction {
   Future<int> restorePreviousValues({
     required List<int> addresses,
     required bool littleEndian,
+    int? pidOverride,
   }) async {
-    final selectedPid = ref.read(memoryToolSelectedProcessProvider)?.pid;
+    final selectedPid = pidOverride ?? ref.read(memoryToolSelectedProcessProvider)?.pid;
     if (selectedPid == null) {
       return 0;
     }
@@ -323,6 +371,13 @@ class MemoryValueAction extends _$MemoryValueAction {
         restoredCount += 1;
       }
 
+      await _syncSavedItemsForPid(
+        pid: selectedPid,
+        addresses: historyEntries.map((entry) => entry.address),
+        valueTypesByAddress: <int, SearchValueType>{
+          for (final entry in historyEntries) entry.address: entry.type,
+        },
+      );
       _invalidateValueQueries();
     });
     state = nextState;
@@ -340,7 +395,116 @@ class MemoryValueAction extends _$MemoryValueAction {
     ref.invalidate(currentSearchResultLivePreviewsProvider);
     ref.invalidate(currentBrowseResultLivePreviewsProvider);
     ref.invalidate(currentSavedItemLivePreviewsProvider);
+    ref.invalidate(currentSavedInstructionPreviewsProvider);
     ref.invalidate(currentFrozenMemoryValuesProvider);
+  }
+
+  Future<void> _syncSavedItemsForPid({
+    int? pid,
+    required Iterable<int> addresses,
+    Map<int, bool> frozenStatesByAddress = const <int, bool>{},
+    Map<int, SearchValueType> valueTypesByAddress =
+        const <int, SearchValueType>{},
+  }) async {
+    final selectedPid = pid ?? ref.read(memoryToolSelectedProcessProvider)?.pid;
+    if (selectedPid == null) {
+      return;
+    }
+
+    final itemsByAddress = ref
+        .read(memoryToolSavedItemsProvider)
+        .itemsByPid[selectedPid];
+    if (itemsByAddress == null || itemsByAddress.isEmpty) {
+      return;
+    }
+
+    final targetAddresses = addresses.toSet()
+      ..removeWhere((address) => !itemsByAddress.containsKey(address));
+    if (targetAddresses.isEmpty && frozenStatesByAddress.isEmpty) {
+      return;
+    }
+
+    final previewRequests = <MemoryReadRequest>[
+      for (final address in targetAddresses)
+        if (itemsByAddress[address] case final item? when !item.isInstruction)
+          MemoryReadRequest(
+            pid: selectedPid,
+            address: item.address,
+            type: valueTypesByAddress[item.address] ?? item.type,
+            length: resolveMemoryToolReadLengthForType(
+              type: valueTypesByAddress[item.address] ?? item.type,
+              bytesLength: item.rawBytes.length,
+            ),
+          ),
+    ];
+
+    try {
+      final previews = previewRequests.isEmpty
+          ? const <MemoryValuePreview>[]
+          : await ref
+                .read(memoryQueryRepositoryProvider)
+                .readMemoryValues(requests: previewRequests);
+      ref
+          .read(memoryToolSavedItemsProvider.notifier)
+          .syncValuePreviews(
+            pid: selectedPid,
+            previews: previews,
+            frozenStatesByAddress: <int, bool>{
+              for (final entry in frozenStatesByAddress.entries)
+                if (itemsByAddress.containsKey(entry.key)) entry.key: entry.value,
+            },
+          );
+    } catch (_) {
+      // Best effort only. The write/freeze itself has already succeeded.
+    }
+  }
+
+  Future<void> _syncInstructionEntriesForPid({
+    int? pid,
+    required Iterable<int> addresses,
+  }) async {
+    final selectedPid = pid ?? ref.read(memoryToolSelectedProcessProvider)?.pid;
+    if (selectedPid == null) {
+      return;
+    }
+
+    final itemsByAddress = ref
+        .read(memoryToolSavedItemsProvider)
+        .itemsByPid[selectedPid];
+    if (itemsByAddress == null || itemsByAddress.isEmpty) {
+      return;
+    }
+
+    final targetAddresses = addresses
+        .where((address) {
+          final item = itemsByAddress[address];
+          return item?.isInstruction ?? false;
+        })
+        .toSet();
+    if (targetAddresses.isEmpty) {
+      await ref
+          .read(memoryToolBrowseControllerProvider.notifier)
+          .refreshVisibleInstructionResults(addresses: addresses);
+      return;
+    }
+
+    try {
+      final previews = await ref
+          .read(memoryQueryRepositoryProvider)
+          .disassembleMemory(
+            pid: selectedPid,
+            addresses: targetAddresses.toList(growable: false),
+          );
+      ref
+          .read(memoryToolSavedItemsProvider.notifier)
+          .syncInstructionPreviews(pid: selectedPid, previews: previews);
+    } catch (_) {
+      // Best effort only. The patch itself has already succeeded.
+    }
+
+    await ref
+        .read(memoryToolBrowseControllerProvider.notifier)
+        .refreshVisibleInstructionResults(addresses: addresses);
   }
 }
 

@@ -1,4 +1,5 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_saved_items_provider.dart';
@@ -169,11 +170,12 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
                   rawBytes: sourceRawBytes,
                   displayValue: valueController.text.trim(),
                 );
-          savedItemsNotifier.saveOne(
+          savedItemsNotifier.saveEntry(
             pid: selectedPid,
             result: result,
             preview: updatedPreview,
             isFrozen: freezeEnabled.value,
+            entryKind: MemoryToolEntryKind.value,
           );
         }
 

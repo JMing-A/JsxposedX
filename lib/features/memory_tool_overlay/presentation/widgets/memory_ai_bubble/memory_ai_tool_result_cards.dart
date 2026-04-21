@@ -187,13 +187,23 @@ class _MemoryAiPendingInteractionCard extends ConsumerWidget {
     final controller = ref.read(
       memoryAiPendingInteractionProvider(scopeId).notifier,
     );
+    final isDark = context.isDark;
+    final cardBackground = isDark
+        ? const Color(0xFF162031)
+        : const Color(0xFFF5F9FF);
+    final cardBorder = isDark
+        ? const Color(0xFF4D7BCF)
+        : const Color(0xFF8BB8F8);
+    final accentColor = isDark
+        ? const Color(0xFF8FC2FF)
+        : const Color(0xFF2C7BE5);
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F9FF),
+        color: cardBackground,
         borderRadius: BorderRadius.circular(18 * scale),
-        border: Border.all(color: const Color(0xFF8BB8F8)),
+        border: Border.all(color: cardBorder),
       ),
       padding: EdgeInsets.all(14 * scale),
       child: Column(
@@ -206,7 +216,7 @@ class _MemoryAiPendingInteractionCard extends ConsumerWidget {
               Icon(
                 Icons.touch_app_rounded,
                 size: 18 * scale,
-                color: const Color(0xFF2C7BE5),
+                color: accentColor,
               ),
               SizedBox(width: 8 * scale),
               Expanded(
@@ -278,6 +288,7 @@ class _MemoryAiPendingInteractionOptionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scale = AiChatCompactScope.scaleOf(context);
+    final isDark = context.isDark;
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
@@ -289,12 +300,17 @@ class _MemoryAiPendingInteractionOptionButton extends StatelessWidget {
             vertical: 12 * scale,
           ),
           side: BorderSide(
-            color: context.colorScheme.primary.withValues(alpha: 0.22),
+            color: context.colorScheme.primary.withValues(
+              alpha: isDark ? 0.38 : 0.22,
+            ),
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14 * scale),
           ),
-          backgroundColor: context.colorScheme.surface.withValues(alpha: 0.92),
+          backgroundColor: (isDark
+                  ? context.colorScheme.surfaceContainerHigh
+                  : context.colorScheme.surface)
+              .withValues(alpha: isDark ? 0.94 : 0.92),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,12 +350,19 @@ class _MemoryAiPendingLoadingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scale = AiChatCompactScope.scaleOf(context);
+    final isDark = context.isDark;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFFEDF5FF),
+        color: isDark
+            ? const Color(0xFF162031)
+            : const Color(0xFFEDF5FF),
         borderRadius: BorderRadius.circular(18 * scale),
-        border: Border.all(color: const Color(0xFF8BB8F8)),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF4D7BCF)
+              : const Color(0xFF8BB8F8),
+        ),
       ),
       padding: EdgeInsets.all(14 * scale),
       child: Text(

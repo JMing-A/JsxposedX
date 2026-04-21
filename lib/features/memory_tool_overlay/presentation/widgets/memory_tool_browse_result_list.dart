@@ -1,6 +1,7 @@
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_display_item.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
@@ -68,14 +69,16 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
     MemoryValuePreview? preview,
     String displayValue,
     int targetAddress,
-  )? onNavigateToAddress;
+  )?
+  onNavigateToAddress;
   final Future<void> Function(
     MemoryToolDisplayItem result,
     MemoryValuePreview? preview,
     String displayValue,
-  )? onJumpToPointer;
+  )?
+  onJumpToPointer;
   final Future<void> Function(PointerScanRequest request, int maxDepth)?
-      onStartAutoChase;
+  onStartAutoChase;
   final Future<void> Function(PointerScanRequest request)? onStartPointerScan;
   final VoidCallback? onOpenDebugTab;
 
@@ -113,52 +116,96 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
 
     Future<void> copyText(String value) async {
       final copied = await FlutterOverlayWindow.setClipboardData(value);
-      ref.read(overlayWindowHostRuntimeProvider.notifier).showToast(
-        copied ? context.l10n.codeCopied : context.l10n.error,
+      ref
+          .read(overlayWindowHostRuntimeProvider.notifier)
+          .showToast(copied ? context.l10n.codeCopied : context.l10n.error);
+    }
+
+    Future<void> showActionError(Object error) async {
+      final message = error.toString().replaceFirst('Exception: ', '').trim();
+      await ToastOverlayMessage.show(
+        message.isEmpty ? context.l10n.error : message,
+        duration: const Duration(milliseconds: 1600),
       );
     }
 
-    Future<void> saveResultToSaved(MemoryToolDisplayItem result) async {
+    Future<void> saveResultAsValue(MemoryToolDisplayItem result) async {
       final selectedPid = ref.read(memoryToolSelectedProcessProvider)?.pid;
       if (selectedPid == null) {
         return;
       }
 
-      savedItemsNotifier.saveOne(
-        pid: selectedPid,
-        result: result.toSearchResult(),
-        preview: livePreviewsAsync.asData?.value[result.address],
-        isFrozen: initialFrozenStateByAddress[result.address] ?? false,
-        isInstructionPatch: result.isInstruction,
-        instructionText: result.isInstruction ? result.effectiveDisplayValue : null,
-      );
-      await ToastOverlayMessage.show(
-        context.l10n.memoryToolSavedToSavedMessage(1),
-        duration: const Duration(milliseconds: 1200),
-      );
+      try {
+        await savedItemsNotifier.saveResultAsValue(
+          pid: selectedPid,
+          result: result.toSearchResult(),
+          isFrozen: initialFrozenStateByAddress[result.address] ?? false,
+          type: result.type,
+          bytesLength: result.rawBytes.isEmpty ? 1 : result.rawBytes.length,
+        );
+        await ToastOverlayMessage.show(
+          context.l10n.memoryToolSavedToSavedMessage(1),
+          duration: const Duration(milliseconds: 1200),
+        );
+      } catch (error) {
+        await showActionError(error);
+      }
+    }
+
+    Future<void> saveResultAsInstruction(MemoryToolDisplayItem result) async {
+      final selectedPid = ref.read(memoryToolSelectedProcessProvider)?.pid;
+      if (selectedPid == null) {
+        return;
+      }
+
+      try {
+        await savedItemsNotifier.saveResultAsInstruction(
+          pid: selectedPid,
+          result: result.toSearchResult(),
+        );
+        await ToastOverlayMessage.show(
+          context.l10n.memoryToolSavedToSavedMessage(1),
+          duration: const Duration(milliseconds: 1200),
+        );
+      } catch (error) {
+        await showActionError(error);
+      }
     }
 
     MemoryValuePreview? resolvePreview(MemoryToolDisplayItem result) {
       return livePreviewsAsync.asData?.value[result.address];
     }
 
-    Future<void> refreshInstructionBrowseWindow(
+    Future<void> previewResultAsValue(MemoryToolDisplayItem result) async {
+      try {
+        await ref
+            .read(memoryToolBrowseControllerProvider.notifier)
+            .previewValueFromAddress(
+              sourceResult: result.toSearchResult(),
+              sourcePreview: resolvePreview(result),
+              targetAddress: result.address,
+              anchorDisplayValue: result.effectiveDisplayValue,
+            );
+      } catch (error) {
+        await showActionError(error);
+      }
+    }
+
+    Future<void> previewResultAsInstruction(
       MemoryToolDisplayItem result,
-      MemoryInstructionPatchResult patchResult,
     ) async {
-      final refreshAddress = anchorAddress ?? result.address;
-      await ref
-          .read(memoryToolBrowseControllerProvider.notifier)
-          .previewFromAddress(
-            sourceResult: result.copyWith(
-              rawBytes: patchResult.afterBytes,
-              displayValue: patchResult.instructionText,
-              instructionText: patchResult.instructionText,
-            ).toSearchResult(),
-            targetAddress: refreshAddress,
-            anchorDisplayValue: patchResult.instructionText,
-            preferInstructionMode: true,
-          );
+      try {
+        await ref
+            .read(memoryToolBrowseControllerProvider.notifier)
+            .previewInstructionFromAddress(
+              sourceResult: result.toSearchResult(),
+              sourcePreview: resolvePreview(result),
+              targetAddress: result.address,
+              anchorDisplayValue: result.effectiveDisplayValue,
+            );
+      } catch (error) {
+        await showActionError(error);
+      }
     }
 
     Future<String?> saveInstructionPatch(
@@ -187,21 +234,6 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
               previousBytes: patchResult.beforeBytes,
               previousDisplayValue: result.effectiveDisplayValue,
             );
-        savedItemsNotifier.saveOne(
-          pid: selectedPid,
-          result: result.copyWith(
-            rawBytes: patchResult.afterBytes,
-            displayValue: patchResult.instructionText,
-            instructionText: patchResult.instructionText,
-          ).toSearchResult(),
-          isFrozen: false,
-          isInstructionPatch: true,
-          instructionText: patchResult.instructionText,
-        );
-        ref.invalidate(getMemoryBreakpointStateProvider(pid: selectedPid));
-        ref.invalidate(getMemoryBreakpointsProvider(pid: selectedPid));
-        ref.invalidate(getMemoryBreakpointHitsProvider(pid: selectedPid));
-        await refreshInstructionBrowseWindow(result, patchResult);
         activeInstructionEditor.value = null;
         await ToastOverlayMessage.show(
           context.isZh ? '指令已修改' : 'Instruction patched',
@@ -215,13 +247,26 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
     }
 
     Widget buildResultTile(MemoryToolDisplayItem result) {
-      final displayValue = resolveMemoryToolSearchResultDisplayValue(
-        result: result.toSearchResult(),
-        livePreviewsAsync: livePreviewsAsync,
-      );
+      final displayValue = result.isInstruction
+          ? result.effectiveDisplayValue
+          : resolveMemoryToolSearchResultDisplayValue(
+              result: result.toSearchResult(),
+              livePreviewsAsync: livePreviewsAsync,
+            );
       return MemoryToolSearchResultTile(
         result: result.toSearchResult(),
         displayValue: displayValue,
+        entryKind: result.entryKind,
+        instructionText: result.isInstruction
+            ? result.effectiveDisplayValue
+            : null,
+        typeLabelOverride: result.isInstruction
+            ? mapMemoryToolEntryTypeLabel(
+                type: result.type,
+                entryKind: result.entryKind,
+                displayValue: displayValue,
+              )
+            : null,
         previousDisplayValue: result.isInstruction
             ? instructionHistoryByAddress[result.address]?.previousDisplayValue
             : previousValueByAddress[result.address],
@@ -267,7 +312,9 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
     final resolvedAnchorAddress = anchorAddress;
     final anchorIndex = resolvedAnchorAddress == null
         ? -1
-        : results.indexWhere((result) => result.address == resolvedAnchorAddress);
+        : results.indexWhere(
+            (result) => result.address == resolvedAnchorAddress,
+          );
     if (anchorIndex < 0 || anchorIndex >= results.length) {
       return const SizedBox.shrink();
     }
@@ -307,7 +354,9 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
                 SliverToBoxAdapter(
                   key: centerSliverKey,
                   child: Padding(
-                    padding: EdgeInsets.only(bottom: belowResults.isEmpty ? 6.r : 4.r),
+                    padding: EdgeInsets.only(
+                      bottom: belowResults.isEmpty ? 6.r : 4.r,
+                    ),
                     child: buildMeasuredAnchorTile(anchorResult),
                   ),
                 ),
@@ -410,10 +459,38 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
                     },
                   ),
                 MemoryToolSearchResultActionItemData(
-                  icon: Icons.save_alt_rounded,
-                  title: context.l10n.memoryToolResultActionSaveToSaved,
+                  icon: Icons.visibility_rounded,
+                  title: context.isZh
+                      ? '以数值预览此地址'
+                      : 'Preview This Address as Value',
                   onTap: () async {
-                    await saveResultToSaved(dialog.result);
+                    await previewResultAsValue(dialog.result);
+                    activeResultActionDialog.value = null;
+                  },
+                ),
+                MemoryToolSearchResultActionItemData(
+                  icon: Icons.code_rounded,
+                  title: context.isZh
+                      ? '以汇编预览此地址'
+                      : 'Preview This Address as ASM',
+                  onTap: () async {
+                    await previewResultAsInstruction(dialog.result);
+                    activeResultActionDialog.value = null;
+                  },
+                ),
+                MemoryToolSearchResultActionItemData(
+                  icon: Icons.save_alt_rounded,
+                  title: context.isZh ? '保存为数值条目' : 'Save as Value Entry',
+                  onTap: () async {
+                    await saveResultAsValue(dialog.result);
+                    activeResultActionDialog.value = null;
+                  },
+                ),
+                MemoryToolSearchResultActionItemData(
+                  icon: Icons.save_as_rounded,
+                  title: context.isZh ? '保存为汇编条目' : 'Save as ASM Entry',
+                  onTap: () async {
+                    await saveResultAsInstruction(dialog.result);
                     activeResultActionDialog.value = null;
                   },
                 ),
@@ -434,7 +511,9 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
                       '${context.l10n.memoryToolResultDetailActionCopyAddress}: ${formatMemoryToolSearchResultAddress(dialog.result.address)}',
                   onTap: () async {
                     await copyText(
-                      formatMemoryToolSearchResultAddress(dialog.result.address),
+                      formatMemoryToolSearchResultAddress(
+                        dialog.result.address,
+                      ),
                     );
                     activeResultActionDialog.value = null;
                   },
@@ -570,10 +649,7 @@ class MemoryToolBrowseResultList extends HookConsumerWidget {
 }
 
 class _MeasureSize extends SingleChildRenderObjectWidget {
-  const _MeasureSize({
-    required this.onChange,
-    required super.child,
-  });
+  const _MeasureSize({required this.onChange, required super.child});
 
   final ValueChanged<Size> onChange;
 

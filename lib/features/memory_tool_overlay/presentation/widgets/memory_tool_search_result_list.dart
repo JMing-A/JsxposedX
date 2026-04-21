@@ -1,5 +1,6 @@
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_saved_items_provider.dart';
@@ -14,7 +15,7 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memo
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_result_tile.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_host_runtime_provider.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart'
-    show MemoryValuePreview, PointerScanRequest, SearchResult;
+    show MemoryValuePreview, PointerScanRequest, SearchResult, SearchValueType;
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -112,15 +113,53 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
         return;
       }
 
-      savedItemsNotifier.saveOne(
+      savedItemsNotifier.saveEntry(
         pid: selectedPid,
         result: result,
         preview: livePreviewsAsync.asData?.value[result.address],
         isFrozen: initialFrozenStateByAddress[result.address] ?? false,
+        entryKind: MemoryToolEntryKind.value,
       );
       onOpenSavedTab?.call();
       await ToastOverlayMessage.show(
         context.l10n.memoryToolSavedToSavedMessage(1),
+        duration: const Duration(milliseconds: 1200),
+      );
+    }
+
+    Future<void> saveResultAsInstructionToSaved(SearchResult result) async {
+      final selectedPid = ref.read(memoryToolSelectedProcessProvider)?.pid;
+      if (selectedPid == null) {
+        return;
+      }
+
+      final previews = await ref
+          .read(memoryQueryRepositoryProvider)
+          .disassembleMemory(pid: selectedPid, addresses: <int>[result.address]);
+      if (previews.isEmpty) {
+        throw StateError(
+          context.isZh ? '未读取到指令预览' : 'Instruction preview unavailable',
+        );
+      }
+
+      final preview = previews.first;
+      savedItemsNotifier.saveEntry(
+        pid: selectedPid,
+        result: SearchResult(
+          address: result.address,
+          regionStart: result.regionStart,
+          regionTypeKey: result.regionTypeKey,
+          type: SearchValueType.bytes,
+          rawBytes: preview.rawBytes,
+          displayValue: preview.instructionText,
+        ),
+        isFrozen: false,
+        entryKind: MemoryToolEntryKind.instruction,
+        instructionText: preview.instructionText,
+      );
+      onOpenSavedTab?.call();
+      await ToastOverlayMessage.show(
+        context.isZh ? '已按汇编保存到暂存区' : 'Saved to saved list as ASM',
         duration: const Duration(milliseconds: 1200),
       );
     }
@@ -272,6 +311,22 @@ class MemoryToolSearchResultList extends HookConsumerWidget {
                     await saveResultToSaved(dialog.result);
                   },
                 ),
+                if (processPid != null)
+                  MemoryToolSearchResultActionItemData(
+                    icon: Icons.developer_board_rounded,
+                    title: context.isZh ? '按汇编保存' : 'Save as ASM',
+                    onTap: () async {
+                      activeResultActionDialog.value = null;
+                      try {
+                        await saveResultAsInstructionToSaved(dialog.result);
+                      } catch (error) {
+                        await ToastOverlayMessage.show(
+                          error.toString().replaceFirst('Exception: ', ''),
+                          duration: const Duration(milliseconds: 1400),
+                        );
+                      }
+                    },
+                  ),
                 MemoryToolSearchResultActionItemData(
                   icon: Icons.tune_rounded,
                   title: context.l10n.memoryToolResultDetailActionCopyValue,

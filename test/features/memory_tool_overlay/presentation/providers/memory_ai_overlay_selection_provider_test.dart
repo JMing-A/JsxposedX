@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_display_item.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_saved_item.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_overlay_selection_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
@@ -178,5 +179,6 @@ MemoryToolSavedItem _savedItem({required int pid, required int address}) {
     rawBytes: Uint8List.fromList(<int>[0x01, 0x00, 0x00, 0x00]),
     displayValue: '1',
     isFrozen: false,
+    entryKind: MemoryToolEntryKind.value,
   );
 }

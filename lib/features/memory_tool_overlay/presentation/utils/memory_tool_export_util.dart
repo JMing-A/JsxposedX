@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_result_presenter.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_host_runtime_provider.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
@@ -20,7 +21,7 @@ class MemoryToolExportItem {
     this.displayValue,
     this.rawBytes,
     this.isFrozen = false,
-    this.isInstructionPatch = false,
+    this.entryKind = MemoryToolEntryKind.value,
     this.instructionText,
     this.extra = const <String, Object?>{},
   });
@@ -33,7 +34,7 @@ class MemoryToolExportItem {
   final String? displayValue;
   final Uint8List? rawBytes;
   final bool isFrozen;
-  final bool isInstructionPatch;
+  final MemoryToolEntryKind entryKind;
   final String? instructionText;
   final Map<String, Object?> extra;
 
@@ -42,7 +43,7 @@ class MemoryToolExportItem {
       'address': formatMemoryToolSearchResultAddress(address),
       'address_decimal': address,
       'is_frozen': isFrozen,
-      'is_instruction_patch': isInstructionPatch,
+      'entry_kind': entryKind.name,
     };
     if (pid != null) {
       data['pid'] = pid;

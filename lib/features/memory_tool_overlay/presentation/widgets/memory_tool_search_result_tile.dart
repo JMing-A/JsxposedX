@@ -1,4 +1,5 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_result_presenter.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_result_badge.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
@@ -10,6 +11,8 @@ class MemoryToolSearchResultTile extends StatelessWidget {
     super.key,
     required this.result,
     required this.displayValue,
+    this.entryKind = MemoryToolEntryKind.value,
+    this.instructionText,
     this.previousDisplayValue,
     this.typeLabelOverride,
     this.regionLabelOverride,
@@ -24,6 +27,8 @@ class MemoryToolSearchResultTile extends StatelessWidget {
 
   final SearchResult result;
   final String displayValue;
+  final MemoryToolEntryKind entryKind;
+  final String? instructionText;
   final String? previousDisplayValue;
   final String? typeLabelOverride;
   final String? regionLabelOverride;
@@ -37,11 +42,22 @@ class MemoryToolSearchResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isInstruction = entryKind == MemoryToolEntryKind.instruction;
+    final resolvedInstructionText = instructionText?.trim();
+    final primaryDisplayValue =
+        isInstruction &&
+            resolvedInstructionText != null &&
+            resolvedInstructionText.isNotEmpty
+        ? resolvedInstructionText
+        : displayValue;
+    final instructionHexValue = isInstruction
+        ? formatMemoryToolSearchResultHex(result.rawBytes)
+        : null;
     final previousValue = previousDisplayValue?.trim();
     final shouldShowPreviousValue =
         previousValue != null &&
         previousValue.isNotEmpty &&
-        previousValue != displayValue.trim();
+        previousValue != primaryDisplayValue.trim();
 
     return Material(
       color: Colors.transparent,
@@ -67,7 +83,9 @@ class MemoryToolSearchResultTile extends StatelessWidget {
           ),
           padding: EdgeInsets.all(12.r),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: isInstruction
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
             children: <Widget>[
               Transform.scale(
                 scale: 0.9,
@@ -94,10 +112,13 @@ class MemoryToolSearchResultTile extends StatelessWidget {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final valueMaxWidth = constraints.maxWidth * 0.52;
+                    final valueMaxWidth = constraints.maxWidth *
+                        (isInstruction ? 0.72 : 0.52);
 
                     return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: isInstruction
+                          ? CrossAxisAlignment.start
+                          : CrossAxisAlignment.center,
                       children: <Widget>[
                         ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: valueMaxWidth),
@@ -106,15 +127,30 @@ class MemoryToolSearchResultTile extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               Text(
-                                displayValue,
-                                maxLines: 1,
+                                primaryDisplayValue,
+                                maxLines: isInstruction ? 2 : 1,
                                 overflow: TextOverflow.ellipsis,
-                                softWrap: false,
+                                softWrap: isInstruction,
                                 style: context.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w900,
                                   color: context.colorScheme.primary,
                                 ),
                               ),
+                              if (instructionHexValue != null &&
+                                  instructionHexValue.isNotEmpty) ...<Widget>[
+                                SizedBox(height: 3.r),
+                                Text(
+                                  instructionHexValue,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                  style: context.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: context.colorScheme.onSurface
+                                        .withValues(alpha: 0.62),
+                                  ),
+                                ),
+                              ],
                               if (shouldShowPreviousValue) ...<Widget>[
                                 SizedBox(height: 2.r),
                                 Text(
@@ -137,9 +173,10 @@ class MemoryToolSearchResultTile extends StatelessWidget {
                                   MemoryToolResultBadge(
                                     label:
                                         typeLabelOverride ??
-                                        mapMemoryToolSearchResultTypeLabel(
+                                        mapMemoryToolEntryTypeLabel(
                                           type: result.type,
-                                          displayValue: displayValue,
+                                          entryKind: entryKind,
+                                          displayValue: primaryDisplayValue,
                                         ),
                                     backgroundColor:
                                         mapMemoryToolSearchResultTypeBadgeBackground(

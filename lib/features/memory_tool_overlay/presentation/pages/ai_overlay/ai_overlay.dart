@@ -427,7 +427,7 @@ class _AiOverlayViewport extends HookConsumerWidget {
         case MemoryAiOverlaySelectionSource.browse:
           ref
               .read(memoryToolBrowseControllerProvider.notifier)
-              .hideAddress(tag.address);
+              .removeSelectionAddress(tag.address);
           break;
         case MemoryAiOverlaySelectionSource.saved:
           ref

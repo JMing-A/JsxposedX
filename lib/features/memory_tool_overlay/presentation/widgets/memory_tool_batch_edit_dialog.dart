@@ -171,7 +171,7 @@ class MemoryToolBatchEditDialog extends HookConsumerWidget {
         final updatedPreviews = await ref
             .read(memoryQueryRepositoryProvider)
             .readMemoryValues(requests: previewRequests);
-        savedItemsNotifier.saveMany(
+        savedItemsNotifier.saveEntries(
           pid: selectedPid,
           results: processedResults,
           previewsByAddress: <int, MemoryValuePreview>{

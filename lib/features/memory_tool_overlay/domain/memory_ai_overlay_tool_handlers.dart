@@ -10,6 +10,7 @@ import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memor
 import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memory_pointer_auto_chase_query_repository.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memory_pointer_query_repository.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memory_query_repository.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_saved_item.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_pending_interaction_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_instruction_history_provider.dart';
@@ -40,6 +41,7 @@ class MemoryAiOverlayToolRuntimeContext {
     required this.setMemoryFreezesAction,
     required this.restorePreviousValuesAction,
     required this.recordInstructionHistory,
+    required this.invalidateSavedItemLivePreviews,
     required this.requestUserChoice,
   });
 
@@ -59,7 +61,7 @@ class MemoryAiOverlayToolRuntimeContext {
     required SearchResult result,
     MemoryValuePreview? preview,
     required bool isFrozen,
-    bool isInstructionPatch,
+    required MemoryToolEntryKind entryKind,
     String? instructionText,
   })
   saveSavedItem;
@@ -68,6 +70,8 @@ class MemoryAiOverlayToolRuntimeContext {
     required List<SearchResult> results,
     Map<int, MemoryValuePreview> previewsByAddress,
     Set<int> frozenAddresses,
+    Map<int, MemoryToolEntryKind> entryKindsByAddress,
+    Map<int, String> instructionTextsByAddress,
   })
   saveSavedItems;
   final void Function({required int pid, required Iterable<int> addresses})
@@ -91,9 +95,13 @@ class MemoryAiOverlayToolRuntimeContext {
     required MemoryInstructionPatchRequest request,
   })
   patchMemoryInstructionAction;
-  final Future<void> Function({required MemoryFreezeRequest request})
+  final Future<void> Function({
+    required MemoryFreezeRequest request,
+  })
   setMemoryFreezeAction;
-  final Future<void> Function({required List<MemoryFreezeRequest> requests})
+  final Future<void> Function({
+    required List<MemoryFreezeRequest> requests,
+  })
   setMemoryFreezesAction;
   final Future<int> Function({
     required List<int> addresses,
@@ -107,6 +115,7 @@ class MemoryAiOverlayToolRuntimeContext {
     required String previousDisplayValue,
   })
   recordInstructionHistory;
+  final void Function() invalidateSavedItemLivePreviews;
   final Future<String> Function({
     required String toolName,
     required String title,
@@ -328,16 +337,14 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
         throw ArgumentError('addresses 不能为空');
       }
       final markFrozen = _getOptionalBool(call, 'markFrozen', false);
-      final markInstructionPatch = _getOptionalBool(
-        call,
-        'markInstructionPatch',
-        false,
+      final entryKind = _parseSavedEntryKind(
+        _getOptionalString(call, 'entryKind', 'value'),
       );
       final existingSavedItems = <int, MemoryToolSavedItem>{
         for (final item in context.listSavedItems()) item.address: item,
       };
 
-      if (markInstructionPatch) {
+      if (entryKind == MemoryToolEntryKind.instruction) {
         final previews = await context.memoryQueryRepository.disassembleMemory(
           pid: context.pid,
           addresses: addresses,
@@ -368,11 +375,11 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
               displayValue: preview.instructionText,
             ),
             isFrozen: markFrozen,
-            isInstructionPatch: true,
+            entryKind: MemoryToolEntryKind.instruction,
             instructionText: preview.instructionText,
           );
         }
-        return '已将 ${previews.length} 个地址按指令补丁条目保存到暂存区。';
+        return '已将 ${previews.length} 个地址按汇编条目保存到暂存区。';
       }
 
       final valueType = _parseRawSearchValueType(
@@ -421,6 +428,7 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
           ),
           preview: preview,
           isFrozen: markFrozen,
+          entryKind: MemoryToolEntryKind.value,
         );
       }
       return markFrozen
@@ -594,6 +602,14 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
         request: MemoryWriteRequest(address: address, value: value),
         previousPreview: preview,
       );
+      await _syncSavedValueItemsAfterMutation(
+        context,
+        addresses: <int>[address],
+        valueTypesByAddress: <int, SearchValueType>{address: value.type},
+        valueLengthsByAddress: <int, int?>{
+          address: _resolveWriteValueLength(value),
+        },
+      );
       return '已写入地址 ${_formatAddress(address)}。';
     },
   );
@@ -661,6 +677,17 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
       await context.writeMemoryValuesAction(
         requests: requests,
         previousPreviews: previousPreviews,
+      );
+      await _syncSavedValueItemsAfterMutation(
+        context,
+        addresses: addresses,
+        valueTypesByAddress: <int, SearchValueType>{
+          for (final request in requests) request.address: request.value.type,
+        },
+        valueLengthsByAddress: <int, int?>{
+          for (final request in requests)
+            request.address: _resolveWriteValueLength(request.value),
+        },
       );
       return '已批量写入 ${requests.length} 个地址。';
     },
@@ -785,6 +812,19 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
         addresses: addresses,
         littleEndian: littleEndian,
       );
+      await _syncSavedValueItemsAfterMutation(
+        context,
+        addresses: addresses,
+        valueTypesByAddress: <int, SearchValueType>{
+          for (final address in addresses)
+            if (historyByAddress[address] case final entry?) address: entry.type,
+        },
+        valueLengthsByAddress: <int, int?>{
+          for (final address in addresses)
+            if (historyByAddress[address] case final entry?)
+              address: entry.rawBytes.length,
+        },
+      );
       return restoredCount > 0 ? '已恢复 $restoredCount 个地址的旧值。' : '没有可恢复的旧值历史。';
     },
   );
@@ -818,6 +858,15 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
           value: value,
           enabled: enabled,
         ),
+      );
+      await _syncSavedValueItemsAfterMutation(
+        context,
+        addresses: <int>[address],
+        valueTypesByAddress: <int, SearchValueType>{address: value.type},
+        valueLengthsByAddress: <int, int?>{
+          address: _resolveWriteValueLength(value),
+        },
+        frozenStatesByAddress: <int, bool>{address: enabled},
       );
       return enabled
           ? '已对地址 ${_formatAddress(address)} 启用冻结。'
@@ -876,7 +925,24 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
       if (!confirmed) {
         return context.isZh ? '已取消批量冻结操作。' : 'Batch freeze operation cancelled.';
       }
-      await context.setMemoryFreezesAction(requests: requests);
+
+      await context.setMemoryFreezesAction(
+        requests: requests,
+      );
+      await _syncSavedValueItemsAfterMutation(
+        context,
+        addresses: addresses,
+        valueTypesByAddress: <int, SearchValueType>{
+          for (final request in requests) request.address: request.value.type,
+        },
+        valueLengthsByAddress: <int, int?>{
+          for (final request in requests)
+            request.address: _resolveWriteValueLength(request.value),
+        },
+        frozenStatesByAddress: <int, bool>{
+          for (final request in requests) request.address: request.enabled,
+        },
+      );
       return enabled
           ? '已批量启用 ${requests.length} 个冻结值。'
           : '已批量关闭 ${requests.length} 个冻结值。';
@@ -991,23 +1057,6 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
               ? currentInstruction!.instructionText
               : _formatHex(result.beforeBytes),
         );
-        final savedItem = savedItemsByAddress[address];
-        if (savedItem != null) {
-          context.saveSavedItem(
-            pid: context.pid,
-            result: SearchResult(
-              address: address,
-              regionStart: savedItem.regionStart,
-              regionTypeKey: savedItem.regionTypeKey,
-              type: SearchValueType.bytes,
-              rawBytes: result.afterBytes,
-              displayValue: result.instructionText,
-            ),
-            isFrozen: false,
-            isInstructionPatch: true,
-            instructionText: result.instructionText,
-          );
-        }
         restoredCount += 1;
       }
       return restoredCount > 0
@@ -1924,6 +1973,78 @@ Future<Map<int, MemoryValuePreview>> _readValuePreviewsForResults(
   };
 }
 
+Future<void> _syncSavedValueItemsAfterMutation(
+  MemoryAiOverlayToolRuntimeContext context, {
+  required Iterable<int> addresses,
+  required Map<int, SearchValueType> valueTypesByAddress,
+  Map<int, int?> valueLengthsByAddress = const <int, int?>{},
+  Map<int, bool> frozenStatesByAddress = const <int, bool>{},
+}) async {
+  final savedItemsByAddress = <int, MemoryToolSavedItem>{
+    for (final item in context.listSavedItems())
+      if (!item.isInstruction) item.address: item,
+  };
+  if (savedItemsByAddress.isEmpty) {
+    return;
+  }
+
+  final targetAddresses = addresses
+      .where(savedItemsByAddress.containsKey)
+      .toSet()
+      .toList(growable: false);
+  if (targetAddresses.isEmpty) {
+    return;
+  }
+
+  final previews = await context.memoryQueryRepository.readMemoryValues(
+    requests: targetAddresses
+        .map((address) {
+          final savedItem = savedItemsByAddress[address]!;
+          final valueType = valueTypesByAddress[address] ?? savedItem.type;
+          final explicitLength = valueLengthsByAddress[address];
+          return MemoryReadRequest(
+            pid: context.pid,
+            address: address,
+            type: valueType,
+            length: _resolveReadLength(
+              valueType,
+              explicitLength ??
+                  (valueType == SearchValueType.bytes
+                      ? savedItem.rawBytes.length
+                      : null),
+            ),
+          );
+        })
+        .toList(growable: false),
+  );
+  if (previews.isEmpty) {
+    return;
+  }
+
+  for (final preview in previews) {
+    final savedItem = savedItemsByAddress[preview.address];
+    if (savedItem == null) {
+      continue;
+    }
+    context.saveSavedItem(
+      pid: context.pid,
+      result: SearchResult(
+        address: preview.address,
+        regionStart: savedItem.regionStart,
+        regionTypeKey: savedItem.regionTypeKey,
+        type: preview.type,
+        rawBytes: preview.rawBytes,
+        displayValue: preview.displayValue,
+      ),
+      preview: preview,
+      isFrozen:
+          frozenStatesByAddress[preview.address] ?? savedItem.isFrozen,
+      entryKind: MemoryToolEntryKind.value,
+    );
+  }
+  context.invalidateSavedItemLivePreviews();
+}
+
 int? _resolveWriteValueLength(SearchValue value) {
   if (value.type != SearchValueType.bytes) {
     return null;
@@ -2146,10 +2267,10 @@ String _formatSavedItem(MemoryToolSavedItem item) {
     'regionStart=${_formatAddress(item.regionStart)}',
     'regionType=${item.regionTypeKey}',
     'type=${item.type.name}',
-    'value=${item.isInstructionPatch ? item.effectiveInstructionText : item.displayValue}',
+    'value=${item.isInstruction ? item.effectiveInstructionText : item.displayValue}',
     'hex=${_formatHex(item.rawBytes)}',
     'frozen=${item.isFrozen}',
-    'instructionPatch=${item.isInstructionPatch}',
+    'entryKind=${item.entryKind.name}',
   ].join(' | ');
 }
 
@@ -2642,6 +2763,14 @@ SearchValueType _parseRawSearchValueType(String rawValue) {
     'f64' => SearchValueType.f64,
     'bytes' || 'text' => SearchValueType.bytes,
     _ => throw ArgumentError('不支持的 valueType: $rawValue'),
+  };
+}
+
+MemoryToolEntryKind _parseSavedEntryKind(String rawValue) {
+  return switch (_normalizeLower(rawValue)) {
+    'value' => MemoryToolEntryKind.value,
+    'instruction' || 'asm' => MemoryToolEntryKind.instruction,
+    _ => throw ArgumentError('不支持的 entryKind: $rawValue'),
   };
 }
 

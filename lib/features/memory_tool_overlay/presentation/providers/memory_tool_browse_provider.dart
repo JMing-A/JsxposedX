@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_display_item.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_browse_state.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_result_selection_state.dart';
@@ -52,21 +53,24 @@ Future<Map<int, MemoryValuePreview>> currentBrowseResultLivePreviews(
     return const <int, MemoryValuePreview>{};
   }
 
+  final valueResults = visibleResults
+      .where((result) => !result.isInstruction)
+      .toList(growable: false);
+  if (valueResults.isEmpty) {
+    return const <int, MemoryValuePreview>{};
+  }
+
   final previews = await ref
       .watch(memoryQueryRepositoryProvider)
       .readMemoryValues(
-        requests: visibleResults
+        requests: valueResults
             .map(
               (result) => MemoryReadRequest(
                 pid: selectedProcess.pid,
                 address: result.address,
-                type: result.isInstruction
-                    ? SearchValueType.bytes
-                    : result.type,
+                type: result.type,
                 length: resolveMemoryToolReadLengthForType(
-                  type: result.isInstruction
-                      ? SearchValueType.bytes
-                      : result.type,
+                  type: result.type,
                   bytesLength: result.rawBytes.isEmpty
                       ? 1
                       : result.rawBytes.length,
@@ -204,6 +208,32 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
     );
   }
 
+  Future<void> previewValueFromSearchResult({
+    required SearchResult result,
+    MemoryValuePreview? preview,
+    required String displayValue,
+  }) async {
+    await previewFromSearchResult(
+      result: result,
+      preview: preview,
+      displayValue: displayValue,
+      preferInstructionMode: false,
+    );
+  }
+
+  Future<void> previewInstructionFromSearchResult({
+    required SearchResult result,
+    MemoryValuePreview? preview,
+    required String displayValue,
+  }) async {
+    await previewFromSearchResult(
+      result: result,
+      preview: preview,
+      displayValue: displayValue,
+      preferInstructionMode: true,
+    );
+  }
+
   Future<void> previewFromAddress({
     required SearchResult sourceResult,
     MemoryValuePreview? sourcePreview,
@@ -216,11 +246,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
       return;
     }
 
-    final shouldUseInstructionMode =
-        preferInstructionMode ||
-        isMemoryToolInstructionDisplayValue(
-          anchorDisplayValue ?? sourceResult.displayValue,
-        );
+    final shouldUseInstructionMode = preferInstructionMode;
     final sourceRawBytes = _resolveAnchorRawBytes(
       preview: sourcePreview,
       result: sourceResult,
@@ -265,7 +291,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
         type: SearchValueType.bytes,
         rawBytes: instructionPreview.rawBytes,
         displayValue: instructionPreview.instructionText,
-        kind: MemoryToolDisplayItemKind.instruction,
+        entryKind: MemoryToolEntryKind.instruction,
         instructionText: instructionPreview.instructionText,
       );
     } else {
@@ -396,6 +422,36 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
       anchorItem: nextAnchorItem,
       results: nextResults,
       clearErrorText: true,
+    );
+  }
+
+  Future<void> previewValueFromAddress({
+    required SearchResult sourceResult,
+    MemoryValuePreview? sourcePreview,
+    required int targetAddress,
+    String? anchorDisplayValue,
+  }) async {
+    await previewFromAddress(
+      sourceResult: sourceResult,
+      sourcePreview: sourcePreview,
+      targetAddress: targetAddress,
+      anchorDisplayValue: anchorDisplayValue,
+      preferInstructionMode: false,
+    );
+  }
+
+  Future<void> previewInstructionFromAddress({
+    required SearchResult sourceResult,
+    MemoryValuePreview? sourcePreview,
+    required int targetAddress,
+    String? anchorDisplayValue,
+  }) async {
+    await previewFromAddress(
+      sourceResult: sourceResult,
+      sourcePreview: sourcePreview,
+      targetAddress: targetAddress,
+      anchorDisplayValue: anchorDisplayValue,
+      preferInstructionMode: true,
     );
   }
 
@@ -637,6 +693,20 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
     );
   }
 
+  void removeSelectionAddress(int address) {
+    if (!state.selectionState.selectedAddresses.contains(address)) {
+      return;
+    }
+
+    state = state.copyWith(
+      selectionState: state.selectionState.copyWith(
+        selectedAddresses: state.selectionState.selectedAddresses
+            .where((selectedAddress) => selectedAddress != address)
+            .toList(growable: false),
+      ),
+    );
+  }
+
   void hideAddress(int address) {
     if (state.anchorAddress == address ||
         state.hiddenAddresses.contains(address)) {
@@ -813,7 +883,7 @@ class MemoryToolBrowseController extends _$MemoryToolBrowseController {
             type: anchorItem.type,
             rawBytes: instruction.rawBytes,
             displayValue: instruction.instructionText,
-            kind: MemoryToolDisplayItemKind.instruction,
+            entryKind: MemoryToolEntryKind.instruction,
             instructionText: instruction.instructionText,
           ),
         );

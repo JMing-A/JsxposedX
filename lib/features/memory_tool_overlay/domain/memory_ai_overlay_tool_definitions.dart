@@ -190,14 +190,18 @@ class MemoryAiOverlayToolDefinitions {
         (ToolParametersBuilder()
               ..addStringArray('addresses', '待保存地址数组', required: true)
               ..addString(
+                'entryKind',
+                '保存语义类型：value/instruction；instruction 表示按汇编保存',
+                enumValues: const <String>['value', 'instruction'],
+              )
+              ..addString(
                 'valueType',
                 '读取并保存的值类型：i8/i16/i32/i64/f32/f64/bytes',
                 required: true,
                 enumValues: _rawValueTypes,
               )
               ..addInteger('length', 'bytes 类型读取长度；不传时按类型默认长度')
-              ..addBoolean('markFrozen', '保存时是否标记为冻结条目，默认 false')
-              ..addBoolean('markInstructionPatch', '是否标记为指令补丁条目，默认 false'))
+              ..addBoolean('markFrozen', '保存时是否标记为冻结条目，默认 false'))
             .build(),
   );
 

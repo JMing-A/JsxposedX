@@ -5,6 +5,7 @@ import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_display_item.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
@@ -262,12 +263,12 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
       final valueResults = <SearchResult>[];
       for (final result in resultList) {
         if (result.isInstruction) {
-          savedItemsNotifier.saveOne(
+          savedItemsNotifier.saveEntry(
             pid: selectedProcess.pid,
             result: result.toSearchResult(),
             preview: resolvedPreviewMap[result.address],
             isFrozen: currentFrozenAddresses.contains(result.address),
-            isInstructionPatch: true,
+            entryKind: MemoryToolEntryKind.instruction,
             instructionText: result.effectiveDisplayValue,
           );
         } else {
@@ -275,7 +276,7 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
         }
       }
       if (valueResults.isNotEmpty) {
-        savedItemsNotifier.saveMany(
+        savedItemsNotifier.saveEntries(
           pid: selectedProcess.pid,
           results: valueResults,
           previewsByAddress: resolvedPreviewMap,
@@ -311,7 +312,7 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
             displayValue: resolvedDisplayValue,
             rawBytes: preview?.rawBytes ?? result.rawBytes,
             isFrozen: currentFrozenAddresses.contains(result.address),
-            isInstructionPatch: isInstruction,
+            entryKind: result.entryKind,
             instructionText: isInstruction ? result.effectiveDisplayValue : null,
           );
         }).toList(growable: false),
@@ -416,19 +417,6 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
             previousBytes: patchResult.beforeBytes,
             previousDisplayValue: result.effectiveDisplayValue,
           );
-          savedItemsNotifier.saveOne(
-            pid: selectedProcess.pid,
-            result: result
-                .copyWith(
-                  rawBytes: patchResult.afterBytes,
-                  displayValue: patchResult.instructionText,
-                  instructionText: patchResult.instructionText,
-                )
-                .toSearchResult(),
-            isFrozen: false,
-            isInstructionPatch: true,
-            instructionText: patchResult.instructionText,
-          );
           patchedCount += 1;
         } catch (_) {
           failedCount += 1;
@@ -440,16 +428,6 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
       }
 
       activeInstructionBatchEditor.value = null;
-      ref.invalidate(
-        getMemoryBreakpointStateProvider(pid: selectedProcess.pid),
-      );
-      ref.invalidate(getMemoryBreakpointsProvider(pid: selectedProcess.pid));
-      ref.invalidate(getMemoryBreakpointHitsProvider(pid: selectedProcess.pid));
-      unawaited(
-        browseNotifier.refreshVisibleInstructionResults(
-          addresses: selectedInstructionResults.map((result) => result.address),
-        ),
-      );
       unawaited(
         ToastOverlayMessage.show(
           context.isZh
@@ -491,19 +469,6 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
             previousBytes: patchResult.beforeBytes,
             previousDisplayValue: result.effectiveDisplayValue,
           );
-          savedItemsNotifier.saveOne(
-            pid: selectedProcess.pid,
-            result: result
-                .copyWith(
-                  rawBytes: patchResult.afterBytes,
-                  displayValue: patchResult.instructionText,
-                  instructionText: patchResult.instructionText,
-                )
-                .toSearchResult(),
-            isFrozen: false,
-            isInstructionPatch: true,
-            instructionText: patchResult.instructionText,
-          );
           restoredCount += 1;
         } catch (_) {
           continue;
@@ -516,14 +481,6 @@ class MemoryToolBrowseTab extends HookConsumerWidget {
         );
       }
 
-      ref.invalidate(
-        getMemoryBreakpointStateProvider(pid: selectedProcess.pid),
-      );
-      ref.invalidate(getMemoryBreakpointsProvider(pid: selectedProcess.pid));
-      ref.invalidate(getMemoryBreakpointHitsProvider(pid: selectedProcess.pid));
-      await browseNotifier.refreshVisibleInstructionResults(
-        addresses: selectedInstructionResults.map((result) => result.address),
-      );
       await ToastOverlayMessage.show(
         context.isZh
             ? '已撤回$restoredCount条指令'

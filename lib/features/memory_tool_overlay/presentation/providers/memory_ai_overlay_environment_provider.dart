@@ -1,4 +1,5 @@
 import 'package:JsxposedX/features/memory_tool_overlay/domain/memory_ai_overlay_environment_adapter.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_pending_interaction_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_pointer_action_provider.dart';
@@ -73,17 +74,17 @@ MemoryAiOverlayEnvironmentAdapter memoryAiOverlayEnvironment(
           required result,
           preview,
           required isFrozen,
-          isInstructionPatch = false,
+          required entryKind,
           instructionText,
         }) {
           ref
               .read(memoryToolSavedItemsProvider.notifier)
-              .saveOne(
+              .saveEntry(
                 pid: pid,
                 result: result,
                 preview: preview,
                 isFrozen: isFrozen,
-                isInstructionPatch: isInstructionPatch,
+                entryKind: entryKind,
                 instructionText: instructionText,
               );
         },
@@ -93,14 +94,18 @@ MemoryAiOverlayEnvironmentAdapter memoryAiOverlayEnvironment(
           required results,
           previewsByAddress = const <int, MemoryValuePreview>{},
           frozenAddresses = const <int>{},
+          entryKindsByAddress = const <int, MemoryToolEntryKind>{},
+          instructionTextsByAddress = const <int, String>{},
         }) {
           ref
               .read(memoryToolSavedItemsProvider.notifier)
-              .saveMany(
+              .saveEntries(
                 pid: pid,
                 results: results,
                 previewsByAddress: previewsByAddress,
                 frozenAddresses: frozenAddresses,
+                entryKindsByAddress: entryKindsByAddress,
+                instructionTextsByAddress: instructionTextsByAddress,
               );
         },
     removeSavedItems: ({required pid, required addresses}) {
@@ -123,37 +128,54 @@ MemoryAiOverlayEnvironmentAdapter memoryAiOverlayEnvironment(
     writeMemoryValueAction: ({required request, previousPreview}) {
       return ref
           .read(memoryValueActionProvider.notifier)
-          .writeMemoryValue(request: request, previousPreview: previousPreview);
+          .writeMemoryValue(
+            request: request,
+            previousPreview: previousPreview,
+            syncPid: args.processInfo.pid,
+          );
     },
-    writeMemoryValuesAction: ({required requests, required previousPreviews}) {
+    writeMemoryValuesAction:
+        ({required requests, required previousPreviews}) {
       return ref
           .read(memoryValueActionProvider.notifier)
           .writeMemoryValues(
             requests: requests,
             previousPreviews: previousPreviews,
+            syncPid: args.processInfo.pid,
           );
     },
     patchMemoryInstructionAction: ({required request}) {
       return ref
           .read(memoryValueActionProvider.notifier)
-          .patchMemoryInstruction(request: request);
+          .patchMemoryInstruction(
+            request: request,
+            syncPid: args.processInfo.pid,
+          );
     },
     setMemoryFreezeAction: ({required request}) {
       return ref
           .read(memoryValueActionProvider.notifier)
-          .setMemoryFreeze(request: request);
+          .setMemoryFreeze(
+            request: request,
+            syncPid: args.processInfo.pid,
+          );
     },
     setMemoryFreezesAction: ({required requests}) {
       return ref
           .read(memoryValueActionProvider.notifier)
-          .setMemoryFreezes(requests: requests);
+          .setMemoryFreezes(
+            requests: requests,
+            syncPid: args.processInfo.pid,
+          );
     },
-    restorePreviousValuesAction: ({required addresses, required littleEndian}) {
+    restorePreviousValuesAction:
+        ({required addresses, required littleEndian}) {
       return ref
           .read(memoryValueActionProvider.notifier)
           .restorePreviousValues(
             addresses: addresses,
             littleEndian: littleEndian,
+            pidOverride: args.processInfo.pid,
           );
     },
     recordInstructionHistory:
@@ -172,6 +194,9 @@ MemoryAiOverlayEnvironmentAdapter memoryAiOverlayEnvironment(
                 previousDisplayValue: previousDisplayValue,
               );
         },
+    invalidateSavedItemLivePreviews: () {
+      ref.invalidate(currentSavedItemLivePreviewsProvider);
+    },
     requestUserChoice:
         ({
           required toolName,

@@ -2,6 +2,7 @@ import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/common/widgets/ref_error.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_pointer_provider.dart';
@@ -138,7 +139,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
         return;
       }
 
-      savedItemsNotifier.saveMany(
+      savedItemsNotifier.saveEntries(
         pid: selectedPid,
         results: resultList,
         previewsByAddress: previewsByAddress,
@@ -177,12 +178,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
             ),
             rawBytes: preview?.rawBytes ?? result.rawBytes,
             isFrozen: frozenAddresses.contains(result.address),
-            isInstructionPatch: result.type == SearchValueType.bytes &&
-                isMemoryToolInstructionDisplayValue(result.displayValue),
-            instructionText: result.type == SearchValueType.bytes &&
-                    isMemoryToolInstructionDisplayValue(result.displayValue)
-                ? result.displayValue
-                : null,
+            entryKind: MemoryToolEntryKind.value,
           );
         }).toList(growable: false),
       );
@@ -232,9 +228,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
               sourceResult: result,
               sourcePreview: preview,
               targetAddress: targetAddress,
-              preferInstructionMode: isMemoryToolInstructionDisplayValue(
-                displayValue,
-              ),
+              preferInstructionMode: false,
             ),
       );
     }
@@ -438,10 +432,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                                           result: result,
                                           preview: preview,
                                           displayValue: displayValue,
-                                          preferInstructionMode:
-                                              isMemoryToolInstructionDisplayValue(
-                                                displayValue,
-                                              ),
+                                          preferInstructionMode: false,
                                         ),
                                   );
                                 },
@@ -462,10 +453,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                                           sourceResult: result,
                                           sourcePreview: preview,
                                           targetAddress: targetAddress,
-                                          preferInstructionMode:
-                                              isMemoryToolInstructionDisplayValue(
-                                                displayValue,
-                                              ),
+                                          preferInstructionMode: false,
                                         ),
                                   );
                                 },
@@ -532,10 +520,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                                             result: result,
                                             preview: preview,
                                             displayValue: displayValue,
-                                            preferInstructionMode:
-                                                isMemoryToolInstructionDisplayValue(
-                                                  displayValue,
-                                                ),
+                                            preferInstructionMode: false,
                                           ),
                                     );
                                   },
@@ -556,10 +541,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                                             sourceResult: result,
                                             sourcePreview: preview,
                                             targetAddress: targetAddress,
-                                            preferInstructionMode:
-                                                isMemoryToolInstructionDisplayValue(
-                                                  displayValue,
-                                                ),
+                                            preferInstructionMode: false,
                                           ),
                                     );
                                   },

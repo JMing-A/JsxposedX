@@ -12,6 +12,7 @@ import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memor
 import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memory_pointer_auto_chase_query_repository.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memory_pointer_query_repository.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/domain/repositories/memory_query_repository.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_saved_item.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_pending_interaction_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_instruction_history_provider.dart';
@@ -19,6 +20,8 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memor
 import 'package:JsxposedX/generated/memory_tool.g.dart';
 
 class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
+  static const String implementationVersion = 'memory_overlay_runtime_v4';
+
   const MemoryAiOverlayEnvironmentAdapter({
     required this.processInfo,
     required this.isZh,
@@ -44,6 +47,7 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
     required this.setMemoryFreezesAction,
     required this.restorePreviousValuesAction,
     required this.recordInstructionHistory,
+    required this.invalidateSavedItemLivePreviews,
     required this.requestUserChoice,
   }) : _memoryQueryRepository = memoryQueryRepository,
        _memoryActionRepository = memoryActionRepository,
@@ -70,7 +74,7 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
     required SearchResult result,
     MemoryValuePreview? preview,
     required bool isFrozen,
-    bool isInstructionPatch,
+    required MemoryToolEntryKind entryKind,
     String? instructionText,
   })
   saveSavedItem;
@@ -79,6 +83,8 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
     required List<SearchResult> results,
     Map<int, MemoryValuePreview> previewsByAddress,
     Set<int> frozenAddresses,
+    Map<int, MemoryToolEntryKind> entryKindsByAddress,
+    Map<int, String> instructionTextsByAddress,
   })
   saveSavedItems;
   final void Function({required int pid, required Iterable<int> addresses})
@@ -102,9 +108,13 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
     required MemoryInstructionPatchRequest request,
   })
   patchMemoryInstructionAction;
-  final Future<void> Function({required MemoryFreezeRequest request})
+  final Future<void> Function({
+    required MemoryFreezeRequest request,
+  })
   setMemoryFreezeAction;
-  final Future<void> Function({required List<MemoryFreezeRequest> requests})
+  final Future<void> Function({
+    required List<MemoryFreezeRequest> requests,
+  })
   setMemoryFreezesAction;
   final Future<int> Function({
     required List<int> addresses,
@@ -118,6 +128,7 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
     required String previousDisplayValue,
   })
   recordInstructionHistory;
+  final void Function() invalidateSavedItemLivePreviews;
   final Future<String> Function({
     required String toolName,
     required String title,
@@ -132,7 +143,7 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
 
   @override
   String get environmentVersion =>
-      'memory_overlay:${isZh ? "zh" : "en"}:${MemoryAiOverlayPromptBuilder.promptVersion}:${MemoryAiOverlayChatToolsSpec.catalogVersion}';
+      'memory_overlay:${isZh ? "zh" : "en"}:${MemoryAiOverlayPromptBuilder.promptVersion}:${MemoryAiOverlayChatToolsSpec.catalogVersion}:$implementationVersion';
 
   @override
   Future<AiChatEnvironmentSnapshot> initialize() async {
@@ -168,6 +179,7 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
       setMemoryFreezesAction: setMemoryFreezesAction,
       restorePreviousValuesAction: restorePreviousValuesAction,
       recordInstructionHistory: recordInstructionHistory,
+      invalidateSavedItemLivePreviews: invalidateSavedItemLivePreviews,
       requestUserChoice: requestUserChoice,
     );
 
