@@ -1,6 +1,6 @@
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
+﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 步骤卡片
 ///
@@ -40,6 +40,7 @@ class AiStepsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final items = _parse(rawContent);
     if (items.isEmpty) return const SizedBox.shrink();
     return Container(
@@ -47,7 +48,7 @@ class AiStepsCard extends StatelessWidget {
         color: context.isDark
             ? context.colorScheme.surfaceContainer
             : Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(12 * scale),
         border: Border.all(
           color: context.colorScheme.primary.withValues(alpha: 0.15),
         ),
@@ -84,6 +85,7 @@ class _StepTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final primary = context.colorScheme.primary;
     final isDark = context.isDark;
 
@@ -107,11 +109,11 @@ class _StepTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 16.w),
+          SizedBox(width: 16 * scale),
           Column(
             children: [
-              SizedBox(height: 14.h),
-              Icon(dotIcon, size: 16.sp, color: dotColor),
+              SizedBox(height: 14 * scale),
+              Icon(dotIcon, size: 16 * scale, color: dotColor),
               if (!isLast)
                 Expanded(
                   child: Container(
@@ -123,19 +125,21 @@ class _StepTile extends StatelessWidget {
                 ),
             ],
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: 12 * scale),
           Expanded(
             child: Padding(
-              padding:
-                  EdgeInsets.only(top: 10.h, bottom: isLast ? 12.h : 10.h),
+              padding: EdgeInsets.only(
+                top: 10 * scale,
+                bottom: isLast ? 12 * scale : 10 * scale,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Container(
-                        width: 18.w,
-                        height: 18.w,
+                        width: 18 * scale,
+                        height: 18 * scale,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: dotColor.withValues(alpha: 0.12),
@@ -144,18 +148,18 @@ class _StepTile extends StatelessWidget {
                         child: Text(
                           '${item.index}',
                           style: TextStyle(
-                            fontSize: 10.sp,
+                            fontSize: 10 * scale,
                             color: dotColor,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
-                      SizedBox(width: 8.w),
+                      SizedBox(width: 8 * scale),
                       Expanded(
                         child: Text(
                           item.title,
                           style: TextStyle(
-                            fontSize: 13.sp,
+                            fontSize: 13 * scale,
                             fontWeight: FontWeight.w600,
                             color: isDark
                                 ? Colors.white.withValues(alpha: 0.9)
@@ -166,13 +170,13 @@ class _StepTile extends StatelessWidget {
                     ],
                   ),
                   if (item.desc != null) ...[  
-                    SizedBox(height: 3.h),
+                    SizedBox(height: 3 * scale),
                     Padding(
-                      padding: EdgeInsets.only(left: 26.w),
+                      padding: EdgeInsets.only(left: 26 * scale),
                       child: Text(
                         item.desc!,
                         style: TextStyle(
-                          fontSize: 12.sp,
+                          fontSize: 12 * scale,
                           color: context.theme.hintColor,
                           height: 1.4,
                         ),
@@ -183,7 +187,7 @@ class _StepTile extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(width: 12.w),
+          SizedBox(width: 12 * scale),
         ],
       ),
     );

@@ -24,6 +24,7 @@ class CustomTextField extends StatelessWidget {
   final String? name;
   final List<TextInputFormatter>? inputFormatters;
   final bool isFormBuilder;
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
 
   const CustomTextField({
     super.key,
@@ -46,6 +47,7 @@ class CustomTextField extends StatelessWidget {
     this.name,
     this.inputFormatters,
     this.isFormBuilder = false,
+    this.contextMenuBuilder,
   });
 
   /// FormBuilder 版本（不需要 Controller）
@@ -68,6 +70,7 @@ class CustomTextField extends StatelessWidget {
     Color? focusedBorderColor,
     Color? enabledBorderColor,
     List<TextInputFormatter>? inputFormatters,
+    EditableTextContextMenuBuilder? contextMenuBuilder,
     //// 只能输入数字
     // inputFormatters: [FilteringTextInputFormatter.digitsOnly]
     //
@@ -100,6 +103,7 @@ class CustomTextField extends StatelessWidget {
       enabledBorderColor: enabledBorderColor,
       inputFormatters: inputFormatters,
       isFormBuilder: true,
+      contextMenuBuilder: contextMenuBuilder,
     );
   }
 
@@ -167,9 +171,11 @@ class CustomTextField extends StatelessWidget {
         validator: validator,
         onChanged: onChanged,
         enabled: enabled,
+        enableInteractiveSelection: true,
         style: textStyle ?? const TextStyle(fontSize: 16),
         decoration: decoration,
         inputFormatters: inputFormatters,
+        contextMenuBuilder: contextMenuBuilder,
       );
     }
 
@@ -183,9 +189,11 @@ class CustomTextField extends StatelessWidget {
       validator: validator,
       onChanged: onChanged,
       enabled: enabled,
+      enableInteractiveSelection: true,
       style: textStyle ?? const TextStyle(fontSize: 16),
       decoration: decoration,
       inputFormatters: inputFormatters,
+      contextMenuBuilder: contextMenuBuilder,
     );
   }
 }

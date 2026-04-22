@@ -974,13 +974,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiTutorial => '教程';
 
   @override
-  String get aiBuiltinConfigName => '帕帝接口';
+  String get aiBuiltinConfigName => '沐雪接口';
 
   @override
-  String get aiBuiltinUseConfig => '使用内置接口';
+  String get aiBuiltinUseConfig => '使用沐雪接口';
 
   @override
-  String get aiBuiltinSwitching => '正在切换到内置默认接口';
+  String get aiBuiltinSwitching => '正在切换到沐雪内置接口';
 
   @override
   String get aiBuyCardSecret => '购买卡密';
@@ -1688,6 +1688,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memoryToolTabSearch => '搜索';
 
   @override
+  String get memoryToolTabBrowse => '浏览';
+
+  @override
+  String get memoryToolTabPointer => '指针';
+
+  @override
   String get memoryToolTabEdit => '修改';
 
   @override
@@ -2057,6 +2063,152 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memoryToolResultDetailActionCopyValue => '复制数值';
 
   @override
+  String get memoryToolResultActionPointerScan => '指针搜索';
+
+  @override
+  String get memoryToolResultActionAutoChaseStatic => '一键寻址';
+
+  @override
+  String get memoryToolResultActionJumpToPointer => '跳转到指针';
+
+  @override
+  String get memoryToolResultActionPreviewMemoryBlock => '预览内存块';
+
+  @override
+  String get memoryToolResultActionOffsetPreview => '偏移量计算';
+
+  @override
+  String get memoryToolJumpAddressTitle => '地址跳转';
+
+  @override
+  String get memoryToolJumpAddressFieldLabel => '目标地址';
+
+  @override
+  String get memoryToolJumpAddressAction => '跳转到目标地址';
+
+  @override
+  String get memoryToolJumpAddressInvalid => '地址格式无效';
+
+  @override
+  String get memoryToolResultActionCopyHex => '复制十六进制';
+
+  @override
+  String get memoryToolResultActionCopyReverseHex => '复制反十六进制';
+
+  @override
+  String get memoryToolPointerScanTitle => '指针搜索';
+
+  @override
+  String get memoryToolPointerAutoChaseTitle => '一键寻址';
+
+  @override
+  String get memoryToolPointerTargetAddressLabel => '目标地址';
+
+  @override
+  String get memoryToolPointerWidthLabel => '指针宽度';
+
+  @override
+  String get memoryToolPointerMaxOffsetLabel => '最大偏移';
+
+  @override
+  String get memoryToolPointerMaxDepthLabel => '指针层数';
+
+  @override
+  String get memoryToolPointerAlignmentLabel => '对齐步长';
+
+  @override
+  String get memoryToolPointerAlignmentPointerWidth => '按指针宽度';
+
+  @override
+  String get memoryToolPointerInvalidMaxOffset => '请输入有效偏移量';
+
+  @override
+  String get memoryToolPointerInvalidMaxDepth => '请输入 1 到 12 的层数';
+
+  @override
+  String get memoryToolPointerActionContinueSearch => '继续搜索上一层指针';
+
+  @override
+  String get memoryToolPointerActionJumpToTarget => '跳转到指针目标';
+
+  @override
+  String get memoryToolPointerActionCopyPointerAddress => '复制指针地址';
+
+  @override
+  String get memoryToolPointerActionCopyPointedAddress => '复制指向地址';
+
+  @override
+  String get memoryToolPointerActionCopyTargetAddress => '复制目标地址';
+
+  @override
+  String get memoryToolPointerActionCopyExpression => '复制表达式';
+
+  @override
+  String get memoryToolPointerOffsetLabel => '偏移';
+
+  @override
+  String get memoryToolPointerBaseAddressLabel => '基址';
+
+  @override
+  String get memoryToolPointerPointerAddressLabel => '指针地址';
+
+  @override
+  String get memoryToolPointerBadgeAuto => '推荐';
+
+  @override
+  String get memoryToolPointerBadgeStatic => '静态区';
+
+  @override
+  String get memoryToolPointerEmpty => '从搜索、浏览或暂存结果长按并选择指针搜索';
+
+  @override
+  String memoryToolPointerLoadedCount(int loaded, int total) {
+    return '已加载 $loaded / 总计 $total';
+  }
+
+  @override
+  String get memoryToolPointerTaskRunningTitle => '指针搜索进行中';
+
+  @override
+  String get memoryToolPointerStopReasonStaticReached => '已命中静态区';
+
+  @override
+  String get memoryToolPointerStopReasonNoMorePointers => '无更多上层指针';
+
+  @override
+  String get memoryToolPointerStopReasonMaxDepth => '已达指针层数';
+
+  @override
+  String get memoryToolPointerStopReasonCancelled => '已取消';
+
+  @override
+  String get memoryToolPointerStopReasonFailed => '扫描失败';
+
+  @override
+  String get memoryToolOffsetPreviewTitle => '偏移量计算';
+
+  @override
+  String get memoryToolOffsetPreviewOffsetLabel => '偏移量';
+
+  @override
+  String get memoryToolOffsetPreviewHexLabel => 'HEX';
+
+  @override
+  String get memoryToolOffsetPreviewTargetAddress => '目标地址';
+
+  @override
+  String get memoryToolOffsetPreviewTargetValue => '目标数值';
+
+  @override
+  String get memoryToolOffsetPreviewInvalid => '请输入有效偏移量';
+
+  @override
+  String get memoryToolOffsetPreviewUnreadable => '当前地址不可读';
+
+  @override
+  String get memoryToolBrowseEmpty => '从搜索结果长按并选择预览内存块';
+
+  @override
   String get memoryToolResultActionTitle => '更多操作';
 
   @override
@@ -2078,6 +2230,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memoryToolResultActionBatchEditHint => '为后续批量写入和筛选后的编辑预留入口。';
 
   @override
+  String get memoryToolBatchEditIncrementUnsupported => '递增模式仅支持数值类型';
+
+  @override
+  String get memoryToolBatchEditNoReadableResults => '没有可读取的选中结果。';
+
+  @override
+  String get memoryToolBatchEditIncrementLabel => '递增';
+
+  @override
+  String get memoryToolBatchEditStepLabel => '步长';
+
+  @override
+  String get memoryToolBatchEditPreviewLabel => '预览';
+
+  @override
   String get memoryToolResultActionSaveToSaved => '保存到暂存区';
 
   @override
@@ -2087,6 +2254,142 @@ class AppLocalizationsZh extends AppLocalizations {
   String memoryToolSavedToSavedMessage(Object count) {
     return '已保存 $count 项到暂存区';
   }
+
+  @override
+  String get memoryToolDebugAccessRead => '读';
+
+  @override
+  String get memoryToolDebugAccessWrite => '写';
+
+  @override
+  String get memoryToolDebugAccessReadWrite => '读写';
+
+  @override
+  String get memoryToolDebugBreakpointsTitle => '断点列表';
+
+  @override
+  String get memoryToolDebugBreakpointsTab => '断点';
+
+  @override
+  String get memoryToolDebugWritersTitle => '写入源';
+
+  @override
+  String get memoryToolDebugDetailTitle => '详情';
+
+  @override
+  String get memoryToolDebugEmptyBreakpoints => '还没有断点';
+
+  @override
+  String get memoryToolDebugEnabled => '已启用';
+
+  @override
+  String get memoryToolDebugDisabled => '已禁用';
+
+  @override
+  String get memoryToolDebugPauseOnHit => '命中即暂停';
+
+  @override
+  String get memoryToolDebugRecordOnly => '仅记录';
+
+  @override
+  String get memoryToolDebugHitCountUnit => '次命中';
+
+  @override
+  String get memoryToolDebugLastHitPrefix => '最近命中';
+
+  @override
+  String get memoryToolDebugEmptyWriters => '这个断点还没有命中';
+
+  @override
+  String get memoryToolDebugThreadCountUnit => '线程';
+
+  @override
+  String get memoryToolDebugEmptyDetail => '选择一个写入源查看详情';
+
+  @override
+  String get memoryToolDebugCurrentValue => '当前值';
+
+  @override
+  String get memoryToolDebugNoHitYet => '暂无命中';
+
+  @override
+  String get memoryToolDebugBreakpointAddress => '断点地址';
+
+  @override
+  String get memoryToolDebugPointer => '指针';
+
+  @override
+  String get memoryToolDebugAnonymousModule => '[匿名模块]';
+
+  @override
+  String get memoryToolDebugModuleOffset => '模块偏移';
+
+  @override
+  String get memoryToolDebugInstruction => '指令';
+
+  @override
+  String get memoryToolDebugCommonRewrite => '常见改写';
+
+  @override
+  String get memoryToolDebugRecentHits => '最近命中';
+
+  @override
+  String get memoryToolDebugStatBreakpoints => '断点';
+
+  @override
+  String get memoryToolDebugStatActive => '活动';
+
+  @override
+  String get memoryToolDebugStatWriters => '写入源';
+
+  @override
+  String get memoryToolDebugStatCurrentHits => '当前命中';
+
+  @override
+  String get memoryToolDebugStatPending => '待处理';
+
+  @override
+  String get memoryToolDebugStatLength => '长度';
+
+  @override
+  String get memoryToolDebugSelectProcessFirst => '请先选择进程';
+
+  @override
+  String get memoryToolDebugSelectProcessHint =>
+      '长按搜索结果、预览结果或暂存结果创建断点后，这里会显示命中记录和写入指令。';
+
+  @override
+  String get memoryToolDebugActionCopyValue => '复制值';
+
+  @override
+  String get memoryToolDebugActionCopyHex => '复制 Hex';
+
+  @override
+  String get memoryToolDebugActionCopyReverseHex => '复制反序 Hex';
+
+  @override
+  String get memoryToolDebugActionBrowseAddress => '浏览地址';
+
+  @override
+  String get memoryToolDebugActionPointerScan => '指针扫描';
+
+  @override
+  String get memoryToolDebugActionAutoChase => '自动追踪';
+
+  @override
+  String get memoryToolDebugActionCopyAddress => '复制地址';
+
+  @override
+  String get memoryToolDebugActionBrowseHitPointer => '浏览该命中指针';
+
+  @override
+  String get memoryToolDebugActionCopyModuleOffset => '复制模块偏移';
+
+  @override
+  String get memoryToolDebugActionCopyInstruction => '复制指令';
+
+  @override
+  String get memoryToolDebugActionCopyRewrite => '复制改写文本';
 
   @override
   String get memoryToolResultActionAddWatch => '加入监视列表';
@@ -2128,6 +2431,52 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memoryToolResultCalculatorXor => '异或';
+
+  @override
+  String get memoryToolAssemblyPreviewTitle => '汇编预览';
+
+  @override
+  String memoryToolAssemblyPreviewCount(int count) {
+    return '$count 个地址';
+  }
+
+  @override
+  String get memoryToolAssemblyPreviewEmpty => '没有可渲染的汇编';
+
+  @override
+  String get memoryToolResultSelectionDialogTitle => '结果列表设置';
+
+  @override
+  String get memoryToolResultSelectionSearchDescription =>
+      '控制搜索页当前渲染数量，同时也是多选、保存、批量修改等操作的上限。';
+
+  @override
+  String get memoryToolResultSelectionBrowseDescription =>
+      '控制浏览页单次可选数量和分页统计，不会清空已经加载的内存结果。';
+
+  @override
+  String get memoryToolResultSelectionFieldLabel => '数量上限';
+
+  @override
+  String get memoryToolResultSelectionHelperText =>
+      '建议 50 - 200，数值越大，列表渲染和批量操作越重。';
+
+  @override
+  String get memoryToolResultSelectionPresetLabel => '快速选择';
+
+  @override
+  String get memoryToolResultSelectionUnit => '项';
+
+  @override
+  String get memoryToolResultSelectionRequired => '请输入大于 0 的整数';
+
+  @override
+  String get memoryToolResultSelectionInvalid => '请输入大于 0 的整数';
+
+  @override
+  String memoryToolResultSelectionCurrent(int count) {
+    return '当前值：$count 项';
+  }
 
   @override
   String get memoryToolTargetProcess => '目标进程';

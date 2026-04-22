@@ -28,9 +28,12 @@ class AppBottomSheet extends StatelessWidget {
     double? height,
     EdgeInsetsGeometry? padding,
   }) {
+    final resolvedBackgroundColor =
+        Theme.of(context).bottomSheetTheme.backgroundColor ??
+        context.colorScheme.surface;
     return showModalBottomSheet<T>(
       context: context,
-      backgroundColor: context.theme.cardColor,
+      backgroundColor: resolvedBackgroundColor,
       isScrollControlled: true,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
@@ -48,52 +51,61 @@ class AppBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final resolvedBackgroundColor =
+        Theme.of(context).bottomSheetTheme.backgroundColor ??
+        context.colorScheme.surface;
 
-    return Container(
-      height: height,
-      padding: (padding as EdgeInsets? ?? EdgeInsets.all(20.w)).copyWith(
-        bottom:
-            (padding as EdgeInsets? ?? EdgeInsets.all(20.w)).bottom +
-            bottomInset,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: resolvedBackgroundColor,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 顶部装饰条（指示器）
-            Center(
-              child: Container(
-                width: 40.w,
-                height: 4.h,
-                margin: EdgeInsets.only(bottom: 15.h),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
-              ),
-            ),
-
-            // 标题
-            Row(
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18.sp,
-                    fontWeight: FontWeight.bold,
+      child: Container(
+        height: height,
+        padding: (padding as EdgeInsets? ?? EdgeInsets.all(20.w)).copyWith(
+          bottom:
+              (padding as EdgeInsets? ?? EdgeInsets.all(20.w)).bottom +
+              bottomInset,
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 顶部装饰条（指示器）
+              Center(
+                child: Container(
+                  width: 40.w,
+                  height: 4.h,
+                  margin: EdgeInsets.only(bottom: 15.h),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2.r),
                   ),
                 ),
-                const Spacer(),
-                if (action != null) ...action!,
-              ],
-            ),
-            SizedBox(height: 20.h),
+              ),
 
-            // 内容
-            Flexible(child: child),
-          ],
+              // 标题
+              Row(
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (action != null) ...action!,
+                ],
+              ),
+              SizedBox(height: 20.h),
+
+              // 内容
+              Flexible(child: child),
+            ],
+          ),
         ),
       ),
     );

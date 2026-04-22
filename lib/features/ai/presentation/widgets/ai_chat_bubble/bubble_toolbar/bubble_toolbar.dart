@@ -1,12 +1,12 @@
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/app_bottom_sheet.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import '../bubble_states/bubble_state.dart';
-import 'widgets/code_save_action.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_states/bubble_state.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_toolbar/widgets/code_save_action.dart';
 
 abstract class BaseBubbleToolbarPart {
   const BaseBubbleToolbarPart();
@@ -62,6 +62,7 @@ abstract class BaseBubbleToolbarPart {
     required String title,
     required String text,
   }) async {
+    final scale = AiChatCompactScope.scaleOf(context);
     await AppBottomSheet.show<void>(
       context: context,
       title: title,
@@ -69,7 +70,7 @@ abstract class BaseBubbleToolbarPart {
         child: SelectableText(
           text,
           style: TextStyle(
-            fontSize: 14.sp,
+            fontSize: 14 * scale,
             height: 1.5,
           ),
         ),
@@ -101,7 +102,7 @@ class DefaultBubbleToolbarPart extends BaseBubbleToolbarPart {
         packageName: state.packageName,
         language: language,
       ),
-      SizedBox(width: 4.w),
+      const SizedBox(width: 4),
     ];
   }
 }
@@ -119,12 +120,13 @@ class _BubbleActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, size: 20.sp),
+      leading: Icon(icon, size: 20 * scale),
       title: Text(
         title,
-        style: TextStyle(fontSize: 14.sp),
+        style: TextStyle(fontSize: 14 * scale),
       ),
       onTap: onTap,
     );

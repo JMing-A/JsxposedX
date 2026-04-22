@@ -12,6 +12,7 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/me
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_result_selection_state.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_search_state.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_selection_limit_feedback.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_range_key_mapper.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_host_runtime_provider.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
@@ -94,8 +95,9 @@ Future<Map<int, MemoryValuePreview>> currentSearchResultLivePreviews(
   final removedAddresses = ref.watch(
     memoryToolRemovedResultProvider.select((state) => state.removedAddresses),
   );
+  final selectedProcess = ref.watch(memoryToolSelectedProcessProvider);
 
-  if (!hasMatchingSession || !isPanelVisible) {
+  if (!hasMatchingSession || !isPanelVisible || selectedProcess == null) {
     return const <int, MemoryValuePreview>{};
   }
 
@@ -115,7 +117,12 @@ Future<Map<int, MemoryValuePreview>> currentSearchResultLivePreviews(
       .readMemoryValues(
         requests: results
             .take(renderLimit)
-            .map(_buildMemoryReadRequestFromResult)
+            .map(
+              (result) => _buildMemoryReadRequestFromResult(
+                pid: selectedProcess.pid,
+                result: result,
+              ),
+            )
             .toList(growable: false),
       );
 
@@ -155,6 +162,7 @@ class MemoryToolResultSelection extends _$MemoryToolResultSelection {
     }
 
     if (selected.length >= state.selectionLimit) {
+      showMemoryToolSelectionLimitToast(ref, state.selectionLimit);
       return;
     }
 
@@ -163,6 +171,9 @@ class MemoryToolResultSelection extends _$MemoryToolResultSelection {
   }
 
   void selectVisible(List<SearchResult> results) {
+    if (results.length > state.selectionLimit) {
+      showMemoryToolSelectionLimitToast(ref, state.selectionLimit);
+    }
     state = state.copyWith(
       selectedAddresses: results
           .take(state.selectionLimit)
@@ -177,14 +188,19 @@ class MemoryToolResultSelection extends _$MemoryToolResultSelection {
         .where((address) => !visibleAddresses.contains(address))
         .toList();
     final selectedVisible = state.selectedAddresses.toSet();
+    var reachedSelectionLimit = false;
     for (final result in results) {
       if (selectedVisible.contains(result.address)) {
         continue;
       }
       if (preserved.length >= state.selectionLimit) {
+        reachedSelectionLimit = true;
         break;
       }
       preserved.add(result.address);
+    }
+    if (reachedSelectionLimit) {
+      showMemoryToolSelectionLimitToast(ref, state.selectionLimit);
     }
 
     state = state.copyWith(selectedAddresses: preserved);
@@ -244,8 +260,12 @@ class MemoryToolRemovedResult extends _$MemoryToolRemovedResult {
   }
 }
 
-MemoryReadRequest _buildMemoryReadRequestFromResult(SearchResult result) {
+MemoryReadRequest _buildMemoryReadRequestFromResult({
+  required int pid,
+  required SearchResult result,
+}) {
   return MemoryReadRequest(
+    pid: pid,
     address: result.address,
     type: result.type,
     length: result.rawBytes.length,
@@ -576,9 +596,7 @@ class MemoryToolSearchForm extends _$MemoryToolSearchForm {
     return null;
   }
 
-  SearchValue _buildSearchValue({
-    required bool isFirstScan,
-  }) {
+  SearchValue _buildSearchValue({required bool isFirstScan}) {
     final trimmedValue = state.value.trim();
     final requestType = state.requestSearchValueType;
     final bytesValue = state.isTextType

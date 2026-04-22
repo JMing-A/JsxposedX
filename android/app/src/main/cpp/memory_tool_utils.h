@@ -22,6 +22,8 @@ jlong ParsePid(const std::string& output);
 
 std::string HexEncode(const std::vector<uint8_t>& bytes);
 
+bool HexDecode(const std::string& value, std::vector<uint8_t>* bytes);
+
 std::string JsonEscape(const std::string& value);
 
 }  // namespace memory_tool::utils

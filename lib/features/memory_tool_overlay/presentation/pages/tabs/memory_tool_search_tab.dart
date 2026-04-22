@@ -1,6 +1,11 @@
 import 'dart:async';
-
+import 'package:JsxposedX/common/pages/toast.dart';
+import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_pointer_expression.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_jump_address_dialog.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_locate_expression_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_result_card.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_task_feedback.dart';
@@ -15,12 +20,26 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class MemoryToolSearchTab extends HookConsumerWidget {
-  const MemoryToolSearchTab({super.key});
+  const MemoryToolSearchTab({
+    super.key,
+    required this.onOpenBrowseTab,
+    required this.onOpenPointerTab,
+    required this.onOpenDebugTab,
+    required this.onOpenSavedTab,
+  });
+
+  final VoidCallback onOpenBrowseTab;
+  final VoidCallback onOpenPointerTab;
+  final VoidCallback onOpenDebugTab;
+  final VoidCallback onOpenSavedTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     useAutomaticKeepAlive();
     final isSearchDialogVisible = useState(false);
+    final isJumpAddressDialogVisible = useState(false);
+    final isLocateExpressionDialogVisible = useState(false);
+    final isLocateExpressionLoading = useState(false);
     final selectedPid = ref.watch(memoryToolSelectedProcessProvider)?.pid;
     final sessionStateAsync = ref.watch(getSearchSessionStateProvider);
     final taskStateAsync = ref.watch(getSearchTaskStateProvider);
@@ -49,6 +68,7 @@ class MemoryToolSearchTab extends HookConsumerWidget {
         ref.invalidate(getSearchResultsProvider);
         ref.invalidate(hasMatchingSearchSessionProvider);
         ref.invalidate(currentSearchResultsProvider);
+        ref.invalidate(currentSearchResultLivePreviewsProvider);
       });
     }
 
@@ -67,8 +87,13 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       taskStateAsync.whenData((state) {
         final previousStatus = previousTaskStatus.value;
         final currentStatus = state.status;
-        if (previousStatus == SearchTaskStatus.running &&
-            currentStatus != SearchTaskStatus.running) {
+        final isTerminalStatus =
+            currentStatus == SearchTaskStatus.completed ||
+            currentStatus == SearchTaskStatus.cancelled ||
+            currentStatus == SearchTaskStatus.failed;
+        final didEnterTerminalStatus =
+            isTerminalStatus && previousStatus != currentStatus;
+        if (didEnterTerminalStatus) {
           scheduleSearchRefresh();
           scheduleSelectionClear();
         }
@@ -91,9 +116,13 @@ class MemoryToolSearchTab extends HookConsumerWidget {
         final previousPid = previousSessionPid.value;
         final currentSessionPid = state.hasActiveSession ? state.pid : null;
         final hadMatchingSession =
-            selectedPid != null && previousPid != null && previousPid == selectedPid;
+            selectedPid != null &&
+            previousPid != null &&
+            previousPid == selectedPid;
         final hasExactMatchingSession =
-            state.hasActiveSession && selectedPid != null && state.pid == selectedPid;
+            state.hasActiveSession &&
+            selectedPid != null &&
+            state.pid == selectedPid;
 
         if (hadMatchingSession && !hasExactMatchingSession) {
           scheduleSelectionClear();
@@ -103,6 +132,37 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       });
       return null;
     }, [sessionStateAsync, selectedPid]);
+
+    void stopLocateExpressionLoading() {
+      if (!context.mounted || !isLocateExpressionLoading.value) {
+        return;
+      }
+      isLocateExpressionLoading.value = false;
+    }
+
+    Future<void> jumpToAddress(int targetAddress) async {
+      if (selectedPid == null) {
+        return;
+      }
+
+      try {
+        await ref
+            .read(memoryToolBrowseControllerProvider.notifier)
+            .previewRawAddress(targetAddress: targetAddress);
+        if (!context.mounted) {
+          return;
+        }
+        onOpenBrowseTab();
+      } catch (_) {
+        if (!context.mounted) {
+          return;
+        }
+        await ToastOverlayMessage.show(
+          context.l10n.memoryToolOffsetPreviewUnreadable,
+          duration: const Duration(milliseconds: 1200),
+        );
+      }
+    }
 
     final resultCard = MemoryToolSearchResultCard(
       hasMatchingSession: hasMatchingSession,
@@ -116,6 +176,16 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       onOpenSearch: () {
         isSearchDialogVisible.value = true;
       },
+      onOpenJumpAddress: () {
+        isJumpAddressDialogVisible.value = true;
+      },
+      onOpenLocateExpression: () {
+        isLocateExpressionDialogVisible.value = true;
+      },
+      onOpenBrowseTab: onOpenBrowseTab,
+      onOpenPointerTab: onOpenPointerTab,
+      onOpenDebugTab: onOpenDebugTab,
+      onOpenSavedTab: onOpenSavedTab,
     );
 
     return LayoutBuilder(
@@ -149,9 +219,107 @@ class MemoryToolSearchTab extends HookConsumerWidget {
             if (isSearchDialogVisible.value)
               Positioned.fill(
                 child: MemoryToolSearchDialog(
+                  onOpenBrowseTab: onOpenBrowseTab,
                   onClose: () {
                     isSearchDialogVisible.value = false;
                   },
+                ),
+              ),
+            if (isJumpAddressDialogVisible.value)
+              Positioned.fill(
+                child: MemoryToolJumpAddressDialog(
+                  onConfirm: (targetAddress) async {
+                    isJumpAddressDialogVisible.value = false;
+                    await jumpToAddress(targetAddress);
+                  },
+                  onClose: () {
+                    isJumpAddressDialogVisible.value = false;
+                  },
+                ),
+              ),
+            if (isLocateExpressionDialogVisible.value)
+              Positioned.fill(
+                child: MemoryToolLocateExpressionDialog(
+                  onConfirm: (expression) async {
+                    isLocateExpressionDialogVisible.value = false;
+                    if (selectedPid == null) {
+                      return;
+                    }
+                    isLocateExpressionLoading.value = true;
+                    try {
+                      final browseNotifier = ref.read(
+                        memoryToolBrowseControllerProvider.notifier,
+                      );
+                      final readableRegions = await browseNotifier
+                          .ensureReadableRegions(pid: selectedPid);
+                      final targetAddress =
+                          await resolveMemoryToolPointerExpressionTargetAddress(
+                            repository: ref.read(memoryQueryRepositoryProvider),
+                            pid: selectedPid,
+                            expression: expression,
+                            readableRegions: readableRegions,
+                          );
+                      stopLocateExpressionLoading();
+                      await jumpToAddress(targetAddress);
+                    } catch (_) {
+                      stopLocateExpressionLoading();
+                      if (context.mounted) {
+                        unawaited(
+                          ToastOverlayMessage.show(
+                            context.l10n.memoryToolOffsetPreviewUnreadable,
+                            duration: const Duration(milliseconds: 1200),
+                          ),
+                        );
+                      }
+                    } finally {
+                      stopLocateExpressionLoading();
+                    }
+                  },
+                  onClose: () {
+                    isLocateExpressionDialogVisible.value = false;
+                  },
+                ),
+              ),
+            if (isLocateExpressionLoading.value)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: Colors.black.withValues(alpha: 0.34),
+                  child: Center(
+                    child: Container(
+                      width: 180.r,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 18.r,
+                        vertical: 16.r,
+                      ),
+                      decoration: BoxDecoration(
+                        color: context.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(18.r),
+                        border: Border.all(
+                          color: context.colorScheme.outlineVariant.withValues(
+                            alpha: 0.42,
+                          ),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          SizedBox(
+                            width: 52.r,
+                            height: 52.r,
+                            child: const Loading(),
+                          ),
+                          SizedBox(height: 10.r),
+                          Text(
+                            _resolveExpressionLoadingText(context),
+                            textAlign: TextAlign.center,
+                            style: context.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             taskStateAsync.when(
@@ -183,4 +351,8 @@ class MemoryToolSearchTab extends HookConsumerWidget {
       },
     );
   }
+}
+
+String _resolveExpressionLoadingText(BuildContext context) {
+  return context.isZh ? '表达式定位中...' : 'Locating expression...';
 }

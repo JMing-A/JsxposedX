@@ -43,12 +43,14 @@ abstract class AiMessage with _$AiMessage {
   factory AiMessage.toolResult({
     required String toolCallId,
     required String content,
+    bool isError = false,
   }) {
     return AiMessage(
       id: const Uuid().v4(),
       role: 'tool',
       content: content,
       toolCallId: toolCallId,
+      isError: isError,
     );
   }
 

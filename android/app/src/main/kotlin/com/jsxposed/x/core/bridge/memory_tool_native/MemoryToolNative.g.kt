@@ -118,6 +118,18 @@ enum class SearchTaskStatus(val raw: Int) {
   }
 }
 
+enum class MemoryBreakpointAccessType(val raw: Int) {
+  READ(0),
+  WRITE(1),
+  READ_WRITE(2);
+
+  companion object {
+    fun ofRaw(raw: Int): MemoryBreakpointAccessType? {
+      return values().firstOrNull { it.raw == raw }
+    }
+  }
+}
+
 /** Generated class from Pigeon that represents data sent in messages. */
 data class ProcessInfo (
   val pid: Long,
@@ -393,7 +405,489 @@ data class SearchResult (
 }
 
 /** Generated class from Pigeon that represents data sent in messages. */
+data class PointerScanRequest (
+  val pid: Long,
+  val targetAddress: Long,
+  val pointerWidth: Long,
+  val maxOffset: Long,
+  val alignment: Long,
+  val rangeSectionKeys: List<String>,
+  val scanAllReadableRegions: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PointerScanRequest {
+      val pid = pigeonVar_list[0] as Long
+      val targetAddress = pigeonVar_list[1] as Long
+      val pointerWidth = pigeonVar_list[2] as Long
+      val maxOffset = pigeonVar_list[3] as Long
+      val alignment = pigeonVar_list[4] as Long
+      val rangeSectionKeys = pigeonVar_list[5] as List<String>
+      val scanAllReadableRegions = pigeonVar_list[6] as Boolean
+      return PointerScanRequest(pid, targetAddress, pointerWidth, maxOffset, alignment, rangeSectionKeys, scanAllReadableRegions)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pid,
+      targetAddress,
+      pointerWidth,
+      maxOffset,
+      alignment,
+      rangeSectionKeys,
+      scanAllReadableRegions,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PointerScanRequest) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class PointerScanResult (
+  val pointerAddress: Long,
+  val baseAddress: Long,
+  val targetAddress: Long,
+  val offset: Long,
+  val regionStart: Long,
+  val regionTypeKey: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PointerScanResult {
+      val pointerAddress = pigeonVar_list[0] as Long
+      val baseAddress = pigeonVar_list[1] as Long
+      val targetAddress = pigeonVar_list[2] as Long
+      val offset = pigeonVar_list[3] as Long
+      val regionStart = pigeonVar_list[4] as Long
+      val regionTypeKey = pigeonVar_list[5] as String
+      return PointerScanResult(pointerAddress, baseAddress, targetAddress, offset, regionStart, regionTypeKey)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pointerAddress,
+      baseAddress,
+      targetAddress,
+      offset,
+      regionStart,
+      regionTypeKey,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PointerScanResult) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class PointerScanChaseHint (
+  val result: PointerScanResult? = null,
+  val isTerminalStaticCandidate: Boolean,
+  val stopReasonKey: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PointerScanChaseHint {
+      val result = pigeonVar_list[0] as PointerScanResult?
+      val isTerminalStaticCandidate = pigeonVar_list[1] as Boolean
+      val stopReasonKey = pigeonVar_list[2] as String
+      return PointerScanChaseHint(result, isTerminalStaticCandidate, stopReasonKey)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      result,
+      isTerminalStaticCandidate,
+      stopReasonKey,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PointerScanChaseHint) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class PointerAutoChaseRequest (
+  val pid: Long,
+  val targetAddress: Long,
+  val pointerWidth: Long,
+  val maxOffset: Long,
+  val alignment: Long,
+  val maxDepth: Long,
+  val rangeSectionKeys: List<String>,
+  val scanAllReadableRegions: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PointerAutoChaseRequest {
+      val pid = pigeonVar_list[0] as Long
+      val targetAddress = pigeonVar_list[1] as Long
+      val pointerWidth = pigeonVar_list[2] as Long
+      val maxOffset = pigeonVar_list[3] as Long
+      val alignment = pigeonVar_list[4] as Long
+      val maxDepth = pigeonVar_list[5] as Long
+      val rangeSectionKeys = pigeonVar_list[6] as List<String>
+      val scanAllReadableRegions = pigeonVar_list[7] as Boolean
+      return PointerAutoChaseRequest(pid, targetAddress, pointerWidth, maxOffset, alignment, maxDepth, rangeSectionKeys, scanAllReadableRegions)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pid,
+      targetAddress,
+      pointerWidth,
+      maxOffset,
+      alignment,
+      maxDepth,
+      rangeSectionKeys,
+      scanAllReadableRegions,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PointerAutoChaseRequest) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class PointerAutoChaseLayerState (
+  val layerIndex: Long,
+  val targetAddress: Long,
+  val selectedPointerAddress: Long? = null,
+  val selectedResult: PointerScanResult? = null,
+  val resultCount: Long,
+  val hasMore: Boolean,
+  val isTerminalLayer: Boolean,
+  val stopReasonKey: String,
+  val initialResults: List<PointerScanResult>
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PointerAutoChaseLayerState {
+      val layerIndex = pigeonVar_list[0] as Long
+      val targetAddress = pigeonVar_list[1] as Long
+      val selectedPointerAddress = pigeonVar_list[2] as Long?
+      val selectedResult = pigeonVar_list[3] as PointerScanResult?
+      val resultCount = pigeonVar_list[4] as Long
+      val hasMore = pigeonVar_list[5] as Boolean
+      val isTerminalLayer = pigeonVar_list[6] as Boolean
+      val stopReasonKey = pigeonVar_list[7] as String
+      val initialResults = pigeonVar_list[8] as List<PointerScanResult>
+      return PointerAutoChaseLayerState(layerIndex, targetAddress, selectedPointerAddress, selectedResult, resultCount, hasMore, isTerminalLayer, stopReasonKey, initialResults)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      layerIndex,
+      targetAddress,
+      selectedPointerAddress,
+      selectedResult,
+      resultCount,
+      hasMore,
+      isTerminalLayer,
+      stopReasonKey,
+      initialResults,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PointerAutoChaseLayerState) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class PointerAutoChaseState (
+  val isRunning: Boolean,
+  val pid: Long,
+  val maxDepth: Long,
+  val currentDepth: Long,
+  val layers: List<PointerAutoChaseLayerState>,
+  val message: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PointerAutoChaseState {
+      val isRunning = pigeonVar_list[0] as Boolean
+      val pid = pigeonVar_list[1] as Long
+      val maxDepth = pigeonVar_list[2] as Long
+      val currentDepth = pigeonVar_list[3] as Long
+      val layers = pigeonVar_list[4] as List<PointerAutoChaseLayerState>
+      val message = pigeonVar_list[5] as String
+      return PointerAutoChaseState(isRunning, pid, maxDepth, currentDepth, layers, message)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      isRunning,
+      pid,
+      maxDepth,
+      currentDepth,
+      layers,
+      message,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PointerAutoChaseState) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class AddMemoryBreakpointRequest (
+  val pid: Long,
+  val address: Long,
+  val type: SearchValueType,
+  val length: Long,
+  val accessType: MemoryBreakpointAccessType,
+  val enabled: Boolean,
+  val pauseProcessOnHit: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): AddMemoryBreakpointRequest {
+      val pid = pigeonVar_list[0] as Long
+      val address = pigeonVar_list[1] as Long
+      val type = pigeonVar_list[2] as SearchValueType
+      val length = pigeonVar_list[3] as Long
+      val accessType = pigeonVar_list[4] as MemoryBreakpointAccessType
+      val enabled = pigeonVar_list[5] as Boolean
+      val pauseProcessOnHit = pigeonVar_list[6] as Boolean
+      return AddMemoryBreakpointRequest(pid, address, type, length, accessType, enabled, pauseProcessOnHit)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pid,
+      address,
+      type,
+      length,
+      accessType,
+      enabled,
+      pauseProcessOnHit,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is AddMemoryBreakpointRequest) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class MemoryBreakpoint (
+  val id: String,
+  val pid: Long,
+  val address: Long,
+  val type: SearchValueType,
+  val length: Long,
+  val accessType: MemoryBreakpointAccessType,
+  val enabled: Boolean,
+  val pauseProcessOnHit: Boolean,
+  val hitCount: Long,
+  val createdAtMillis: Long,
+  val lastHitAtMillis: Long? = null,
+  val lastError: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): MemoryBreakpoint {
+      val id = pigeonVar_list[0] as String
+      val pid = pigeonVar_list[1] as Long
+      val address = pigeonVar_list[2] as Long
+      val type = pigeonVar_list[3] as SearchValueType
+      val length = pigeonVar_list[4] as Long
+      val accessType = pigeonVar_list[5] as MemoryBreakpointAccessType
+      val enabled = pigeonVar_list[6] as Boolean
+      val pauseProcessOnHit = pigeonVar_list[7] as Boolean
+      val hitCount = pigeonVar_list[8] as Long
+      val createdAtMillis = pigeonVar_list[9] as Long
+      val lastHitAtMillis = pigeonVar_list[10] as Long?
+      val lastError = pigeonVar_list[11] as String
+      return MemoryBreakpoint(id, pid, address, type, length, accessType, enabled, pauseProcessOnHit, hitCount, createdAtMillis, lastHitAtMillis, lastError)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      id,
+      pid,
+      address,
+      type,
+      length,
+      accessType,
+      enabled,
+      pauseProcessOnHit,
+      hitCount,
+      createdAtMillis,
+      lastHitAtMillis,
+      lastError,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is MemoryBreakpoint) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class MemoryBreakpointState (
+  val isSupported: Boolean,
+  val isProcessPaused: Boolean,
+  val activeBreakpointCount: Long,
+  val pendingHitCount: Long,
+  val architecture: String,
+  val lastError: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): MemoryBreakpointState {
+      val isSupported = pigeonVar_list[0] as Boolean
+      val isProcessPaused = pigeonVar_list[1] as Boolean
+      val activeBreakpointCount = pigeonVar_list[2] as Long
+      val pendingHitCount = pigeonVar_list[3] as Long
+      val architecture = pigeonVar_list[4] as String
+      val lastError = pigeonVar_list[5] as String
+      return MemoryBreakpointState(isSupported, isProcessPaused, activeBreakpointCount, pendingHitCount, architecture, lastError)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      isSupported,
+      isProcessPaused,
+      activeBreakpointCount,
+      pendingHitCount,
+      architecture,
+      lastError,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is MemoryBreakpointState) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class MemoryBreakpointHit (
+  val breakpointId: String,
+  val pid: Long,
+  val address: Long,
+  val accessType: MemoryBreakpointAccessType,
+  val threadId: Long,
+  val timestampMillis: Long,
+  val oldValue: ByteArray,
+  val newValue: ByteArray,
+  val pc: Long,
+  val moduleName: String,
+  val moduleBase: Long,
+  val moduleOffset: Long,
+  val instructionText: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): MemoryBreakpointHit {
+      val breakpointId = pigeonVar_list[0] as String
+      val pid = pigeonVar_list[1] as Long
+      val address = pigeonVar_list[2] as Long
+      val accessType = pigeonVar_list[3] as MemoryBreakpointAccessType
+      val threadId = pigeonVar_list[4] as Long
+      val timestampMillis = pigeonVar_list[5] as Long
+      val oldValue = pigeonVar_list[6] as ByteArray
+      val newValue = pigeonVar_list[7] as ByteArray
+      val pc = pigeonVar_list[8] as Long
+      val moduleName = pigeonVar_list[9] as String
+      val moduleBase = pigeonVar_list[10] as Long
+      val moduleOffset = pigeonVar_list[11] as Long
+      val instructionText = pigeonVar_list[12] as String
+      return MemoryBreakpointHit(breakpointId, pid, address, accessType, threadId, timestampMillis, oldValue, newValue, pc, moduleName, moduleBase, moduleOffset, instructionText)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      breakpointId,
+      pid,
+      address,
+      accessType,
+      threadId,
+      timestampMillis,
+      oldValue,
+      newValue,
+      pc,
+      moduleName,
+      moduleBase,
+      moduleOffset,
+      instructionText,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is MemoryBreakpointHit) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
 data class MemoryReadRequest (
+  val pid: Long,
   val address: Long,
   val type: SearchValueType,
   val length: Long
@@ -401,14 +895,16 @@ data class MemoryReadRequest (
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): MemoryReadRequest {
-      val address = pigeonVar_list[0] as Long
-      val type = pigeonVar_list[1] as SearchValueType
-      val length = pigeonVar_list[2] as Long
-      return MemoryReadRequest(address, type, length)
+      val pid = pigeonVar_list[0] as Long
+      val address = pigeonVar_list[1] as Long
+      val type = pigeonVar_list[2] as SearchValueType
+      val length = pigeonVar_list[3] as Long
+      return MemoryReadRequest(pid, address, type, length)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
+      pid,
       address,
       type,
       length,
@@ -677,6 +1173,233 @@ data class SearchTaskState (
 
   override fun hashCode(): Int = toList().hashCode()
 }
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class PointerScanSessionState (
+  val hasActiveSession: Boolean,
+  val pid: Long,
+  val targetAddress: Long,
+  val pointerWidth: Long,
+  val maxOffset: Long,
+  val alignment: Long,
+  val regionCount: Long,
+  val resultCount: Long
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PointerScanSessionState {
+      val hasActiveSession = pigeonVar_list[0] as Boolean
+      val pid = pigeonVar_list[1] as Long
+      val targetAddress = pigeonVar_list[2] as Long
+      val pointerWidth = pigeonVar_list[3] as Long
+      val maxOffset = pigeonVar_list[4] as Long
+      val alignment = pigeonVar_list[5] as Long
+      val regionCount = pigeonVar_list[6] as Long
+      val resultCount = pigeonVar_list[7] as Long
+      return PointerScanSessionState(hasActiveSession, pid, targetAddress, pointerWidth, maxOffset, alignment, regionCount, resultCount)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      hasActiveSession,
+      pid,
+      targetAddress,
+      pointerWidth,
+      maxOffset,
+      alignment,
+      regionCount,
+      resultCount,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PointerScanSessionState) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class PointerScanTaskState (
+  val status: SearchTaskStatus,
+  val pid: Long,
+  val processedRegions: Long,
+  val totalRegions: Long,
+  val processedEntries: Long,
+  val totalEntries: Long,
+  val processedBytes: Long,
+  val totalBytes: Long,
+  val resultCount: Long,
+  val elapsedMilliseconds: Long,
+  val canCancel: Boolean,
+  val message: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): PointerScanTaskState {
+      val status = pigeonVar_list[0] as SearchTaskStatus
+      val pid = pigeonVar_list[1] as Long
+      val processedRegions = pigeonVar_list[2] as Long
+      val totalRegions = pigeonVar_list[3] as Long
+      val processedEntries = pigeonVar_list[4] as Long
+      val totalEntries = pigeonVar_list[5] as Long
+      val processedBytes = pigeonVar_list[6] as Long
+      val totalBytes = pigeonVar_list[7] as Long
+      val resultCount = pigeonVar_list[8] as Long
+      val elapsedMilliseconds = pigeonVar_list[9] as Long
+      val canCancel = pigeonVar_list[10] as Boolean
+      val message = pigeonVar_list[11] as String
+      return PointerScanTaskState(status, pid, processedRegions, totalRegions, processedEntries, totalEntries, processedBytes, totalBytes, resultCount, elapsedMilliseconds, canCancel, message)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      status,
+      pid,
+      processedRegions,
+      totalRegions,
+      processedEntries,
+      totalEntries,
+      processedBytes,
+      totalBytes,
+      resultCount,
+      elapsedMilliseconds,
+      canCancel,
+      message,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is PointerScanTaskState) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class MemoryInstructionPatchRequest (
+  val pid: Long,
+  val address: Long,
+  val instruction: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): MemoryInstructionPatchRequest {
+      val pid = pigeonVar_list[0] as Long
+      val address = pigeonVar_list[1] as Long
+      val instruction = pigeonVar_list[2] as String
+      return MemoryInstructionPatchRequest(pid, address, instruction)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pid,
+      address,
+      instruction,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is MemoryInstructionPatchRequest) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class MemoryInstructionPatchResult (
+  val address: Long,
+  val architecture: String,
+  val instructionSize: Long,
+  val beforeBytes: ByteArray,
+  val afterBytes: ByteArray,
+  val instructionText: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): MemoryInstructionPatchResult {
+      val address = pigeonVar_list[0] as Long
+      val architecture = pigeonVar_list[1] as String
+      val instructionSize = pigeonVar_list[2] as Long
+      val beforeBytes = pigeonVar_list[3] as ByteArray
+      val afterBytes = pigeonVar_list[4] as ByteArray
+      val instructionText = pigeonVar_list[5] as String
+      return MemoryInstructionPatchResult(address, architecture, instructionSize, beforeBytes, afterBytes, instructionText)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      address,
+      architecture,
+      instructionSize,
+      beforeBytes,
+      afterBytes,
+      instructionText,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is MemoryInstructionPatchResult) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class MemoryInstructionPreview (
+  val address: Long,
+  val architecture: String,
+  val instructionSize: Long,
+  val rawBytes: ByteArray,
+  val instructionText: String
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): MemoryInstructionPreview {
+      val address = pigeonVar_list[0] as Long
+      val architecture = pigeonVar_list[1] as String
+      val instructionSize = pigeonVar_list[2] as Long
+      val rawBytes = pigeonVar_list[3] as ByteArray
+      val instructionText = pigeonVar_list[4] as String
+      return MemoryInstructionPreview(address, architecture, instructionSize, rawBytes, instructionText)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      address,
+      architecture,
+      instructionSize,
+      rawBytes,
+      instructionText,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is MemoryInstructionPreview) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return MemoryToolNativePigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
 private open class MemoryToolNativePigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -696,73 +1419,153 @@ private open class MemoryToolNativePigeonCodec : StandardMessageCodec() {
         }
       }
       132.toByte() -> {
-        return (readValue(buffer) as? List<Any?>)?.let {
-          ProcessInfo.fromList(it)
+        return (readValue(buffer) as Long?)?.let {
+          MemoryBreakpointAccessType.ofRaw(it.toInt())
         }
       }
       133.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SearchValue.fromList(it)
+          ProcessInfo.fromList(it)
         }
       }
       134.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MemoryRegion.fromList(it)
+          SearchValue.fromList(it)
         }
       }
       135.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MemoryRegionQuery.fromList(it)
+          MemoryRegion.fromList(it)
         }
       }
       136.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          FirstScanRequest.fromList(it)
+          MemoryRegionQuery.fromList(it)
         }
       }
       137.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          NextScanRequest.fromList(it)
+          FirstScanRequest.fromList(it)
         }
       }
       138.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SearchResult.fromList(it)
+          NextScanRequest.fromList(it)
         }
       }
       139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MemoryReadRequest.fromList(it)
+          SearchResult.fromList(it)
         }
       }
       140.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MemoryValuePreview.fromList(it)
+          PointerScanRequest.fromList(it)
         }
       }
       141.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MemoryWriteRequest.fromList(it)
+          PointerScanResult.fromList(it)
         }
       }
       142.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MemoryFreezeRequest.fromList(it)
+          PointerScanChaseHint.fromList(it)
         }
       }
       143.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          FrozenMemoryValue.fromList(it)
+          PointerAutoChaseRequest.fromList(it)
         }
       }
       144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          SearchSessionState.fromList(it)
+          PointerAutoChaseLayerState.fromList(it)
         }
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
+          PointerAutoChaseState.fromList(it)
+        }
+      }
+      146.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          AddMemoryBreakpointRequest.fromList(it)
+        }
+      }
+      147.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryBreakpoint.fromList(it)
+        }
+      }
+      148.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryBreakpointState.fromList(it)
+        }
+      }
+      149.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryBreakpointHit.fromList(it)
+        }
+      }
+      150.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryReadRequest.fromList(it)
+        }
+      }
+      151.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryValuePreview.fromList(it)
+        }
+      }
+      152.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryWriteRequest.fromList(it)
+        }
+      }
+      153.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryFreezeRequest.fromList(it)
+        }
+      }
+      154.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          FrozenMemoryValue.fromList(it)
+        }
+      }
+      155.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          SearchSessionState.fromList(it)
+        }
+      }
+      156.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
           SearchTaskState.fromList(it)
+        }
+      }
+      157.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PointerScanSessionState.fromList(it)
+        }
+      }
+      158.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          PointerScanTaskState.fromList(it)
+        }
+      }
+      159.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryInstructionPatchRequest.fromList(it)
+        }
+      }
+      160.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryInstructionPatchResult.fromList(it)
+        }
+      }
+      161.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          MemoryInstructionPreview.fromList(it)
         }
       }
       else -> super.readValueOfType(type, buffer)
@@ -782,60 +1585,124 @@ private open class MemoryToolNativePigeonCodec : StandardMessageCodec() {
         stream.write(131)
         writeValue(stream, value.raw.toLong())
       }
-      is ProcessInfo -> {
+      is MemoryBreakpointAccessType -> {
         stream.write(132)
-        writeValue(stream, value.toList())
+        writeValue(stream, value.raw.toLong())
       }
-      is SearchValue -> {
+      is ProcessInfo -> {
         stream.write(133)
         writeValue(stream, value.toList())
       }
-      is MemoryRegion -> {
+      is SearchValue -> {
         stream.write(134)
         writeValue(stream, value.toList())
       }
-      is MemoryRegionQuery -> {
+      is MemoryRegion -> {
         stream.write(135)
         writeValue(stream, value.toList())
       }
-      is FirstScanRequest -> {
+      is MemoryRegionQuery -> {
         stream.write(136)
         writeValue(stream, value.toList())
       }
-      is NextScanRequest -> {
+      is FirstScanRequest -> {
         stream.write(137)
         writeValue(stream, value.toList())
       }
-      is SearchResult -> {
+      is NextScanRequest -> {
         stream.write(138)
         writeValue(stream, value.toList())
       }
-      is MemoryReadRequest -> {
+      is SearchResult -> {
         stream.write(139)
         writeValue(stream, value.toList())
       }
-      is MemoryValuePreview -> {
+      is PointerScanRequest -> {
         stream.write(140)
         writeValue(stream, value.toList())
       }
-      is MemoryWriteRequest -> {
+      is PointerScanResult -> {
         stream.write(141)
         writeValue(stream, value.toList())
       }
-      is MemoryFreezeRequest -> {
+      is PointerScanChaseHint -> {
         stream.write(142)
         writeValue(stream, value.toList())
       }
-      is FrozenMemoryValue -> {
+      is PointerAutoChaseRequest -> {
         stream.write(143)
         writeValue(stream, value.toList())
       }
-      is SearchSessionState -> {
+      is PointerAutoChaseLayerState -> {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is SearchTaskState -> {
+      is PointerAutoChaseState -> {
         stream.write(145)
+        writeValue(stream, value.toList())
+      }
+      is AddMemoryBreakpointRequest -> {
+        stream.write(146)
+        writeValue(stream, value.toList())
+      }
+      is MemoryBreakpoint -> {
+        stream.write(147)
+        writeValue(stream, value.toList())
+      }
+      is MemoryBreakpointState -> {
+        stream.write(148)
+        writeValue(stream, value.toList())
+      }
+      is MemoryBreakpointHit -> {
+        stream.write(149)
+        writeValue(stream, value.toList())
+      }
+      is MemoryReadRequest -> {
+        stream.write(150)
+        writeValue(stream, value.toList())
+      }
+      is MemoryValuePreview -> {
+        stream.write(151)
+        writeValue(stream, value.toList())
+      }
+      is MemoryWriteRequest -> {
+        stream.write(152)
+        writeValue(stream, value.toList())
+      }
+      is MemoryFreezeRequest -> {
+        stream.write(153)
+        writeValue(stream, value.toList())
+      }
+      is FrozenMemoryValue -> {
+        stream.write(154)
+        writeValue(stream, value.toList())
+      }
+      is SearchSessionState -> {
+        stream.write(155)
+        writeValue(stream, value.toList())
+      }
+      is SearchTaskState -> {
+        stream.write(156)
+        writeValue(stream, value.toList())
+      }
+      is PointerScanSessionState -> {
+        stream.write(157)
+        writeValue(stream, value.toList())
+      }
+      is PointerScanTaskState -> {
+        stream.write(158)
+        writeValue(stream, value.toList())
+      }
+      is MemoryInstructionPatchRequest -> {
+        stream.write(159)
+        writeValue(stream, value.toList())
+      }
+      is MemoryInstructionPatchResult -> {
+        stream.write(160)
+        writeValue(stream, value.toList())
+      }
+      is MemoryInstructionPreview -> {
+        stream.write(161)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -852,8 +1719,24 @@ interface MemoryToolNative {
   fun getSearchSessionState(callback: (Result<SearchSessionState>) -> Unit)
   fun getSearchTaskState(callback: (Result<SearchTaskState>) -> Unit)
   fun getSearchResults(offset: Long, limit: Long, callback: (Result<List<SearchResult>>) -> Unit)
+  fun getPointerScanSessionState(callback: (Result<PointerScanSessionState>) -> Unit)
+  fun getPointerScanTaskState(callback: (Result<PointerScanTaskState>) -> Unit)
+  fun getPointerScanResults(offset: Long, limit: Long, callback: (Result<List<PointerScanResult>>) -> Unit)
+  fun getPointerScanChaseHint(callback: (Result<PointerScanChaseHint>) -> Unit)
+  fun getPointerAutoChaseState(callback: (Result<PointerAutoChaseState>) -> Unit)
+  fun getPointerAutoChaseLayerResults(layerIndex: Long, offset: Long, limit: Long, callback: (Result<List<PointerScanResult>>) -> Unit)
+  fun addMemoryBreakpoint(request: AddMemoryBreakpointRequest, callback: (Result<MemoryBreakpoint>) -> Unit)
+  fun removeMemoryBreakpoint(breakpointId: String, callback: (Result<Unit>) -> Unit)
+  fun setMemoryBreakpointEnabled(breakpointId: String, enabled: Boolean, callback: (Result<Unit>) -> Unit)
+  fun listMemoryBreakpoints(pid: Long, callback: (Result<List<MemoryBreakpoint>>) -> Unit)
+  fun getMemoryBreakpointState(pid: Long, callback: (Result<MemoryBreakpointState>) -> Unit)
+  fun getMemoryBreakpointHits(pid: Long, offset: Long, limit: Long, callback: (Result<List<MemoryBreakpointHit>>) -> Unit)
+  fun clearMemoryBreakpointHits(pid: Long, callback: (Result<Unit>) -> Unit)
+  fun resumeAfterBreakpoint(pid: Long, callback: (Result<Unit>) -> Unit)
   fun readMemoryValues(requests: List<MemoryReadRequest>, callback: (Result<List<MemoryValuePreview>>) -> Unit)
   fun writeMemoryValue(request: MemoryWriteRequest, callback: (Result<Unit>) -> Unit)
+  fun patchMemoryInstruction(request: MemoryInstructionPatchRequest, callback: (Result<MemoryInstructionPatchResult>) -> Unit)
+  fun disassembleMemory(pid: Long, addresses: List<Long>, callback: (Result<List<MemoryInstructionPreview>>) -> Unit)
   fun setMemoryFreeze(request: MemoryFreezeRequest, callback: (Result<Unit>) -> Unit)
   fun getFrozenMemoryValues(callback: (Result<List<FrozenMemoryValue>>) -> Unit)
   fun isProcessPaused(pid: Long, callback: (Result<Boolean>) -> Unit)
@@ -862,6 +1745,12 @@ interface MemoryToolNative {
   fun nextScan(request: NextScanRequest, callback: (Result<Unit>) -> Unit)
   fun cancelSearch(callback: (Result<Unit>) -> Unit)
   fun resetSearchSession(callback: (Result<Unit>) -> Unit)
+  fun startPointerScan(request: PointerScanRequest, callback: (Result<Unit>) -> Unit)
+  fun startPointerAutoChase(request: PointerAutoChaseRequest, callback: (Result<Unit>) -> Unit)
+  fun cancelPointerScan(callback: (Result<Unit>) -> Unit)
+  fun cancelPointerAutoChase(callback: (Result<Unit>) -> Unit)
+  fun resetPointerScanSession(callback: (Result<Unit>) -> Unit)
+  fun resetPointerAutoChase(callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by MemoryToolNative. */
@@ -991,6 +1880,280 @@ interface MemoryToolNative {
         }
       }
       run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.getPointerScanSessionState$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getPointerScanSessionState{ result: Result<PointerScanSessionState> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.getPointerScanTaskState$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getPointerScanTaskState{ result: Result<PointerScanTaskState> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.getPointerScanResults$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val offsetArg = args[0] as Long
+            val limitArg = args[1] as Long
+            api.getPointerScanResults(offsetArg, limitArg) { result: Result<List<PointerScanResult>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.getPointerScanChaseHint$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getPointerScanChaseHint{ result: Result<PointerScanChaseHint> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.getPointerAutoChaseState$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getPointerAutoChaseState{ result: Result<PointerAutoChaseState> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.getPointerAutoChaseLayerResults$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val layerIndexArg = args[0] as Long
+            val offsetArg = args[1] as Long
+            val limitArg = args[2] as Long
+            api.getPointerAutoChaseLayerResults(layerIndexArg, offsetArg, limitArg) { result: Result<List<PointerScanResult>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.addMemoryBreakpoint$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val requestArg = args[0] as AddMemoryBreakpointRequest
+            api.addMemoryBreakpoint(requestArg) { result: Result<MemoryBreakpoint> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.removeMemoryBreakpoint$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val breakpointIdArg = args[0] as String
+            api.removeMemoryBreakpoint(breakpointIdArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.setMemoryBreakpointEnabled$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val breakpointIdArg = args[0] as String
+            val enabledArg = args[1] as Boolean
+            api.setMemoryBreakpointEnabled(breakpointIdArg, enabledArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.listMemoryBreakpoints$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val pidArg = args[0] as Long
+            api.listMemoryBreakpoints(pidArg) { result: Result<List<MemoryBreakpoint>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.getMemoryBreakpointState$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val pidArg = args[0] as Long
+            api.getMemoryBreakpointState(pidArg) { result: Result<MemoryBreakpointState> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.getMemoryBreakpointHits$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val pidArg = args[0] as Long
+            val offsetArg = args[1] as Long
+            val limitArg = args[2] as Long
+            api.getMemoryBreakpointHits(pidArg, offsetArg, limitArg) { result: Result<List<MemoryBreakpointHit>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.clearMemoryBreakpointHits$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val pidArg = args[0] as Long
+            api.clearMemoryBreakpointHits(pidArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.resumeAfterBreakpoint$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val pidArg = args[0] as Long
+            api.resumeAfterBreakpoint(pidArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.readMemoryValues$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { message, reply ->
@@ -1022,6 +2185,47 @@ interface MemoryToolNative {
                 reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
               } else {
                 reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.patchMemoryInstruction$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val requestArg = args[0] as MemoryInstructionPatchRequest
+            api.patchMemoryInstruction(requestArg) { result: Result<MemoryInstructionPatchResult> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.disassembleMemory$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val pidArg = args[0] as Long
+            val addressesArg = args[1] as List<Long>
+            api.disassembleMemory(pidArg, addressesArg) { result: Result<List<MemoryInstructionPreview>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(data))
               }
             }
           }
@@ -1166,6 +2370,112 @@ interface MemoryToolNative {
         if (api != null) {
           channel.setMessageHandler { _, reply ->
             api.resetSearchSession{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.startPointerScan$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val requestArg = args[0] as PointerScanRequest
+            api.startPointerScan(requestArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.startPointerAutoChase$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val requestArg = args[0] as PointerAutoChaseRequest
+            api.startPointerAutoChase(requestArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.cancelPointerScan$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.cancelPointerScan{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.cancelPointerAutoChase$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.cancelPointerAutoChase{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.resetPointerScanSession$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.resetPointerScanSession{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MemoryToolNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MemoryToolNativePigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.MemoryToolNative.resetPointerAutoChase$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.resetPointerAutoChase{ result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(MemoryToolNativePigeonUtils.wrapError(error))

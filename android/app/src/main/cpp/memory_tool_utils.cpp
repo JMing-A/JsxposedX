@@ -112,10 +112,36 @@ std::string HexEncode(const std::vector<uint8_t>& bytes) {
     return stream.str();
 }
 
+bool HexDecode(const std::string& value, std::vector<uint8_t>* bytes) {
+    if (bytes == nullptr) {
+        return false;
+    }
+
+    bytes->clear();
+    if (value.empty() || value.size() % 2 != 0) {
+        return false;
+    }
+
+    bytes->reserve(value.size() / 2);
+    for (size_t index = 0; index < value.size(); index += 2) {
+        const char high = value[index];
+        const char low = value[index + 1];
+        if (!std::isxdigit(static_cast<unsigned char>(high)) ||
+            !std::isxdigit(static_cast<unsigned char>(low))) {
+            bytes->clear();
+            return false;
+        }
+
+        const std::string token = value.substr(index, 2);
+        bytes->push_back(static_cast<uint8_t>(std::stoul(token, nullptr, 16)));
+    }
+    return true;
+}
+
 std::string JsonEscape(const std::string& value) {
     std::string escaped;
-    escaped.reserve(value.size());
-    for (char ch : value) {
+    escaped.reserve(value.size() * 2);
+    for (unsigned char ch : value) {
         switch (ch) {
             case '\\':
                 escaped += "\\\\";
@@ -132,8 +158,25 @@ std::string JsonEscape(const std::string& value) {
             case '\t':
                 escaped += "\\t";
                 break;
+            case '\b':
+                escaped += "\\b";
+                break;
+            case '\f':
+                escaped += "\\f";
+                break;
             default:
-                escaped += ch;
+                if (ch < 0x20) {
+                    std::ostringstream control_stream;
+                    control_stream << "\\u"
+                                   << std::hex
+                                   << std::nouppercase
+                                   << std::setw(4)
+                                   << std::setfill('0')
+                                   << static_cast<int>(ch);
+                    escaped += control_stream.str();
+                } else {
+                    escaped += static_cast<char>(ch);
+                }
                 break;
         }
     }

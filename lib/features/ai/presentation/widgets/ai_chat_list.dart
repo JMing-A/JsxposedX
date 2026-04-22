@@ -1,12 +1,29 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/models/ai_message.dart';
+import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_response_issue.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/ai_chat_bubble.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+
+typedef AiChatBubbleBuilder = Widget Function({
+  required AiMessage message,
+  required String retryLabel,
+  required VoidCallback onRetry,
+  required String packageName,
+});
+
+typedef AiChatStreamingBubbleBuilder = Widget Function({
+  required AiMessage message,
+  required String retryLabel,
+  required VoidCallback onRetry,
+  required String packageName,
+  required Stream<String> streamingContentStream,
+  required Stream<bool> streamingThinkingStream,
+});
 
 class AiChatList extends HookConsumerWidget {
   const AiChatList({
@@ -14,65 +31,77 @@ class AiChatList extends HookConsumerWidget {
     required this.messages,
     required this.scrollController,
     required this.packageName,
+    this.isCompact = false,
     this.systemPrompt,
     this.customTitle,
     this.customSubtitle,
+    this.bubbleBuilder,
+    this.streamingBubbleBuilder,
   });
 
   final List<AiMessage> messages;
   final ScrollController scrollController;
   final String packageName;
+  final bool isCompact;
   final String? systemPrompt;
   final String? customTitle;
   final String? customSubtitle;
+  final AiChatBubbleBuilder? bubbleBuilder;
+  final AiChatStreamingBubbleBuilder? streamingBubbleBuilder;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scopeCompact = AiChatCompactScope.of(context);
+    final scopeScale = AiChatCompactScope.scaleOf(context);
+    final effectiveCompact = isCompact || scopeCompact;
     if (messages.isEmpty) {
-      return Container(
-        height: 0.5.sh,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  context.colorScheme.primary,
-                  context.colorScheme.secondary,
-                ],
-              ).createShader(bounds),
-              child: Icon(Icons.auto_awesome, size: 80.w, color: Colors.white),
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final isCompactLayout =
+              effectiveCompact || constraints.maxHeight < (220 * scopeScale);
+          final horizontalPadding =
+              (effectiveCompact ? 12 : 20) * scopeScale;
+          final topPadding = (isCompactLayout ? 10 : 18) * scopeScale;
+          final bottomPadding = 12 * scopeScale;
+          final minHeight = constraints.maxHeight - topPadding - bottomPadding;
+
+          return SingleChildScrollView(
+            controller: scrollController,
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              topPadding,
+              horizontalPadding,
+              bottomPadding,
             ),
-            SizedBox(height: 24.h),
-            Text(
-              customTitle ?? context.l10n.aiAssistantTitle,
-              style: TextStyle(
-                color: context.textTheme.titleLarge?.color?.withValues(alpha: 0.8),
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: minHeight > 0 ? minHeight : 0,
+              ),
+              child: Align(
+                alignment: isCompactLayout
+                    ? Alignment.topLeft
+                    : Alignment.centerLeft,
+                child: _EmptyChatState(isCompact: isCompactLayout),
               ),
             ),
-            SizedBox(height: 8.h),
-            Text(
-              customSubtitle ?? context.l10n.aiAssistantSubtitle,
-              style: TextStyle(
-                color: context.theme.hintColor,
-                fontSize: 13.sp,
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       );
     }
 
-    final chatState = ref.watch(aiChatActionProvider(packageName: packageName));
-    final chatNotifier = ref.read(aiChatActionProvider(packageName: packageName).notifier);
+    final chatState = ref.watch(aiChatRuntimeProvider(packageName: packageName));
+    final chatNotifier = ref.read(
+      aiChatRuntimeProvider(packageName: packageName).notifier,
+    );
     final totalVisibleCount = chatState.totalVisibleMessagesCount;
     final hasMore = messages.length < totalVisibleCount;
-    final remainingCount = (totalVisibleCount - messages.length).clamp(0, totalVisibleCount);
+    final remainingCount = (totalVisibleCount - messages.length).clamp(
+      0,
+      totalVisibleCount,
+    );
     final reversedMessages = messages.reversed.toList(growable: false);
-    final retryLabel = chatState.lastResponseIssue == AiResponseIssue.partialResponse
+    final retryLabel =
+        chatState.lastResponseIssue == AiResponseIssue.partialResponse
         ? (chatState.sessionContext.hasPendingToolPhase
               ? context.l10n.aiResumeToolPhase
               : context.l10n.aiContinue)
@@ -81,7 +110,10 @@ class AiChatList extends HookConsumerWidget {
     return ListView.builder(
       controller: scrollController,
       reverse: true,
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(
+        horizontal: (effectiveCompact ? 12 : 20) * scopeScale,
+        vertical: (effectiveCompact ? 6 : 10) * scopeScale,
+      ),
       itemCount: reversedMessages.length + (hasMore ? 1 : 0),
       cacheExtent: 500,
       addAutomaticKeepAlives: false,
@@ -89,7 +121,7 @@ class AiChatList extends HookConsumerWidget {
       itemBuilder: (context, index) {
         if (index == reversedMessages.length) {
           return Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.h),
+            padding: EdgeInsets.symmetric(vertical: 8 * scopeScale),
             child: TextButton(
               onPressed: chatNotifier.loadMore,
               child: Text(
@@ -105,9 +137,22 @@ class AiChatList extends HookConsumerWidget {
             index == 0 &&
             chatState.isStreaming &&
             message.role == 'assistant' &&
-            !message.isError;
+            !message.isError &&
+            !message.isToolResultBubble;
 
         if (shouldShowStreaming) {
+          if (streamingBubbleBuilder != null) {
+            return RepaintBoundary(
+              child: streamingBubbleBuilder!(
+                message: message,
+                retryLabel: retryLabel,
+                onRetry: () => chatNotifier.retryByMessageId(message.id),
+                packageName: packageName,
+                streamingContentStream: chatNotifier.streamingContentStream,
+                streamingThinkingStream: chatNotifier.streamingThinkingStream,
+              ),
+            );
+          }
           return _StreamingAiChatBubble(
             key: ValueKey(message.id),
             role: message.role,
@@ -122,21 +167,155 @@ class AiChatList extends HookConsumerWidget {
         }
 
         return RepaintBoundary(
-          child: AiChatBubble(
-            key: ValueKey(message.id),
-            content: message.content,
-            role: message.role,
-            isError: message.isError,
-            isToolCalling:
-                message.isToolResultBubble &&
-                !message.content.startsWith('✅') &&
-                !message.content.startsWith('❌'),
-            retryLabel: retryLabel,
-            onRetry: () => chatNotifier.retryByMessageId(message.id),
-            packageName: packageName,
-          ),
+          child: bubbleBuilder != null
+              ? bubbleBuilder!(
+                  message: message,
+                  retryLabel: retryLabel,
+                  onRetry: () => chatNotifier.retryByMessageId(message.id),
+                  packageName: packageName,
+                )
+              : AiChatBubble(
+                  key: ValueKey(message.id),
+                  content: message.content,
+                  role: message.role,
+                  isError: message.isError,
+                  isToolCalling:
+                      message.isToolResultBubble &&
+                      !message.content.startsWith('✅') &&
+                      !message.content.startsWith('❌'),
+                  retryLabel: retryLabel,
+                  onRetry: () => chatNotifier.retryByMessageId(message.id),
+                  packageName: packageName,
+                ),
         );
       },
+    );
+  }
+}
+
+class _EmptyChatState extends StatelessWidget {
+  const _EmptyChatState({
+    required this.isCompact,
+  });
+
+  final bool isCompact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scopeScale = AiChatCompactScope.scaleOf(context);
+    final lines = context.isZh
+        ? const [
+            '欢迎使用',
+          ]
+        : const [
+            'Welcome',
+          ];
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: (isCompact ? 24 : 28) * scopeScale,
+              height: (isCompact ? 24 : 28) * scopeScale,
+              decoration: BoxDecoration(
+                color: context.colorScheme.primary.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                size: (isCompact ? 14 : 16) * scopeScale,
+                color: context.colorScheme.primary,
+              ),
+            ),
+            SizedBox(width: 8 * scopeScale),
+            Text(
+              context.isZh ? '助手' : 'Assistant',
+              style: TextStyle(
+                fontSize: (isCompact ? 11 : 12) * scopeScale,
+                fontWeight: FontWeight.w700,
+                color: context.colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: (isCompact ? 8 : 10) * scopeScale),
+        Container(
+          constraints: BoxConstraints(
+            maxWidth: (isCompact ? 240 : 320) * scopeScale,
+          ),
+          padding: EdgeInsets.fromLTRB(
+            (isCompact ? 12 : 16) * scopeScale,
+            (isCompact ? 10 : 14) * scopeScale,
+            (isCompact ? 12 : 16) * scopeScale,
+            (isCompact ? 10 : 14) * scopeScale,
+          ),
+          decoration: BoxDecoration(
+            color: context.isDark
+                ? context.colorScheme.surfaceContainer
+                : Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20 * scopeScale),
+              topRight: Radius.circular(20 * scopeScale),
+              bottomLeft: Radius.circular(6 * scopeScale),
+              bottomRight: Radius.circular(20 * scopeScale),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12 * scopeScale,
+                offset: Offset(0, 4 * scopeScale),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var index = 0; index < lines.length; index++) ...[
+                if (index > 0) SizedBox(height: (isCompact ? 6 : 8) * scopeScale),
+                Text(
+                  lines[index],
+                  style: TextStyle(
+                    fontSize: (isCompact ? 13 : 15) * scopeScale,
+                    height: 1.35,
+                    fontWeight: FontWeight.w700,
+                    color: context.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+              SizedBox(height: (isCompact ? 10 : 12) * scopeScale),
+              OutlinedButton(
+                onPressed: () {
+                  UrlHelper.openUrlInBrowser(
+                    url: 'https://api.muxueai.pro',
+                  );
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: (isCompact ? 10 : 12) * scopeScale,
+                    vertical: (isCompact ? 8 : 10) * scopeScale,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  side: BorderSide(
+                    color: context.colorScheme.primary.withValues(alpha: 0.35),
+                  ),
+                  foregroundColor: context.colorScheme.primary,
+                  textStyle: TextStyle(
+                    fontSize: (isCompact ? 11 : 12) * scopeScale,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                child: const Text('官方满血GPT接口'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

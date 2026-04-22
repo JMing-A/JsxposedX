@@ -1,7 +1,7 @@
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
+﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 方法签名卡片
 ///
@@ -89,6 +89,7 @@ class _MethodTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final primary = context.colorScheme.primary;
     final isDark = context.isDark;
     final modColor = _modifierColor(item.modifier, context);
@@ -103,21 +104,24 @@ class _MethodTile extends StatelessWidget {
         Clipboard.setData(ClipboardData(text: signature));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('已复制签名', style: TextStyle(fontSize: 13.sp)),
+            content: Text('已复制签名', style: TextStyle(fontSize: 13 * scale)),
             duration: const Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(8 * scale),
             ),
           ),
         );
       },
       child: Container(
-        margin: EdgeInsets.only(bottom: isLast ? 0 : 6.h),
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+        margin: EdgeInsets.only(bottom: isLast ? 0 : 6 * scale),
+        padding: EdgeInsets.symmetric(
+          horizontal: 12 * scale,
+          vertical: 10 * scale,
+        ),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1A1F2E) : const Color(0xFFF5F7FF),
-          borderRadius: BorderRadius.circular(10.r),
+          borderRadius: BorderRadius.circular(10 * scale),
           border: Border.all(
             color: primary.withValues(alpha: 0.18),
             width: 0.8,
@@ -132,17 +136,17 @@ class _MethodTile extends StatelessWidget {
                   Flexible(
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                        horizontal: 5.w,
-                        vertical: 1.h,
+                        horizontal: 5 * scale,
+                        vertical: 1 * scale,
                       ),
                       decoration: BoxDecoration(
                         color: modColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(3.r),
+                        borderRadius: BorderRadius.circular(3 * scale),
                       ),
                       child: Text(
                         item.modifier!,
                         style: TextStyle(
-                          fontSize: 10.sp,
+                          fontSize: 10 * scale,
                           color: modColor,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'monospace',
@@ -152,14 +156,14 @@ class _MethodTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(width: 6.w),
+                  SizedBox(width: 6 * scale),
                 ],
                 if (item.returnType != null) ...[
                   Flexible(
                     child: Text(
                       item.returnType!,
                       style: TextStyle(
-                        fontSize: 12.sp,
+                        fontSize: 12 * scale,
                         color: const Color(0xFF2196F3),
                         fontFamily: 'monospace',
                       ),
@@ -167,13 +171,13 @@ class _MethodTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  SizedBox(width: 6.w),
+                  SizedBox(width: 6 * scale),
                 ],
                 Expanded(
                   child: Text(
                     '${item.name}${item.params ?? '()'}',
                     style: TextStyle(
-                      fontSize: 13.sp,
+                      fontSize: 13 * scale,
                       fontFamily: 'monospace',
                       color: isDark
                           ? Colors.white.withValues(alpha: 0.9)
@@ -186,11 +190,11 @@ class _MethodTile extends StatelessWidget {
               ],
             ),
             if (item.className != null) ...[
-              SizedBox(height: 3.h),
+              SizedBox(height: 3 * scale),
               Text(
                 item.className!,
                 style: TextStyle(
-                  fontSize: 11.sp,
+                  fontSize: 11 * scale,
                   color: context.theme.hintColor,
                   fontFamily: 'monospace',
                 ),
@@ -199,16 +203,16 @@ class _MethodTile extends StatelessWidget {
               ),
             ],
             if (item.hookHint != null) ...[
-              SizedBox(height: 4.h),
+              SizedBox(height: 4 * scale),
               Row(
                 children: [
-                  Icon(Icons.link, size: 11.sp, color: primary),
-                  SizedBox(width: 4.w),
+                  Icon(Icons.link, size: 11 * scale, color: primary),
+                  SizedBox(width: 4 * scale),
                   Expanded(
                     child: Text(
                       item.hookHint!,
                       style: TextStyle(
-                        fontSize: 11.sp,
+                        fontSize: 11 * scale,
                         color: primary.withValues(alpha: 0.8),
                         fontStyle: FontStyle.italic,
                       ),
@@ -224,6 +228,7 @@ class _MethodTile extends StatelessWidget {
   }
 
   void _showDetail(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final primary = context.colorScheme.primary;
     final l10n = context.l10n;
     showModalBottomSheet(
@@ -233,33 +238,40 @@ class _MethodTile extends StatelessWidget {
       builder: (context) => Container(
         decoration: BoxDecoration(
           color: context.theme.scaffoldBackgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(20 * scale),
+          ),
         ),
-        padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 32.h),
+        padding: EdgeInsets.fromLTRB(
+          20 * scale,
+          12 * scale,
+          20 * scale,
+          32 * scale,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Container(
-                width: 36.w,
-                height: 4.h,
+                width: 36 * scale,
+                height: 4 * scale,
                 decoration: BoxDecoration(
                   color: context.theme.dividerColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(2.r),
+                  borderRadius: BorderRadius.circular(2 * scale),
                 ),
               ),
             ),
-            SizedBox(height: 20.h),
+            SizedBox(height: 20 * scale),
             Text(
               l10n.aiMethodDetail,
               style: TextStyle(
-                fontSize: 16.sp,
+                fontSize: 16 * scale,
                 fontWeight: FontWeight.w700,
                 color: primary,
               ),
             ),
-            SizedBox(height: 16.h),
+            SizedBox(height: 16 * scale),
             _buildDetailRow(
               context,
               l10n.aiMethodName,
@@ -308,31 +320,32 @@ class _MethodTile extends StatelessWidget {
     String value, {
     bool isCode = false,
   }) {
+    final scale = AiChatCompactScope.scaleOf(context);
     return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
+      padding: EdgeInsets.only(bottom: 12 * scale),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: 12.sp,
+              fontSize: 12 * scale,
               color: context.theme.hintColor,
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 4.h),
+          SizedBox(height: 4 * scale),
           Container(
             width: double.infinity,
-            padding: EdgeInsets.all(10.w),
+            padding: EdgeInsets.all(10 * scale),
             decoration: BoxDecoration(
               color: context.colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(8.r),
+              borderRadius: BorderRadius.circular(8 * scale),
             ),
             child: SelectableText(
               value,
               style: TextStyle(
-                fontSize: 13.sp,
+                fontSize: 13 * scale,
                 fontFamily: isCode ? 'monospace' : null,
                 height: 1.4,
               ),

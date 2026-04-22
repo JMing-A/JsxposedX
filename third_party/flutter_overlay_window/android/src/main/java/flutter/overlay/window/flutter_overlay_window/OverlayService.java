@@ -154,6 +154,8 @@ public class OverlayService extends Service implements View.OnTouchListener {
             } else if (call.method.equals("setClipboardData")) {
                 String text = call.argument("text");
                 result.success(setClipboardData(text));
+            } else if (call.method.equals("getClipboardData")) {
+                result.success(getClipboardData());
             }
         });
         overlayMessageChannel.setMessageHandler((message, reply) -> {
@@ -636,6 +638,26 @@ public class OverlayService extends Service implements View.OnTouchListener {
 
         clipboardManager.setPrimaryClip(ClipData.newPlainText("overlay", text));
         return true;
+    }
+
+    @Nullable
+    private String getClipboardData() {
+        ClipboardManager clipboardManager =
+                (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboardManager == null || !clipboardManager.hasPrimaryClip()) {
+            return null;
+        }
+
+        ClipData clipData = clipboardManager.getPrimaryClip();
+        if (clipData == null || clipData.getItemCount() == 0) {
+            return null;
+        }
+
+        CharSequence text = clipData.getItemAt(0).coerceToText(this);
+        if (text == null) {
+            return null;
+        }
+        return text.toString();
     }
 
     private class TrayAnimationTimerTask extends TimerTask {

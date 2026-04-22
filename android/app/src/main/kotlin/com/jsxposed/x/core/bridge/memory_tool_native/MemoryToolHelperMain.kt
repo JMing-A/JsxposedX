@@ -92,8 +92,116 @@ private class MemoryToolDaemonServer(
                 )
             )
 
+            "getPointerScanSessionState" -> JSONObject(
+                MemoryToolHelperNativeBridge.getPointerScanSessionStateJson()
+            )
+
+            "getPointerScanTaskState" -> JSONObject(
+                MemoryToolHelperNativeBridge.getPointerScanTaskStateJson()
+            )
+
+            "getPointerScanResults" -> JSONArray(
+                MemoryToolHelperNativeBridge.getPointerScanResultsJson(
+                    offset = params.getInt("offset"),
+                    limit = params.getInt("limit")
+                )
+            )
+
+            "getPointerScanChaseHint" -> JSONObject(
+                MemoryToolHelperNativeBridge.getPointerScanChaseHintJson()
+            )
+
+            "getPointerAutoChaseState" -> JSONObject(
+                MemoryToolHelperNativeBridge.getPointerAutoChaseStateJson()
+            )
+
+            "getPointerAutoChaseLayerResults" -> JSONArray(
+                MemoryToolHelperNativeBridge.getPointerAutoChaseLayerResultsJson(
+                    layerIndex = params.getInt("layerIndex"),
+                    offset = params.getInt("offset"),
+                    limit = params.getInt("limit")
+                )
+            )
+
+            "addMemoryBreakpoint" -> JSONArray(
+                MemoryToolHelperNativeBridge.addMemoryBreakpointJson(
+                    pid = params.getLong("pid"),
+                    address = params.getLong("address"),
+                    type = params.getInt("type"),
+                    length = params.getInt("length"),
+                    accessType = params.getInt("accessType"),
+                    enabled = params.optBoolean("enabled", true),
+                    pauseProcessOnHit = params.optBoolean("pauseProcessOnHit", true)
+                )
+            )
+
+            "removeMemoryBreakpoint" -> {
+                MemoryToolHelperNativeBridge.removeMemoryBreakpoint(
+                    breakpointId = params.getString("breakpointId")
+                )
+                JSONObject.NULL
+            }
+
+            "setMemoryBreakpointEnabled" -> {
+                MemoryToolHelperNativeBridge.setMemoryBreakpointEnabled(
+                    breakpointId = params.getString("breakpointId"),
+                    enabled = params.getBoolean("enabled")
+                )
+                JSONObject.NULL
+            }
+
+            "listMemoryBreakpoints" -> JSONArray(
+                MemoryToolHelperNativeBridge.listMemoryBreakpointsJson(
+                    pid = params.getLong("pid")
+                )
+            )
+
+            "getMemoryBreakpointState" -> JSONObject(
+                MemoryToolHelperNativeBridge.getMemoryBreakpointStateJson(
+                    pid = params.getLong("pid")
+                )
+            )
+
+            "getMemoryBreakpointHits" -> JSONArray(
+                MemoryToolHelperNativeBridge.getMemoryBreakpointHitsJson(
+                    pid = params.getLong("pid"),
+                    offset = params.getInt("offset"),
+                    limit = params.getInt("limit")
+                )
+            )
+
+            "clearMemoryBreakpointHits" -> {
+                MemoryToolHelperNativeBridge.clearMemoryBreakpointHits(
+                    pid = params.getLong("pid")
+                )
+                JSONObject.NULL
+            }
+
+            "resumeAfterBreakpoint" -> {
+                MemoryToolHelperNativeBridge.resumeAfterBreakpoint(
+                    pid = params.getLong("pid")
+                )
+                JSONObject.NULL
+            }
+
+            "patchMemoryInstruction" -> JSONObject(
+                MemoryToolHelperNativeBridge.patchMemoryInstructionJson(
+                    pid = params.getLong("pid"),
+                    address = params.getLong("address"),
+                    inputText = params.getString("instruction")
+                )
+            )
+
+            "disassembleMemory" -> JSONArray(
+                MemoryToolHelperNativeBridge.disassembleMemoryJson(
+                    pid = params.getLong("pid"),
+                    addresses = extractLongArray(params.getJSONArray("addresses"))
+                )
+            )
+
             "readMemoryValues" -> JSONArray(
                 MemoryToolHelperNativeBridge.readMemoryValuesJson(
+                    pids = extractLongArray(params.getJSONArray("requests"), "pid"),
                     addresses = extractLongArray(params.getJSONArray("requests"), "address"),
                     types = extractIntArray(params.getJSONArray("requests"), "type"),
                     lengths = extractIntArray(params.getJSONArray("requests"), "length")
@@ -166,6 +274,53 @@ private class MemoryToolDaemonServer(
                 JSONObject.NULL
             }
 
+            "startPointerScan" -> {
+                MemoryToolHelperNativeBridge.startPointerScan(
+                    pid = params.getLong("pid"),
+                    targetAddress = params.getLong("targetAddress"),
+                    pointerWidth = params.getInt("pointerWidth"),
+                    maxOffset = params.getLong("maxOffset"),
+                    alignment = params.getInt("alignment"),
+                    rangeSectionKeys = extractStringArray(params.optJSONArray("rangeSectionKeys")),
+                    scanAllReadableRegions = params.optBoolean("scanAllReadableRegions", true)
+                )
+                JSONObject.NULL
+            }
+
+            "startPointerAutoChase" -> {
+                MemoryToolHelperNativeBridge.startPointerAutoChase(
+                    pid = params.getLong("pid"),
+                    targetAddress = params.getLong("targetAddress"),
+                    pointerWidth = params.getInt("pointerWidth"),
+                    maxOffset = params.getLong("maxOffset"),
+                    alignment = params.getInt("alignment"),
+                    maxDepth = params.getInt("maxDepth"),
+                    rangeSectionKeys = extractStringArray(params.optJSONArray("rangeSectionKeys")),
+                    scanAllReadableRegions = params.optBoolean("scanAllReadableRegions", true)
+                )
+                JSONObject.NULL
+            }
+
+            "cancelPointerScan" -> {
+                MemoryToolHelperNativeBridge.cancelPointerScan()
+                JSONObject.NULL
+            }
+
+            "cancelPointerAutoChase" -> {
+                MemoryToolHelperNativeBridge.cancelPointerAutoChase()
+                JSONObject.NULL
+            }
+
+            "resetPointerScanSession" -> {
+                MemoryToolHelperNativeBridge.resetPointerScanSession()
+                JSONObject.NULL
+            }
+
+            "resetPointerAutoChase" -> {
+                MemoryToolHelperNativeBridge.resetPointerAutoChase()
+                JSONObject.NULL
+            }
+
             else -> throw IllegalArgumentException("Unknown method: $method")
         }
 
@@ -178,6 +333,12 @@ private class MemoryToolDaemonServer(
     private fun extractLongArray(items: JSONArray, fieldName: String): LongArray {
         return LongArray(items.length()) { index ->
             items.getJSONObject(index).getLong(fieldName)
+        }
+    }
+
+    private fun extractLongArray(items: JSONArray): LongArray {
+        return LongArray(items.length()) { index ->
+            items.getLong(index)
         }
     }
 

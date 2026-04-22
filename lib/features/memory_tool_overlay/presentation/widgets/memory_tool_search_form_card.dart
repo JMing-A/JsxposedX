@@ -1,3 +1,4 @@
+import 'package:JsxposedX/common/widgets/overlay_window/overlay_text_input_context_menu.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/enums/memory_search_match_mode_enum.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/enums/memory_search_fuzzy_mode_enum.dart';
@@ -63,6 +64,17 @@ class MemoryToolSearchFormCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        if (!state.shouldHideValueField) ...<Widget>[
+          _FieldLabel(label: context.l10n.memoryToolFieldValue),
+          SizedBox(height: 6.r),
+          _MemoryToolSearchValueField(
+            controller: valueController,
+            valueTypeOption: state.effectiveValueTypeOption,
+            selectedType: state.nativeSearchValueType,
+            onChanged: onValueChanged,
+          ),
+          SizedBox(height: 12.r),
+        ],
         _FieldLabel(label: context.l10n.memoryToolFieldValueCategory),
         SizedBox(height: 6.r),
         _MemoryToolChoiceChipWrap<MemorySearchValueCategoryEnum>(
@@ -103,7 +115,8 @@ class MemoryToolSearchFormCard extends StatelessWidget {
           _MemoryToolChoiceChipWrap<MemorySearchFuzzyModeEnum>(
             values: fuzzyModes,
             selectedValue: selectedFuzzyMode,
-            labelBuilder: (mode) => mapMemorySearchFuzzyModeLabel(context, mode),
+            labelBuilder: (mode) =>
+                mapMemorySearchFuzzyModeLabel(context, mode),
             onSelected: isRunning ? null : onFuzzyModeChanged,
           ),
         ],
@@ -115,17 +128,6 @@ class MemoryToolSearchFormCard extends StatelessWidget {
               color: context.colorScheme.error,
               fontWeight: FontWeight.w700,
             ),
-          ),
-        ],
-        if (!state.shouldHideValueField) ...<Widget>[
-          SizedBox(height: 12.r),
-          _FieldLabel(label: context.l10n.memoryToolFieldValue),
-          SizedBox(height: 6.r),
-          _MemoryToolSearchValueField(
-            controller: valueController,
-            valueTypeOption: state.effectiveValueTypeOption,
-            selectedType: state.nativeSearchValueType,
-            onChanged: onValueChanged,
           ),
         ],
         SizedBox(height: 12.r),
@@ -245,9 +247,9 @@ class MemoryToolSearchFormCard extends StatelessWidget {
   }
 
   String _fuzzyModeLabel(BuildContext context) {
-    final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-      'zh',
-    );
+    final isZh = Localizations.localeOf(
+      context,
+    ).languageCode.toLowerCase().startsWith('zh');
     return isZh ? '模糊条件' : 'Fuzzy Filter';
   }
 }
@@ -296,15 +298,14 @@ class _MemoryToolSearchValueField extends StatelessWidget {
         ? TextInputType.visiblePassword
         : isText
         ? TextInputType.text
-        : TextInputType.numberWithOptions(
-            decimal: isFloatType,
-            signed: !isXor,
-          );
+        : TextInputType.numberWithOptions(decimal: isFloatType, signed: !isXor);
 
     return TextField(
       controller: controller,
       onChanged: onChanged,
       keyboardType: keyboardType,
+      enableInteractiveSelection: true,
+      contextMenuBuilder: buildOverlayTextInputContextMenu,
       inputFormatters: isBytes
           ? <TextInputFormatter>[
               FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-FxX ]')),

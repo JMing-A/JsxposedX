@@ -8,9 +8,9 @@ import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/models/ai_config.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/features/ai/domain/constants/builtin_ai_config.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_action_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
@@ -22,10 +22,46 @@ import 'package:uuid/uuid.dart';
 
 /// AI 配置表单 Key 提供者，用于跨组件访问表单状态
 final _sheetFormKeyProvider = Provider((ref) => GlobalKey<FormBuilderState>());
+final _sheetTestActionProvider =
+    Provider<ValueNotifier<Future<void> Function()?>>((ref) {
+      final notifier = ValueNotifier<Future<void> Function()?>(null);
+      ref.onDispose(notifier.dispose);
+      return notifier;
+    });
+final _sheetFeedbackProvider = Provider<ValueNotifier<_SheetFeedback?>>((ref) {
+  final notifier = ValueNotifier<_SheetFeedback?>(null);
+  ref.onDispose(notifier.dispose);
+  return notifier;
+});
+
+class _SheetFeedback {
+  const _SheetFeedback({
+    required this.scopeKey,
+    required this.message,
+    required this.isError,
+  });
+
+  final String? scopeKey;
+  final String message;
+  final bool isError;
+}
 
 /// AI 配置弹窗内容组件
 class AIConfigSheet extends HookConsumerWidget {
   const AIConfigSheet({super.key});
+
+  static void _showSheetFeedback(
+    WidgetRef ref,
+    String scopeKey,
+    String message, {
+    bool isError = false,
+  }) {
+    ref.read(_sheetFeedbackProvider).value = _SheetFeedback(
+      scopeKey: scopeKey,
+      message: message,
+      isError: isError,
+    );
+  }
 
   /// 显示 AI 配置弹窗
   static void show(BuildContext context) {
@@ -45,7 +81,12 @@ class AIConfigSheet extends HookConsumerWidget {
                   child: Text(context.l10n.aiTutorial),
                 ),
                 TextButton(
-                  onPressed: () => _handleTest(context, ref),
+                  onPressed: () async {
+                    final action = ref.read(_sheetTestActionProvider).value;
+                    if (action != null) {
+                      await action();
+                    }
+                  },
                   child: Text(context.l10n.test),
                 ),
               ],
@@ -117,25 +158,111 @@ class AIConfigSheet extends HookConsumerWidget {
     return getBuiltinAiConfigSpecById(config.id);
   }
 
+  static Future<AiConfig> _resolveConfigWithAvailableModel(
+    WidgetRef ref,
+    AiConfig config, {
+    bool syncFormModelName = false,
+  }) async {
+    final models = await ref
+        .read(aiConfigQueryRepositoryProvider)
+        .getModels(config: config, forceRefresh: true);
+    if (models.isEmpty) {
+      throw Exception('No available models returned by the API');
+    }
+
+    final currentModel = config.moduleName.trim();
+    final resolvedModel = models.any((model) => model.id == currentModel)
+        ? currentModel
+        : models.first.id;
+
+    if (syncFormModelName && resolvedModel != currentModel) {
+      final formState = ref.read(_sheetFormKeyProvider).currentState;
+      if (formState != null && formState.fields.containsKey('module_name')) {
+        formState.patchValue({'module_name': resolvedModel});
+      }
+    }
+
+    return config.copyWith(moduleName: resolvedModel);
+  }
+
   /// 处理测试连接逻辑
-  static Future<void> _handleTest(BuildContext context, WidgetRef ref) async {
+  static Future<void> _handleTest(
+    BuildContext context,
+    WidgetRef ref, {
+    required String scopeKey,
+  }) async {
     final formKey = ref.read(_sheetFormKeyProvider);
     if (formKey.currentState?.saveAndValidate() ?? false) {
       final values = formKey.currentState!.value;
       final config = _buildConfigFromFormValues(values, const Uuid().v4());
 
-      ToastMessage.show(context.l10n.aiTestConnecting);
+      _showSheetFeedback(ref, scopeKey, context.l10n.aiTestConnecting);
       try {
+        final resolvedConfig = await _resolveConfigWithAvailableModel(
+          ref,
+          config,
+          syncFormModelName: true,
+        );
         final result = await ref
-            .read(aiChatActionProvider(packageName: 'temp').notifier)
-            .testConnection(config);
+            .read(aiChatRuntimeProvider(packageName: 'temp').notifier)
+            .testConnection(resolvedConfig);
         if (context.mounted) {
-          ToastMessage.show(context.l10n.aiTestSuccess(result));
+          _showSheetFeedback(ref, scopeKey, context.l10n.aiTestSuccess(result));
         }
       } catch (e) {
         if (context.mounted) {
-          ToastMessage.show(context.l10n.aiTestFailed(e.toString()));
+          _showSheetFeedback(
+            ref,
+            scopeKey,
+            context.l10n.aiTestFailed(e.toString()),
+            isError: true,
+          );
         }
+      }
+    }
+  }
+
+  static Future<void> _handleBuiltinTest({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String scopeKey,
+    required BuiltinAiConfigSpec? builtinSpec,
+    required AiConfig formConfig,
+    required String apiKey,
+  }) async {
+    if (apiKey.isEmpty) {
+      _showSheetFeedback(
+        ref,
+        scopeKey,
+        context.l10n.cannotBeEmpty('API Key'),
+        isError: true,
+      );
+      return;
+    }
+
+    final builtinConfig =
+        builtinSpec?.toConfig(apiKey: apiKey) ??
+        formConfig.copyWith(apiKey: apiKey);
+    _showSheetFeedback(ref, scopeKey, context.l10n.aiTestConnecting);
+    try {
+      final resolvedConfig = await _resolveConfigWithAvailableModel(
+        ref,
+        builtinConfig,
+      );
+      final result = await ref
+          .read(aiChatRuntimeProvider(packageName: 'temp').notifier)
+          .testConnection(resolvedConfig);
+      if (context.mounted) {
+        _showSheetFeedback(ref, scopeKey, context.l10n.aiTestSuccess(result));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSheetFeedback(
+          ref,
+          scopeKey,
+          context.l10n.aiTestFailed(e.toString()),
+          isError: true,
+        );
       }
     }
   }
@@ -151,8 +278,10 @@ class AIConfigSheet extends HookConsumerWidget {
     final editingConfig = useState<AiConfig?>(null);
     final isNewMode = useState<bool>(false);
     final builtinApiKeyController = useTextEditingController();
+    final builtinApiKeyValue = useValueListenable(builtinApiKeyController);
     final lastLoadedBuiltinApiKey = useRef<String?>(null);
     final currentConfig = aiConfigAsync.value;
+    final sheetFeedback = useValueListenable(ref.watch(_sheetFeedbackProvider));
 
     // 统一同步内置配置输入框，避免在多个位置重复写 controller
     useEffect(() {
@@ -180,14 +309,12 @@ class AIConfigSheet extends HookConsumerWidget {
 
     ref.listen(aiConfigActionProvider, (previous, next) {
       next.whenOrNull(
-        error: (error, stack) => ToastMessage.show(error.toString()),
-        data: (_) {
-          if (previous?.isLoading ?? false) {
-            if (context.mounted) {
-              ToastMessage.show(context.l10n.saveSuccess);
-            }
-          }
-        },
+        error: (error, stack) => _showSheetFeedback(
+          ref,
+          'provider_error',
+          error.toString(),
+          isError: true,
+        ),
       );
     });
 
@@ -225,11 +352,109 @@ class AIConfigSheet extends HookConsumerWidget {
             final initialValue = _formValuesFromConfig(formConfig);
             final isBuiltinEditing = isBuiltinAiConfig(formConfig);
             final builtinSpec = _builtinSpecOf(formConfig);
+            final feedbackScopeKey = [
+              isNewMode.value ? 'new' : 'edit',
+              editingConfig.value?.id ?? currentConfig.id,
+              formConfig.id,
+              formConfig.name,
+              formConfig.apiUrl,
+              formConfig.moduleName,
+              formConfig.apiType.name,
+              if (isBuiltinEditing) builtinApiKeyValue.text,
+            ].join('|');
+
+            Future<void> handleSheetTest() async {
+              if (isBuiltinEditing) {
+                await _handleBuiltinTest(
+                  context: context,
+                  ref: ref,
+                  scopeKey: feedbackScopeKey,
+                  builtinSpec: builtinSpec,
+                  formConfig: formConfig,
+                  apiKey: builtinApiKeyController.text.trim(),
+                );
+                return;
+              }
+              await _handleTest(context, ref, scopeKey: feedbackScopeKey);
+            }
+
+            useEffect(
+              () {
+                final testActionNotifier = ref.read(_sheetTestActionProvider);
+                testActionNotifier.value = handleSheetTest;
+                return () {
+                  testActionNotifier.value = null;
+                };
+              },
+              [
+                isBuiltinEditing,
+                formConfig.id,
+                formConfig.apiUrl,
+                formConfig.moduleName,
+                formConfig.apiType.name,
+                builtinApiKeyValue.text,
+              ],
+            );
 
             return SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (sheetFeedback != null &&
+                      sheetFeedback.scopeKey != null &&
+                      sheetFeedback.scopeKey == feedbackScopeKey) ...[
+                    Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.only(bottom: 12.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 10.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: sheetFeedback.isError
+                            ? Colors.red.withValues(alpha: 0.10)
+                            : context.colorScheme.primary.withValues(
+                                alpha: 0.10,
+                              ),
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(
+                          color: sheetFeedback.isError
+                              ? Colors.red.withValues(alpha: 0.30)
+                              : context.colorScheme.primary.withValues(
+                                  alpha: 0.24,
+                                ),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            sheetFeedback.isError
+                                ? Icons.error_outline_rounded
+                                : Icons.check_circle_outline_rounded,
+                            size: 18.sp,
+                            color: sheetFeedback.isError
+                                ? Colors.red
+                                : context.colorScheme.primary,
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: Text(
+                              sheetFeedback.message,
+                              style: TextStyle(
+                                fontSize: 12.5.sp,
+                                height: 1.35,
+                                color: sheetFeedback.isError
+                                    ? Colors.red
+                                    : context.colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   // 配置列表头部
                   Row(
                     children: [
@@ -291,7 +516,7 @@ class AIConfigSheet extends HookConsumerWidget {
                                   await ref
                                       .read(aiConfigActionProvider.notifier)
                                       .switchConfig(config.id);
-                                  ref.invalidate(aiStatusProvider);
+                                  ref.invalidate(aiChatRuntimeStatusProvider);
                                   selectedConfig = await ref.read(
                                     aiConfigProvider.future,
                                   );
@@ -661,35 +886,52 @@ class AIConfigSheet extends HookConsumerWidget {
                                 final apiKey = builtinApiKeyController.text
                                     .trim();
                                 if (apiKey.isEmpty) {
-                                  ToastMessage.show(
+                                  _showSheetFeedback(
+                                    ref,
+                                    feedbackScopeKey,
                                     context.l10n.cannotBeEmpty('API Key'),
+                                    isError: true,
                                   );
                                   return;
                                 }
                                 final builtinConfig =
                                     builtinSpec?.toConfig(apiKey: apiKey) ??
                                     formConfig.copyWith(apiKey: apiKey);
-                                ToastMessage.show(
+                                _showSheetFeedback(
+                                  ref,
+                                  feedbackScopeKey,
                                   context.l10n.aiBuiltinSwitching,
                                 );
                                 try {
+                                  final resolvedConfig =
+                                      await _resolveConfigWithAvailableModel(
+                                        ref,
+                                        builtinConfig,
+                                      );
                                   await ref
                                       .read(
-                                        aiChatActionProvider(
+                                        aiChatRuntimeProvider(
                                           packageName: 'temp',
                                         ).notifier,
                                       )
-                                      .testConnection(builtinConfig);
+                                      .testConnection(resolvedConfig);
                                   await ref
                                       .read(aiConfigActionProvider.notifier)
-                                      .save(builtinConfig);
-                                  ref.invalidate(aiStatusProvider);
+                                      .save(resolvedConfig);
+                                  ref.invalidate(aiChatRuntimeStatusProvider);
                                   isNewMode.value = false;
                                   editingConfig.value = null;
+                                  if (context.mounted &&
+                                      Navigator.canPop(context)) {
+                                    Navigator.of(context).pop();
+                                  }
                                 } catch (e) {
                                   if (context.mounted) {
-                                    ToastMessage.show(
+                                    _showSheetFeedback(
+                                      ref,
+                                      feedbackScopeKey,
                                       context.l10n.aiSaveFailed(e.toString()),
+                                      isError: true,
                                     );
                                   }
                                 }
@@ -709,42 +951,57 @@ class AIConfigSheet extends HookConsumerWidget {
                                   savedId,
                                 );
 
-                                ToastMessage.show(
+                                _showSheetFeedback(
+                                  ref,
+                                  feedbackScopeKey,
                                   context.l10n.aiSavingAndTesting,
                                 );
                                 try {
+                                  final resolvedConfig =
+                                      await _resolveConfigWithAvailableModel(
+                                        ref,
+                                        config,
+                                        syncFormModelName: true,
+                                      );
                                   await ref
                                       .read(
-                                        aiChatActionProvider(
+                                        aiChatRuntimeProvider(
                                           packageName: 'temp',
                                         ).notifier,
                                       )
-                                      .testConnection(config);
+                                      .testConnection(resolvedConfig);
 
                                   final existsInList = configList.any(
-                                    (item) => item.id == config.id,
+                                    (item) => item.id == resolvedConfig.id,
                                   );
                                   if (isNewMode.value || !existsInList) {
                                     await ref
                                         .read(aiConfigActionProvider.notifier)
-                                        .addConfig(config);
+                                        .addConfig(resolvedConfig);
                                   } else {
                                     await ref
                                         .read(aiConfigActionProvider.notifier)
-                                        .updateConfig(config);
+                                        .updateConfig(resolvedConfig);
                                   }
 
                                   await ref
                                       .read(aiConfigActionProvider.notifier)
-                                      .save(config);
+                                      .save(resolvedConfig);
 
-                                  ref.invalidate(aiStatusProvider);
+                                  ref.invalidate(aiChatRuntimeStatusProvider);
                                   isNewMode.value = false;
                                   editingConfig.value = null;
+                                  if (context.mounted &&
+                                      Navigator.canPop(context)) {
+                                    Navigator.of(context).pop();
+                                  }
                                 } catch (e) {
                                   if (context.mounted) {
-                                    ToastMessage.show(
+                                    _showSheetFeedback(
+                                      ref,
+                                      feedbackScopeKey,
                                       context.l10n.aiSaveFailed(e.toString()),
+                                      isError: true,
                                     );
                                   }
                                 }
@@ -760,9 +1017,7 @@ class AIConfigSheet extends HookConsumerWidget {
                               ),
                             )
                           : Text(
-                              isBuiltinEditing
-                                  ? context.l10n.aiBuiltinUseConfig
-                                  : context.l10n.confirm,
+                              context.l10n.confirm,
                               style: TextStyle(
                                 fontSize: 16.sp,
                                 fontWeight: FontWeight.bold,
@@ -801,6 +1056,21 @@ class _ConfigListItem extends ConsumerWidget {
   final bool isFirst;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
+
+  Color _resolveBadgeColor(String label) {
+    switch (label.trim().toLowerCase()) {
+      case 'evil':
+        return const Color(0xFFD92D20);
+      case 'claude':
+        return const Color(0xFFB95C1E);
+      case 'chatgpt':
+        return const Color(0xFF0F9D76);
+      case '国产':
+        return const Color(0xFF2563EB);
+      default:
+        return const Color(0xFF667085);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -888,26 +1158,33 @@ class _ConfigListItem extends ConsumerWidget {
                                     index++
                                   ) ...[
                                     SizedBox(width: 6.w),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 6.w,
-                                        vertical: 2.h,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: index == 0
-                                            ? Colors.redAccent
-                                            : Colors.blue,
-                                        borderRadius: BorderRadius.circular(
-                                          4.r,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        builtinSpec!.badgeLabels[index],
-                                        style: TextStyle(
-                                          fontSize: 10.sp,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                                    Builder(
+                                      builder: (context) {
+                                        final badgeLabel =
+                                            builtinSpec!.badgeLabels[index];
+                                        final badgeColor = _resolveBadgeColor(
+                                          badgeLabel,
+                                        );
+                                        return Container(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 6.w,
+                                            vertical: 2.h,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: badgeColor,
+                                            borderRadius: BorderRadius.circular(
+                                              4.r,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            badgeLabel,
+                                            style: TextStyle(
+                                              fontSize: 10.sp,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ],
                                 ],

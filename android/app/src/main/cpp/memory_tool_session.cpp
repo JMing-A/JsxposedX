@@ -20,4 +20,27 @@ void SearchSession::Clear() {
     results.clear();
 }
 
+void PointerScanSession::Clear() {
+    has_active_session = false;
+    pid = 0;
+    target_address = 0;
+    pointer_width = 0;
+    max_offset = 0;
+    alignment = 0;
+    regions.clear();
+    results.clear();
+}
+
+void PointerAutoChaseSession::Clear() {
+    has_active_session = false;
+    pid = 0;
+    pointer_width = 0;
+    max_offset = 0;
+    alignment = 0;
+    max_depth = 0;
+    range_section_keys.clear();
+    scan_all_readable_regions = true;
+    layers.clear();
+}
+
 }  // namespace memory_tool

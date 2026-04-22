@@ -1,16 +1,16 @@
+import 'dart:async';
+
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
-import 'package:JsxposedX/features/ai/domain/models/ai_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
-import 'package:JsxposedX/features/ai/domain/services/prompt_builder.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
-import 'package:JsxposedX/features/ai/presentation/states/ai_chat_action_state.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/environments/apk_reverse_chat_environment_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
+import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_reverse_header.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/pages/apk_analysis_page.dart';
-import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_action_provider.dart';
-import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_query_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -23,60 +23,35 @@ class AiReversePage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final apkActionRepository = ref.read(apkAnalysisActionRepositoryProvider);
     final chatNotifier = ref.read(
-      aiChatActionProvider(packageName: packageName).notifier,
+      aiChatRuntimeProvider(packageName: packageName).notifier,
     );
     final chatState = ref.watch(
-      aiChatActionProvider(packageName: packageName),
+      aiChatRuntimeProvider(packageName: packageName),
     );
     final isZh = context.isZh;
+    final environment = ref.watch(
+      apkReverseChatEnvironmentProvider(
+        ApkReverseChatEnvironmentArgs(packageName: packageName, isZh: isZh),
+      ),
+    );
     final scrollController = useScrollController();
     final pageController = usePageController();
     final sessionId = useState<String>('');
     final currentPage = useState(0);
 
     Future<void> initializeReverseSession() async {
-      chatNotifier.beginSessionInitialization();
+      sessionId.value = '';
       SmartDialog.showLoading();
-      try {
-        final previousSessionId = sessionId.value;
-        if (previousSessionId.isNotEmpty) {
-          await apkActionRepository.closeApkSession(previousSessionId);
-        }
-
-        final id = await apkActionRepository.openApkSession(packageName);
-        sessionId.value = id;
-
-        final queryRepo = ref.read(apkAnalysisQueryRepositoryProvider);
-        final manifest = await queryRepo.parseManifest(id);
-        final assets = await queryRepo.getApkAssets(id);
-        final soFiles = assets
-            .where((asset) => asset.name.endsWith('.so'))
-            .map((asset) => asset.path)
-            .toList(growable: false);
-        final dexPaths = assets
-            .where((asset) => asset.name.endsWith('.dex'))
-            .map((asset) => asset.path)
-            .toList(growable: false);
-
-        final apkContext = AiApkContext.fromManifest(manifest, soFiles: soFiles);
-        final apiSummary = await PromptBuilder.loadApiSummary();
-        final prompt = PromptBuilder(isZh: isZh)
-            .withApkContext(apkContext)
-            .withApiSummary(apiSummary)
-            .withTools()
-            .withSoTools()
-            .buildSystemPrompt();
-
-        chatNotifier.setSystemPrompt(prompt);
-        chatNotifier.setApkSession(id, dexPaths);
-        chatNotifier.markSessionReady();
-      } catch (error) {
-        chatNotifier.markSessionInitFailed('逆向会话初始化失败：$error');
-      } finally {
-        SmartDialog.dismiss();
-      }
+      await initializeAiChatEnvironment(
+        notifier: chatNotifier,
+        environment: environment,
+        initErrorPrefix: '逆向会话初始化失败',
+        onSnapshotReady: (_) {
+          sessionId.value = environment.sessionId ?? '';
+        },
+      );
+      SmartDialog.dismiss();
     }
 
     final lastMessageId = useRef<String?>(null);
@@ -130,12 +105,9 @@ class AiReversePage extends HookConsumerWidget {
       });
 
       return () {
-        final id = sessionId.value;
-        if (id.isNotEmpty) {
-          apkActionRepository.closeApkSession(id);
-        }
+        unawaited(environment.dispose());
       };
-    }, []);
+    }, [environment]);
 
     final lastBackPressTime = useRef<DateTime?>(null);
 
@@ -211,7 +183,7 @@ class _ReverseInitBanner extends StatelessWidget {
     required this.onRetry,
   });
 
-  final AiChatActionState chatState;
+  final AiChatRuntimeState chatState;
   final Future<void> Function() onRetry;
 
   @override

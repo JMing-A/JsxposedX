@@ -1979,19 +1979,19 @@ abstract class AppLocalizations {
   /// No description provided for @aiBuiltinConfigName.
   ///
   /// In zh, this message translates to:
-  /// **'帕帝接口'**
+  /// **'沐雪接口'**
   String get aiBuiltinConfigName;
 
   /// No description provided for @aiBuiltinUseConfig.
   ///
   /// In zh, this message translates to:
-  /// **'使用内置接口'**
+  /// **'使用沐雪接口'**
   String get aiBuiltinUseConfig;
 
   /// No description provided for @aiBuiltinSwitching.
   ///
   /// In zh, this message translates to:
-  /// **'正在切换到内置默认接口'**
+  /// **'正在切换到沐雪内置接口'**
   String get aiBuiltinSwitching;
 
   /// No description provided for @aiBuyCardSecret.
@@ -3332,6 +3332,18 @@ abstract class AppLocalizations {
   /// **'搜索'**
   String get memoryToolTabSearch;
 
+  /// No description provided for @memoryToolTabBrowse.
+  ///
+  /// In zh, this message translates to:
+  /// **'浏览'**
+  String get memoryToolTabBrowse;
+
+  /// No description provided for @memoryToolTabPointer.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针'**
+  String get memoryToolTabPointer;
+
   /// No description provided for @memoryToolTabEdit.
   ///
   /// In zh, this message translates to:
@@ -4070,6 +4082,294 @@ abstract class AppLocalizations {
   /// **'复制数值'**
   String get memoryToolResultDetailActionCopyValue;
 
+  /// No description provided for @memoryToolResultActionPointerScan.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针搜索'**
+  String get memoryToolResultActionPointerScan;
+
+  /// No description provided for @memoryToolResultActionAutoChaseStatic.
+  ///
+  /// In zh, this message translates to:
+  /// **'一键寻址'**
+  String get memoryToolResultActionAutoChaseStatic;
+
+  /// No description provided for @memoryToolResultActionJumpToPointer.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳转到指针'**
+  String get memoryToolResultActionJumpToPointer;
+
+  /// No description provided for @memoryToolResultActionPreviewMemoryBlock.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览内存块'**
+  String get memoryToolResultActionPreviewMemoryBlock;
+
+  /// No description provided for @memoryToolResultActionOffsetPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'偏移量计算'**
+  String get memoryToolResultActionOffsetPreview;
+
+  /// No description provided for @memoryToolJumpAddressTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址跳转'**
+  String get memoryToolJumpAddressTitle;
+
+  /// No description provided for @memoryToolJumpAddressFieldLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标地址'**
+  String get memoryToolJumpAddressFieldLabel;
+
+  /// No description provided for @memoryToolJumpAddressAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳转到目标地址'**
+  String get memoryToolJumpAddressAction;
+
+  /// No description provided for @memoryToolJumpAddressInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址格式无效'**
+  String get memoryToolJumpAddressInvalid;
+
+  /// No description provided for @memoryToolResultActionCopyHex.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制十六进制'**
+  String get memoryToolResultActionCopyHex;
+
+  /// No description provided for @memoryToolResultActionCopyReverseHex.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制反十六进制'**
+  String get memoryToolResultActionCopyReverseHex;
+
+  /// No description provided for @memoryToolPointerScanTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针搜索'**
+  String get memoryToolPointerScanTitle;
+
+  /// No description provided for @memoryToolPointerAutoChaseTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'一键寻址'**
+  String get memoryToolPointerAutoChaseTitle;
+
+  /// No description provided for @memoryToolPointerTargetAddressLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标地址'**
+  String get memoryToolPointerTargetAddressLabel;
+
+  /// No description provided for @memoryToolPointerWidthLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针宽度'**
+  String get memoryToolPointerWidthLabel;
+
+  /// No description provided for @memoryToolPointerMaxOffsetLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'最大偏移'**
+  String get memoryToolPointerMaxOffsetLabel;
+
+  /// No description provided for @memoryToolPointerMaxDepthLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针层数'**
+  String get memoryToolPointerMaxDepthLabel;
+
+  /// No description provided for @memoryToolPointerAlignmentLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'对齐步长'**
+  String get memoryToolPointerAlignmentLabel;
+
+  /// No description provided for @memoryToolPointerAlignmentPointerWidth.
+  ///
+  /// In zh, this message translates to:
+  /// **'按指针宽度'**
+  String get memoryToolPointerAlignmentPointerWidth;
+
+  /// No description provided for @memoryToolPointerInvalidMaxOffset.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入有效偏移量'**
+  String get memoryToolPointerInvalidMaxOffset;
+
+  /// No description provided for @memoryToolPointerInvalidMaxDepth.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入 1 到 12 的层数'**
+  String get memoryToolPointerInvalidMaxDepth;
+
+  /// No description provided for @memoryToolPointerActionContinueSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续搜索上一层指针'**
+  String get memoryToolPointerActionContinueSearch;
+
+  /// No description provided for @memoryToolPointerActionJumpToTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳转到指针目标'**
+  String get memoryToolPointerActionJumpToTarget;
+
+  /// No description provided for @memoryToolPointerActionCopyPointerAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制指针地址'**
+  String get memoryToolPointerActionCopyPointerAddress;
+
+  /// No description provided for @memoryToolPointerActionCopyPointedAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制指向地址'**
+  String get memoryToolPointerActionCopyPointedAddress;
+
+  /// No description provided for @memoryToolPointerActionCopyTargetAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制目标地址'**
+  String get memoryToolPointerActionCopyTargetAddress;
+
+  /// No description provided for @memoryToolPointerActionCopyExpression.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制表达式'**
+  String get memoryToolPointerActionCopyExpression;
+
+  /// No description provided for @memoryToolPointerOffsetLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'偏移'**
+  String get memoryToolPointerOffsetLabel;
+
+  /// No description provided for @memoryToolPointerBaseAddressLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'基址'**
+  String get memoryToolPointerBaseAddressLabel;
+
+  /// No description provided for @memoryToolPointerPointerAddressLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针地址'**
+  String get memoryToolPointerPointerAddressLabel;
+
+  /// No description provided for @memoryToolPointerBadgeAuto.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐'**
+  String get memoryToolPointerBadgeAuto;
+
+  /// No description provided for @memoryToolPointerBadgeStatic.
+  ///
+  /// In zh, this message translates to:
+  /// **'静态区'**
+  String get memoryToolPointerBadgeStatic;
+
+  /// No description provided for @memoryToolPointerEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'从搜索、浏览或暂存结果长按并选择指针搜索'**
+  String get memoryToolPointerEmpty;
+
+  /// No description provided for @memoryToolPointerLoadedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加载 {loaded} / 总计 {total}'**
+  String memoryToolPointerLoadedCount(int loaded, int total);
+
+  /// No description provided for @memoryToolPointerTaskRunningTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针搜索进行中'**
+  String get memoryToolPointerTaskRunningTitle;
+
+  /// No description provided for @memoryToolPointerStopReasonStaticReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'已命中静态区'**
+  String get memoryToolPointerStopReasonStaticReached;
+
+  /// No description provided for @memoryToolPointerStopReasonNoMorePointers.
+  ///
+  /// In zh, this message translates to:
+  /// **'无更多上层指针'**
+  String get memoryToolPointerStopReasonNoMorePointers;
+
+  /// No description provided for @memoryToolPointerStopReasonMaxDepth.
+  ///
+  /// In zh, this message translates to:
+  /// **'已达指针层数'**
+  String get memoryToolPointerStopReasonMaxDepth;
+
+  /// No description provided for @memoryToolPointerStopReasonCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消'**
+  String get memoryToolPointerStopReasonCancelled;
+
+  /// No description provided for @memoryToolPointerStopReasonFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫描失败'**
+  String get memoryToolPointerStopReasonFailed;
+
+  /// No description provided for @memoryToolOffsetPreviewTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'偏移量计算'**
+  String get memoryToolOffsetPreviewTitle;
+
+  /// No description provided for @memoryToolOffsetPreviewOffsetLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'偏移量'**
+  String get memoryToolOffsetPreviewOffsetLabel;
+
+  /// No description provided for @memoryToolOffsetPreviewHexLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'HEX'**
+  String get memoryToolOffsetPreviewHexLabel;
+
+  /// No description provided for @memoryToolOffsetPreviewTargetAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标地址'**
+  String get memoryToolOffsetPreviewTargetAddress;
+
+  /// No description provided for @memoryToolOffsetPreviewTargetValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标数值'**
+  String get memoryToolOffsetPreviewTargetValue;
+
+  /// No description provided for @memoryToolOffsetPreviewInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入有效偏移量'**
+  String get memoryToolOffsetPreviewInvalid;
+
+  /// No description provided for @memoryToolOffsetPreviewUnreadable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前地址不可读'**
+  String get memoryToolOffsetPreviewUnreadable;
+
+  /// No description provided for @memoryToolBrowseEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'从搜索结果长按并选择预览内存块'**
+  String get memoryToolBrowseEmpty;
+
   /// No description provided for @memoryToolResultActionTitle.
   ///
   /// In zh, this message translates to:
@@ -4112,6 +4412,36 @@ abstract class AppLocalizations {
   /// **'为后续批量写入和筛选后的编辑预留入口。'**
   String get memoryToolResultActionBatchEditHint;
 
+  /// No description provided for @memoryToolBatchEditIncrementUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'递增模式仅支持数值类型'**
+  String get memoryToolBatchEditIncrementUnsupported;
+
+  /// No description provided for @memoryToolBatchEditNoReadableResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可读取的选中结果。'**
+  String get memoryToolBatchEditNoReadableResults;
+
+  /// No description provided for @memoryToolBatchEditIncrementLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'递增'**
+  String get memoryToolBatchEditIncrementLabel;
+
+  /// No description provided for @memoryToolBatchEditStepLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'步长'**
+  String get memoryToolBatchEditStepLabel;
+
+  /// No description provided for @memoryToolBatchEditPreviewLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get memoryToolBatchEditPreviewLabel;
+
   /// No description provided for @memoryToolResultActionSaveToSaved.
   ///
   /// In zh, this message translates to:
@@ -4129,6 +4459,276 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已保存 {count} 项到暂存区'**
   String memoryToolSavedToSavedMessage(Object count);
+
+  /// No description provided for @memoryToolDebugAccessRead.
+  ///
+  /// In zh, this message translates to:
+  /// **'读'**
+  String get memoryToolDebugAccessRead;
+
+  /// No description provided for @memoryToolDebugAccessWrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'写'**
+  String get memoryToolDebugAccessWrite;
+
+  /// No description provided for @memoryToolDebugAccessReadWrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'读写'**
+  String get memoryToolDebugAccessReadWrite;
+
+  /// No description provided for @memoryToolDebugBreakpointsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'断点列表'**
+  String get memoryToolDebugBreakpointsTitle;
+
+  /// No description provided for @memoryToolDebugBreakpointsTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'断点'**
+  String get memoryToolDebugBreakpointsTab;
+
+  /// No description provided for @memoryToolDebugWritersTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'写入源'**
+  String get memoryToolDebugWritersTitle;
+
+  /// No description provided for @memoryToolDebugDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'详情'**
+  String get memoryToolDebugDetailTitle;
+
+  /// No description provided for @memoryToolDebugEmptyBreakpoints.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有断点'**
+  String get memoryToolDebugEmptyBreakpoints;
+
+  /// No description provided for @memoryToolDebugEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已启用'**
+  String get memoryToolDebugEnabled;
+
+  /// No description provided for @memoryToolDebugDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已禁用'**
+  String get memoryToolDebugDisabled;
+
+  /// No description provided for @memoryToolDebugPauseOnHit.
+  ///
+  /// In zh, this message translates to:
+  /// **'命中即暂停'**
+  String get memoryToolDebugPauseOnHit;
+
+  /// No description provided for @memoryToolDebugRecordOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅记录'**
+  String get memoryToolDebugRecordOnly;
+
+  /// No description provided for @memoryToolDebugHitCountUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'次命中'**
+  String get memoryToolDebugHitCountUnit;
+
+  /// No description provided for @memoryToolDebugLastHitPrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近命中'**
+  String get memoryToolDebugLastHitPrefix;
+
+  /// No description provided for @memoryToolDebugEmptyWriters.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个断点还没有命中'**
+  String get memoryToolDebugEmptyWriters;
+
+  /// No description provided for @memoryToolDebugThreadCountUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'线程'**
+  String get memoryToolDebugThreadCountUnit;
+
+  /// No description provided for @memoryToolDebugEmptyDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择一个写入源查看详情'**
+  String get memoryToolDebugEmptyDetail;
+
+  /// No description provided for @memoryToolDebugCurrentValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前值'**
+  String get memoryToolDebugCurrentValue;
+
+  /// No description provided for @memoryToolDebugNoHitYet.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无命中'**
+  String get memoryToolDebugNoHitYet;
+
+  /// No description provided for @memoryToolDebugBreakpointAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'断点地址'**
+  String get memoryToolDebugBreakpointAddress;
+
+  /// No description provided for @memoryToolDebugPointer.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针'**
+  String get memoryToolDebugPointer;
+
+  /// No description provided for @memoryToolDebugAnonymousModule.
+  ///
+  /// In zh, this message translates to:
+  /// **'[匿名模块]'**
+  String get memoryToolDebugAnonymousModule;
+
+  /// No description provided for @memoryToolDebugModuleOffset.
+  ///
+  /// In zh, this message translates to:
+  /// **'模块偏移'**
+  String get memoryToolDebugModuleOffset;
+
+  /// No description provided for @memoryToolDebugInstruction.
+  ///
+  /// In zh, this message translates to:
+  /// **'指令'**
+  String get memoryToolDebugInstruction;
+
+  /// No description provided for @memoryToolDebugCommonRewrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'常见改写'**
+  String get memoryToolDebugCommonRewrite;
+
+  /// No description provided for @memoryToolDebugRecentHits.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近命中'**
+  String get memoryToolDebugRecentHits;
+
+  /// No description provided for @memoryToolDebugStatBreakpoints.
+  ///
+  /// In zh, this message translates to:
+  /// **'断点'**
+  String get memoryToolDebugStatBreakpoints;
+
+  /// No description provided for @memoryToolDebugStatActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'活动'**
+  String get memoryToolDebugStatActive;
+
+  /// No description provided for @memoryToolDebugStatWriters.
+  ///
+  /// In zh, this message translates to:
+  /// **'写入源'**
+  String get memoryToolDebugStatWriters;
+
+  /// No description provided for @memoryToolDebugStatCurrentHits.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前命中'**
+  String get memoryToolDebugStatCurrentHits;
+
+  /// No description provided for @memoryToolDebugStatPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'待处理'**
+  String get memoryToolDebugStatPending;
+
+  /// No description provided for @memoryToolDebugStatLength.
+  ///
+  /// In zh, this message translates to:
+  /// **'长度'**
+  String get memoryToolDebugStatLength;
+
+  /// No description provided for @memoryToolDebugSelectProcessFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先选择进程'**
+  String get memoryToolDebugSelectProcessFirst;
+
+  /// No description provided for @memoryToolDebugSelectProcessHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'长按搜索结果、预览结果或暂存结果创建断点后，这里会显示命中记录和写入指令。'**
+  String get memoryToolDebugSelectProcessHint;
+
+  /// No description provided for @memoryToolDebugActionCopyValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制值'**
+  String get memoryToolDebugActionCopyValue;
+
+  /// No description provided for @memoryToolDebugActionCopyHex.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制 Hex'**
+  String get memoryToolDebugActionCopyHex;
+
+  /// No description provided for @memoryToolDebugActionCopyReverseHex.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制反序 Hex'**
+  String get memoryToolDebugActionCopyReverseHex;
+
+  /// No description provided for @memoryToolDebugActionBrowseAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'浏览地址'**
+  String get memoryToolDebugActionBrowseAddress;
+
+  /// No description provided for @memoryToolDebugActionPointerScan.
+  ///
+  /// In zh, this message translates to:
+  /// **'指针扫描'**
+  String get memoryToolDebugActionPointerScan;
+
+  /// No description provided for @memoryToolDebugActionAutoChase.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动追踪'**
+  String get memoryToolDebugActionAutoChase;
+
+  /// No description provided for @memoryToolDebugActionCopyAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制地址'**
+  String get memoryToolDebugActionCopyAddress;
+
+  /// No description provided for @memoryToolDebugActionBrowseHitPointer.
+  ///
+  /// In zh, this message translates to:
+  /// **'浏览该命中指针'**
+  String get memoryToolDebugActionBrowseHitPointer;
+
+  /// No description provided for @memoryToolDebugActionCopyModuleOffset.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制模块偏移'**
+  String get memoryToolDebugActionCopyModuleOffset;
+
+  /// No description provided for @memoryToolDebugActionCopyInstruction.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制指令'**
+  String get memoryToolDebugActionCopyInstruction;
+
+  /// No description provided for @memoryToolDebugActionCopyRewrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制改写文本'**
+  String get memoryToolDebugActionCopyRewrite;
 
   /// No description provided for @memoryToolResultActionAddWatch.
   ///
@@ -4204,6 +4804,84 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'异或'**
   String get memoryToolResultCalculatorXor;
+
+  /// No description provided for @memoryToolAssemblyPreviewTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'汇编预览'**
+  String get memoryToolAssemblyPreviewTitle;
+
+  /// No description provided for @memoryToolAssemblyPreviewCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个地址'**
+  String memoryToolAssemblyPreviewCount(int count);
+
+  /// No description provided for @memoryToolAssemblyPreviewEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可渲染的汇编'**
+  String get memoryToolAssemblyPreviewEmpty;
+
+  /// No description provided for @memoryToolResultSelectionDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'结果列表设置'**
+  String get memoryToolResultSelectionDialogTitle;
+
+  /// No description provided for @memoryToolResultSelectionSearchDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'控制搜索页当前渲染数量，同时也是多选、保存、批量修改等操作的上限。'**
+  String get memoryToolResultSelectionSearchDescription;
+
+  /// No description provided for @memoryToolResultSelectionBrowseDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'控制浏览页单次可选数量和分页统计，不会清空已经加载的内存结果。'**
+  String get memoryToolResultSelectionBrowseDescription;
+
+  /// No description provided for @memoryToolResultSelectionFieldLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'数量上限'**
+  String get memoryToolResultSelectionFieldLabel;
+
+  /// No description provided for @memoryToolResultSelectionHelperText.
+  ///
+  /// In zh, this message translates to:
+  /// **'建议 50 - 200，数值越大，列表渲染和批量操作越重。'**
+  String get memoryToolResultSelectionHelperText;
+
+  /// No description provided for @memoryToolResultSelectionPresetLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'快速选择'**
+  String get memoryToolResultSelectionPresetLabel;
+
+  /// No description provided for @memoryToolResultSelectionUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'项'**
+  String get memoryToolResultSelectionUnit;
+
+  /// No description provided for @memoryToolResultSelectionRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入大于 0 的整数'**
+  String get memoryToolResultSelectionRequired;
+
+  /// No description provided for @memoryToolResultSelectionInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入大于 0 的整数'**
+  String get memoryToolResultSelectionInvalid;
+
+  /// No description provided for @memoryToolResultSelectionCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前值：{count} 项'**
+  String memoryToolResultSelectionCurrent(int count);
 
   /// No description provided for @memoryToolTargetProcess.
   ///

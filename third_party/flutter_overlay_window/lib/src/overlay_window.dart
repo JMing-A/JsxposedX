@@ -164,6 +164,11 @@ class FlutterOverlayWindow {
     return res ?? false;
   }
 
+  /// Read text from the system clipboard from the overlay runtime.
+  static Future<String?> getClipboardData() async {
+    return _overlayChannel.invokeMethod<String?>('getClipboardData');
+  }
+
   /// Update the overlay position in the screen
   ///
   /// `position` the new position of the overlay

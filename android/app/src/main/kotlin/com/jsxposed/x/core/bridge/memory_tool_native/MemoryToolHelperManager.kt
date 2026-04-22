@@ -14,15 +14,16 @@ class MemoryToolHelperManager(private val context: Context) {
         private const val STARTUP_RETRY_COUNT = 30
         private const val STARTUP_RETRY_DELAY_MS = 150L
         private const val HELPER_LOG_FILE_NAME = "memory_tool_helper.log"
+        private const val ROOT_RUNTIME_DIR = "/data/local/tmp/JsxposedX/memory_tool"
+        private const val ROOT_HELPER_LIBRARY_DIR = "$ROOT_RUNTIME_DIR/helper_libs"
+        private const val ROOT_APP_PROCESS_PATH = "$ROOT_RUNTIME_DIR/app_process"
     }
 
     private val socketName = "jsxposed_memory_tool_${Process.myPid()}"
+    private val rootShell by lazy { Shell(su = true) }
     private val helperLogFile by lazy {
         val logDirectory = context.externalCacheDir ?: context.cacheDir
         File(logDirectory, HELPER_LOG_FILE_NAME)
-    }
-    private val helperLibraryDirectory by lazy {
-        File(context.codeCacheDir, "memory_tool/helper_libs")
     }
 
     fun socketName(): String = socketName
@@ -48,24 +49,40 @@ class MemoryToolHelperManager(private val context: Context) {
 
     private fun startDaemon() {
         val sourceDir = context.applicationInfo.sourceDir
+        val appProcessPath = prepareBypassEnvironment()
         val memoryToolLibPath = extractHelperLibrary()
         val helperLogPath = helperLogFile.absolutePath
         val mainClass = "com.jsxposed.x.core.bridge.memory_tool_native.MemoryToolHelperMain"
         helperLogFile.parentFile?.mkdirs()
         helperLogFile.writeText("")
         val command =
-            "CLASSPATH=${shellEscape(sourceDir)} " +
-                "/system/bin/app_process /system/bin $mainClass " +
+            "setenforce 0 >/dev/null 2>&1 || true; " +
+                "CLASSPATH=${shellEscape(sourceDir)} " +
+                "${shellEscape(appProcessPath)} /system/bin $mainClass " +
                 "${shellEscape(memoryToolLibPath)} ${shellEscape(socketName)} " +
                 ">${shellEscape(helperLogPath)} 2>&1 &"
-        LogX.i(TAG, "start daemon", socketName)
+        LogX.i(TAG, "start daemon with temporary selinux bypass", socketName)
         Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+    }
+
+    private fun prepareBypassEnvironment(): String {
+        rootShell.mkdir(ROOT_RUNTIME_DIR)
+        rootShell.execute("chmod 0771 ${shellEscape(ROOT_RUNTIME_DIR)}")
+        rootShell.execute("setenforce 0 >/dev/null 2>&1 || true")
+
+        val sourceAppProcessPath = resolveAppProcessBinary()
+        rootShell.execute(
+            "cp ${shellEscape(sourceAppProcessPath)} ${shellEscape(ROOT_APP_PROCESS_PATH)} && " +
+                "chmod 0700 ${shellEscape(ROOT_APP_PROCESS_PATH)} && " +
+                "restorecon ${shellEscape(ROOT_APP_PROCESS_PATH)} >/dev/null 2>&1 || true",
+        )
+        return ROOT_APP_PROCESS_PATH
     }
 
     private fun extractHelperLibrary(): String {
         val apkPath = context.applicationInfo.sourceDir
         val supportedAbis = Build.SUPPORTED_ABIS.toList()
-        val helperLibraryFile = File(helperLibraryDirectory, "libmemory_tool.so")
+        val helperLibraryPath = "$ROOT_HELPER_LIBRARY_DIR/libmemory_tool.so"
 
         ZipFile(apkPath).use { zipFile ->
             val abiEntry = supportedAbis.firstNotNullOfOrNull { abi ->
@@ -74,20 +91,19 @@ class MemoryToolHelperManager(private val context: Context) {
                 "libmemory_tool.so not found in APK for supported ABIs: $supportedAbis"
             )
 
-            helperLibraryDirectory.mkdirs()
-            helperLibraryDirectory.setReadable(true, false)
-            helperLibraryDirectory.setExecutable(true, false)
+            rootShell.mkdir(ROOT_HELPER_LIBRARY_DIR)
+            rootShell.execute("chmod 0771 ${shellEscape(ROOT_HELPER_LIBRARY_DIR)}")
 
             zipFile.getInputStream(abiEntry).use { input ->
-                helperLibraryFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
+                rootShell.takeStream(input, helperLibraryPath)
             }
         }
 
-        helperLibraryFile.setReadable(true, false)
-        helperLibraryFile.setExecutable(true, false)
-        return helperLibraryFile.absolutePath
+        rootShell.execute(
+            "chmod 0755 ${shellEscape(helperLibraryPath)}; " +
+                "restorecon ${shellEscape(helperLibraryPath)} >/dev/null 2>&1 || true",
+        )
+        return helperLibraryPath
     }
 
     private fun waitForDaemonReady() {
@@ -102,8 +118,32 @@ class MemoryToolHelperManager(private val context: Context) {
     }
 
     private fun hasRootAccess(): Boolean {
-        val output = Shell(su = true).execute("id")
+        val output = rootShell.execute("id")
         return output.contains("uid=0")
+    }
+
+    private fun resolveAppProcessBinary(): String {
+        val prefers64Bit = Build.SUPPORTED_64_BIT_ABIS.isNotEmpty() &&
+            Build.SUPPORTED_ABIS.firstOrNull()?.contains("64") == true
+        val candidates = if (prefers64Bit) {
+            listOf(
+                "/system/bin/app_process64",
+                "/system/bin/app_process64_original",
+                "/system/bin/app_process64_init",
+                "/system/bin/app_process",
+            )
+        } else {
+            listOf(
+                "/system/bin/app_process32",
+                "/system/bin/app_process32_original",
+                "/system/bin/app_process32_init",
+                "/system/bin/app_process",
+            )
+        }
+
+        return candidates.firstOrNull { path ->
+            rootShell.execute("[ -f ${shellEscape(path)} ] && echo true") == "true"
+        } ?: "/system/bin/app_process"
     }
 
     private fun shellEscape(value: String): String {

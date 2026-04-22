@@ -14,6 +14,22 @@ class MemoryToolDaemonClient(
         private const val METHOD_GET_SEARCH_SESSION_STATE = "getSearchSessionState"
         private const val METHOD_GET_SEARCH_TASK_STATE = "getSearchTaskState"
         private const val METHOD_GET_SEARCH_RESULTS = "getSearchResults"
+        private const val METHOD_GET_POINTER_SCAN_SESSION_STATE = "getPointerScanSessionState"
+        private const val METHOD_GET_POINTER_SCAN_TASK_STATE = "getPointerScanTaskState"
+        private const val METHOD_GET_POINTER_SCAN_RESULTS = "getPointerScanResults"
+        private const val METHOD_GET_POINTER_SCAN_CHASE_HINT = "getPointerScanChaseHint"
+        private const val METHOD_GET_POINTER_AUTO_CHASE_STATE = "getPointerAutoChaseState"
+        private const val METHOD_GET_POINTER_AUTO_CHASE_LAYER_RESULTS = "getPointerAutoChaseLayerResults"
+        private const val METHOD_ADD_MEMORY_BREAKPOINT = "addMemoryBreakpoint"
+        private const val METHOD_REMOVE_MEMORY_BREAKPOINT = "removeMemoryBreakpoint"
+        private const val METHOD_SET_MEMORY_BREAKPOINT_ENABLED = "setMemoryBreakpointEnabled"
+        private const val METHOD_LIST_MEMORY_BREAKPOINTS = "listMemoryBreakpoints"
+        private const val METHOD_GET_MEMORY_BREAKPOINT_STATE = "getMemoryBreakpointState"
+        private const val METHOD_GET_MEMORY_BREAKPOINT_HITS = "getMemoryBreakpointHits"
+        private const val METHOD_CLEAR_MEMORY_BREAKPOINT_HITS = "clearMemoryBreakpointHits"
+        private const val METHOD_RESUME_AFTER_BREAKPOINT = "resumeAfterBreakpoint"
+        private const val METHOD_PATCH_MEMORY_INSTRUCTION = "patchMemoryInstruction"
+        private const val METHOD_DISASSEMBLE_MEMORY = "disassembleMemory"
         private const val METHOD_READ_MEMORY_VALUES = "readMemoryValues"
         private const val METHOD_WRITE_MEMORY_VALUE = "writeMemoryValue"
         private const val METHOD_SET_MEMORY_FREEZE = "setMemoryFreeze"
@@ -22,6 +38,12 @@ class MemoryToolDaemonClient(
         private const val METHOD_NEXT_SCAN = "nextScan"
         private const val METHOD_CANCEL_SEARCH = "cancelSearch"
         private const val METHOD_RESET_SEARCH_SESSION = "resetSearchSession"
+        private const val METHOD_START_POINTER_SCAN = "startPointerScan"
+        private const val METHOD_START_POINTER_AUTO_CHASE = "startPointerAutoChase"
+        private const val METHOD_CANCEL_POINTER_SCAN = "cancelPointerScan"
+        private const val METHOD_CANCEL_POINTER_AUTO_CHASE = "cancelPointerAutoChase"
+        private const val METHOD_RESET_POINTER_SCAN_SESSION = "resetPointerScanSession"
+        private const val METHOD_RESET_POINTER_AUTO_CHASE = "resetPointerAutoChase"
 
         fun ping(socketName: String): Boolean {
             return try {
@@ -196,6 +218,347 @@ class MemoryToolDaemonClient(
         }
     }
 
+    fun getPointerScanSessionState(): PointerScanSessionState {
+        if (!helperManager.isDaemonAlive()) {
+            return PointerScanSessionState(
+                hasActiveSession = false,
+                pid = 0,
+                targetAddress = 0,
+                pointerWidth = 8,
+                maxOffset = 0,
+                alignment = 8,
+                regionCount = 0,
+                resultCount = 0
+            )
+        }
+
+        val item = sendOrThrow(METHOD_GET_POINTER_SCAN_SESSION_STATE, null).getJSONObject("result")
+        return PointerScanSessionState(
+            hasActiveSession = item.getBoolean("hasActiveSession"),
+            pid = item.getLong("pid"),
+            targetAddress = item.getLong("targetAddress"),
+            pointerWidth = item.getLong("pointerWidth"),
+            maxOffset = item.getLong("maxOffset"),
+            alignment = item.getLong("alignment"),
+            regionCount = item.getLong("regionCount"),
+            resultCount = item.getLong("resultCount")
+        )
+    }
+
+    fun getPointerScanTaskState(): PointerScanTaskState {
+        if (!helperManager.isDaemonAlive()) {
+            return PointerScanTaskState(
+                status = SearchTaskStatus.IDLE,
+                pid = 0,
+                processedRegions = 0,
+                totalRegions = 0,
+                processedEntries = 0,
+                totalEntries = 0,
+                processedBytes = 0,
+                totalBytes = 0,
+                resultCount = 0,
+                elapsedMilliseconds = 0,
+                canCancel = false,
+                message = ""
+            )
+        }
+
+        val item = sendOrThrow(METHOD_GET_POINTER_SCAN_TASK_STATE, null).getJSONObject("result")
+        return PointerScanTaskState(
+            status = SearchTaskStatus.entries[item.getInt("status")],
+            pid = item.getLong("pid"),
+            processedRegions = item.getLong("processedRegions"),
+            totalRegions = item.getLong("totalRegions"),
+            processedEntries = item.getLong("processedEntries"),
+            totalEntries = item.getLong("totalEntries"),
+            processedBytes = item.getLong("processedBytes"),
+            totalBytes = item.getLong("totalBytes"),
+            resultCount = item.getLong("resultCount"),
+            elapsedMilliseconds = item.getLong("elapsedMilliseconds"),
+            canCancel = item.getBoolean("canCancel"),
+            message = item.optString("message")
+        )
+    }
+
+    fun getPointerScanResults(offset: Int, limit: Int): List<PointerScanResult> {
+        if (!helperManager.isDaemonAlive()) {
+            return emptyList()
+        }
+
+        val result = sendOrThrow(
+            METHOD_GET_POINTER_SCAN_RESULTS,
+            JSONObject().apply {
+                put("offset", offset)
+                put("limit", limit)
+            }
+        ).optJSONArray("result") ?: JSONArray()
+
+        return List(result.length()) { index ->
+            val item = result.getJSONObject(index)
+            PointerScanResult(
+                pointerAddress = item.getLong("pointerAddress"),
+                baseAddress = item.getLong("baseAddress"),
+                targetAddress = item.getLong("targetAddress"),
+                offset = item.getLong("offset"),
+                regionStart = item.getLong("regionStart"),
+                regionTypeKey = item.optString("regionTypeKey", "other")
+            )
+        }
+    }
+
+    fun getPointerScanChaseHint(): PointerScanChaseHint {
+        if (!helperManager.isDaemonAlive()) {
+            return PointerScanChaseHint(
+                result = null,
+                isTerminalStaticCandidate = false,
+                stopReasonKey = "noSession"
+            )
+        }
+
+        val item = sendOrThrow(METHOD_GET_POINTER_SCAN_CHASE_HINT, null).getJSONObject("result")
+        val resultItem = item.optJSONObject("result")
+        return PointerScanChaseHint(
+            result = resultItem?.let { result ->
+                PointerScanResult(
+                    pointerAddress = result.getLong("pointerAddress"),
+                    baseAddress = result.getLong("baseAddress"),
+                    targetAddress = result.getLong("targetAddress"),
+                    offset = result.getLong("offset"),
+                    regionStart = result.getLong("regionStart"),
+                    regionTypeKey = result.optString("regionTypeKey", "other")
+                )
+            },
+            isTerminalStaticCandidate = item.optBoolean("isTerminalStaticCandidate", false),
+            stopReasonKey = item.optString("stopReasonKey")
+        )
+    }
+
+    fun getPointerAutoChaseState(): PointerAutoChaseState {
+        if (!helperManager.isDaemonAlive()) {
+            return PointerAutoChaseState(
+                isRunning = false,
+                pid = 0,
+                maxDepth = 0,
+                currentDepth = 0,
+                layers = emptyList(),
+                message = ""
+            )
+        }
+
+        val item = sendOrThrow(METHOD_GET_POINTER_AUTO_CHASE_STATE, null).getJSONObject("result")
+        return PointerAutoChaseState(
+            isRunning = item.optBoolean("isRunning", false),
+            pid = item.optLong("pid"),
+            maxDepth = item.optLong("maxDepth"),
+            currentDepth = item.optLong("currentDepth"),
+            layers = buildPointerAutoChaseLayers(item.optJSONArray("layers")),
+            message = item.optString("message")
+        )
+    }
+
+    fun getPointerAutoChaseLayerResults(
+        layerIndex: Int,
+        offset: Int,
+        limit: Int
+    ): List<PointerScanResult> {
+        if (!helperManager.isDaemonAlive()) {
+            return emptyList()
+        }
+
+        val result = sendOrThrow(
+            METHOD_GET_POINTER_AUTO_CHASE_LAYER_RESULTS,
+            JSONObject().apply {
+                put("layerIndex", layerIndex)
+                put("offset", offset)
+                put("limit", limit)
+            }
+        ).optJSONArray("result") ?: JSONArray()
+        return List(result.length()) { index ->
+            val item = result.getJSONObject(index)
+            PointerScanResult(
+                pointerAddress = item.getLong("pointerAddress"),
+                baseAddress = item.getLong("baseAddress"),
+                targetAddress = item.getLong("targetAddress"),
+                offset = item.getLong("offset"),
+                regionStart = item.getLong("regionStart"),
+                regionTypeKey = item.optString("regionTypeKey", "other")
+            )
+        }
+    }
+
+    fun addMemoryBreakpoint(request: AddMemoryBreakpointRequest): MemoryBreakpoint {
+        helperManager.ensureDaemon()
+        val result = sendOrThrow(
+            METHOD_ADD_MEMORY_BREAKPOINT,
+            JSONObject().apply {
+                put("pid", request.pid)
+                put("address", request.address)
+                put("type", request.type.ordinal)
+                put("length", request.length)
+                put("accessType", request.accessType.ordinal)
+                put("enabled", request.enabled)
+                put("pauseProcessOnHit", request.pauseProcessOnHit)
+            }
+        ).optJSONArray("result") ?: JSONArray()
+        require(result.length() > 0) { "Empty breakpoint result." }
+        return buildMemoryBreakpoint(result.getJSONObject(0))
+    }
+
+    fun removeMemoryBreakpoint(breakpointId: String) {
+        if (!helperManager.isDaemonAlive()) {
+            return
+        }
+        sendOrThrow(
+            METHOD_REMOVE_MEMORY_BREAKPOINT,
+            JSONObject().apply {
+                put("breakpointId", breakpointId)
+            }
+        )
+    }
+
+    fun setMemoryBreakpointEnabled(breakpointId: String, enabled: Boolean) {
+        helperManager.ensureDaemon()
+        sendOrThrow(
+            METHOD_SET_MEMORY_BREAKPOINT_ENABLED,
+            JSONObject().apply {
+                put("breakpointId", breakpointId)
+                put("enabled", enabled)
+            }
+        )
+    }
+
+    fun listMemoryBreakpoints(pid: Int): List<MemoryBreakpoint> {
+        if (!helperManager.isDaemonAlive()) {
+            return emptyList()
+        }
+        val result = sendOrThrow(
+            METHOD_LIST_MEMORY_BREAKPOINTS,
+            JSONObject().apply {
+                put("pid", pid)
+            }
+        ).optJSONArray("result") ?: JSONArray()
+        return List(result.length()) { index ->
+            buildMemoryBreakpoint(result.getJSONObject(index))
+        }
+    }
+
+    fun getMemoryBreakpointState(pid: Int): MemoryBreakpointState {
+        if (!helperManager.isDaemonAlive()) {
+            return MemoryBreakpointState(
+                isSupported = false,
+                isProcessPaused = false,
+                activeBreakpointCount = 0,
+                pendingHitCount = 0,
+                architecture = "",
+                lastError = ""
+            )
+        }
+        val item = sendOrThrow(
+            METHOD_GET_MEMORY_BREAKPOINT_STATE,
+            JSONObject().apply {
+                put("pid", pid)
+            }
+        ).getJSONObject("result")
+        return MemoryBreakpointState(
+            isSupported = item.optBoolean("isSupported", false),
+            isProcessPaused = item.optBoolean("isProcessPaused", false),
+            activeBreakpointCount = item.optLong("activeBreakpointCount"),
+            pendingHitCount = item.optLong("pendingHitCount"),
+            architecture = item.optString("architecture"),
+            lastError = item.optString("lastError")
+        )
+    }
+
+    fun getMemoryBreakpointHits(pid: Int, offset: Int, limit: Int): List<MemoryBreakpointHit> {
+        if (!helperManager.isDaemonAlive()) {
+            return emptyList()
+        }
+        val result = sendOrThrow(
+            METHOD_GET_MEMORY_BREAKPOINT_HITS,
+            JSONObject().apply {
+                put("pid", pid)
+                put("offset", offset)
+                put("limit", limit)
+            }
+        ).optJSONArray("result") ?: JSONArray()
+        return List(result.length()) { index ->
+            buildMemoryBreakpointHit(result.getJSONObject(index))
+        }
+    }
+
+    fun clearMemoryBreakpointHits(pid: Int) {
+        if (!helperManager.isDaemonAlive()) {
+            return
+        }
+        sendOrThrow(
+            METHOD_CLEAR_MEMORY_BREAKPOINT_HITS,
+            JSONObject().apply {
+                put("pid", pid)
+            }
+        )
+    }
+
+    fun resumeAfterBreakpoint(pid: Int) {
+        helperManager.ensureDaemon()
+        sendOrThrow(
+            METHOD_RESUME_AFTER_BREAKPOINT,
+            JSONObject().apply {
+                put("pid", pid)
+            }
+        )
+    }
+
+    fun patchMemoryInstruction(request: MemoryInstructionPatchRequest): MemoryInstructionPatchResult {
+        helperManager.ensureDaemon()
+        val item = sendOrThrow(
+            METHOD_PATCH_MEMORY_INSTRUCTION,
+            JSONObject().apply {
+                put("pid", request.pid)
+                put("address", request.address)
+                put("instruction", request.instruction)
+            }
+        ).getJSONObject("result")
+        return MemoryInstructionPatchResult(
+            address = item.getLong("address"),
+            architecture = item.optString("architecture"),
+            instructionSize = item.optLong("instructionSize"),
+            beforeBytes = decodeHex(item.optString("beforeBytesHex")),
+            afterBytes = decodeHex(item.optString("afterBytesHex")),
+            instructionText = item.optString("instructionText")
+        )
+    }
+
+    fun disassembleMemory(pid: Int, addresses: List<Long>): List<MemoryInstructionPreview> {
+        if (addresses.isEmpty()) {
+            return emptyList()
+        }
+
+        helperManager.ensureDaemon()
+        val result = sendOrThrow(
+            METHOD_DISASSEMBLE_MEMORY,
+            JSONObject().apply {
+                put("pid", pid)
+                put(
+                    "addresses",
+                    JSONArray().apply {
+                        addresses.forEach(::put)
+                    }
+                )
+            }
+        ).optJSONArray("result") ?: JSONArray()
+
+        return List(result.length()) { index ->
+            val item = result.getJSONObject(index)
+            MemoryInstructionPreview(
+                address = item.getLong("address"),
+                architecture = item.optString("architecture"),
+                instructionSize = item.optLong("instructionSize"),
+                rawBytes = decodeHex(item.optString("rawBytesHex")),
+                instructionText = item.optString("instructionText")
+            )
+        }
+    }
+
     fun readMemoryValues(requests: List<MemoryReadRequest>): List<MemoryValuePreview> {
         if (requests.isEmpty()) {
             return emptyList()
@@ -211,6 +574,7 @@ class MemoryToolDaemonClient(
                         requests.forEach { request ->
                             put(
                                 JSONObject().apply {
+                                    put("pid", request.pid)
                                     put("address", request.address)
                                     put("type", request.type.ordinal)
                                     put("length", request.length)
@@ -321,6 +685,81 @@ class MemoryToolDaemonClient(
         sendOrThrow(METHOD_RESET_SEARCH_SESSION, null)
     }
 
+    fun startPointerScan(request: PointerScanRequest) {
+        helperManager.ensureDaemon()
+        sendOrThrow(
+            METHOD_START_POINTER_SCAN,
+            JSONObject().apply {
+                put("pid", request.pid)
+                put("targetAddress", request.targetAddress)
+                put("pointerWidth", request.pointerWidth)
+                put("maxOffset", request.maxOffset)
+                put("alignment", request.alignment)
+                put(
+                    "rangeSectionKeys",
+                    JSONArray().apply {
+                        request.rangeSectionKeys.forEach(::put)
+                    }
+                )
+                put("scanAllReadableRegions", request.scanAllReadableRegions)
+            }
+        )
+    }
+
+    fun startPointerAutoChase(request: PointerAutoChaseRequest) {
+        helperManager.ensureDaemon()
+        sendOrThrow(
+            METHOD_START_POINTER_AUTO_CHASE,
+            JSONObject().apply {
+                put("pid", request.pid)
+                put("targetAddress", request.targetAddress)
+                put("pointerWidth", request.pointerWidth)
+                put("maxOffset", request.maxOffset)
+                put("alignment", request.alignment)
+                put("maxDepth", request.maxDepth)
+                put(
+                    "rangeSectionKeys",
+                    JSONArray().apply {
+                        request.rangeSectionKeys.forEach(::put)
+                    }
+                )
+                put("scanAllReadableRegions", request.scanAllReadableRegions)
+            }
+        )
+    }
+
+    fun cancelPointerScan() {
+        if (!helperManager.isDaemonAlive()) {
+            return
+        }
+
+        sendOrThrow(METHOD_CANCEL_POINTER_SCAN, null)
+    }
+
+    fun cancelPointerAutoChase() {
+        if (!helperManager.isDaemonAlive()) {
+            return
+        }
+
+        sendOrThrow(METHOD_CANCEL_POINTER_AUTO_CHASE, null)
+    }
+
+    fun resetPointerScanSession() {
+        if (!helperManager.isDaemonAlive()) {
+            return
+        }
+
+        sendOrThrow(METHOD_RESET_POINTER_SCAN_SESSION, null)
+    }
+
+    fun resetPointerAutoChase() {
+        if (!helperManager.isDaemonAlive()) {
+            return
+        }
+
+        sendOrThrow(METHOD_RESET_POINTER_AUTO_CHASE, null)
+    }
+
     private fun sendOrThrow(method: String, params: JSONObject?): JSONObject {
         val response = sendRequest(helperManager.socketName(), method, params)
         if (!response.optBoolean("ok", false)) {
@@ -336,5 +775,90 @@ class MemoryToolDaemonClient(
             put("bytesHex", encodeHex(value.bytesValue))
             put("littleEndian", value.littleEndian)
         }
+    }
+
+    private fun buildPointerAutoChaseLayers(items: JSONArray?): List<PointerAutoChaseLayerState> {
+        if (items == null) {
+            return emptyList()
+        }
+
+        return List(items.length()) { index ->
+            val item = items.getJSONObject(index)
+            PointerAutoChaseLayerState(
+                layerIndex = item.getLong("layerIndex"),
+                targetAddress = item.getLong("targetAddress"),
+                selectedPointerAddress = item.optLong("selectedPointerAddress")
+                    .takeIf { item.has("selectedPointerAddress") && !item.isNull("selectedPointerAddress") },
+                selectedResult = item.optJSONObject("selectedResult")?.let { result ->
+                    PointerScanResult(
+                        pointerAddress = result.getLong("pointerAddress"),
+                        baseAddress = result.getLong("baseAddress"),
+                        targetAddress = result.getLong("targetAddress"),
+                        offset = result.getLong("offset"),
+                        regionStart = result.getLong("regionStart"),
+                        regionTypeKey = result.optString("regionTypeKey", "other")
+                    )
+                },
+                resultCount = item.getLong("resultCount"),
+                hasMore = item.optBoolean("hasMore", false),
+                isTerminalLayer = item.optBoolean("isTerminalLayer", false),
+                stopReasonKey = item.optString("stopReasonKey"),
+                initialResults = buildPointerResults(item.optJSONArray("initialResults"))
+            )
+        }
+    }
+
+    private fun buildPointerResults(items: JSONArray?): List<PointerScanResult> {
+        if (items == null) {
+            return emptyList()
+        }
+
+        return List(items.length()) { index ->
+            val item = items.getJSONObject(index)
+            PointerScanResult(
+                pointerAddress = item.getLong("pointerAddress"),
+                baseAddress = item.getLong("baseAddress"),
+                targetAddress = item.getLong("targetAddress"),
+                offset = item.getLong("offset"),
+                regionStart = item.getLong("regionStart"),
+                regionTypeKey = item.optString("regionTypeKey", "other")
+            )
+        }
+    }
+
+    private fun buildMemoryBreakpoint(item: JSONObject): MemoryBreakpoint {
+        return MemoryBreakpoint(
+            id = item.getString("id"),
+            pid = item.getLong("pid"),
+            address = item.getLong("address"),
+            type = SearchValueType.entries[item.getInt("type")],
+            length = item.getLong("length"),
+            accessType = MemoryBreakpointAccessType.entries[item.getInt("accessType")],
+            enabled = item.optBoolean("enabled", true),
+            pauseProcessOnHit = item.optBoolean("pauseProcessOnHit", true),
+            hitCount = item.optLong("hitCount"),
+            createdAtMillis = item.optLong("createdAtMillis"),
+            lastHitAtMillis = item.optLong("lastHitAtMillis")
+                .takeIf { item.has("lastHitAtMillis") && !item.isNull("lastHitAtMillis") },
+            lastError = item.optString("lastError")
+        )
+    }
+
+    private fun buildMemoryBreakpointHit(item: JSONObject): MemoryBreakpointHit {
+        return MemoryBreakpointHit(
+            breakpointId = item.getString("breakpointId"),
+            pid = item.getLong("pid"),
+            address = item.getLong("address"),
+            accessType = MemoryBreakpointAccessType.entries[item.getInt("accessType")],
+            threadId = item.getLong("threadId"),
+            timestampMillis = item.getLong("timestampMillis"),
+            oldValue = decodeHex(item.optString("oldValueHex")),
+            newValue = decodeHex(item.optString("newValueHex")),
+            pc = item.optLong("pc"),
+            moduleName = item.optString("moduleName"),
+            moduleBase = item.optLong("moduleBase"),
+            moduleOffset = item.optLong("moduleOffset"),
+            instructionText = item.optString("instructionText")
+        )
     }
 }

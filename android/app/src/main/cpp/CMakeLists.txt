@@ -2,11 +2,12 @@ cmake_minimum_required(VERSION 3.22.1)
 project(so_analysis)
 
 include(FetchContent)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch_keystone_python3.cmake)
 
 set(CAPSTONE_ARCHITECTURE_DEFAULT OFF)
 set(CAPSTONE_ARM_SUPPORT ON)
 set(CAPSTONE_ARM64_SUPPORT ON)
-set(CAPSTONE_X86_SUPPORT OFF)
+set(CAPSTONE_X86_SUPPORT ON)
 set(CAPSTONE_MIPS_SUPPORT OFF)
 set(CAPSTONE_PPC_SUPPORT OFF)
 set(CAPSTONE_SPARC_SUPPORT OFF)
@@ -29,6 +30,30 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(capstone)
 
+find_package(Python3 COMPONENTS Interpreter)
+
+set(KEYSTONE_BUILD_STATIC_RUNTIME ON CACHE BOOL "" FORCE)
+set(BUILD_LIBS_ONLY ON CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(LLVM_TARGETS_TO_BUILD "ARM;AArch64" CACHE STRING "" FORCE)
+if(Python3_Interpreter_FOUND)
+    set(PYTHON_EXECUTABLE "${Python3_EXECUTABLE}" CACHE FILEPATH "" FORCE)
+endif()
+
+FetchContent_Declare(
+    keystone
+    GIT_REPOSITORY https://github.com/keystone-engine/keystone.git
+    GIT_TAG        0.9.2
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_GetProperties(keystone)
+if(NOT keystone_POPULATED)
+    FetchContent_Populate(keystone)
+    patch_keystone_python3(${keystone_SOURCE_DIR})
+    add_subdirectory(${keystone_SOURCE_DIR} ${keystone_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
+
 set(LIEF_PREBUILT_DIR ${CMAKE_SOURCE_DIR}/../jniLibs/lief/${ANDROID_ABI})
 set(LIEF_LIB ${LIEF_PREBUILT_DIR}/libLIEF.a)
 
@@ -44,8 +69,10 @@ if(EXISTS ${LIEF_LIB})
     )
 
     add_library(memory_tool SHARED
+        memory_tool_breakpoint.cpp
         memory_tool_jni.cpp
         memory_tool_engine.cpp
+        memory_tool_instruction.cpp
         memory_tool_protocol.cpp
         memory_tool_reader.cpp
         memory_tool_regions.cpp
@@ -60,6 +87,11 @@ if(EXISTS ${LIEF_LIB})
         ${capstone_SOURCE_DIR}/include
     )
 
+    target_include_directories(memory_tool PRIVATE
+        ${capstone_SOURCE_DIR}/include
+        ${keystone_SOURCE_DIR}/include
+    )
+
     target_link_libraries(so_analysis
         LIEF
         capstone
@@ -69,6 +101,8 @@ if(EXISTS ${LIEF_LIB})
     )
 
     target_link_libraries(memory_tool
+        keystone
+        capstone
         android
         log
     )

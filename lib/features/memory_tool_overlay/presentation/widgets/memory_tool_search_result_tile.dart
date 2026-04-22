@@ -1,4 +1,5 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_result_presenter.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_result_badge.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
@@ -10,32 +11,53 @@ class MemoryToolSearchResultTile extends StatelessWidget {
     super.key,
     required this.result,
     required this.displayValue,
+    this.entryKind = MemoryToolEntryKind.value,
+    this.instructionText,
     this.previousDisplayValue,
+    this.typeLabelOverride,
+    this.regionLabelOverride,
     this.isFrozen = false,
+    this.isAnchor = false,
     required this.isSelected,
     required this.onToggleSelection,
-    required this.onDeleteRecord,
+    this.onDeleteRecord,
     this.onTap,
     this.onLongProcess,
   });
 
   final SearchResult result;
   final String displayValue;
+  final MemoryToolEntryKind entryKind;
+  final String? instructionText;
   final String? previousDisplayValue;
+  final String? typeLabelOverride;
+  final String? regionLabelOverride;
   final bool isFrozen;
+  final bool isAnchor;
   final bool isSelected;
   final VoidCallback onToggleSelection;
-  final VoidCallback onDeleteRecord;
+  final VoidCallback? onDeleteRecord;
   final VoidCallback? onTap;
   final VoidCallback? onLongProcess;
 
   @override
   Widget build(BuildContext context) {
+    final isInstruction = entryKind == MemoryToolEntryKind.instruction;
+    final resolvedInstructionText = instructionText?.trim();
+    final primaryDisplayValue =
+        isInstruction &&
+            resolvedInstructionText != null &&
+            resolvedInstructionText.isNotEmpty
+        ? resolvedInstructionText
+        : displayValue;
+    final instructionHexValue = isInstruction
+        ? formatMemoryToolSearchResultHex(result.rawBytes)
+        : null;
     final previousValue = previousDisplayValue?.trim();
     final shouldShowPreviousValue =
         previousValue != null &&
         previousValue.isNotEmpty &&
-        previousValue != displayValue.trim();
+        previousValue != primaryDisplayValue.trim();
 
     return Material(
       color: Colors.transparent,
@@ -47,18 +69,23 @@ class MemoryToolSearchResultTile extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           decoration: BoxDecoration(
             color: isSelected
-                ? context.colorScheme.primaryContainer.withValues(alpha: 0.72)
+                ? context.colorScheme.primaryContainer.withValues(alpha: 0.3)
                 : context.colorScheme.surface.withValues(alpha: 0.72),
             borderRadius: BorderRadius.circular(14.r),
             border: Border.all(
-              color: isSelected
+              color: isAnchor
+                  ? const Color(0xFFF08C2B)
+                  : isSelected
                   ? context.colorScheme.primary
                   : context.colorScheme.outlineVariant.withValues(alpha: 0.42),
+              width: isAnchor ? 1.6 : 1,
             ),
           ),
           padding: EdgeInsets.all(12.r),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: isInstruction
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
             children: <Widget>[
               Transform.scale(
                 scale: 0.9,
@@ -85,10 +112,13 @@ class MemoryToolSearchResultTile extends StatelessWidget {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final valueMaxWidth = constraints.maxWidth * 0.52;
+                    final valueMaxWidth = constraints.maxWidth *
+                        (isInstruction ? 0.72 : 0.52);
 
                     return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: isInstruction
+                          ? CrossAxisAlignment.start
+                          : CrossAxisAlignment.center,
                       children: <Widget>[
                         ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: valueMaxWidth),
@@ -97,15 +127,30 @@ class MemoryToolSearchResultTile extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               Text(
-                                displayValue,
-                                maxLines: 1,
+                                primaryDisplayValue,
+                                maxLines: isInstruction ? 2 : 1,
                                 overflow: TextOverflow.ellipsis,
-                                softWrap: false,
+                                softWrap: isInstruction,
                                 style: context.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w900,
                                   color: context.colorScheme.primary,
                                 ),
                               ),
+                              if (instructionHexValue != null &&
+                                  instructionHexValue.isNotEmpty) ...<Widget>[
+                                SizedBox(height: 3.r),
+                                Text(
+                                  instructionHexValue,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                  style: context.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: context.colorScheme.onSurface
+                                        .withValues(alpha: 0.62),
+                                  ),
+                                ),
+                              ],
                               if (shouldShowPreviousValue) ...<Widget>[
                                 SizedBox(height: 2.r),
                                 Text(
@@ -126,10 +171,13 @@ class MemoryToolSearchResultTile extends StatelessWidget {
                                 runSpacing: 6.r,
                                 children: <Widget>[
                                   MemoryToolResultBadge(
-                                    label: mapMemoryToolSearchResultTypeLabel(
-                                      type: result.type,
-                                      displayValue: displayValue,
-                                    ),
+                                    label:
+                                        typeLabelOverride ??
+                                        mapMemoryToolEntryTypeLabel(
+                                          type: result.type,
+                                          entryKind: entryKind,
+                                          displayValue: primaryDisplayValue,
+                                        ),
                                     backgroundColor:
                                         mapMemoryToolSearchResultTypeBadgeBackground(
                                           result.type,
@@ -176,6 +224,7 @@ class MemoryToolSearchResultTile extends StatelessWidget {
                                 alignment: Alignment.centerRight,
                                 child: MemoryToolResultBadge(
                                   label:
+                                      regionLabelOverride ??
                                       mapMemoryToolSearchResultRegionTypeLabel(
                                         context,
                                         result.regionTypeKey,
@@ -193,22 +242,24 @@ class MemoryToolSearchResultTile extends StatelessWidget {
                             ],
                           ),
                         ),
-                        SizedBox(width: 6.r),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(10.r),
-                          onTap: onDeleteRecord,
-                          child: SizedBox(
-                            width: 28.r,
-                            height: 28.r,
-                            child: Icon(
-                              Icons.delete_outline_rounded,
-                              size: 18.r,
-                              color: context.colorScheme.error.withValues(
-                                alpha: 0.84,
+                        if (onDeleteRecord != null) ...<Widget>[
+                          SizedBox(width: 6.r),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(10.r),
+                            onTap: onDeleteRecord,
+                            child: SizedBox(
+                              width: 28.r,
+                              height: 28.r,
+                              child: Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18.r,
+                                color: context.colorScheme.error.withValues(
+                                  alpha: 0.84,
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     );
                   },

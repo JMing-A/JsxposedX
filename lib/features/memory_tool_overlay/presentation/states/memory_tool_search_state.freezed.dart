@@ -214,7 +214,7 @@ return $default(_that.value,_that.selectedMatchMode,_that.selectedFuzzyMode,_tha
 
 
 class _MemoryToolSearchState extends MemoryToolSearchState {
-  const _MemoryToolSearchState({this.value = '', this.selectedMatchMode = MemorySearchMatchModeEnum.exact, this.selectedFuzzyMode = MemorySearchFuzzyModeEnum.unknown, this.selectedValueCategory = MemorySearchValueCategoryEnum.integer, this.selectedValueTypeOption = MemorySearchValueTypeOptionEnum.i32, this.selectedRangePreset = MemorySearchRangePresetEnum.all, final  List<MemorySearchRangeSectionEnum> customRangeSections = const <MemorySearchRangeSectionEnum>[], this.isLittleEndian = true, this.validationError}): _customRangeSections = customRangeSections,super._();
+  const _MemoryToolSearchState({this.value = '', this.selectedMatchMode = MemorySearchMatchModeEnum.exact, this.selectedFuzzyMode = MemorySearchFuzzyModeEnum.unknown, this.selectedValueCategory = MemorySearchValueCategoryEnum.integer, this.selectedValueTypeOption = MemorySearchValueTypeOptionEnum.i32, this.selectedRangePreset = MemorySearchRangePresetEnum.common, final  List<MemorySearchRangeSectionEnum> customRangeSections = const <MemorySearchRangeSectionEnum>[], this.isLittleEndian = true, this.validationError}): _customRangeSections = customRangeSections,super._();
   
 
 @override@JsonKey() final  String value;

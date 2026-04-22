@@ -989,13 +989,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiTutorial => 'Tutorial';
 
   @override
-  String get aiBuiltinConfigName => 'PadiApi';
+  String get aiBuiltinConfigName => 'Muxue API';
 
   @override
-  String get aiBuiltinUseConfig => 'Use Built-in Endpoint';
+  String get aiBuiltinUseConfig => 'Use Muxue Endpoint';
 
   @override
-  String get aiBuiltinSwitching => 'Switching to built-in default endpoint';
+  String get aiBuiltinSwitching => 'Switching to the built-in Muxue endpoint';
 
   @override
   String get aiBuyCardSecret => 'Buy Access Code';
@@ -1713,6 +1713,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memoryToolTabSearch => 'Search';
 
   @override
+  String get memoryToolTabBrowse => 'Browse';
+
+  @override
+  String get memoryToolTabPointer => 'Pointer';
+
+  @override
   String get memoryToolTabEdit => 'Edit';
 
   @override
@@ -2099,6 +2105,160 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memoryToolResultDetailActionCopyValue => 'Copy Value';
 
   @override
+  String get memoryToolResultActionPointerScan => 'Pointer Scan';
+
+  @override
+  String get memoryToolResultActionAutoChaseStatic => 'Auto Locate';
+
+  @override
+  String get memoryToolResultActionJumpToPointer => 'Jump to Pointer';
+
+  @override
+  String get memoryToolResultActionPreviewMemoryBlock => 'Preview Memory Block';
+
+  @override
+  String get memoryToolResultActionOffsetPreview => 'Calculate Offset';
+
+  @override
+  String get memoryToolJumpAddressTitle => 'Address Jump';
+
+  @override
+  String get memoryToolJumpAddressFieldLabel => 'Target Address';
+
+  @override
+  String get memoryToolJumpAddressAction => 'Jump to Target Address';
+
+  @override
+  String get memoryToolJumpAddressInvalid => 'Invalid address';
+
+  @override
+  String get memoryToolResultActionCopyHex => 'Copy Hexadecimal';
+
+  @override
+  String get memoryToolResultActionCopyReverseHex => 'Copy Reverse Hexadecimal';
+
+  @override
+  String get memoryToolPointerScanTitle => 'Pointer Scan';
+
+  @override
+  String get memoryToolPointerAutoChaseTitle => 'Auto Locate';
+
+  @override
+  String get memoryToolPointerTargetAddressLabel => 'Target Address';
+
+  @override
+  String get memoryToolPointerWidthLabel => 'Pointer Width';
+
+  @override
+  String get memoryToolPointerMaxOffsetLabel => 'Max Offset';
+
+  @override
+  String get memoryToolPointerMaxDepthLabel => 'Pointer Depth';
+
+  @override
+  String get memoryToolPointerAlignmentLabel => 'Alignment';
+
+  @override
+  String get memoryToolPointerAlignmentPointerWidth => 'Use Pointer Width';
+
+  @override
+  String get memoryToolPointerInvalidMaxOffset => 'Enter a valid offset.';
+
+  @override
+  String get memoryToolPointerInvalidMaxDepth => 'Enter a depth from 1 to 12.';
+
+  @override
+  String get memoryToolPointerActionContinueSearch =>
+      'Continue Searching Upper Pointer';
+
+  @override
+  String get memoryToolPointerActionJumpToTarget => 'Jump to Pointer Target';
+
+  @override
+  String get memoryToolPointerActionCopyPointerAddress =>
+      'Copy Pointer Address';
+
+  @override
+  String get memoryToolPointerActionCopyPointedAddress =>
+      'Copy Pointed Address';
+
+  @override
+  String get memoryToolPointerActionCopyTargetAddress => 'Copy Target Address';
+
+  @override
+  String get memoryToolPointerActionCopyExpression => 'Copy Expression';
+
+  @override
+  String get memoryToolPointerOffsetLabel => 'Offset';
+
+  @override
+  String get memoryToolPointerBaseAddressLabel => 'Base Address';
+
+  @override
+  String get memoryToolPointerPointerAddressLabel => 'Pointer Address';
+
+  @override
+  String get memoryToolPointerBadgeAuto => 'Recommended';
+
+  @override
+  String get memoryToolPointerBadgeStatic => 'Static';
+
+  @override
+  String get memoryToolPointerEmpty =>
+      'Long press a search, browse, or saved result and choose Pointer Scan.';
+
+  @override
+  String memoryToolPointerLoadedCount(int loaded, int total) {
+    return 'Loaded $loaded / Total $total';
+  }
+
+  @override
+  String get memoryToolPointerTaskRunningTitle => 'Pointer Scan Running';
+
+  @override
+  String get memoryToolPointerStopReasonStaticReached =>
+      'Static region reached';
+
+  @override
+  String get memoryToolPointerStopReasonNoMorePointers =>
+      'No more upper pointers';
+
+  @override
+  String get memoryToolPointerStopReasonMaxDepth => 'Pointer depth reached';
+
+  @override
+  String get memoryToolPointerStopReasonCancelled => 'Cancelled';
+
+  @override
+  String get memoryToolPointerStopReasonFailed => 'Scan failed';
+
+  @override
+  String get memoryToolOffsetPreviewTitle => 'Offset Preview';
+
+  @override
+  String get memoryToolOffsetPreviewOffsetLabel => 'Offset';
+
+  @override
+  String get memoryToolOffsetPreviewHexLabel => 'HEX';
+
+  @override
+  String get memoryToolOffsetPreviewTargetAddress => 'Target Address';
+
+  @override
+  String get memoryToolOffsetPreviewTargetValue => 'Target Value';
+
+  @override
+  String get memoryToolOffsetPreviewInvalid => 'Enter a valid offset.';
+
+  @override
+  String get memoryToolOffsetPreviewUnreadable =>
+      'Target address is unreadable.';
+
+  @override
+  String get memoryToolBrowseEmpty =>
+      'Long press a search result and choose Preview Memory Block.';
+
+  @override
   String get memoryToolResultActionTitle => 'More Actions';
 
   @override
@@ -2123,6 +2283,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'Reserve an entry point for future batch write and filtered edit flows.';
 
   @override
+  String get memoryToolBatchEditIncrementUnsupported =>
+      'Increment mode only supports numeric types.';
+
+  @override
+  String get memoryToolBatchEditNoReadableResults =>
+      'No readable selected results.';
+
+  @override
+  String get memoryToolBatchEditIncrementLabel => 'Increment';
+
+  @override
+  String get memoryToolBatchEditStepLabel => 'Step';
+
+  @override
+  String get memoryToolBatchEditPreviewLabel => 'Preview';
+
+  @override
   String get memoryToolResultActionSaveToSaved => 'Save to Saved';
 
   @override
@@ -2133,6 +2310,144 @@ class AppLocalizationsEn extends AppLocalizations {
   String memoryToolSavedToSavedMessage(Object count) {
     return 'Added $count item(s) to Saved';
   }
+
+  @override
+  String get memoryToolDebugAccessRead => 'Read';
+
+  @override
+  String get memoryToolDebugAccessWrite => 'Write';
+
+  @override
+  String get memoryToolDebugAccessReadWrite => 'Read/Write';
+
+  @override
+  String get memoryToolDebugBreakpointsTitle => 'Breakpoints';
+
+  @override
+  String get memoryToolDebugBreakpointsTab => 'Breakpoints';
+
+  @override
+  String get memoryToolDebugWritersTitle => 'Writers';
+
+  @override
+  String get memoryToolDebugDetailTitle => 'Detail';
+
+  @override
+  String get memoryToolDebugEmptyBreakpoints => 'No breakpoints yet';
+
+  @override
+  String get memoryToolDebugEnabled => 'Enabled';
+
+  @override
+  String get memoryToolDebugDisabled => 'Disabled';
+
+  @override
+  String get memoryToolDebugPauseOnHit => 'Pause On Hit';
+
+  @override
+  String get memoryToolDebugRecordOnly => 'Record Only';
+
+  @override
+  String get memoryToolDebugHitCountUnit => 'hits';
+
+  @override
+  String get memoryToolDebugLastHitPrefix => 'Last hit';
+
+  @override
+  String get memoryToolDebugEmptyWriters =>
+      'No writer groups for the selected breakpoint';
+
+  @override
+  String get memoryToolDebugThreadCountUnit => 'threads';
+
+  @override
+  String get memoryToolDebugEmptyDetail =>
+      'Select a writer group to inspect details';
+
+  @override
+  String get memoryToolDebugCurrentValue => 'Current Value';
+
+  @override
+  String get memoryToolDebugNoHitYet => 'No hit yet';
+
+  @override
+  String get memoryToolDebugBreakpointAddress => 'Breakpoint Address';
+
+  @override
+  String get memoryToolDebugPointer => 'Pointer';
+
+  @override
+  String get memoryToolDebugAnonymousModule => '[anonymous]';
+
+  @override
+  String get memoryToolDebugModuleOffset => 'Module Offset';
+
+  @override
+  String get memoryToolDebugInstruction => 'Instruction';
+
+  @override
+  String get memoryToolDebugCommonRewrite => 'Common Rewrite';
+
+  @override
+  String get memoryToolDebugRecentHits => 'Recent Hits';
+
+  @override
+  String get memoryToolDebugStatBreakpoints => 'Breakpoints';
+
+  @override
+  String get memoryToolDebugStatActive => 'Active';
+
+  @override
+  String get memoryToolDebugStatWriters => 'Writers';
+
+  @override
+  String get memoryToolDebugStatCurrentHits => 'Hits';
+
+  @override
+  String get memoryToolDebugStatPending => 'Pending';
+
+  @override
+  String get memoryToolDebugStatLength => 'Length';
+
+  @override
+  String get memoryToolDebugSelectProcessFirst => 'Select a process first';
+
+  @override
+  String get memoryToolDebugSelectProcessHint =>
+      'Create a watchpoint from a long-press result to inspect hit records here.';
+
+  @override
+  String get memoryToolDebugActionCopyValue => 'Copy Value';
+
+  @override
+  String get memoryToolDebugActionCopyHex => 'Copy Hex';
+
+  @override
+  String get memoryToolDebugActionCopyReverseHex => 'Copy Reverse Hex';
+
+  @override
+  String get memoryToolDebugActionBrowseAddress => 'Browse Address';
+
+  @override
+  String get memoryToolDebugActionPointerScan => 'Pointer Scan';
+
+  @override
+  String get memoryToolDebugActionAutoChase => 'Auto Chase';
+
+  @override
+  String get memoryToolDebugActionCopyAddress => 'Copy Address';
+
+  @override
+  String get memoryToolDebugActionBrowseHitPointer => 'Browse Hit Pointer';
+
+  @override
+  String get memoryToolDebugActionCopyModuleOffset => 'Copy Module Offset';
+
+  @override
+  String get memoryToolDebugActionCopyInstruction => 'Copy Instruction';
+
+  @override
+  String get memoryToolDebugActionCopyRewrite => 'Copy Rewrite';
 
   @override
   String get memoryToolResultActionAddWatch => 'Add to Watch List';
@@ -2177,6 +2492,54 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memoryToolResultCalculatorXor => 'XOR';
+
+  @override
+  String get memoryToolAssemblyPreviewTitle => 'Assembly Preview';
+
+  @override
+  String memoryToolAssemblyPreviewCount(int count) {
+    return '$count addresses';
+  }
+
+  @override
+  String get memoryToolAssemblyPreviewEmpty => 'No assembly can be rendered.';
+
+  @override
+  String get memoryToolResultSelectionDialogTitle => 'Result List Settings';
+
+  @override
+  String get memoryToolResultSelectionSearchDescription =>
+      'Controls how many search results are rendered now and also caps multi-select, save, and batch actions.';
+
+  @override
+  String get memoryToolResultSelectionBrowseDescription =>
+      'Controls browse-page selection capacity and page stats without clearing already loaded memory results.';
+
+  @override
+  String get memoryToolResultSelectionFieldLabel => 'Item limit';
+
+  @override
+  String get memoryToolResultSelectionHelperText =>
+      'Recommended range: 50 - 200. Larger values make rendering and batch actions heavier.';
+
+  @override
+  String get memoryToolResultSelectionPresetLabel => 'Quick presets';
+
+  @override
+  String get memoryToolResultSelectionUnit => 'items';
+
+  @override
+  String get memoryToolResultSelectionRequired =>
+      'Enter an integer greater than 0.';
+
+  @override
+  String get memoryToolResultSelectionInvalid =>
+      'Enter an integer greater than 0.';
+
+  @override
+  String memoryToolResultSelectionCurrent(int count) {
+    return 'Current value: $count items';
+  }
 
   @override
   String get memoryToolTargetProcess => 'Target Process';

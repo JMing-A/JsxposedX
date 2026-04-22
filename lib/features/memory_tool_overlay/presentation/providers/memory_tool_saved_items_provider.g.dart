@@ -99,7 +99,7 @@ final class CurrentSavedItemLivePreviewsProvider
 }
 
 String _$currentSavedItemLivePreviewsHash() =>
-    r'b73dafe1a8109fb181199edef1b34d14fb3b8eb5';
+    r'5d8263c70a8cc7c21721d81a1639ce49c47406e0';
 
 @ProviderFor(MemoryToolSavedItems)
 const memoryToolSavedItemsProvider = MemoryToolSavedItemsProvider._();
@@ -134,7 +134,7 @@ final class MemoryToolSavedItemsProvider
 }
 
 String _$memoryToolSavedItemsHash() =>
-    r'06f61b9a099f760320574014590bdbebb0586583';
+    r'2de4457d1d5244e615658872d71b30c0d8602a4c';
 
 abstract class _$MemoryToolSavedItems
     extends $Notifier<MemoryToolSavedItemsState> {

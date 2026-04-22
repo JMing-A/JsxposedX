@@ -33,7 +33,7 @@ abstract class MemoryToolSearchState with _$MemoryToolSearchState {
     MemorySearchValueCategoryEnum selectedValueCategory,
     @Default(MemorySearchValueTypeOptionEnum.i32)
     MemorySearchValueTypeOptionEnum selectedValueTypeOption,
-    @Default(MemorySearchRangePresetEnum.all)
+    @Default(MemorySearchRangePresetEnum.common)
     MemorySearchRangePresetEnum selectedRangePreset,
     @Default(<MemorySearchRangeSectionEnum>[])
     List<MemorySearchRangeSectionEnum> customRangeSections,
@@ -49,9 +49,11 @@ abstract class MemoryToolSearchState with _$MemoryToolSearchState {
     return defaultOption ?? selectedValueTypeOption;
   }
 
-  SearchValueType? get nativeSearchValueType => effectiveValueTypeOption.nativeType;
+  SearchValueType? get nativeSearchValueType =>
+      effectiveValueTypeOption.nativeType;
 
-  SearchValueType get requestSearchValueType => effectiveValueTypeOption.requestType;
+  SearchValueType get requestSearchValueType =>
+      effectiveValueTypeOption.requestType;
 
   bool get supportsCurrentType => effectiveValueTypeOption.isImplemented;
 

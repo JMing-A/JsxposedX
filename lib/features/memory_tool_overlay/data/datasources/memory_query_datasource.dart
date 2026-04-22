@@ -40,4 +40,29 @@ class MemoryQueryDatasource {
   }) async {
     return await _native.readMemoryValues(requests);
   }
+
+  Future<List<MemoryInstructionPreview>> disassembleMemory({
+    required int pid,
+    required List<int> addresses,
+  }) async {
+    return await _native.disassembleMemory(pid, addresses);
+  }
+
+  Future<List<MemoryBreakpoint>> listMemoryBreakpoints({required int pid}) async {
+    return await _native.listMemoryBreakpoints(pid);
+  }
+
+  Future<MemoryBreakpointState> getMemoryBreakpointState({
+    required int pid,
+  }) async {
+    return await _native.getMemoryBreakpointState(pid);
+  }
+
+  Future<List<MemoryBreakpointHit>> getMemoryBreakpointHits({
+    required int pid,
+    required int offset,
+    required int limit,
+  }) async {
+    return await _native.getMemoryBreakpointHits(pid, offset, limit);
+  }
 }

@@ -34,6 +34,13 @@ class MemoryActionRepositoryImpl implements MemoryActionRepository {
   }
 
   @override
+  Future<MemoryInstructionPatchResult> patchMemoryInstruction({
+    required MemoryInstructionPatchRequest request,
+  }) async {
+    return await _dataSource.patchMemoryInstruction(request: request);
+  }
+
+  @override
   Future<void> setMemoryFreeze({required MemoryFreezeRequest request}) async {
     await _dataSource.setMemoryFreeze(request: request);
   }
@@ -54,5 +61,38 @@ class MemoryActionRepositoryImpl implements MemoryActionRepository {
     required bool paused,
   }) async {
     await _dataSource.setProcessPaused(pid: pid, paused: paused);
+  }
+
+  @override
+  Future<MemoryBreakpoint> addMemoryBreakpoint({
+    required AddMemoryBreakpointRequest request,
+  }) async {
+    return await _dataSource.addMemoryBreakpoint(request: request);
+  }
+
+  @override
+  Future<void> removeMemoryBreakpoint({required String breakpointId}) async {
+    await _dataSource.removeMemoryBreakpoint(breakpointId: breakpointId);
+  }
+
+  @override
+  Future<void> setMemoryBreakpointEnabled({
+    required String breakpointId,
+    required bool enabled,
+  }) async {
+    await _dataSource.setMemoryBreakpointEnabled(
+      breakpointId: breakpointId,
+      enabled: enabled,
+    );
+  }
+
+  @override
+  Future<void> clearMemoryBreakpointHits({required int pid}) async {
+    await _dataSource.clearMemoryBreakpointHits(pid: pid);
+  }
+
+  @override
+  Future<void> resumeAfterBreakpoint({required int pid}) async {
+    await _dataSource.resumeAfterBreakpoint(pid: pid);
   }
 }

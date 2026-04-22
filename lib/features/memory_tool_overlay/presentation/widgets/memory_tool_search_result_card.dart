@@ -2,17 +2,24 @@ import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/common/widgets/ref_error.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_pointer_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_saved_items_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_search_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_export_util.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_pointer_utils.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_result_presenter.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_batch_edit_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_result_calculator_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_result_selection_bar.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_result_selection_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_result_stats_bar.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_result_list.dart';
-import 'package:JsxposedX/generated/memory_tool.g.dart';
+import 'package:JsxposedX/generated/memory_tool.g.dart'
+    show FrozenMemoryValue, MemoryValuePreview, PointerScanRequest, SearchResult, SearchSessionState, SearchValueType;
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -25,12 +32,24 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
     required this.sessionStateAsync,
     required this.onRetry,
     required this.onOpenSearch,
+    required this.onOpenJumpAddress,
+    required this.onOpenLocateExpression,
+    required this.onOpenBrowseTab,
+    required this.onOpenPointerTab,
+    required this.onOpenDebugTab,
+    required this.onOpenSavedTab,
   });
 
   final bool hasMatchingSession;
   final AsyncValue<SearchSessionState> sessionStateAsync;
   final VoidCallback onRetry;
   final VoidCallback onOpenSearch;
+  final VoidCallback onOpenJumpAddress;
+  final VoidCallback onOpenLocateExpression;
+  final VoidCallback onOpenBrowseTab;
+  final VoidCallback onOpenPointerTab;
+  final VoidCallback onOpenDebugTab;
+  final VoidCallback onOpenSavedTab;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,7 +57,9 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
     final selectionNotifier = ref.read(
       memoryToolResultSelectionProvider.notifier,
     );
-    final livePreviewsAsync = ref.watch(currentSearchResultLivePreviewsProvider);
+    final livePreviewsAsync = ref.watch(
+      currentSearchResultLivePreviewsProvider,
+    );
     final valueHistoryState = ref.watch(memoryValueHistoryProvider);
     final removedResultState = ref.watch(memoryToolRemovedResultProvider);
     final removedResultNotifier = ref.read(
@@ -92,7 +113,8 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
       'memory_tool_search_results_${selectedPid ?? 0}',
     );
     final frozenAddresses = <int>{
-      for (final value in frozenValuesAsync.asData?.value ?? const <FrozenMemoryValue>[])
+      for (final value
+          in frozenValuesAsync.asData?.value ?? const <FrozenMemoryValue>[])
         if (selectedPid != null && value.pid == selectedPid) value.address,
     };
 
@@ -117,13 +139,98 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
         return;
       }
 
-      savedItemsNotifier.saveMany(
+      savedItemsNotifier.saveEntries(
         pid: selectedPid,
         results: resultList,
         previewsByAddress: previewsByAddress,
         frozenAddresses: frozenResultAddresses,
       );
+      if (context.mounted) {
+        onOpenSavedTab();
+      }
       await showSavedToast(resultList.length);
+    }
+
+    Future<void> exportSelectedResults(
+      List<SearchResult> results,
+      Map<int, MemoryValuePreview> previewsByAddress,
+    ) async {
+      if (results.isEmpty) {
+        return;
+      }
+      await exportMemoryToolItemsToLocal(
+        context: context,
+        ref: ref,
+        sourceKey: 'search',
+        pid: selectedPid,
+        items: results.map((result) {
+          final preview = previewsByAddress[result.address];
+          return MemoryToolExportItem(
+            pid: selectedPid,
+            address: result.address,
+            regionStart: result.regionStart,
+            regionTypeKey: result.regionTypeKey,
+            valueType: preview?.type ?? result.type,
+            displayValue: resolveMemoryToolPreferredDisplayValue(
+              result: result,
+              livePreview: preview,
+              fallbackDisplayValue: result.displayValue,
+            ),
+            rawBytes: preview?.rawBytes ?? result.rawBytes,
+            isFrozen: frozenAddresses.contains(result.address),
+            entryKind: MemoryToolEntryKind.value,
+          );
+        }).toList(growable: false),
+      );
+    }
+
+    Future<void> previewAndOpenBrowse(
+      Future<void> Function() previewAction,
+    ) async {
+      try {
+        await previewAction();
+        onOpenBrowseTab();
+      } catch (_) {
+        if (!context.mounted) {
+          return;
+        }
+        await ToastOverlayMessage.show(
+          context.l10n.memoryToolOffsetPreviewUnreadable,
+          duration: const Duration(milliseconds: 1200),
+        );
+      }
+    }
+
+    Future<void> jumpToPointer(
+      SearchResult result,
+      MemoryValuePreview? preview,
+      String displayValue,
+    ) async {
+      if (selectedPid == null) {
+        return;
+      }
+
+      final targetAddress = decodeMemoryToolPointerAddress(
+        preview?.rawBytes ?? result.rawBytes,
+      );
+      if (targetAddress == null) {
+        await ToastOverlayMessage.show(
+          context.l10n.memoryToolOffsetPreviewUnreadable,
+          duration: const Duration(milliseconds: 1200),
+        );
+        return;
+      }
+
+      await previewAndOpenBrowse(
+        () => ref
+            .read(memoryToolBrowseControllerProvider.notifier)
+            .previewFromAddress(
+              sourceResult: result,
+              sourcePreview: preview,
+              targetAddress: targetAddress,
+              preferInstructionMode: false,
+            ),
+      );
     }
 
     return Stack(
@@ -137,6 +244,14 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                   MemoryToolResultSelectionActionData(
                     icon: Icons.search_rounded,
                     onTap: onOpenSearch,
+                  ),
+                  MemoryToolResultSelectionActionData(
+                    icon: Icons.travel_explore_rounded,
+                    onTap: selectedPid == null ? null : onOpenJumpAddress,
+                  ),
+                  MemoryToolResultSelectionActionData(
+                    icon: Icons.data_object_rounded,
+                    onTap: selectedPid == null ? null : onOpenLocateExpression,
                   ),
                   MemoryToolResultSelectionActionData(
                     icon: processPausedAsync.asData?.value ?? false
@@ -187,8 +302,9 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                   ),
                   MemoryToolResultSelectionActionData(
                     icon: Icons.layers_clear_rounded,
-                    onTap:
-                        visibleResults.isEmpty ? null : selectionNotifier.clear,
+                    onTap: visibleResults.isEmpty
+                        ? null
+                        : selectionNotifier.clear,
                   ),
                   MemoryToolResultSelectionActionData(
                     icon: Icons.delete_sweep_rounded,
@@ -212,6 +328,18 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                                   livePreviewsAsync.asData?.value ??
                                   const <int, MemoryValuePreview>{},
                               frozenResultAddresses: frozenAddresses,
+                            );
+                          },
+                  ),
+                  MemoryToolResultSelectionActionData(
+                    icon: Icons.file_download_outlined,
+                    onTap: selectedResults.isEmpty
+                        ? null
+                        : () async {
+                            await exportSelectedResults(
+                              selectedResults,
+                              livePreviewsAsync.asData?.value ??
+                                  const <int, MemoryValuePreview>{},
                             );
                           },
                   ),
@@ -279,38 +407,85 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                           return MemoryToolSearchResultList(
                             listStorageKey: listStorageKey,
                             results: visibleResults,
-                            selectionState: selectionState,
-                            selectionNotifier: selectionNotifier,
+                            isSelected: selectionState.contains,
+                            onToggleSelection: selectionNotifier.toggle,
+                            onDeleteResult: (result) {
+                              selectionNotifier.removeAddress(result.address);
+                              removedResultNotifier.remove(result.address);
+                            },
                             livePreviewsAsync: livePreviewsAsync,
                             previousValueByAddress: previousValueByAddress,
                             processPid: selectedPid,
                             initialFrozenStateByAddress: <int, bool>{
-                              for (final address in frozenAddresses) address: true,
+                              for (final address in frozenAddresses)
+                                address: true,
                             },
-                            onSaved: (result, preview, isFrozen) async {
-                              if (selectedPid == null) {
-                                return;
-                              }
-                              savedItemsNotifier.saveOne(
-                                pid: selectedPid,
-                                result: result,
-                                preview: preview,
-                                isFrozen: isFrozen,
-                              );
-                            },
-                            onSaveResult: (result) async {
-                              if (selectedPid == null) {
-                                return;
-                              }
-                              savedItemsNotifier.saveOne(
-                                pid: selectedPid,
-                                result: result,
-                                preview:
-                                    livePreviewsAsync.asData?.value[result.address],
-                                isFrozen: frozenAddresses.contains(result.address),
-                              );
-                              await showSavedToast(1);
-                            },
+                            onPreviewMemoryBlock:
+                                (result, preview, displayValue) async {
+                                  await previewAndOpenBrowse(
+                                    () => ref
+                                        .read(
+                                          memoryToolBrowseControllerProvider
+                                              .notifier,
+                                        )
+                                        .previewFromSearchResult(
+                                          result: result,
+                                          preview: preview,
+                                          displayValue: displayValue,
+                                          preferInstructionMode: false,
+                                        ),
+                                  );
+                                },
+                            onNavigateToAddress:
+                                (
+                                  result,
+                                  preview,
+                                  displayValue,
+                                  targetAddress,
+                                ) async {
+                                  await previewAndOpenBrowse(
+                                    () => ref
+                                        .read(
+                                          memoryToolBrowseControllerProvider
+                                              .notifier,
+                                        )
+                                        .previewFromAddress(
+                                          sourceResult: result,
+                                          sourcePreview: preview,
+                                          targetAddress: targetAddress,
+                                          preferInstructionMode: false,
+                                        ),
+                                  );
+                                },
+                            onJumpToPointer: jumpToPointer,
+                            onStartAutoChase:
+                                (
+                                  PointerScanRequest request,
+                                  int maxDepth,
+                                ) async {
+                                  onOpenPointerTab();
+                                  await ref
+                                      .read(
+                                        memoryToolPointerControllerProvider
+                                            .notifier,
+                                      )
+                                      .startAutoChase(
+                                        request: request,
+                                        maxDepth: maxDepth,
+                                      );
+                                },
+                            onStartPointerScan:
+                                (PointerScanRequest request) async {
+                                  onOpenPointerTab();
+                                  await ref
+                                      .read(
+                                        memoryToolPointerControllerProvider
+                                            .notifier,
+                                      )
+                                      .startRootScan(request: request);
+                                },
+                            onOpenDebugTab: onOpenDebugTab,
+                            onOpenSavedTab: onOpenSavedTab,
                           );
                         },
                         error: (error, _) =>
@@ -320,40 +495,84 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
                             return MemoryToolSearchResultList(
                               listStorageKey: listStorageKey,
                               results: visibleResults,
-                              selectionState: selectionState,
-                              selectionNotifier: selectionNotifier,
+                              isSelected: selectionState.contains,
+                              onToggleSelection: selectionNotifier.toggle,
+                              onDeleteResult: (result) {
+                                selectionNotifier.removeAddress(result.address);
+                                removedResultNotifier.remove(result.address);
+                              },
                               livePreviewsAsync: livePreviewsAsync,
                               previousValueByAddress: previousValueByAddress,
                               processPid: selectedPid,
                               initialFrozenStateByAddress: <int, bool>{
-                                for (final address in frozenAddresses) address: true,
+                                for (final address in frozenAddresses)
+                                  address: true,
                               },
-                              onSaved: (result, preview, isFrozen) async {
-                                if (selectedPid == null) {
-                                  return;
-                                }
-                                savedItemsNotifier.saveOne(
-                                  pid: selectedPid,
-                                  result: result,
-                                  preview: preview,
-                                  isFrozen: isFrozen,
-                                );
-                              },
-                              onSaveResult: (result) async {
-                                if (selectedPid == null) {
-                                  return;
-                                }
-                                savedItemsNotifier.saveOne(
-                                  pid: selectedPid,
-                                  result: result,
-                                  preview:
-                                      livePreviewsAsync.asData?.value[result.address],
-                                  isFrozen: frozenAddresses.contains(
-                                    result.address,
-                                  ),
-                                );
-                                await showSavedToast(1);
-                              },
+                              onPreviewMemoryBlock:
+                                  (result, preview, displayValue) async {
+                                    await previewAndOpenBrowse(
+                                      () => ref
+                                          .read(
+                                            memoryToolBrowseControllerProvider
+                                                .notifier,
+                                          )
+                                          .previewFromSearchResult(
+                                            result: result,
+                                            preview: preview,
+                                            displayValue: displayValue,
+                                            preferInstructionMode: false,
+                                          ),
+                                    );
+                                  },
+                              onNavigateToAddress:
+                                  (
+                                    result,
+                                    preview,
+                                    displayValue,
+                                    targetAddress,
+                                  ) async {
+                                    await previewAndOpenBrowse(
+                                      () => ref
+                                          .read(
+                                            memoryToolBrowseControllerProvider
+                                                .notifier,
+                                          )
+                                          .previewFromAddress(
+                                            sourceResult: result,
+                                            sourcePreview: preview,
+                                            targetAddress: targetAddress,
+                                            preferInstructionMode: false,
+                                          ),
+                                    );
+                                  },
+                              onJumpToPointer: jumpToPointer,
+                              onStartAutoChase:
+                                  (
+                                    PointerScanRequest request,
+                                    int maxDepth,
+                                  ) async {
+                                    onOpenPointerTab();
+                                    await ref
+                                        .read(
+                                          memoryToolPointerControllerProvider
+                                              .notifier,
+                                        )
+                                        .startAutoChase(
+                                          request: request,
+                                          maxDepth: maxDepth,
+                                        );
+                                  },
+                              onStartPointerScan:
+                                  (PointerScanRequest request) async {
+                                    onOpenPointerTab();
+                                    await ref
+                                        .read(
+                                          memoryToolPointerControllerProvider
+                                              .notifier,
+                                        )
+                                        .startRootScan(request: request);
+                                  },
+                              onOpenDebugTab: onOpenDebugTab,
                             );
                           }
 
@@ -375,6 +594,8 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
           Positioned.fill(
             child: MemoryToolResultSelectionDialog(
               initialLimit: selectionState.selectionLimit,
+              title: context.l10n.memoryToolResultSelectionDialogTitle,
+              fieldLabel: context.l10n.memoryToolResultSelectionFieldLabel,
               onClose: () {
                 isSettingsVisible.value = false;
               },
@@ -389,18 +610,7 @@ class MemoryToolSearchResultCard extends HookConsumerWidget {
             child: MemoryToolBatchEditDialog(
               results: selectedResults,
               livePreviewsAsync: livePreviewsAsync,
-              onSaved: (results, updatedPreviews, isFrozen) async {
-                if (!isFrozen || selectedPid == null) {
-                  return;
-                }
-                await saveResultsToSaved(
-                  results,
-                  previewsByAddress: updatedPreviews,
-                  frozenResultAddresses: results
-                      .map((result) => result.address)
-                      .toSet(),
-                );
-              },
+              savedSyncMode: MemoryToolBatchEditSavedSyncMode.frozenOnly,
               onClose: () {
                 isBatchEditVisible.value = false;
               },

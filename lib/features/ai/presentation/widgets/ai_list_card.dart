@@ -1,7 +1,7 @@
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
+﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// AI 输出的结构化列表组件
 ///
@@ -84,6 +84,7 @@ class _AiListItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final primaryColor = context.colorScheme.primary;
     final isDark = context.isDark;
 
@@ -92,21 +93,29 @@ class _AiListItemTile extends StatelessWidget {
         Clipboard.setData(ClipboardData(text: item.title));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('已复制: ${item.title}', style: TextStyle(fontSize: 13.sp)),
+            content: Text(
+              '已复制: ${item.title}',
+              style: TextStyle(fontSize: 13 * scale),
+            ),
             duration: const Duration(seconds: 1),
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8 * scale),
+            ),
           ),
         );
       },
       child: Container(
-        margin: EdgeInsets.only(bottom: isLast ? 0 : 6.h),
-        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+        margin: EdgeInsets.only(bottom: isLast ? 0 : 6 * scale),
+        padding: EdgeInsets.symmetric(
+          horizontal: 12 * scale,
+          vertical: 10 * scale,
+        ),
         decoration: BoxDecoration(
           color: isDark
               ? primaryColor.withValues(alpha: 0.08)
               : primaryColor.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(10.r),
+          borderRadius: BorderRadius.circular(10 * scale),
           border: Border.all(
             color: primaryColor.withValues(alpha: 0.15),
             width: 0.8,
@@ -116,15 +125,15 @@ class _AiListItemTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              margin: EdgeInsets.only(top: 4.h),
-              width: 6.w,
-              height: 6.w,
+              margin: EdgeInsets.only(top: 4 * scale),
+              width: 6 * scale,
+              height: 6 * scale,
               decoration: BoxDecoration(
                 color: primaryColor,
                 shape: BoxShape.circle,
               ),
             ),
-            SizedBox(width: 10.w),
+            SizedBox(width: 10 * scale),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,7 +144,7 @@ class _AiListItemTile extends StatelessWidget {
                         child: Text(
                           item.title,
                           style: TextStyle(
-                            fontSize: 13.sp,
+                            fontSize: 13 * scale,
                             fontFamily: 'monospace',
                             color: isDark
                                 ? Colors.white.withValues(alpha: 0.9)
@@ -145,17 +154,20 @@ class _AiListItemTile extends StatelessWidget {
                         ),
                       ),
                       if (item.tag != null) ...[  
-                        SizedBox(width: 8.w),
+                        SizedBox(width: 8 * scale),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6 * scale,
+                            vertical: 2 * scale,
+                          ),
                           decoration: BoxDecoration(
                             color: primaryColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4.r),
+                            borderRadius: BorderRadius.circular(4 * scale),
                           ),
                           child: Text(
                             item.tag!,
                             style: TextStyle(
-                              fontSize: 10.sp,
+                              fontSize: 10 * scale,
                               color: primaryColor,
                               fontWeight: FontWeight.w600,
                             ),
@@ -165,22 +177,22 @@ class _AiListItemTile extends StatelessWidget {
                     ],
                   ),
                   if (item.desc != null) ...[  
-                    SizedBox(height: 3.h),
+                    SizedBox(height: 3 * scale),
                     Text(
                       item.desc!,
                       style: TextStyle(
-                        fontSize: 12.sp,
+                        fontSize: 12 * scale,
                         color: context.theme.hintColor,
                         height: 1.4,
                       ),
                     ),
                   ],
                   if (item.extra != null) ...[  
-                    SizedBox(height: 2.h),
+                    SizedBox(height: 2 * scale),
                     Text(
                       item.extra!,
                       style: TextStyle(
-                        fontSize: 11.sp,
+                        fontSize: 11 * scale,
                         color: context.theme.hintColor.withValues(alpha: 0.7),
                         fontStyle: FontStyle.italic,
                       ),

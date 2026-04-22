@@ -1,6 +1,8 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_saved_items_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_result_presenter.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_value_editor_dialog.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
@@ -16,7 +18,6 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
     required this.livePreviewsAsync,
     this.processPid,
     this.initialFrozenState,
-    this.onSaved,
     required this.onClose,
   });
 
@@ -25,12 +26,6 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
   final AsyncValue<Map<int, MemoryValuePreview>> livePreviewsAsync;
   final int? processPid;
   final bool? initialFrozenState;
-  final Future<void> Function(
-    SearchResult result,
-    MemoryValuePreview preview,
-    bool isFrozen,
-  )?
-  onSaved;
   final VoidCallback onClose;
 
   @override
@@ -43,15 +38,21 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
     final livePreview = livePreviewsAsync.asData?.value[result.address];
     final sourceRawBytes = livePreview?.rawBytes ?? result.rawBytes;
     final sourceType = livePreview?.type ?? result.type;
-    final sourceDisplayValue = livePreview?.displayValue ?? displayValue;
+    final sourceDisplayValue = resolveMemoryToolPreferredDisplayValue(
+      result: result,
+      livePreview: livePreview,
+      fallbackDisplayValue: displayValue,
+    );
     final sourceBytesLength = sourceRawBytes.length;
     final searchSessionStateAsync = ref.watch(getSearchSessionStateProvider);
     final frozenValuesAsync = ref.watch(currentFrozenMemoryValuesProvider);
     final valueActionState = ref.watch(memoryValueActionProvider);
     final valueActionNotifier = ref.read(memoryValueActionProvider.notifier);
+    final savedItemsNotifier = ref.read(memoryToolSavedItemsProvider.notifier);
     final readRequests = useMemoized(
       () => <MemoryReadRequest>[
         MemoryReadRequest(
+          pid: processPid ?? 0,
           address: result.address,
           type: selectedType.value,
           length: resolveMemoryToolReadLengthForType(
@@ -60,11 +61,11 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
           ),
         ),
       ],
-      <Object>[result.address, selectedType.value, sourceBytesLength],
+      <Object>[processPid ?? 0, result.address, selectedType.value, sourceBytesLength],
     );
-    final selectedPreviewAsync = ref.watch(
-      readMemoryValuesProvider(requests: readRequests),
-    );
+    final selectedPreviewAsync = processPid == null
+        ? const AsyncValue.data(<MemoryValuePreview>[])
+        : ref.watch(readMemoryValuesProvider(requests: readRequests));
     final selectedPreviewList = selectedPreviewAsync.asData?.value;
     final selectedPreview =
         selectedPreviewList == null || selectedPreviewList.isEmpty
@@ -145,8 +146,10 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
             enabled: freezeEnabled.value,
           ),
         );
-        if (onSaved != null) {
+        final selectedPid = ref.read(memoryToolSelectedProcessProvider)?.pid;
+        if (selectedPid != null) {
           final updatedPreviewRequest = MemoryReadRequest(
+            pid: selectedPid,
             address: result.address,
             type: selectedType.value,
             length: resolveMemoryToolReadLengthForType(
@@ -156,7 +159,9 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
           );
           final updatedPreviews = await ref
               .read(memoryQueryRepositoryProvider)
-              .readMemoryValues(requests: <MemoryReadRequest>[updatedPreviewRequest]);
+              .readMemoryValues(
+                requests: <MemoryReadRequest>[updatedPreviewRequest],
+              );
           final updatedPreview = updatedPreviews.isNotEmpty
               ? updatedPreviews.first
               : MemoryValuePreview(
@@ -165,7 +170,13 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
                   rawBytes: sourceRawBytes,
                   displayValue: valueController.text.trim(),
                 );
-          await onSaved!(result, updatedPreview, freezeEnabled.value);
+          savedItemsNotifier.saveEntry(
+            pid: selectedPid,
+            result: result,
+            preview: updatedPreview,
+            isFrozen: freezeEnabled.value,
+            entryKind: MemoryToolEntryKind.value,
+          );
         }
 
         if (!context.mounted) {

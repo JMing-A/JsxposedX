@@ -1,7 +1,7 @@
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
+﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ToolResultCard extends HookWidget {
   final String content;
@@ -10,6 +10,7 @@ class ToolResultCard extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final expanded = useState(false);
     final isSuccess = content.startsWith('✅');
     final lines = content.split('\n');
@@ -21,10 +22,10 @@ class ToolResultCard extends HookWidget {
         : (context.isDark ? const Color(0xFF2E1B1B) : const Color(0xFFFFF1F1));
 
     return Container(
-      margin: EdgeInsets.only(bottom: 20.h),
+      margin: EdgeInsets.only(bottom: 20 * scale),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(12 * scale),
         border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Column(
@@ -32,22 +33,25 @@ class ToolResultCard extends HookWidget {
         children: [
           InkWell(
             onTap: detail.isNotEmpty ? () => expanded.value = !expanded.value : null,
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(12 * scale),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+              padding: EdgeInsets.symmetric(
+                horizontal: 12 * scale,
+                vertical: 10 * scale,
+              ),
               child: Row(
                 children: [
                   Icon(
                     isSuccess ? Icons.check_circle_outline : Icons.error_outline,
                     color: color,
-                    size: 16.sp,
+                    size: 16 * scale,
                   ),
-                  SizedBox(width: 8.w),
+                  SizedBox(width: 8 * scale),
                   Expanded(
                     child: Text(
                       summary,
                       style: TextStyle(
-                        fontSize: 12.5.sp,
+                        fontSize: 12.5 * scale,
                         color: color,
                         fontFamily: 'monospace',
                       ),
@@ -56,10 +60,10 @@ class ToolResultCard extends HookWidget {
                     ),
                   ),
                   if (detail.isNotEmpty) ...[
-                    SizedBox(width: 4.w),
+                    SizedBox(width: 4 * scale),
                     Icon(
                       expanded.value ? Icons.expand_less : Icons.expand_more,
-                      size: 16.sp,
+                      size: 16 * scale,
                       color: color.withValues(alpha: 0.7),
                     ),
                   ],
@@ -70,7 +74,12 @@ class ToolResultCard extends HookWidget {
           if (expanded.value && detail.isNotEmpty)
             Container(
               width: double.infinity,
-              padding: EdgeInsets.fromLTRB(12.w, 0, 12.w, 10.h),
+              padding: EdgeInsets.fromLTRB(
+                12 * scale,
+                0,
+                12 * scale,
+                10 * scale,
+              ),
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(color: color.withValues(alpha: 0.15)),
@@ -79,7 +88,7 @@ class ToolResultCard extends HookWidget {
               child: Text(
                 detail,
                 style: TextStyle(
-                  fontSize: 11.5.sp,
+                  fontSize: 11.5 * scale,
                   color: context.isDark
                       ? Colors.white.withValues(alpha: 0.7)
                       : Colors.black54,

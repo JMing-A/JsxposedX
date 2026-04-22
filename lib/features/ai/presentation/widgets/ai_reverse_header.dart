@@ -1,8 +1,8 @@
 import 'package:JsxposedX/common/widgets/custom_dIalog.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/models/ai_session.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/app/presentation/providers/app_query_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -17,8 +17,10 @@ class AiReverseHeader extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chatState = ref.watch(aiChatActionProvider(packageName: packageName));
-    final sessions = ref.read(aiChatActionProvider(packageName: packageName).notifier).getSessions();
+    final chatState = ref.watch(aiChatRuntimeProvider(packageName: packageName));
+    final sessions = ref
+        .read(aiChatRuntimeProvider(packageName: packageName).notifier)
+        .getSessions();
     // final currentSession = sessions.isNotEmpty ? sessions.firstWhere((s) => s.id == chatState.currentSessionId, orElse: () => sessions.first) : null;
     final appInfoAsync = ref.watch(
       getAppByPackageNameProvider(packageName: packageName),
@@ -75,7 +77,11 @@ class AiReverseHeader extends HookConsumerWidget {
                 offset: const Offset(0, 40),
                 tooltip: context.l10n.aiSwitchSession,
                 onSelected: (session) {
-                  ref.read(aiChatActionProvider(packageName: packageName).notifier).switchSession(session.id);
+                  ref
+                      .read(
+                        aiChatRuntimeProvider(packageName: packageName).notifier,
+                      )
+                      .switchSession(session.id);
                 },
                 itemBuilder: (context) {
                   return sessions.map((s) => PopupMenuItem(
@@ -196,7 +202,13 @@ class AiReverseHeader extends HookConsumerWidget {
                       ],
                     );
                     if (name != null && name.isNotEmpty) {
-                      ref.read(aiChatActionProvider(packageName: packageName).notifier).createSession(name);
+                      ref
+                          .read(
+                            aiChatRuntimeProvider(
+                              packageName: packageName,
+                            ).notifier,
+                          )
+                          .createSession(name);
                     }
                   },
                 ),
@@ -224,7 +236,13 @@ class AiReverseHeader extends HookConsumerWidget {
                       ),
                     );
                     if (confirm == true) {
-                      ref.read(aiChatActionProvider(packageName: packageName).notifier).deleteHistory();
+                      ref
+                          .read(
+                            aiChatRuntimeProvider(
+                              packageName: packageName,
+                            ).notifier,
+                          )
+                          .deleteHistory();
                     }
                   },
                 ),

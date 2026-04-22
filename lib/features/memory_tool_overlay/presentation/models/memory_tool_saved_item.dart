@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
 
 class MemoryToolSavedItem {
@@ -12,7 +13,13 @@ class MemoryToolSavedItem {
     required this.rawBytes,
     required this.displayValue,
     required this.isFrozen,
-  });
+    required this.entryKind,
+    this.instructionText,
+  }) : assert(
+         entryKind != MemoryToolEntryKind.instruction ||
+             instructionText != null,
+         'instruction entries require instructionText',
+       );
 
   final int pid;
   final int address;
@@ -22,12 +29,26 @@ class MemoryToolSavedItem {
   final Uint8List rawBytes;
   final String displayValue;
   final bool isFrozen;
+  final MemoryToolEntryKind entryKind;
+  final String? instructionText;
+
+  bool get isInstruction => entryKind == MemoryToolEntryKind.instruction;
+
+  String get effectiveInstructionText {
+    final value = instructionText?.trim();
+    if (value != null && value.isNotEmpty) {
+      return value;
+    }
+    return displayValue;
+  }
 
   factory MemoryToolSavedItem.fromSearchResult({
     required int pid,
     required SearchResult result,
     MemoryValuePreview? preview,
     required bool isFrozen,
+    required MemoryToolEntryKind entryKind,
+    String? instructionText,
   }) {
     return MemoryToolSavedItem(
       pid: pid,
@@ -36,8 +57,13 @@ class MemoryToolSavedItem {
       regionTypeKey: result.regionTypeKey,
       type: preview?.type ?? result.type,
       rawBytes: preview?.rawBytes ?? result.rawBytes,
-      displayValue: preview?.displayValue ?? result.displayValue,
+      displayValue:
+          instructionText ??
+          preview?.displayValue ??
+          result.displayValue,
       isFrozen: isFrozen,
+      entryKind: entryKind,
+      instructionText: instructionText,
     );
   }
 
@@ -50,6 +76,8 @@ class MemoryToolSavedItem {
     Uint8List? rawBytes,
     String? displayValue,
     bool? isFrozen,
+    MemoryToolEntryKind? entryKind,
+    String? instructionText,
   }) {
     return MemoryToolSavedItem(
       pid: pid ?? this.pid,
@@ -60,6 +88,8 @@ class MemoryToolSavedItem {
       rawBytes: rawBytes ?? this.rawBytes,
       displayValue: displayValue ?? this.displayValue,
       isFrozen: isFrozen ?? this.isFrozen,
+      entryKind: entryKind ?? this.entryKind,
+      instructionText: instructionText ?? this.instructionText,
     );
   }
 
@@ -70,7 +100,7 @@ class MemoryToolSavedItem {
       regionTypeKey: regionTypeKey,
       type: type,
       rawBytes: rawBytes,
-      displayValue: displayValue,
+      displayValue: isInstruction ? effectiveInstructionText : displayValue,
     );
   }
 }

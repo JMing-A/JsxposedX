@@ -4,6 +4,7 @@ import com.jsxposed.x.core.bridge.apk_analysis_native.ApkAnalysisNative
 import com.jsxposed.x.core.bridge.apk_analysis_native.ApkAnalysisNativeImpl
 import com.jsxposed.x.core.bridge.app_native.AppNative
 import com.jsxposed.x.core.bridge.pinia_native.PiniaNativeImpl
+import com.jsxposed.x.core.bridge.file_picker_native.OverlayFilePickerNative
 import com.jsxposed.x.core.bridge.zygisk_frida_native.ZygiskFridaNative
 import com.jsxposed.x.core.bridge.zygisk_frida_native.ZygiskFridaNativeImpl
 import com.jsxposed.x.core.bridge.status_management_native.StatusManagementNative
@@ -14,6 +15,7 @@ import com.jsxposed.x.core.bridge.memory_tool_native.MemoryToolNativeImpl
 import com.jsxposed.x.core.bridge.pinia_native.PiniaNative
 import com.jsxposed.x.core.bridge.project_native.ProjectNative
 import com.jsxposed.x.core.bridge.project_native.ProjectNativeImpl
+import com.jsxposed.x.core.bridge.url_helper_native.UrlHelperNative
 import com.jsxposed.x.core.bridge.so_analysis_native.SoAnalysisNative
 import com.jsxposed.x.core.bridge.so_analysis_native.SoAnalysisNativeImpl
 import com.jsxposed.x.core.bridge.lsposed_native.LSPosedNative
@@ -32,5 +34,7 @@ object NativeProvider {
         MemoryToolNative.setUp(messenger, MemoryToolNativeImpl(context))
         LSPosedNative.setUp(messenger, LSPosedNativeImpl(context))
         ZygiskFridaNative.setUp(messenger, ZygiskFridaNativeImpl(context))
+        OverlayFilePickerNative.register(context, messenger)
+        UrlHelperNative.register(context, messenger)
     }
 }

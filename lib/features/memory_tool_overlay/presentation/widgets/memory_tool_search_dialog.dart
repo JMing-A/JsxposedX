@@ -1,12 +1,18 @@
+import 'dart:typed_data';
+
+import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_panel_dialog.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_browse_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_search_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_result_presenter.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_form_card.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_session_card.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_task_feedback.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_toolbar.dart';
+import 'package:JsxposedX/generated/memory_tool.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -15,9 +21,11 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 class MemoryToolSearchDialog extends HookConsumerWidget {
   const MemoryToolSearchDialog({
     super.key,
+    required this.onOpenBrowseTab,
     required this.onClose,
   });
 
+  final VoidCallback onOpenBrowseTab;
   final VoidCallback onClose;
 
   @override

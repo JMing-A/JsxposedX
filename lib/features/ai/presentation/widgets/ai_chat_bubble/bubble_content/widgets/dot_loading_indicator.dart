@@ -1,7 +1,7 @@
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
+﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:async';
 
 class DotLoadingIndicator extends HookWidget {
@@ -14,6 +14,7 @@ class DotLoadingIndicator extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final animationController = useAnimationController(
       duration: const Duration(milliseconds: 1200),
     )..repeat();
@@ -63,9 +64,9 @@ class DotLoadingIndicator extends HookWidget {
                   child: Transform.translate(
                     offset: Offset(0, translation),
                     child: Container(
-                      width: 6.w,
-                      height: 6.w,
-                      margin: EdgeInsets.symmetric(horizontal: 2.w),
+                      width: 6 * scale,
+                      height: 6 * scale,
+                      margin: EdgeInsets.symmetric(horizontal: 2 * scale),
                       decoration: BoxDecoration(
                         color: context.isDark ? Colors.white70 : Colors.grey[400],
                         shape: BoxShape.circle,
@@ -78,11 +79,11 @@ class DotLoadingIndicator extends HookWidget {
           }),
         ),
         if (effectiveStatusText != null) ...[
-          SizedBox(height: 8.h),
+          SizedBox(height: 8 * scale),
           Text(
             effectiveStatusText,
             style: TextStyle(
-              fontSize: 12.sp,
+              fontSize: 12 * scale,
               color: context.isDark ? Colors.white60 : Colors.black54,
               height: 1.3,
             ),

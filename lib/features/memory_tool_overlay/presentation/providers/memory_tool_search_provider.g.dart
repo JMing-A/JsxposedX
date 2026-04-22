@@ -184,7 +184,7 @@ final class CurrentSearchResultLivePreviewsProvider
 }
 
 String _$currentSearchResultLivePreviewsHash() =>
-    r'63adf8926e5efbe668b515118a4a4fa1d4069886';
+    r'115ebeeb7ecdc0c66f0836bddbfaf22bf830dc30';
 
 @ProviderFor(MemoryToolResultSelection)
 const memoryToolResultSelectionProvider = MemoryToolResultSelectionProvider._();
@@ -225,7 +225,7 @@ final class MemoryToolResultSelectionProvider
 }
 
 String _$memoryToolResultSelectionHash() =>
-    r'cf47c9d5901fb067b82a4dfe6ca9182abe98edb2';
+    r'29b6662008cccf0af1900546c47cfa37edbb6d9f';
 
 abstract class _$MemoryToolResultSelection
     extends $Notifier<MemoryToolResultSelectionState> {

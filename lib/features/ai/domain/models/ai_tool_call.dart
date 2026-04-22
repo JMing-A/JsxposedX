@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+typedef AiToolProgressCallback = void Function(String content);
+
 /// AI 发起的工具调用请求
 class AiToolCall {
   final String id;

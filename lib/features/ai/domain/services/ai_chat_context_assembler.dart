@@ -1,17 +1,27 @@
 import 'package:JsxposedX/core/models/ai_message.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_chat_context_budget_estimator.dart';
+import 'package:JsxposedX/features/ai/domain/services/ai_chat_history_retriever.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_multimodal_message_codec.dart';
+import 'package:JsxposedX/features/ai/domain/services/ai_pinned_context_extractor.dart';
 import 'package:uuid/uuid.dart';
 
 class AiChatContextAssembler {
   AiChatContextAssembler({
     AiChatContextBudgetEstimator? estimator,
-  }) : _estimator = estimator ?? const AiChatContextBudgetEstimator();
+    AiPinnedContextExtractor? pinnedContextExtractor,
+    AiChatHistoryRetriever? historyRetriever,
+  }) : _estimator = estimator ?? const AiChatContextBudgetEstimator(),
+       _pinnedContextExtractor = pinnedContextExtractor ?? AiPinnedContextExtractor(),
+       _historyRetriever =
+           historyRetriever ??
+           AiChatHistoryRetriever(estimator: estimator ?? const AiChatContextBudgetEstimator());
 
   static const String legacySummaryPrefix = '[session_summary]';
 
   final AiChatContextBudgetEstimator _estimator;
+  final AiPinnedContextExtractor _pinnedContextExtractor;
+  final AiChatHistoryRetriever _historyRetriever;
 
   AiChatContextAssembly assemble({
     required List<AiMessage> protocolMessages,
@@ -25,42 +35,68 @@ class AiChatContextAssembler {
   }) {
     final sanitized = _sanitizeProtocolMessages(protocolMessages);
     final legacySummary = _findLatestLegacySummary(protocolMessages);
-    final selectedRecent = _selectRecentWindow(
-      sanitized.messages,
-      recentRounds: recentRounds,
+    final pinnedContext = _pinnedContextExtractor.extract(
+      protocolMessages: sanitized.messages,
+      previousItems: previousContext?.pinnedContext ?? const [],
     );
-    final olderMessages = sanitized.messages.take(
-      sanitized.messages.length - selectedRecent.length,
-    ).toList(growable: false);
-    final memory = _buildSessionMemory(
-      olderMessages: olderMessages,
-      legacySummary: legacySummary?.content,
-      recentMessages: selectedRecent,
-      lastError: lastError,
+    var recentMessages = List<AiMessage>.from(
+      _selectRecentWindow(
+        sanitized.messages,
+        recentRounds: recentRounds,
+      ),
     );
     final toolTrace = _buildToolTrace(sanitized.messages);
-    final taskState = _buildTaskState(
-      recentMessages: selectedRecent,
-      sessionMemory: memory,
-      toolTrace: toolTrace,
-      lastError: lastError,
-      recoveryMode: recoveryMode == AiChatRecoveryMode.none
-          ? previousContext?.taskState.lastRecoveryMode ??
-              AiChatRecoveryMode.none
-          : recoveryMode,
-    );
 
-    final memoryMessage = _buildMemorySystemMessage(memory);
-    final taskMessage = _buildTaskSystemMessage(taskState, toolTrace);
-    var recentMessages = List<AiMessage>.from(selectedRecent);
-    var requestMessages = _buildRequestMessages(
-      sessionRules: sessionRules,
-      memoryMessage: memoryMessage,
-      taskMessage: taskMessage,
-      recentMessages: recentMessages,
-    );
+    late AiChatSessionMemory memory;
+    late AiChatTaskState taskState;
+    late AiChatHistoryRetrieval retrieval;
+    late List<AiMessage> requestMessages;
 
-    var didCompact = forceCompact || olderMessages.isNotEmpty;
+    void rebuildDerivedContext() {
+      final olderMessages = _buildOlderMessages(
+        allMessages: sanitized.messages,
+        recentMessages: recentMessages,
+      );
+      memory = _buildSessionMemory(
+        olderMessages: olderMessages,
+        legacySummary: legacySummary?.content,
+        recentMessages: recentMessages,
+        lastError: lastError,
+      );
+      taskState = _buildTaskState(
+        recentMessages: recentMessages,
+        sessionMemory: memory,
+        toolTrace: toolTrace,
+        lastError: lastError,
+        recoveryMode: recoveryMode == AiChatRecoveryMode.none
+            ? previousContext?.taskState.lastRecoveryMode ??
+                AiChatRecoveryMode.none
+            : recoveryMode,
+      );
+      retrieval = _historyRetriever.retrieve(
+        olderMessages: olderMessages,
+        recentMessages: recentMessages,
+        taskState: taskState,
+        pinnedContext: pinnedContext,
+        toolTrace: toolTrace,
+        tokenBudget: tokenBudget,
+      );
+      requestMessages = _buildRequestMessages(
+        sessionRules: sessionRules,
+        pinnedMessage: _buildPinnedSystemMessage(pinnedContext),
+        taskMessage: _buildTaskSystemMessage(taskState, toolTrace),
+        retrievedMessage: _buildRetrievedSystemMessage(retrieval),
+        memoryMessage: _buildMemorySystemMessage(memory),
+        recentMessages: recentMessages,
+      );
+    }
+
+    rebuildDerivedContext();
+
+    final initiallySelectedRecent = List<AiMessage>.from(recentMessages);
+    final hadOlderMessages =
+        sanitized.messages.length > initiallySelectedRecent.length;
+    var didCompact = forceCompact || hadOlderMessages;
     while (requestMessages.isNotEmpty &&
         _estimator.estimateMessagesTokens(requestMessages) > tokenBudget &&
         recentMessages.isNotEmpty) {
@@ -69,19 +105,16 @@ class AiChatContextAssembler {
         break;
       }
       recentMessages = nextRecent;
-      requestMessages = _buildRequestMessages(
-        sessionRules: sessionRules,
-        memoryMessage: memoryMessage,
-        taskMessage: taskMessage,
-        recentMessages: recentMessages,
-      );
+      rebuildDerivedContext();
       didCompact = true;
     }
 
     final includedLayers = <String>[
       if (sessionRules.trim().isNotEmpty) 'rules',
-      if (memory.hasContent) 'memory',
+      if (pinnedContext.isNotEmpty) 'pinned',
       if (taskState.hasContent) 'task',
+      if (retrieval.hasContent) 'retrieved',
+      if (memory.hasContent) 'memory',
       if (recentMessages.isNotEmpty) 'recent',
       if (recentMessages.any((message) => message.role == 'tool') ||
           toolTrace.hasPendingToolResults)
@@ -101,12 +134,16 @@ class AiChatContextAssembler {
       repairedToolContext: sanitized.repairedToolContext,
       migratedLegacySummary: legacySummary != null,
       recentRoundsKept: _countUserRounds(recentMessages),
+      pinnedCount: pinnedContext.length,
+      retrievedSnippetCount: retrieval.snippetCount,
+      retrievedBundlesCount: retrieval.bundleCount,
       includedLayers: List<String>.unmodifiable(includedLayers),
     );
 
     final context = AiChatSessionContext(
       version: AiChatSessionContext.currentVersion,
       sessionRules: sessionRules,
+      pinnedContext: List<AiPinnedContextItem>.unmodifiable(pinnedContext),
       sessionMemory: memory,
       taskState: taskState,
       recentMessages: List<AiMessage>.unmodifiable(recentMessages),
@@ -127,8 +164,10 @@ class AiChatContextAssembler {
 
   List<AiMessage> _buildRequestMessages({
     required String sessionRules,
-    required AiMessage? memoryMessage,
+    required AiMessage? pinnedMessage,
     required AiMessage? taskMessage,
+    required AiMessage? retrievedMessage,
+    required AiMessage? memoryMessage,
     required List<AiMessage> recentMessages,
   }) {
     return [
@@ -138,8 +177,10 @@ class AiChatContextAssembler {
           role: 'system',
           content: sessionRules.trim(),
         ),
-      if (memoryMessage != null) memoryMessage,
+      if (pinnedMessage != null) pinnedMessage,
       if (taskMessage != null) taskMessage,
+      if (retrievedMessage != null) retrievedMessage,
+      if (memoryMessage != null) memoryMessage,
       ...recentMessages,
     ];
   }
@@ -243,6 +284,17 @@ class AiChatContextAssembler {
       }
     }
     return List<AiMessage>.from(messages.sublist(1));
+  }
+
+  List<AiMessage> _buildOlderMessages({
+    required List<AiMessage> allMessages,
+    required List<AiMessage> recentMessages,
+  }) {
+    final olderLength = allMessages.length - recentMessages.length;
+    if (olderLength <= 0) {
+      return const [];
+    }
+    return List<AiMessage>.from(allMessages.take(olderLength));
   }
 
   AiChatSessionMemory _buildSessionMemory({
@@ -453,6 +505,50 @@ class AiChatContextAssembler {
       lastUserGoal: lastUserGoal ??
           (sessionMemory.userGoals.isNotEmpty ? sessionMemory.userGoals.last : null),
       lastRecoveryMode: recoveryMode,
+    );
+  }
+
+  AiMessage? _buildPinnedSystemMessage(List<AiPinnedContextItem> pinnedContext) {
+    if (pinnedContext.isEmpty) {
+      return null;
+    }
+    final buffer = StringBuffer('[pinned_context]');
+    for (final item in pinnedContext) {
+      final content = item.content.trim();
+      if (content.isEmpty) {
+        continue;
+      }
+      buffer
+        ..writeln()
+        ..writeln(
+          '- [priority=${item.priority}][source=${item.source.storageValue}] $content',
+        );
+    }
+    return AiMessage(
+      id: const Uuid().v4(),
+      role: 'system',
+      content: buffer.toString().trim(),
+    );
+  }
+
+  AiMessage? _buildRetrievedSystemMessage(AiChatHistoryRetrieval retrieval) {
+    if (!retrieval.hasContent) {
+      return null;
+    }
+    final buffer = StringBuffer('[retrieved_context]');
+    for (var index = 0; index < retrieval.bundles.length; index++) {
+      final bundle = retrieval.bundles[index];
+      buffer
+        ..writeln()
+        ..writeln('历史片段 #${index + 1}');
+      for (final snippet in bundle.snippets) {
+        buffer.writeln('- ${snippet.role}: ${snippet.content}');
+      }
+    }
+    return AiMessage(
+      id: const Uuid().v4(),
+      role: 'system',
+      content: buffer.toString().trim(),
     );
   }
 

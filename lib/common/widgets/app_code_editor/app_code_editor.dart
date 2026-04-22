@@ -30,6 +30,10 @@ class AppCodeEditor extends HookWidget {
 
   /// 只读模式顶栏额外操作按钮（插在复制按钮左侧）
   final List<Widget>? extraActions;
+  final bool showReadOnlyToolbar;
+  final bool decorateReadOnly;
+  final String? readOnlyToolbarLabel;
+  final double? readOnlyMaxHeight;
 
   const AppCodeEditor({
     super.key,
@@ -43,6 +47,10 @@ class AppCodeEditor extends HookWidget {
     this.customKeywords,
     this.promptsBuilder,
     this.extraActions,
+    this.showReadOnlyToolbar = true,
+    this.decorateReadOnly = true,
+    this.readOnlyToolbarLabel,
+    this.readOnlyMaxHeight,
   });
 
   @override
@@ -60,9 +68,11 @@ class AppCodeEditor extends HookWidget {
     double? editorHeight;
     if (readOnly) {
       final lineCount = controller.text.split('\n').length;
+      final toolbarHeight = showReadOnlyToolbar ? 36.h : 0.0;
       // 1.5 倍行高比例 + 工具栏 + padding + 额外缓冲空间
-      final contentHeight = (lineCount * fontSize.value * 1.5) + 36.h + 20.h;
-      final maxHeight = 400.h;
+      final contentHeight =
+          (lineCount * fontSize.value * 1.5) + toolbarHeight + 20.h;
+      final maxHeight = readOnlyMaxHeight ?? 400.h;
       editorHeight = contentHeight > maxHeight ? maxHeight : contentHeight;
     }
 
@@ -180,7 +190,7 @@ class AppCodeEditor extends HookWidget {
 
     return Container(
       height: editorHeight, // 只读模式下使用计算高度
-      decoration: readOnly
+      decoration: readOnly && decorateReadOnly
           ? BoxDecoration(
               color: bgColor,
               borderRadius: BorderRadius.circular(12.r),
@@ -194,10 +204,10 @@ class AppCodeEditor extends HookWidget {
               ],
             )
           : null,
-      clipBehavior: readOnly ? Clip.antiAlias : Clip.none,
+      clipBehavior: readOnly && decorateReadOnly ? Clip.antiAlias : Clip.none,
       child: Column(
         children: [
-          if (readOnly)
+          if (readOnly && showReadOnlyToolbar)
             // 只读模式的顶部工具栏 (显示预览信息)
             Container(
               height: 36.h,
@@ -211,13 +221,15 @@ class AppCodeEditor extends HookWidget {
               child: Row(
                 children: [
                   Text(
-                    language.toUpperCase(),
+                    (readOnlyToolbarLabel ?? language.toUpperCase()),
                     style: TextStyle(
-                      fontSize: 10.sp,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'monospace',
+                      height: 1.0,
                       color: (isDark ? Colors.white70 : Colors.black54)
                           .withValues(alpha: 0.8),
-                      letterSpacing: 1.0,
+                      letterSpacing: 0.2,
                     ),
                   ),
                   const Spacer(),

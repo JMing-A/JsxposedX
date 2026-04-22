@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'bubble_container.dart';
-import 'bubble_content/bubble_content.dart';
-import 'bubble_states/bubble_state.dart';
-import 'bubble_toolbar/bubble_toolbar.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_container.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/bubble_content.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_states/bubble_state.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_toolbar/bubble_toolbar.dart';
 
 abstract class BaseAiChatBubble extends StatelessWidget {
   final String content;

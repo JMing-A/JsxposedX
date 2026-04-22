@@ -77,6 +77,9 @@ class SettingsTab extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final bottomBarSpacing = 60.h + 10.h + bottomInset + 24.h;
+
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(child: SizedBox(height: 20.h)),
@@ -153,6 +156,12 @@ class SettingsTab extends HookConsumerWidget {
                 subtitle: context.l10n.morePlatforms,
                 onTap: () => _showCreatorLinksDialog(context),
               ),
+              const SettingsDivider(),
+              SettingsTile(
+                icon: Icons.qr_code_rounded,
+                title: context.isZh ? '微信公众号' : 'WeChat Channel',
+                onTap: () => _showWechatDialog(context),
+              ),
             ],
           ),
         ),
@@ -179,7 +188,7 @@ class SettingsTab extends HookConsumerWidget {
             ],
           ),
         ),
-        SliverToBoxAdapter(child: SizedBox(height: 30.h)),
+        SliverToBoxAdapter(child: SizedBox(height: bottomBarSpacing)),
       ],
     );
   }
@@ -240,6 +249,37 @@ class SettingsTab extends HookConsumerWidget {
             ],
           ),
         ),
+      ),
+      actionButtons: [
+        TextButton(
+          onPressed: () => SmartDialog.dismiss(),
+          child: Text(context.l10n.cancel),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showWechatDialog(BuildContext context) {
+    return CustomDialog.show<void>(
+      title: Text(context.isZh ? '微信公众号' : 'WeChat Channel'),
+      hasClose: true,
+      width: 0.88.sw,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16.r),
+            child: AspectRatio(
+              aspectRatio: 1885 / 624,
+              child: Image.asset(
+                AssetsConstants.wx,
+                fit: BoxFit.contain,
+                alignment: Alignment.center,
+              ),
+            ),
+          ),
+        ],
       ),
       actionButtons: [
         TextButton(

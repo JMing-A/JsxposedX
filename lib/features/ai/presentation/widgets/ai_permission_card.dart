@@ -1,6 +1,6 @@
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
+﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 权限列表卡片
 ///
@@ -93,6 +93,7 @@ class _PermTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final isDark = context.isDark;
     final s = _style(item, context);
     final shortName = item.name.contains('.')
@@ -100,18 +101,21 @@ class _PermTile extends StatelessWidget {
         : item.name;
 
     return Container(
-      margin: EdgeInsets.only(bottom: isLast ? 0 : 5.h),
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 9.h),
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 5 * scale),
+      padding: EdgeInsets.symmetric(
+        horizontal: 12 * scale,
+        vertical: 9 * scale,
+      ),
       decoration: BoxDecoration(
         color: isDark ? s.bgDark : s.bg,
-        borderRadius: BorderRadius.circular(10.r),
+        borderRadius: BorderRadius.circular(10 * scale),
         border:
             Border.all(color: s.color.withValues(alpha: 0.25), width: 0.8),
       ),
       child: Row(
         children: [
-          Icon(s.icon, size: 15.sp, color: s.color),
-          SizedBox(width: 8.w),
+          Icon(s.icon, size: 15 * scale, color: s.color),
+          SizedBox(width: 8 * scale),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +123,7 @@ class _PermTile extends StatelessWidget {
                 Text(
                   shortName,
                   style: TextStyle(
-                    fontSize: 12.5.sp,
+                    fontSize: 12.5 * scale,
                     fontFamily: 'monospace',
                     fontWeight: FontWeight.w600,
                     color: isDark
@@ -128,11 +132,11 @@ class _PermTile extends StatelessWidget {
                   ),
                 ),
                 if (item.desc != null) ...[  
-                  SizedBox(height: 2.h),
+                  SizedBox(height: 2 * scale),
                   Text(
                     item.desc!,
                     style: TextStyle(
-                      fontSize: 11.sp,
+                      fontSize: 11 * scale,
                       color: context.theme.hintColor,
                     ),
                   ),
@@ -140,18 +144,20 @@ class _PermTile extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: 8.w),
+          SizedBox(width: 8 * scale),
           Container(
-            padding:
-                EdgeInsets.symmetric(horizontal: 7.w, vertical: 2.h),
+            padding: EdgeInsets.symmetric(
+              horizontal: 7 * scale,
+              vertical: 2 * scale,
+            ),
             decoration: BoxDecoration(
               color: s.color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(4.r),
+              borderRadius: BorderRadius.circular(4 * scale),
             ),
             child: Text(
               s.label,
               style: TextStyle(
-                fontSize: 10.sp,
+                fontSize: 10 * scale,
                 color: s.color,
                 fontWeight: FontWeight.w700,
               ),

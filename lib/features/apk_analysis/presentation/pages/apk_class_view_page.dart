@@ -2,7 +2,7 @@ import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/common/widgets/ref_error.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_query_provider.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/widgets/apk_class_map_tab.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/widgets/dex_code_viewer.dart';
@@ -186,7 +186,7 @@ class _ClassActionsBar extends HookConsumerWidget {
         ? context.l10n.apkAnalyzeSmaliPrompt(className)
         : context.l10n.apkAnalyzeJavaPrompt(className);
     ref
-        .read(aiChatActionProvider(packageName: pkg).notifier)
+        .read(aiChatRuntimeProvider(packageName: pkg).notifier)
         .send(prompt);
     ToastMessage.show(context.l10n.apkSentToAi(_shortName));
   }
@@ -382,7 +382,7 @@ class _CodeView extends HookConsumerWidget {
                   ? context.l10n.apkAnalyzeSelectedCode(cls, langLabel, selectedText)
                   : selectedText;
               ref
-                  .read(aiChatActionProvider(packageName: pkg).notifier)
+                  .read(aiChatRuntimeProvider(packageName: pkg).notifier)
                   .send(prompt);
               ToastMessage.show(context.l10n.apkSentToAi(cls ?? ''));
             }

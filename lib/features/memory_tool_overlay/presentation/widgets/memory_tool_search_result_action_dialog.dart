@@ -44,13 +44,11 @@ class MemoryToolSearchResultActionItemData {
   const MemoryToolSearchResultActionItemData({
     required this.icon,
     required this.title,
-    this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
-  final String? subtitle;
   final Future<void> Function() onTap;
 }
 
@@ -78,7 +76,8 @@ class _MemoryToolSearchResultActionItem extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.all(12.r),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 Container(
                   width: 34.r,
@@ -95,29 +94,24 @@ class _MemoryToolSearchResultActionItem extends StatelessWidget {
                 ),
                 SizedBox(width: 10.r),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        data.title,
-                        style: context.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      if (data.subtitle case final subtitle?
-                          when subtitle.trim().isNotEmpty) ...<Widget>[
-                        SizedBox(height: 3.r),
-                        Text(
-                          subtitle,
-                          style: context.textTheme.bodySmall?.copyWith(
-                            color: context.colorScheme.onSurface.withValues(
-                              alpha: 0.66,
+                  child: SizedBox(
+                    height: 34.r,
+                    child: Center(
+                      child: Transform.translate(
+                        offset: Offset(0, 1.r),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            data.title,
+                            style: context.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
                             ),
-                            fontWeight: FontWeight.w600,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ],
-                    ],
+                      ),
+                    ),
                   ),
                 ),
                 SizedBox(width: 8.r),

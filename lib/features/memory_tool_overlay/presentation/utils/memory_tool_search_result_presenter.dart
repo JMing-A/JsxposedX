@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -10,11 +11,24 @@ String resolveMemoryToolSearchResultDisplayValue({
   required SearchResult result,
   required AsyncValue<Map<int, MemoryValuePreview>> livePreviewsAsync,
 }) {
+  final fallbackDisplayValue = result.displayValue;
   return livePreviewsAsync.when(
-    data: (previews) => previews[result.address]?.displayValue ?? '--',
-    error: (_, _) => '--',
-    loading: () => '...',
+    data: (previews) => resolveMemoryToolPreferredDisplayValue(
+      result: result,
+      livePreview: previews[result.address],
+      fallbackDisplayValue: fallbackDisplayValue,
+    ),
+    error: (_, _) => fallbackDisplayValue,
+    loading: () => fallbackDisplayValue,
   );
+}
+
+String resolveMemoryToolPreferredDisplayValue({
+  required SearchResult result,
+  required MemoryValuePreview? livePreview,
+  required String fallbackDisplayValue,
+}) {
+  return livePreview?.displayValue ?? fallbackDisplayValue;
 }
 
 String resolveMemoryToolSearchResultValueByType({
@@ -211,8 +225,32 @@ String formatMemoryToolSearchResultAddress(int value) {
   return value.toRadixString(16).toUpperCase();
 }
 
+String formatMemoryToolSearchResultHex(Uint8List rawBytes) {
+  return rawBytes
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0').toUpperCase())
+      .join(' ');
+}
+
+String formatMemoryToolSearchResultReverseHex(Uint8List rawBytes) {
+  return rawBytes.reversed
+      .map((byte) => byte.toRadixString(16).padLeft(2, '0').toUpperCase())
+      .join(' ');
+}
+
 String mapMemoryToolSearchResultTypeLabel({
   required SearchValueType type,
+  required String displayValue,
+}) {
+  return mapMemoryToolEntryTypeLabel(
+    type: type,
+    entryKind: MemoryToolEntryKind.value,
+    displayValue: displayValue,
+  );
+}
+
+String mapMemoryToolEntryTypeLabel({
+  required SearchValueType type,
+  required MemoryToolEntryKind entryKind,
   required String displayValue,
 }) {
   return switch (type) {
@@ -222,7 +260,9 @@ String mapMemoryToolSearchResultTypeLabel({
     SearchValueType.i64 => 'I64',
     SearchValueType.f32 => 'F32',
     SearchValueType.f64 => 'F64',
-    SearchValueType.bytes => _looksLikeHexByteSequence(displayValue)
+    SearchValueType.bytes => entryKind == MemoryToolEntryKind.instruction
+        ? 'ASM'
+        : _looksLikeHexByteSequence(displayValue)
         ? 'AOB'
         : 'TEXT',
   };
@@ -338,9 +378,7 @@ String _formatBytesDisplayValue(Uint8List rawBytes) {
     return utf16Value;
   }
 
-  return rawBytes
-      .map((byte) => byte.toRadixString(16).padLeft(2, '0').toUpperCase())
-      .join(' ');
+  return formatMemoryToolSearchResultHex(rawBytes);
 }
 
 String? _tryDecodeUtf8(Uint8List rawBytes) {

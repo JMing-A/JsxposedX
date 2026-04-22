@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/custom_dIalog.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:JsxposedX/features/frida/presentation/providers/frida_action_provider.dart';
 import 'package:JsxposedX/features/frida/presentation/providers/frida_query_provider.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_action_provider.dart';
@@ -13,7 +14,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import 'script_type_button.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_toolbar/widgets/script_type_button.dart';
 
 class CodeSaveAction extends ConsumerWidget {
   final String code;
@@ -266,6 +267,7 @@ class CodeSaveAction extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scale = AiChatCompactScope.scaleOf(context);
     final isDark = context.isDark;
     final tooltip = _isJavaScriptFile
         ? context.l10n.saveScript
@@ -284,12 +286,12 @@ class CodeSaveAction extends ConsumerWidget {
           }
           await _exportCode(context);
         },
-        borderRadius: BorderRadius.circular(4.r),
+        borderRadius: BorderRadius.circular(4 * scale),
         child: Container(
-          padding: EdgeInsets.all(4.w),
+          padding: EdgeInsets.all(4 * scale),
           child: Icon(
             icon,
-            size: 16.sp,
+            size: 16 * scale,
             color: isDark ? Colors.white54 : Colors.black45,
           ),
         ),

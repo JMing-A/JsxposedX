@@ -1,10 +1,10 @@
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
+﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import 'bubble_content/bubble_content.dart';
-import 'bubble_states/bubble_state.dart';
-import 'bubble_toolbar/bubble_toolbar.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/bubble_content.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_states/bubble_state.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_toolbar/bubble_toolbar.dart';
 
 abstract class BaseBubbleContainerPart {
   const BaseBubbleContainerPart();
@@ -15,6 +15,8 @@ abstract class BaseBubbleContainerPart {
     required BaseBubbleContentPart contentPart,
     required BaseBubbleToolbarPart toolbarPart,
   }) {
+    final isCompact = AiChatCompactScope.of(context);
+    final scopeScale = AiChatCompactScope.scaleOf(context);
     final bubbleChild = contentPart.build(
       context,
       state,
@@ -30,10 +32,27 @@ abstract class BaseBubbleContainerPart {
           child: Align(
             alignment: resolveBubbleAlignment(state),
             child: Container(
-              margin: resolveBubbleMargin(state),
-              padding: resolveBubblePadding(state),
-              constraints: resolveBubbleConstraints(state),
-              decoration: buildBubbleDecoration(context, state),
+              margin: resolveBubbleMargin(
+                state,
+                isCompact: isCompact,
+                scale: scopeScale,
+              ),
+              padding: resolveBubblePadding(
+                state,
+                isCompact: isCompact,
+                scale: scopeScale,
+              ),
+              constraints: resolveBubbleConstraints(
+                state,
+                isCompact: isCompact,
+                scale: scopeScale,
+              ),
+              decoration: buildBubbleDecoration(
+                context,
+                state,
+                isCompact: isCompact,
+                scale: scopeScale,
+              ),
               child: bubbleChild,
             ),
           ),
@@ -59,25 +78,50 @@ abstract class BaseBubbleContainerPart {
   }
 
   @protected
-  EdgeInsetsGeometry resolveBubbleMargin(BubbleState state) {
-    return EdgeInsets.only(bottom: 20.h);
+  EdgeInsetsGeometry resolveBubbleMargin(
+    BubbleState state, {
+    required bool isCompact,
+    required double scale,
+  }) {
+    return EdgeInsets.only(bottom: (isCompact ? 12 : 20) * scale);
   }
 
   @protected
-  EdgeInsetsGeometry resolveBubblePadding(BubbleState state) {
+  EdgeInsetsGeometry resolveBubblePadding(
+    BubbleState state, {
+    required bool isCompact,
+    required double scale,
+  }) {
     return EdgeInsets.symmetric(
-      horizontal: state.isToolResult ? 0 : 16.w,
-      vertical: state.isLoading ? 14.h : (state.isToolResult ? 0 : 12.h),
+      horizontal: state.isToolResult
+          ? 0
+          : ((isCompact ? 12 : 16) * scale),
+      vertical: state.isLoading
+          ? ((isCompact ? 10 : 14) * scale)
+          : (state.isToolResult
+                ? 0
+                : ((isCompact ? 9 : 12) * scale)),
     );
   }
 
   @protected
-  BoxConstraints resolveBubbleConstraints(BubbleState state) {
-    return BoxConstraints(maxWidth: 0.85.sw);
+  BoxConstraints resolveBubbleConstraints(
+    BubbleState state, {
+    required bool isCompact,
+    required double scale,
+  }) {
+    return BoxConstraints(
+      maxWidth: (isCompact ? 320.0 : 560.0) * scale,
+    );
   }
 
   @protected
-  Decoration? buildBubbleDecoration(BuildContext context, BubbleState state) {
+  Decoration? buildBubbleDecoration(
+    BuildContext context,
+    BubbleState state, {
+    required bool isCompact,
+    required double scale,
+  }) {
     if (state.isToolResult) {
       return null;
     }
@@ -89,10 +133,14 @@ abstract class BaseBubbleContainerPart {
                 ? context.colorScheme.surfaceContainer
                 : Colors.white),
       borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(20.r),
-        topRight: Radius.circular(20.r),
-        bottomLeft: Radius.circular(state.isUser ? 20.r : 6.r),
-        bottomRight: Radius.circular(state.isUser ? 6.r : 20.r),
+        topLeft: Radius.circular((isCompact ? 16 : 20) * scale),
+        topRight: Radius.circular((isCompact ? 16 : 20) * scale),
+        bottomLeft: Radius.circular(
+          state.isUser ? ((isCompact ? 16 : 20) * scale) : 6 * scale,
+        ),
+        bottomRight: Radius.circular(
+          state.isUser ? 6 * scale : ((isCompact ? 16 : 20) * scale),
+        ),
       ),
       border: state.isError
           ? Border.all(
@@ -107,8 +155,8 @@ abstract class BaseBubbleContainerPart {
                       ? context.colorScheme.primary
                       : (state.isError ? Colors.red : Colors.black))
                   .withValues(alpha: 0.08),
-          blurRadius: 12,
-          offset: const Offset(0, 4),
+          blurRadius: (isCompact ? 8 : 12) * scale,
+          offset: Offset(0, (isCompact ? 3 : 4) * scale),
         ),
       ],
     );
@@ -136,19 +184,23 @@ abstract class BaseBubbleContainerPart {
     BubbleState state, {
     required bool isLeading,
   }) {
+    final scale = AiChatCompactScope.scaleOf(context);
     return GestureDetector(
       onTap: state.onRetry,
       child: Padding(
         padding: EdgeInsets.only(
-          right: isLeading ? 8.w : 0,
-          left: isLeading ? 0 : 8.w,
-          bottom: 20.h,
+          right: isLeading ? 8 * scale : 0,
+          left: isLeading ? 0 : 8 * scale,
+          bottom: 20 * scale,
         ),
         child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+          padding: EdgeInsets.symmetric(
+            horizontal: 8 * scale,
+            vertical: 6 * scale,
+          ),
           decoration: BoxDecoration(
             color: Colors.redAccent.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(999.r),
+            borderRadius: BorderRadius.circular(999 * scale),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -156,14 +208,14 @@ abstract class BaseBubbleContainerPart {
               Icon(
                 Icons.refresh_rounded,
                 color: Colors.redAccent,
-                size: 14.sp,
+                size: 14 * scale,
               ),
-              SizedBox(width: 4.w),
+              SizedBox(width: 4 * scale),
               Text(
                 state.retryLabel ?? context.l10n.retry,
                 style: TextStyle(
                   color: Colors.redAccent,
-                  fontSize: 11.sp,
+                  fontSize: 11 * scale,
                   fontWeight: FontWeight.w600,
                 ),
               ),

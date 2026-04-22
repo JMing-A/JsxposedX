@@ -7,7 +7,7 @@ import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/providers/status_management_provider.dart';
 import 'package:JsxposedX/core/routes/routes/home_route.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_action_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/frida/presentation/providers/frida_query_provider.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/activation_card.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/info_card.dart';
@@ -26,7 +26,7 @@ class HomeTab extends HookConsumerWidget {
     final isRootAsync = ref.watch(isRootProvider);
     final isHookAsync = ref.watch(isHookProvider);
     final isFridaAsync = ref.watch(isFridaProvider);
-    final aiStatusAsync = ref.watch(aiStatusProvider);
+    final aiStatusAsync = ref.watch(aiChatRuntimeStatusProvider);
     final isZygiskModuleInstalledAsync = ref.watch(
       isZygiskModuleInstalledProvider,
     );

@@ -55,7 +55,51 @@ final class AiConfigQueryRepositoryProvider
 }
 
 String _$aiConfigQueryRepositoryHash() =>
-    r'9f9a2644f60b0b37a2c53b41c57fef64b8ad5f6f';
+    r'306f12b6bf64fec9fa80c921e564d51c2df83adc';
+
+/// 获取 AI 配置
+
+@ProviderFor(aiModels)
+const aiModelsProvider = AiModelsProvider._();
+
+/// 获取 AI 配置
+
+final class AiModelsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<AiModel>>,
+          List<AiModel>,
+          FutureOr<List<AiModel>>
+        >
+    with $FutureModifier<List<AiModel>>, $FutureProvider<List<AiModel>> {
+  /// 获取 AI 配置
+  const AiModelsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'aiModelsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$aiModelsHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<AiModel>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<AiModel>> create(Ref ref) {
+    return aiModels(ref);
+  }
+}
+
+String _$aiModelsHash() => r'519384ba039dfd659a6816bae7a50b070c25e03e';
 
 /// 获取 AI 配置
 
