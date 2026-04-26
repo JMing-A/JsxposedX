@@ -16,6 +16,11 @@ enum MemoryToolSearchValidationError {
   invalidInteger,
   integerOutOfRange,
   invalidDecimal,
+  invalidGroupSearch,
+  groupSearchMissingWindow,
+  groupSearchInvalidWindow,
+  groupSearchWindowTooLarge,
+  groupSearchTooFewConditions,
   unsupportedType,
 }
 
@@ -75,6 +80,11 @@ abstract class MemoryToolSearchState with _$MemoryToolSearchState {
 
   bool get isAutoType =>
       effectiveValueTypeOption == MemorySearchValueTypeOptionEnum.auto;
+
+  bool get isGroupType =>
+      effectiveValueTypeOption == MemorySearchValueTypeOptionEnum.group;
+
+  bool get shouldShowGroupSyntaxHint => isGroupType && !isFuzzyMatchMode;
 
   bool get usesUtf16LeTextEncoding => isTextType && isLittleEndian;
 

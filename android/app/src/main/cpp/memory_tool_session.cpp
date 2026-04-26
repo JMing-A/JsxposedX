@@ -14,9 +14,13 @@ void SearchSession::Clear() {
     value_size = 0;
     current_value_bytes.clear();
     current_display_value.clear();
+    group_plan.items.clear();
+    group_plan.window = 0;
+    group_plan.display_value.clear();
     regions.clear();
     fuzzy_initial_regions.reset();
     fuzzy_candidates.reset();
+    group_anchor_results.clear();
     results.clear();
 }
 

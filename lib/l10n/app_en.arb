@@ -188,6 +188,50 @@
   "@about": {
     "description": "About page"
   },
+  "disclaimer": "Disclaimer",
+  "@disclaimer": {
+    "description": "Disclaimer entry title"
+  },
+  "disclaimerSubtitle": "Legal use, AI output, and responsibility terms",
+  "@disclaimerSubtitle": {
+    "description": "Disclaimer entry subtitle"
+  },
+  "disclaimerDialogIntro": "The following content is extracted from the project README. Continued use of this project means you have read and agreed to this statement.",
+  "@disclaimerDialogIntro": {
+    "description": "Disclaimer dialog intro"
+  },
+  "disclaimerLegalTitle": "Legal Use",
+  "@disclaimerLegalTitle": {
+    "description": "Disclaimer legal-use title"
+  },
+  "disclaimerLegalBody": "This project is an open source technical research tool and may only be used for lawful purposes such as software debugging, program analysis, memory mechanism learning, development testing, and authorized environment research. It is published to promote technical exchange and learning, and does not target any specific game, platform, software, or online service. It provides no support for cheating, bypassing protections, or illegal use guidance.",
+  "@disclaimerLegalBody": {
+    "description": "Disclaimer legal-use body"
+  },
+  "disclaimerProhibitedTitle": "Prohibited Use",
+  "@disclaimerProhibitedTitle": {
+    "description": "Disclaimer prohibited-use title"
+  },
+  "disclaimerProhibitedBody": "Do not use this project for online game cheating, plug-in creation, automated violations, interference with servers or clients, unauthorized modification of third-party program data, undermining fair competition, or any purpose that violates laws, regulations, or platform rules.",
+  "@disclaimerProhibitedBody": {
+    "description": "Disclaimer prohibited-use body"
+  },
+  "disclaimerResponsibilityTitle": "Responsibility",
+  "@disclaimerResponsibilityTitle": {
+    "description": "Disclaimer responsibility title"
+  },
+  "disclaimerResponsibilityBody": "Users must ensure their use complies with local laws, regulations, and relevant service terms. Any direct or indirect consequences arising from use, distribution, or secondary development of this project are borne by the user and are unrelated to the author.",
+  "@disclaimerResponsibilityBody": {
+    "description": "Disclaimer responsibility body"
+  },
+  "disclaimerAiTitle": "AI Feature Notice",
+  "@disclaimerAiTitle": {
+    "description": "Disclaimer AI feature title"
+  },
+  "disclaimerAiBody": "The built-in AI features are only general assistance modules for data analysis, content explanation, result filtering, information organization, operation guidance, learning, and research. AI output may contain errors, omissions, or may not apply to specific scenarios. It is for reference only, and users must make their own judgments and bear final responsibility.",
+  "@disclaimerAiBody": {
+    "description": "Disclaimer AI feature body"
+  },
   "community": "Community",
   "@community": {
     "description": "Community section title"
@@ -894,6 +938,7 @@
   "memoryToolValueCategoryDecimal": "Decimal",
   "memoryToolValueCategoryBytes": "Bytes",
   "memoryToolValueCategoryText": "Text",
+  "memoryToolValueCategoryGroup": "Group",
   "memoryToolValueCategoryAdvanced": "Advanced",
   "memoryToolValueTypeI8": "I8",
   "memoryToolValueTypeI16": "I16",
@@ -905,6 +950,7 @@
   "memoryToolValueTypeXor": "XOR",
   "memoryToolValueTypeAuto": "AUTO",
   "memoryToolValueTypeText": "TEXT",
+  "memoryToolValueTypeGroup": "GROUP",
   "memoryToolRangePresetCommon": "Common",
   "memoryToolRangePresetJava": "Java",
   "memoryToolRangePresetNative": "Native",
@@ -1150,6 +1196,11 @@
   "memoryToolValidationIntegerInvalid": "Integer types only accept whole numbers.",
   "memoryToolValidationIntegerOutOfRange": "The integer value is outside the supported range for this type.",
   "memoryToolValidationDecimalInvalid": "Enter a valid decimal number for this type.",
+  "memoryToolValidationGroupInvalid": "Invalid group search format. Example: i32:100;i32:200::32",
+  "memoryToolValidationGroupMissingWindow": "Group search is missing ::window. Example: i32:100;i32:200::32",
+  "memoryToolValidationGroupInvalidWindow": "Group search window must be an integer greater than 0.",
+  "memoryToolValidationGroupWindowTooLarge": "Group search window supports at most 4096 bytes.",
+  "memoryToolValidationGroupTooFewConditions": "Group search requires at least two conditions.",
   "memoryToolValidationTypeUnsupported": "This search type is not wired to the scan core yet.",
   "memoryToolProcessTerminatedTitle": "Target Process Closed",
   "memoryToolProcessTerminatedDescription": "The selected target process has exited. The current search session and selections were cleared. Please pick a process again before continuing.",

@@ -601,6 +601,8 @@ SearchRuntimeMode ToRuntimeMode(SpecialSearchMode mode) {
             return SearchRuntimeMode::kAuto;
         case SpecialSearchMode::kFuzzy:
             return SearchRuntimeMode::kFuzzy;
+        case SpecialSearchMode::kGroup:
+            return SearchRuntimeMode::kGroup;
         case SpecialSearchMode::kNone:
             return SearchRuntimeMode::kStandard;
     }
@@ -615,6 +617,8 @@ SearchValueType ResolveSessionType(const SearchValue& value, SpecialSearchMode m
             return SearchValueType::kBytes;
         case SpecialSearchMode::kFuzzy:
             return value.type;
+        case SpecialSearchMode::kGroup:
+            return SearchValueType::kBytes;
         case SpecialSearchMode::kNone:
             return value.type;
     }
@@ -692,6 +696,26 @@ size_t ResolveSessionResultCount(const SearchSession& session) {
         return total_count;
     }
     return session.results.size();
+}
+
+std::vector<SearchResultEntry> CollectGroupAnchorResults(
+    const std::vector<SearchResultEntry>& display_results) {
+    std::vector<SearchResultEntry> anchors;
+    std::unordered_set<uint64_t> seen_anchor_addresses;
+    anchors.reserve(display_results.size());
+    for (const SearchResultEntry& entry : display_results) {
+        const uint64_t anchor_address =
+            entry.group_anchor_address == 0 ? entry.address : entry.group_anchor_address;
+        if (!seen_anchor_addresses.insert(anchor_address).second) {
+            continue;
+        }
+        SearchResultEntry anchor;
+        anchor.address = anchor_address;
+        anchor.region_start = entry.region_start;
+        anchor.matched_type = entry.matched_type;
+        anchors.push_back(anchor);
+    }
+    return anchors;
 }
 
 std::vector<SearchResultEntry> CollectFuzzyResultEntries(const SearchSession& session,
@@ -1217,6 +1241,7 @@ void MemoryToolEngine::FirstScan(int pid,
 
     std::vector<uint8_t> pattern;
     std::vector<SearchPatternVariant> auto_variants;
+    GroupSearchPlan group_plan;
     uint32_t xor_target_value = 0;
     FuzzyCompareMode fuzzy_compare_mode = FuzzyCompareMode::kUnknown;
     std::string error;
@@ -1250,6 +1275,12 @@ void MemoryToolEngine::FirstScan(int pid,
             }
             break;
         }
+        case SpecialSearchMode::kGroup:
+            if (!BuildGroupSearchPlan(value, &group_plan, &error)) {
+                throw std::runtime_error(error.empty() ? "Invalid group search request." : error);
+            }
+            current_display_value = group_plan.display_value;
+            break;
         case SpecialSearchMode::kNone:
             if (!BuildSearchPattern(value, &pattern, &error)) {
                 throw std::runtime_error(error.empty() ? "Invalid search value." : error);
@@ -1262,7 +1293,10 @@ void MemoryToolEngine::FirstScan(int pid,
     }
 
     const SearchRuntimeMode runtime_mode = ToRuntimeMode(special_mode);
-    const SearchValueType session_type = ResolveSessionType(value, special_mode);
+    const SearchValueType session_type =
+        runtime_mode == SearchRuntimeMode::kGroup
+            ? group_plan.items.front().type
+            : ResolveSessionType(value, special_mode);
     const bool little_endian = value.little_endian;
     const BytesDisplayEncoding bytes_display_encoding =
         ResolveBytesDisplayEncoding(value);
@@ -1272,10 +1306,14 @@ void MemoryToolEngine::FirstScan(int pid,
                                               ? 0
                                               : runtime_mode == SearchRuntimeMode::kFuzzy
                                                     ? ResolveValueByteLength(session_type, 0)
+                                                : runtime_mode == SearchRuntimeMode::kGroup
+                                                ? group_plan.items.front().pattern.size()
                                                 : pattern.size();
     std::vector<uint8_t> current_value_bytes;
     if (runtime_mode == SearchRuntimeMode::kStandard) {
         current_value_bytes = pattern;
+    } else if (runtime_mode == SearchRuntimeMode::kGroup) {
+        current_value_bytes = group_plan.items.front().pattern;
     }
     const uint64_t generation = [this, pid]() {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -1288,6 +1326,7 @@ void MemoryToolEngine::FirstScan(int pid,
                  pid,
                  pattern = std::move(pattern),
                  auto_variants = std::move(auto_variants),
+                 group_plan = std::move(group_plan),
                  xor_target_value,
                  fuzzy_compare_mode,
                  runtime_mode,
@@ -1361,6 +1400,7 @@ void MemoryToolEngine::FirstScan(int pid,
 
                 workers.emplace_back([&pattern,
                                       &auto_variants,
+                                      &group_plan,
                                       &region_buckets,
                                       &worker_results,
                                       &worker_fuzzy_states,
@@ -1413,6 +1453,13 @@ void MemoryToolEngine::FirstScan(int pid,
                                 &reader,
                                 region_buckets[index],
                                 session_type,
+                                on_progress);
+                            return;
+                        case SearchRuntimeMode::kGroup:
+                            worker_results[index] = ::memory_tool::FirstScanGroup(
+                                &reader,
+                                region_buckets[index],
+                                group_plan,
                                 on_progress);
                             return;
                         case SearchRuntimeMode::kStandard:
@@ -1484,9 +1531,14 @@ void MemoryToolEngine::FirstScan(int pid,
             next_session.value_size = session_value_size;
             next_session.current_value_bytes = current_value_bytes;
             next_session.current_display_value = current_display_value;
+            next_session.group_plan =
+                runtime_mode == SearchRuntimeMode::kGroup ? group_plan : GroupSearchPlan{};
             next_session.regions = std::move(regions);
             next_session.fuzzy_initial_regions = std::move(fuzzy_initial_regions);
             next_session.fuzzy_candidates = std::move(fuzzy_candidates);
+            if (runtime_mode == SearchRuntimeMode::kGroup) {
+                next_session.group_anchor_results = CollectGroupAnchorResults(results);
+            }
             next_session.results = std::move(results);
             FinishTaskSuccess(generation, std::move(next_session), result_count);
         } catch (const std::exception& exception) {
@@ -1504,6 +1556,7 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
 
     std::vector<uint8_t> pattern;
     std::vector<SearchPatternVariant> auto_variants;
+    GroupSearchPlan group_plan;
     uint32_t xor_target_value = 0;
     FuzzyCompareMode fuzzy_compare_mode = FuzzyCompareMode::kUnknown;
     std::string error;
@@ -1529,6 +1582,12 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
                 throw std::runtime_error(error.empty() ? "Invalid fuzzy scan request." : error);
             }
             break;
+        case SpecialSearchMode::kGroup:
+            if (!BuildGroupSearchPlan(value, &group_plan, &error)) {
+                throw std::runtime_error(error.empty() ? "Invalid group search request." : error);
+            }
+            current_display_value = group_plan.display_value;
+            break;
         case SpecialSearchMode::kNone:
             if (!BuildSearchPattern(value, &pattern, &error)) {
                 throw std::runtime_error(error.empty() ? "Invalid search value." : error);
@@ -1544,7 +1603,10 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
     std::shared_ptr<std::vector<FuzzyInitialRegion>> fuzzy_initial_regions_snapshot;
     std::shared_ptr<std::vector<FuzzyCandidate>> fuzzy_candidates_snapshot;
     const SearchRuntimeMode runtime_mode = ToRuntimeMode(special_mode);
-    const SearchValueType session_type = ResolveSessionType(value, special_mode);
+    const SearchValueType session_type =
+        runtime_mode == SearchRuntimeMode::kGroup
+            ? group_plan.items.front().type
+            : ResolveSessionType(value, special_mode);
     const uint64_t generation =
         [this,
          &session_snapshot,
@@ -1591,6 +1653,7 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
             session_snapshot.current_value_bytes = session_.current_value_bytes;
             session_snapshot.current_display_value = session_.current_display_value;
             session_snapshot.regions = session_.regions;
+            session_snapshot.group_anchor_results = session_.group_anchor_results;
             session_snapshot.results = session_.results;
             fuzzy_initial_regions_snapshot = session_.fuzzy_initial_regions;
             session_snapshot.fuzzy_initial_regions = fuzzy_initial_regions_snapshot;
@@ -1609,6 +1672,7 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
             session_snapshot.current_value_bytes = session_.current_value_bytes;
             session_snapshot.current_display_value = session_.current_display_value;
             session_snapshot.regions = session_.regions;
+            session_snapshot.group_anchor_results = session_.group_anchor_results;
             session_snapshot.results = session_.results;
             session_snapshot.fuzzy_initial_regions = session_.fuzzy_initial_regions;
             session_snapshot.fuzzy_candidates = session_.fuzzy_candidates;
@@ -1625,10 +1689,14 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
                                               ? 0
                                               : runtime_mode == SearchRuntimeMode::kFuzzy
                                                   ? ResolveValueByteLength(session_type, 0)
+                                              : runtime_mode == SearchRuntimeMode::kGroup
+                                              ? group_plan.items.front().pattern.size()
                                               : pattern.size();
     std::vector<uint8_t> current_value_bytes;
     if (runtime_mode == SearchRuntimeMode::kStandard) {
         current_value_bytes = pattern;
+    } else if (runtime_mode == SearchRuntimeMode::kGroup) {
+        current_value_bytes = group_plan.items.front().pattern;
     }
 
     std::thread([this,
@@ -1638,6 +1706,7 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
                  fuzzy_candidates_snapshot = std::move(fuzzy_candidates_snapshot),
                  pattern = std::move(pattern),
                  auto_variants = std::move(auto_variants),
+                 group_plan = std::move(group_plan),
                  xor_target_value,
                  fuzzy_compare_mode,
                  runtime_mode,
@@ -1657,7 +1726,10 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
             std::vector<SearchResultEntry> filtered_results;
             const std::vector<SearchResultEntry>* next_scan_source_results =
                 &session_snapshot.results;
-            if (isAutoSessionToTypedScan) {
+            if (session_snapshot.mode == SearchRuntimeMode::kGroup &&
+                request_mode == SearchRuntimeMode::kGroup) {
+                next_scan_source_results = &session_snapshot.group_anchor_results;
+            } else if (isAutoSessionToTypedScan) {
                 filtered_results =
                     FilterResultsByMatchedType(session_snapshot.results, session_type);
                 next_scan_source_results = &filtered_results;
@@ -1686,6 +1758,16 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
                         &reader,
                         *next_scan_source_results,
                         auto_variants,
+                        [this, generation](const SearchScanProgress& progress) {
+                            return UpdateTaskProgress(generation, progress);
+                        });
+                    result_count = results.size();
+                    break;
+                case SearchRuntimeMode::kGroup:
+                    results = ::memory_tool::NextScanGroup(
+                        &reader,
+                        *next_scan_source_results,
+                        group_plan,
                         [this, generation](const SearchScanProgress& progress) {
                             return UpdateTaskProgress(generation, progress);
                         });
@@ -1773,7 +1855,6 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
                     break;
             }
 
-            session_snapshot.results = std::move(results);
             session_snapshot.type = session_type;
             session_snapshot.mode =
                 session_snapshot.mode == SearchRuntimeMode::kFuzzy
@@ -1792,6 +1873,16 @@ void MemoryToolEngine::NextScan(const SearchValue& value, SearchMatchMode match_
             session_snapshot.bytes_display_encoding = bytes_display_encoding;
             session_snapshot.current_value_bytes = current_value_bytes;
             session_snapshot.current_display_value = current_display_value;
+            session_snapshot.group_plan =
+                session_snapshot.mode == SearchRuntimeMode::kGroup
+                    ? group_plan
+                    : GroupSearchPlan{};
+            if (session_snapshot.mode == SearchRuntimeMode::kGroup) {
+                session_snapshot.group_anchor_results = CollectGroupAnchorResults(results);
+            } else {
+                session_snapshot.group_anchor_results.clear();
+            }
+            session_snapshot.results = std::move(results);
             session_snapshot.fuzzy_initial_regions =
                 session_snapshot.mode == SearchRuntimeMode::kFuzzy
                     ? std::move(next_fuzzy_initial_regions)
@@ -2361,6 +2452,11 @@ SearchResultView MemoryToolEngine::BuildSearchResultViewLocked(const SearchResul
         view.region_type_key = "other";
     }
     view.type = entry.matched_type;
+    if (entry.has_display_override) {
+        view.raw_bytes = entry.raw_bytes;
+        view.display_value = entry.display_value;
+        return view;
+    }
     const size_t byte_length = view.type == SearchValueType::kBytes
                                    ? session_.value_size
                                    : ResolveValueByteLength(view.type, session_.value_size);

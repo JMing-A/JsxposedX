@@ -693,6 +693,151 @@ std::vector<SearchResultEntry> FinalizeMultiTypeFirstScan(std::vector<SearchResu
     return results;
 }
 
+size_t ResolveGroupReadSize(const GroupSearchPlan& plan) {
+    size_t max_pattern_size = 0;
+    for (const GroupSearchItem& item : plan.items) {
+        max_pattern_size = std::max(max_pattern_size, item.pattern.size());
+    }
+    return plan.window + max_pattern_size;
+}
+
+bool FindPatternInGroupWindow(const std::vector<uint8_t>& buffer,
+                              const std::vector<uint8_t>& pattern,
+                              size_t start,
+                              size_t max_start,
+                              size_t* found_index) {
+    if (pattern.empty() || start >= buffer.size()) {
+        return false;
+    }
+    const size_t last_possible = buffer.size() >= pattern.size()
+                                     ? buffer.size() - pattern.size()
+                                     : 0;
+    const size_t end = std::min(max_start, last_possible);
+    if (start > end) {
+        return false;
+    }
+    const auto begin = buffer.begin() + static_cast<std::ptrdiff_t>(start);
+    const auto end_it =
+        buffer.begin() + static_cast<std::ptrdiff_t>(end + pattern.size());
+    const auto match = std::search(begin, end_it, pattern.begin(), pattern.end());
+    if (match == end_it) {
+        return false;
+    }
+    if (found_index != nullptr) {
+        *found_index = static_cast<size_t>(match - buffer.begin());
+    }
+    return true;
+}
+
+bool ResolveGroupMatchOffsets(const std::vector<uint8_t>& buffer,
+                              const GroupSearchPlan& plan,
+                              std::vector<size_t>* offsets) {
+    if (plan.items.size() < 2 || buffer.empty()) {
+        return false;
+    }
+    const GroupSearchItem& anchor = plan.items.front();
+    if (buffer.size() < anchor.pattern.size() ||
+        !IsPatternMatch(buffer.data(), anchor.pattern)) {
+        return false;
+    }
+
+    if (offsets != nullptr) {
+        offsets->clear();
+        offsets->reserve(plan.items.size());
+        offsets->push_back(0);
+    }
+    size_t cursor = anchor.pattern.size();
+    for (size_t index = 1; index < plan.items.size(); ++index) {
+        const GroupSearchItem& item = plan.items[index];
+        if (item.pattern.empty()) {
+            return false;
+        }
+        if (item.has_offset) {
+            if (item.offset > plan.window ||
+                item.offset + item.pattern.size() > buffer.size() ||
+                !IsPatternMatch(buffer.data() + static_cast<std::ptrdiff_t>(item.offset),
+                                item.pattern)) {
+                return false;
+            }
+            if (offsets != nullptr) {
+                offsets->push_back(item.offset);
+            }
+            cursor = std::max(cursor, item.offset + item.pattern.size());
+            continue;
+        }
+
+        size_t found_index = 0;
+        if (!FindPatternInGroupWindow(buffer,
+                                      item.pattern,
+                                      cursor,
+                                      plan.window,
+                                      &found_index)) {
+            return false;
+        }
+        if (offsets != nullptr) {
+            offsets->push_back(found_index);
+        }
+        cursor = found_index + item.pattern.size();
+    }
+    return true;
+}
+
+SearchResultEntry BuildGroupDisplayEntry(uint64_t anchor_address,
+                                         uint64_t region_start,
+                                         const GroupSearchItem& item,
+                                         size_t offset) {
+    SearchResultEntry entry;
+    entry.address = anchor_address + static_cast<uint64_t>(offset);
+    entry.region_start = region_start;
+    entry.matched_type = item.type;
+    entry.raw_bytes = item.pattern;
+    entry.display_value = item.result_display_value.empty()
+                              ? item.display_value
+                              : item.result_display_value;
+    entry.has_display_override = true;
+    entry.group_anchor_address = anchor_address;
+    return entry;
+}
+
+void AppendGroupDisplayEntries(uint64_t anchor_address,
+                               uint64_t region_start,
+                               const GroupSearchPlan& plan,
+                               const std::vector<size_t>& offsets,
+                               std::vector<SearchResultEntry>* results) {
+    if (results == nullptr || offsets.size() != plan.items.size()) {
+        return;
+    }
+    for (size_t index = 0; index < plan.items.size(); ++index) {
+        results->push_back(BuildGroupDisplayEntry(anchor_address,
+                                                  region_start,
+                                                  plan.items[index],
+                                                  offsets[index]));
+    }
+    std::sort(results->end() - static_cast<std::ptrdiff_t>(plan.items.size()),
+              results->end(),
+              [](const SearchResultEntry& left, const SearchResultEntry& right) {
+                  return left.address < right.address;
+              });
+}
+
+bool ReadAndResolveGroupAnchor(ProcessMemoryReader* reader,
+                               uint64_t address,
+                               const GroupSearchPlan& plan,
+                               std::vector<size_t>* offsets) {
+    if (reader == nullptr || plan.items.empty()) {
+        return false;
+    }
+    const size_t read_size = ResolveGroupReadSize(plan);
+    if (read_size == 0) {
+        return false;
+    }
+    std::vector<uint8_t> buffer;
+    if (!reader->Read(address, read_size, &buffer) || buffer.size() < read_size) {
+        return false;
+    }
+    return ResolveGroupMatchOffsets(buffer, plan, offsets);
+}
+
 }  // namespace
 
 std::vector<SearchResultEntry> FirstScan(ProcessMemoryReader* reader,
@@ -934,6 +1079,56 @@ std::vector<SearchResultEntry> FirstScanXor(ProcessMemoryReader* reader,
         }
     }
 
+    return results;
+}
+
+std::vector<SearchResultEntry> FirstScanGroup(
+    ProcessMemoryReader* reader,
+    const std::vector<MemoryRegion>& regions,
+    const GroupSearchPlan& plan,
+    const SearchProgressCallback& progress_callback) {
+    std::vector<SearchResultEntry> results;
+    if (reader == nullptr || plan.items.size() < 2 || plan.items.front().pattern.empty()) {
+        return results;
+    }
+
+    const SearchProgressCallback anchor_progress_callback =
+        progress_callback
+            ? SearchProgressCallback([&progress_callback](const SearchScanProgress& progress) {
+                  SearchScanProgress adjusted_progress = progress;
+                  adjusted_progress.result_count = 0;
+                  return progress_callback(adjusted_progress);
+              })
+            : SearchProgressCallback();
+    std::vector<SearchResultEntry> anchors = FirstScan(reader,
+                                                       regions,
+                                                       plan.items.front().pattern,
+                                                       plan.items.front().type,
+                                                       anchor_progress_callback);
+    results.reserve(anchors.size() * plan.items.size());
+    for (const SearchResultEntry& anchor : anchors) {
+        std::vector<size_t> offsets;
+        if (!ReadAndResolveGroupAnchor(reader, anchor.address, plan, &offsets)) {
+            continue;
+        }
+        AppendGroupDisplayEntries(anchor.address,
+                                  anchor.region_start,
+                                  plan,
+                                  offsets,
+                                  &results);
+    }
+
+    if (progress_callback) {
+        SearchScanProgress progress;
+        progress.total_region_count = regions.size();
+        progress.processed_region_count = regions.size();
+        for (const MemoryRegion& region : regions) {
+            progress.total_byte_count += region.size;
+        }
+        progress.processed_byte_count = progress.total_byte_count;
+        progress.result_count = results.size();
+        progress_callback(progress);
+    }
     return results;
 }
 
@@ -2250,6 +2445,164 @@ std::vector<SearchResultEntry> NextScanXor(ProcessMemoryReader* reader,
                 const size_t batch_processed_entries = count;
                 const uint64_t batch_processed_bytes =
                     static_cast<uint64_t>(count) * static_cast<uint64_t>(kPatternSize);
+                const size_t batch_result_delta = local_results.size() - local_progress.result_count;
+
+                processed_entry_count.fetch_add(batch_processed_entries);
+                processed_byte_count.fetch_add(batch_processed_bytes);
+                aggregated_result_count.fetch_add(batch_result_delta);
+
+                local_progress.processed_entry_count += batch_processed_entries;
+                local_progress.processed_byte_count += batch_processed_bytes;
+                local_progress.result_count = local_results.size();
+
+                const bool should_report = ShouldReportNextScanProgress(
+                    local_progress.processed_entry_count,
+                    batch_processed_entries,
+                    range.end,
+                    start + count);
+                if (should_report && !report_progress()) {
+                    return;
+                }
+            }
+        });
+    }
+
+    for (std::thread& worker : workers) {
+        if (worker.joinable()) {
+            worker.join();
+        }
+    }
+
+    if (should_stop.load()) {
+        return {};
+    }
+
+    size_t result_count = 0;
+    for (const auto& entries : worker_results) {
+        result_count += entries.size();
+    }
+    results.reserve(result_count);
+    for (auto& entries : worker_results) {
+        results.insert(results.end(),
+                       std::make_move_iterator(entries.begin()),
+                       std::make_move_iterator(entries.end()));
+    }
+
+    if (progress_callback) {
+        SearchScanProgress completed_progress = progress;
+        completed_progress.processed_entry_count = previous_results.size();
+        completed_progress.processed_byte_count = progress.total_byte_count;
+        completed_progress.result_count = results.size();
+        progress_callback(completed_progress);
+    }
+    return results;
+}
+
+std::vector<SearchResultEntry> NextScanGroup(
+    ProcessMemoryReader* reader,
+    const std::vector<SearchResultEntry>& previous_results,
+    const GroupSearchPlan& plan,
+    const SearchProgressCallback& progress_callback) {
+    std::vector<SearchResultEntry> results;
+    if (reader == nullptr || plan.items.size() < 2 || plan.items.front().pattern.empty()) {
+        return results;
+    }
+
+    const size_t read_size = ResolveGroupReadSize(plan);
+    SearchScanProgress progress;
+    progress.total_entry_count = previous_results.size();
+    progress.total_byte_count =
+        static_cast<uint64_t>(previous_results.size()) * static_cast<uint64_t>(read_size);
+    if (progress_callback && !progress_callback(progress)) {
+        return results;
+    }
+
+    const size_t worker_count = ResolveNextScanWorkerCount(previous_results.size());
+    const std::vector<IndexRange> ranges = PartitionIndexRanges(previous_results.size(), worker_count);
+    std::vector<std::vector<SearchResultEntry>> worker_results(ranges.size());
+    std::vector<std::thread> workers;
+    workers.reserve(ranges.size());
+
+    std::atomic_size_t processed_entry_count{0};
+    std::atomic_uint64_t processed_byte_count{0};
+    std::atomic_size_t aggregated_result_count{0};
+    std::atomic_bool should_stop{false};
+    std::mutex progress_mutex;
+
+    const auto report_progress = [progress_callback,
+                                  &processed_entry_count,
+                                  &processed_byte_count,
+                                  &aggregated_result_count,
+                                  &progress_mutex,
+                                  &should_stop,
+                                  &progress]() {
+        if (!progress_callback) {
+            return true;
+        }
+
+        std::lock_guard<std::mutex> lock(progress_mutex);
+        if (should_stop.load()) {
+            return false;
+        }
+
+        SearchScanProgress current_progress = progress;
+        current_progress.processed_entry_count = processed_entry_count.load();
+        current_progress.processed_byte_count = processed_byte_count.load();
+        current_progress.result_count = aggregated_result_count.load();
+        if (!progress_callback(current_progress)) {
+            should_stop.store(true);
+            return false;
+        }
+        return true;
+    };
+
+    for (size_t worker_index = 0; worker_index < ranges.size(); ++worker_index) {
+        const IndexRange range = ranges[worker_index];
+        if (range.start >= range.end) {
+            continue;
+        }
+
+        workers.emplace_back([reader,
+                              &previous_results,
+                              &worker_results,
+                              &plan,
+                              read_size,
+                              &processed_entry_count,
+                              &processed_byte_count,
+                              &aggregated_result_count,
+                              &should_stop,
+                              &report_progress,
+                              range,
+                              worker_index]() {
+            ProcessMemoryReader local_reader(reader->pid());
+            std::vector<SearchResultEntry>& local_results = worker_results[worker_index];
+            SearchScanProgress local_progress;
+
+            for (size_t start = range.start; start < range.end; start += kNextScanBatchSize) {
+                if (should_stop.load()) {
+                    return;
+                }
+
+                const size_t count = std::min(kNextScanBatchSize, range.end - start);
+                for (size_t index = 0; index < count; ++index) {
+                    const SearchResultEntry& candidate = previous_results[start + index];
+                    std::vector<size_t> offsets;
+                    std::vector<uint8_t> buffer;
+                    if (!local_reader.Read(candidate.address, read_size, &buffer) ||
+                        buffer.size() < read_size ||
+                        !ResolveGroupMatchOffsets(buffer, plan, &offsets)) {
+                        continue;
+                    }
+                    AppendGroupDisplayEntries(candidate.address,
+                                              candidate.region_start,
+                                              plan,
+                                              offsets,
+                                              &local_results);
+                }
+
+                const size_t batch_processed_entries = count;
+                const uint64_t batch_processed_bytes =
+                    static_cast<uint64_t>(count) * static_cast<uint64_t>(read_size);
                 const size_t batch_result_delta = local_results.size() - local_progress.result_count;
 
                 processed_entry_count.fetch_add(batch_processed_entries);

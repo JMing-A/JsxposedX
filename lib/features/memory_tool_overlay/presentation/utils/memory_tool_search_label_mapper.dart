@@ -20,6 +20,7 @@ String mapMemorySearchValueCategoryLabel(
       context.l10n.memoryToolValueCategoryBytes,
     MemorySearchValueCategoryEnum.text =>
       context.l10n.memoryToolValueCategoryText,
+    MemorySearchValueCategoryEnum.group => context.isZh ? '联合' : 'Group',
     MemorySearchValueCategoryEnum.advanced =>
       context.l10n.memoryToolValueCategoryAdvanced,
   };
@@ -43,6 +44,7 @@ String mapMemorySearchValueTypeOptionLabel(
       context.l10n.memoryToolValueTypeAuto,
     MemorySearchValueTypeOptionEnum.text =>
       context.l10n.memoryToolValueTypeText,
+    MemorySearchValueTypeOptionEnum.group => context.isZh ? '联合' : 'GROUP',
   };
 }
 
@@ -60,9 +62,9 @@ String mapMemorySearchFuzzyModeLabel(
   BuildContext context,
   MemorySearchFuzzyModeEnum mode,
 ) {
-  final isZh = Localizations.localeOf(context).languageCode.toLowerCase().startsWith(
-    'zh',
-  );
+  final isZh = Localizations.localeOf(
+    context,
+  ).languageCode.toLowerCase().startsWith('zh');
   return switch (mode) {
     MemorySearchFuzzyModeEnum.unknown => isZh ? '未知初值' : 'Unknown Initial',
     MemorySearchFuzzyModeEnum.unchanged => isZh ? '无变化' : 'Unchanged',

@@ -52,6 +52,12 @@ std::vector<SearchResultEntry> FirstScanXor(ProcessMemoryReader* reader,
                                             bool little_endian,
                                             const SearchProgressCallback& progress_callback);
 
+std::vector<SearchResultEntry> FirstScanGroup(
+    ProcessMemoryReader* reader,
+    const std::vector<MemoryRegion>& regions,
+    const GroupSearchPlan& plan,
+    const SearchProgressCallback& progress_callback);
+
 FuzzyScanState FirstScanFuzzy(ProcessMemoryReader* reader,
                               const std::vector<MemoryRegion>& regions,
                               SearchValueType type,
@@ -113,6 +119,12 @@ std::vector<SearchResultEntry> NextScanXor(ProcessMemoryReader* reader,
                                            uint32_t target_value,
                                            bool little_endian,
                                            const SearchProgressCallback& progress_callback);
+
+std::vector<SearchResultEntry> NextScanGroup(
+    ProcessMemoryReader* reader,
+    const std::vector<SearchResultEntry>& previous_results,
+    const GroupSearchPlan& plan,
+    const SearchProgressCallback& progress_callback);
 
 }  // namespace memory_tool
 

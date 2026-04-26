@@ -51,7 +51,9 @@ class MemoryAiOverlayPromptBuilder {
               ? '包名: ${processInfo.packageName}'
               : 'Package: ${processInfo.packageName}',
         )
-        ..writeln(_isZh ? 'PID: ${processInfo.pid}' : 'PID: ${processInfo.pid}');
+        ..writeln(
+          _isZh ? 'PID: ${processInfo.pid}' : 'PID: ${processInfo.pid}',
+        );
     }
 
     if (_runtimeSummary != null && _runtimeSummary!.trim().isNotEmpty) {
@@ -122,7 +124,7 @@ Rules:
 
 关键约束：
 - 地址参数允许十六进制字符串（如 `0x7FF12340`）或十进制字符串。
-- 搜索值类型支持：`i8/i16/i32/i64/f32/f64/bytes/text/xor/auto`。
+- 搜索值类型支持：`i8/i16/i32/i64/f32/f64/bytes/text/xor/auto/group`。`group` 用于同一结构窗口内多个字段共同定位，语法如 `i32:100;i32:200::32` 或 `i32:100;i32:200@8::32`，结果地址是第一个条件的 anchor 地址。
 - 模糊搜索只适用于数值类型；首次模糊搜索应使用 `unknown`，继续筛选通常使用 `changed/unchanged/increased/decreased`。
 - `read_memory` 读取 `bytes` 时如果没有显式长度，会使用默认长度。
 - 对当前状态不确定时，先调用查询工具，再决定是否执行破坏性或状态变更操作。
@@ -156,7 +158,7 @@ Mutation tools:
 
 Key constraints:
 - Address parameters accept hex strings like `0x7FF12340` or decimal strings.
-- Search value modes support `i8/i16/i32/i64/f32/f64/bytes/text/xor/auto`.
+- Search value modes support `i8/i16/i32/i64/f32/f64/bytes/text/xor/auto/group`. Use `group` for locating several fields in one structure window, for example `i32:100;i32:200::32` or `i32:100;i32:200@8::32`; result addresses are the first condition anchor addresses.
 - Fuzzy search is only for numeric value modes. The first fuzzy scan should use `unknown`; follow-up scans usually use `changed/unchanged/increased/decreased`.
 - `read_memory` uses a default byte length if the type is `bytes` and no explicit length is provided.
 - If state is uncertain, query first, then decide whether a state-changing operation is necessary.

@@ -24,6 +24,7 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memo
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_result_selection_bar.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_result_stats_bar.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_search_result_action_dialog.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_settings_dialog.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_tool_value_editor_dialog.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_host_runtime_provider.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
@@ -68,6 +69,7 @@ class MemoryToolDebugTab extends HookConsumerWidget {
     final activeAutoChaseAddress = useState<int?>(null);
     final activeDetailActions =
         useState<List<MemoryToolSearchResultActionItemData>?>(null);
+    final isToolConfigVisible = useState(false);
     final activeInstructionEditor =
         useState<_MemoryToolDebugInstructionEditorState?>(null);
     final activeValueEditor = useState<_MemoryToolDebugValueEditorState?>(null);
@@ -75,8 +77,9 @@ class MemoryToolDebugTab extends HookConsumerWidget {
         useState<Map<int, MemoryInstructionPatchResult>>(
           <int, MemoryInstructionPatchResult>{},
         );
-    final editedValuePreviews =
-        useState<Map<int, MemoryValuePreview>>(<int, MemoryValuePreview>{});
+    final editedValuePreviews = useState<Map<int, MemoryValuePreview>>(
+      <int, MemoryValuePreview>{},
+    );
     final pendingInstructionAddresses = useState<Set<int>>(<int>{});
     final compactTabController = useTabController(initialLength: 3);
     final landscapeDetailTabController = useTabController(initialLength: 2);
@@ -440,19 +443,21 @@ class MemoryToolDebugTab extends HookConsumerWidget {
       required int sourceLength,
       required String fallbackDisplayValue,
     }) async {
-      final previews = await ref.read(memoryQueryRepositoryProvider).readMemoryValues(
-        requests: <MemoryReadRequest>[
-          MemoryReadRequest(
-            pid: pid,
-            address: address,
-            type: type,
-            length: resolveMemoryToolReadLengthForType(
-              type: type,
-              bytesLength: sourceLength,
-            ),
-          ),
-        ],
-      );
+      final previews = await ref
+          .read(memoryQueryRepositoryProvider)
+          .readMemoryValues(
+            requests: <MemoryReadRequest>[
+              MemoryReadRequest(
+                pid: pid,
+                address: address,
+                type: type,
+                length: resolveMemoryToolReadLengthForType(
+                  type: type,
+                  bytesLength: sourceLength,
+                ),
+              ),
+            ],
+          );
       final updatedPreview = previews.isNotEmpty
           ? previews.first
           : MemoryValuePreview(
@@ -475,7 +480,9 @@ class MemoryToolDebugTab extends HookConsumerWidget {
     }
 
     List<MemoryToolSearchResultActionItemData> buildCurrentValueActions() {
-      if (selectedValueInfo == null || selectedHit == null || selectedBreakpoint == null) {
+      if (selectedValueInfo == null ||
+          selectedHit == null ||
+          selectedBreakpoint == null) {
         return const <MemoryToolSearchResultActionItemData>[];
       }
       final valueInfo = selectedValueInfo;
@@ -672,10 +679,7 @@ class MemoryToolDebugTab extends HookConsumerWidget {
               try {
                 final previews = await ref
                     .read(memoryQueryRepositoryProvider)
-                    .disassembleMemory(
-                      pid: pid,
-                      addresses: <int>[address],
-                    );
+                    .disassembleMemory(pid: pid, addresses: <int>[address]);
                 final preview = previews.isEmpty ? null : previews.first;
                 savedResult = SearchResult(
                   address: address,
@@ -714,10 +718,7 @@ class MemoryToolDebugTab extends HookConsumerWidget {
             icon: Icons.remove_circle_outline_rounded,
             title: context.isZh ? '从暂存区移除' : 'Remove from Saved',
             onTap: () async {
-              savedItemsNotifier.removeOne(
-                pid: pid,
-                address: address,
-              );
+              savedItemsNotifier.removeOne(pid: pid, address: address);
               ref
                   .read(memoryToolInstructionHistoryProvider.notifier)
                   .remove(pid: pid, address: address);
@@ -857,12 +858,14 @@ class MemoryToolDebugTab extends HookConsumerWidget {
           ...patchedInstructions.value,
           targetAddress: result,
         };
-        ref.read(memoryToolInstructionHistoryProvider.notifier).record(
-          pid: pid,
-          address: targetAddress,
-          previousBytes: result.beforeBytes,
-          previousDisplayValue: editor.currentValue,
-        );
+        ref
+            .read(memoryToolInstructionHistoryProvider.notifier)
+            .record(
+              pid: pid,
+              address: targetAddress,
+              previousBytes: result.beforeBytes,
+              previousDisplayValue: editor.currentValue,
+            );
         activeInstructionEditor.value = null;
         final nextPending = <int>{...pendingInstructionAddresses.value};
         nextPending.remove(targetAddress);
@@ -909,9 +912,13 @@ class MemoryToolDebugTab extends HookConsumerWidget {
             ),
           );
         } catch (error) {
-          final message = error.toString().replaceFirst('Exception: ', '').trim();
-          final resolvedMessage =
-              message.isEmpty ? fallbackErrorMessage : message;
+          final message = error
+              .toString()
+              .replaceFirst('Exception: ', '')
+              .trim();
+          final resolvedMessage = message.isEmpty
+              ? fallbackErrorMessage
+              : message;
           unawaited(
             ToastOverlayMessage.show(
               '$failurePrefix: $resolvedMessage',
@@ -922,8 +929,9 @@ class MemoryToolDebugTab extends HookConsumerWidget {
         return null;
       } catch (error) {
         final message = error.toString().replaceFirst('Exception: ', '').trim();
-        final resolvedMessage =
-            message.isEmpty ? fallbackErrorMessage : message;
+        final resolvedMessage = message.isEmpty
+            ? fallbackErrorMessage
+            : message;
         unawaited(
           ToastOverlayMessage.show(
             '$failurePrefix: $resolvedMessage',
@@ -1154,44 +1162,77 @@ class MemoryToolDebugTab extends HookConsumerWidget {
               child: Column(
                 children: <Widget>[
                   MemoryToolResultSelectionBar(
-                    actions: <MemoryToolResultSelectionActionData>[
-                      MemoryToolResultSelectionActionData(
-                        icon: Icons.refresh_rounded,
-                        onTap: breakpointActionState.isLoading
-                            ? null
-                            : refreshAll,
+                    groups: <MemoryToolResultSelectionActionGroupData>[
+                      MemoryToolResultSelectionActionGroupData(
+                        icon: Icons.bug_report_rounded,
+                        label: context.isZh ? '断点控制' : 'Breakpoint Control',
+                        actions: <MemoryToolResultSelectionActionData>[
+                          MemoryToolResultSelectionActionData(
+                            icon: Icons.refresh_rounded,
+                            label: context.isZh ? '刷新' : 'Refresh',
+                            onTap: breakpointActionState.isLoading
+                                ? null
+                                : refreshAll,
+                          ),
+                          MemoryToolResultSelectionActionData(
+                            icon: Icons.play_arrow_rounded,
+                            label: context.isZh
+                                ? '断点后继续'
+                                : 'Resume After Breakpoint',
+                            onTap: breakpointActionState.isLoading || !isPaused
+                                ? null
+                                : () async {
+                                    await ref
+                                        .read(
+                                          memoryBreakpointActionProvider
+                                              .notifier,
+                                        )
+                                        .resumeAfterBreakpoint(pid: pid);
+                                  },
+                          ),
+                          MemoryToolResultSelectionActionData(
+                            icon: Icons.layers_clear_rounded,
+                            label: context.isZh ? '清空命中' : 'Clear Hits',
+                            onTap: breakpointActionState.isLoading
+                                ? null
+                                : () async {
+                                    await ref
+                                        .read(
+                                          memoryBreakpointActionProvider
+                                              .notifier,
+                                        )
+                                        .clearMemoryBreakpointHits(pid: pid);
+                                  },
+                          ),
+                        ],
                       ),
-                      MemoryToolResultSelectionActionData(
-                        icon: Icons.play_arrow_rounded,
-                        onTap: breakpointActionState.isLoading || !isPaused
-                            ? null
-                            : () async {
-                                await ref
-                                    .read(
-                                      memoryBreakpointActionProvider.notifier,
-                                    )
-                                    .resumeAfterBreakpoint(pid: pid);
-                              },
+                      MemoryToolResultSelectionActionGroupData(
+                        icon: Icons.ios_share_rounded,
+                        label: context.isZh ? '导出' : 'Export',
+                        actions: <MemoryToolResultSelectionActionData>[
+                          MemoryToolResultSelectionActionData(
+                            icon: Icons.outbox_rounded,
+                            label: context.isZh ? '导出上下文' : 'Export Context',
+                            onTap: selectedBreakpoint == null
+                                ? null
+                                : () async {
+                                    await exportCurrentDebugContext();
+                                  },
+                          ),
+                        ],
                       ),
-                      MemoryToolResultSelectionActionData(
-                        icon: Icons.layers_clear_rounded,
-                        onTap: breakpointActionState.isLoading
-                            ? null
-                            : () async {
-                                await ref
-                                    .read(
-                                      memoryBreakpointActionProvider.notifier,
-                                    )
-                                    .clearMemoryBreakpointHits(pid: pid);
-                              },
-                      ),
-                      MemoryToolResultSelectionActionData(
-                        icon: Icons.file_download_outlined,
-                        onTap: selectedBreakpoint == null
-                            ? null
-                            : () async {
-                                await exportCurrentDebugContext();
-                              },
+                      MemoryToolResultSelectionActionGroupData(
+                        icon: Icons.tune_rounded,
+                        label: context.isZh ? '设置' : 'Settings',
+                        actions: <MemoryToolResultSelectionActionData>[
+                          MemoryToolResultSelectionActionData(
+                            icon: Icons.settings_rounded,
+                            label: context.isZh ? '配置' : 'Config',
+                            onTap: () {
+                              isToolConfigVisible.value = true;
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1262,6 +1303,14 @@ class MemoryToolDebugTab extends HookConsumerWidget {
               },
             ),
           ),
+        if (isToolConfigVisible.value)
+          Positioned.fill(
+            child: MemoryToolSettingsDialog(
+              onClose: () {
+                isToolConfigVisible.value = false;
+              },
+            ),
+          ),
         if (activeDetailActions.value case final actions?)
           Positioned.fill(
             child: MemoryToolSearchResultActionDialog(
@@ -1293,19 +1342,20 @@ class MemoryToolDebugTab extends HookConsumerWidget {
                   preview.address: preview,
                 };
               },
-              onStoreEditedValuePreview: ({
-                required int address,
-                required SearchValueType type,
-                required int sourceLength,
-                required String fallbackDisplayValue,
-              }) async {
-                await storeEditedValuePreview(
-                  address: address,
-                  type: type,
-                  sourceLength: sourceLength,
-                  fallbackDisplayValue: fallbackDisplayValue,
-                );
-              },
+              onStoreEditedValuePreview:
+                  ({
+                    required int address,
+                    required SearchValueType type,
+                    required int sourceLength,
+                    required String fallbackDisplayValue,
+                  }) async {
+                    await storeEditedValuePreview(
+                      address: address,
+                      type: type,
+                      sourceLength: sourceLength,
+                      fallbackDisplayValue: fallbackDisplayValue,
+                    );
+                  },
               onClose: () {
                 activeValueEditor.value = null;
               },
@@ -1388,13 +1438,15 @@ class _MemoryToolDebugValueEditorDialog extends HookConsumerWidget {
           sourceDisplayValue: editor.preview.displayValue,
         );
 
-        await ref.read(memoryValueActionProvider.notifier).writeMemoryValue(
-          request: MemoryWriteRequest(
-            address: editor.address,
-            value: writeValue,
-          ),
-          previousPreview: editor.preview,
-        );
+        await ref
+            .read(memoryValueActionProvider.notifier)
+            .writeMemoryValue(
+              request: MemoryWriteRequest(
+                address: editor.address,
+                value: writeValue,
+              ),
+              previousPreview: editor.preview,
+            );
 
         await onStoreEditedValuePreview(
           address: editor.address,

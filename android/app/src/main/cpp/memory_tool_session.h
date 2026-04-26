@@ -42,6 +42,7 @@ enum class SearchRuntimeMode : int {
     kXor = 1,
     kAuto = 2,
     kFuzzy = 3,
+    kGroup = 4,
 };
 
 enum class FuzzyCompareMode : int {
@@ -78,6 +79,10 @@ struct SearchResultEntry {
     uint64_t address = 0;
     uint64_t region_start = 0;
     SearchValueType matched_type = SearchValueType::kI32;
+    std::vector<uint8_t> raw_bytes;
+    std::string display_value;
+    bool has_display_override = false;
+    uint64_t group_anchor_address = 0;
 };
 
 struct SearchResultView {
@@ -188,6 +193,21 @@ struct PointerScanTaskStateView {
     uint64_t elapsed_milliseconds = 0;
     bool can_cancel = false;
     std::string message;
+};
+
+struct GroupSearchItem {
+    SearchValueType type = SearchValueType::kI32;
+    std::vector<uint8_t> pattern;
+    std::string display_value;
+    std::string result_display_value;
+    bool has_offset = false;
+    size_t offset = 0;
+};
+
+struct GroupSearchPlan {
+    std::vector<GroupSearchItem> items;
+    size_t window = 0;
+    std::string display_value;
 };
 
 struct AddMemoryBreakpointRequest {
@@ -306,9 +326,11 @@ struct SearchSession {
     size_t value_size = 0;
     std::vector<uint8_t> current_value_bytes;
     std::string current_display_value;
+    GroupSearchPlan group_plan;
     std::vector<MemoryRegion> regions;
     std::shared_ptr<std::vector<FuzzyInitialRegion>> fuzzy_initial_regions;
     std::shared_ptr<std::vector<FuzzyCandidate>> fuzzy_candidates;
+    std::vector<SearchResultEntry> group_anchor_results;
     std::vector<SearchResultEntry> results;
 
     void Clear();

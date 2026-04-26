@@ -18,6 +18,7 @@ class MemoryAiOverlayToolDefinitions {
     'text',
     'xor',
     'auto',
+    'group',
   ];
 
   static const List<String> _writeValueTypes = <String>[
@@ -85,12 +86,12 @@ class MemoryAiOverlayToolDefinitions {
   static final startFirstScan = AiToolDefinition(
     name: 'start_first_scan',
     description:
-        '对当前进程发起首次内存搜索。发起后应继续调用 get_search_overview，并在任务结束后再结合 get_search_results 下结论',
+        '对当前进程发起首次内存搜索。group 联合搜索使用 i32:100;i32:200::32 这类 DSL，在同一结构窗口内匹配多个字段。发起后应继续调用 get_search_overview，并在任务结束后再结合 get_search_results 下结论',
     parameters:
         (ToolParametersBuilder()
               ..addString(
                 'valueType',
-                '搜索值类型：i8/i16/i32/i64/f32/f64/bytes/text/xor/auto',
+                '搜索值类型：i8/i16/i32/i64/f32/f64/bytes/text/xor/auto/group',
                 required: true,
                 enumValues: _searchValueTypes,
               )
@@ -121,12 +122,13 @@ class MemoryAiOverlayToolDefinitions {
 
   static final continueNextScan = AiToolDefinition(
     name: 'continue_next_scan',
-    description: '基于当前搜索会话继续筛选结果。发起后应继续调用 get_search_overview，并在任务结束后再读取最新结果',
+    description:
+        '基于当前搜索会话继续筛选结果。group 会重新验证已有 anchor 地址对应窗口。发起后应继续调用 get_search_overview，并在任务结束后再读取最新结果',
     parameters:
         (ToolParametersBuilder()
               ..addString(
                 'valueType',
-                '筛选值类型：i8/i16/i32/i64/f32/f64/bytes/text/xor/auto',
+                '筛选值类型：i8/i16/i32/i64/f32/f64/bytes/text/xor/auto/group',
                 required: true,
                 enumValues: _searchValueTypes,
               )
@@ -492,7 +494,8 @@ class MemoryAiOverlayToolDefinitions {
 
   static final getPointerScanOverview = AiToolDefinition(
     name: 'get_pointer_scan_overview',
-    description: '获取当前指针扫描（扫基址 / 基址扫描）会话和任务状态；只要扫描仍在运行或进度未完成，就应优先继续查询本工具而不是提前宣布完成',
+    description:
+        '获取当前指针扫描（扫基址 / 基址扫描）会话和任务状态；只要扫描仍在运行或进度未完成，就应优先继续查询本工具而不是提前宣布完成',
     parameters: ToolParametersBuilder.empty(),
   );
 
@@ -514,7 +517,8 @@ class MemoryAiOverlayToolDefinitions {
 
   static final startPointerScan = AiToolDefinition(
     name: 'start_pointer_scan',
-    description: '从目标地址开始进行指针扫描（扫基址 / 基址扫描）。发起后应继续调用 get_pointer_scan_overview，任务结束后再读取结果',
+    description:
+        '从目标地址开始进行指针扫描（扫基址 / 基址扫描）。发起后应继续调用 get_pointer_scan_overview，任务结束后再读取结果',
     parameters:
         (ToolParametersBuilder()
               ..addString('targetAddress', '目标地址', required: true)

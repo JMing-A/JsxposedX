@@ -67,20 +67,14 @@ class CustomDialog extends StatelessWidget {
             : width!.clamp(0.0, resolvedMaxWidth).toDouble();
         final dialogHeight = height?.clamp(0.0, resolvedMaxHeight).toDouble();
         final content = Padding(
-          padding: EdgeInsets.symmetric(
-            vertical: 8.r,
-            horizontal: 10.r,
-          ),
+          padding: EdgeInsets.symmetric(vertical: 8.r, horizontal: 10.r),
           child: Column(
             mainAxisSize: dialogHeight == null
                 ? MainAxisSize.min
                 : MainAxisSize.max,
             children: [
               if (child != null)
-                if (dialogHeight != null)
-                  Expanded(child: child!)
-                else
-                  child!,
+                if (dialogHeight != null) Expanded(child: child!) else child!,
               if (actionButtons != null) ...[
                 if (child != null) SizedBox(height: 8.h),
                 Row(
@@ -95,7 +89,9 @@ class CustomDialog extends StatelessWidget {
 
         return Material(
           color: context.colorScheme.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
             constraints: BoxConstraints(
@@ -124,13 +120,16 @@ class CustomDialog extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          Flexible(child: title),
-                          const Spacer(),
+                          Expanded(child: title),
                           if (action != null) ...action!,
                           if (hasClose)
-                            InkWell(
-                              onTap: () => SmartDialog.dismiss(),
-                              child: const Icon(Icons.close, color: Colors.grey),
+                            IconButton(
+                              onPressed: () => SmartDialog.dismiss(),
+                              visualDensity: VisualDensity.compact,
+                              tooltip: MaterialLocalizations.of(
+                                context,
+                              ).closeButtonTooltip,
+                              icon: const Icon(Icons.close, color: Colors.grey),
                             ),
                         ],
                       ),

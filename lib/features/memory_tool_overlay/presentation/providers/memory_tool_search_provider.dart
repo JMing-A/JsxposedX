@@ -12,6 +12,7 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/me
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_result_selection_state.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_search_state.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_group_search_parser.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_selection_limit_feedback.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_search_range_key_mapper.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_host_runtime_provider.dart';
@@ -461,6 +462,15 @@ class MemoryToolSearchForm extends _$MemoryToolSearchForm {
       return MemoryToolSearchValidationError.invalidBytes;
     }
 
+    if (option == MemorySearchValueTypeOptionEnum.group) {
+      try {
+        normalizeMemoryToolGroupSearchDsl(trimmedValue);
+        return null;
+      } on MemoryToolGroupSearchParseException catch (exception) {
+        return _mapGroupSearchParseError(exception.error);
+      }
+    }
+
     switch (option) {
       case MemorySearchValueTypeOptionEnum.i8:
         return _validateIntegerValue(
@@ -492,6 +502,8 @@ class MemoryToolSearchForm extends _$MemoryToolSearchForm {
       case MemorySearchValueTypeOptionEnum.bytes:
       case MemorySearchValueTypeOptionEnum.text:
         return null;
+      case MemorySearchValueTypeOptionEnum.group:
+        return MemoryToolSearchValidationError.invalidGroupSearch;
     }
   }
 
@@ -596,16 +608,42 @@ class MemoryToolSearchForm extends _$MemoryToolSearchForm {
     return null;
   }
 
+  MemoryToolSearchValidationError _mapGroupSearchParseError(
+    MemoryToolGroupSearchParseError error,
+  ) {
+    return switch (error) {
+      MemoryToolGroupSearchParseError.missingWindow =>
+        MemoryToolSearchValidationError.groupSearchMissingWindow,
+      MemoryToolGroupSearchParseError.invalidWindow =>
+        MemoryToolSearchValidationError.groupSearchInvalidWindow,
+      MemoryToolGroupSearchParseError.windowTooLarge =>
+        MemoryToolSearchValidationError.groupSearchWindowTooLarge,
+      MemoryToolGroupSearchParseError.tooFewConditions =>
+        MemoryToolSearchValidationError.groupSearchTooFewConditions,
+      MemoryToolGroupSearchParseError.empty ||
+      MemoryToolGroupSearchParseError.invalidCondition ||
+      MemoryToolGroupSearchParseError.unsupportedType ||
+      MemoryToolGroupSearchParseError.invalidValue ||
+      MemoryToolGroupSearchParseError.invalidOffset =>
+        MemoryToolSearchValidationError.invalidGroupSearch,
+    };
+  }
+
   SearchValue _buildSearchValue({required bool isFirstScan}) {
     final trimmedValue = state.value.trim();
     final requestType = state.requestSearchValueType;
+    final groupDsl = state.isGroupType
+        ? normalizeMemoryToolGroupSearchDsl(trimmedValue)
+        : null;
     final bytesValue = state.isTextType
         ? Uint8List.fromList(
             state.usesUtf16LeTextEncoding
                 ? _encodeUtf16Le(trimmedValue)
                 : utf8.encode(trimmedValue),
           )
-        : requestType == SearchValueType.bytes && !state.isAutoType
+        : requestType == SearchValueType.bytes &&
+              !state.isAutoType &&
+              !state.isGroupType
         ? _parseBytes(trimmedValue)
         : null;
     final textValue = state.isTextType
@@ -618,6 +656,8 @@ class MemoryToolSearchForm extends _$MemoryToolSearchForm {
         ? '__jsx_xor__:$trimmedValue'
         : state.isAutoType
         ? '__jsx_auto__:$trimmedValue'
+        : state.isGroupType
+        ? '__jsx_group__:$groupDsl'
         : requestType == SearchValueType.bytes
         ? null
         : trimmedValue;

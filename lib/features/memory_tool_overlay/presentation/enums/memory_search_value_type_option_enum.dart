@@ -11,6 +11,7 @@ enum MemorySearchValueTypeOptionEnum {
   xor,
   auto,
   text,
+  group,
 }
 
 extension MemorySearchValueTypeOptionEnumX on MemorySearchValueTypeOptionEnum {
@@ -26,12 +27,14 @@ extension MemorySearchValueTypeOptionEnumX on MemorySearchValueTypeOptionEnum {
       MemorySearchValueTypeOptionEnum.xor => SearchValueType.i32,
       MemorySearchValueTypeOptionEnum.auto => null,
       MemorySearchValueTypeOptionEnum.text => SearchValueType.bytes,
+      MemorySearchValueTypeOptionEnum.group => null,
     };
   }
 
   SearchValueType get requestType {
     return switch (this) {
-      MemorySearchValueTypeOptionEnum.auto => SearchValueType.bytes,
+      MemorySearchValueTypeOptionEnum.auto ||
+      MemorySearchValueTypeOptionEnum.group => SearchValueType.bytes,
       _ => nativeType!,
     };
   }
@@ -49,7 +52,8 @@ extension MemorySearchValueTypeOptionEnumX on MemorySearchValueTypeOptionEnum {
       MemorySearchValueTypeOptionEnum.bytes ||
       MemorySearchValueTypeOptionEnum.xor ||
       MemorySearchValueTypeOptionEnum.auto ||
-      MemorySearchValueTypeOptionEnum.text => false,
+      MemorySearchValueTypeOptionEnum.text ||
+      MemorySearchValueTypeOptionEnum.group => false,
     };
   }
 }

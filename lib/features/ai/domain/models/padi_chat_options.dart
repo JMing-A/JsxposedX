@@ -17,9 +17,14 @@ class PadiChatOptions {
   static const String effortHigh = 'high';
   static const String effortXHigh = 'xhigh';
 
-  static const List<String> models = ['gpt-5.4', 'gpt-5.3-codex'];
+  static const List<String> models = [
+    'gpt-5.5',
+    'gpt-5.4',
+    'gpt-5.3-codex',
+  ];
 
   static const Map<String, List<String>> supportedEffortsByModel = {
+    'gpt-5.5': [effortLow, effortMedium, effortHigh, effortXHigh],
     'gpt-5.4': [effortNone, effortLow, effortMedium, effortHigh, effortXHigh],
     'gpt-5.3-codex': [effortLow, effortMedium, effortHigh, effortXHigh],
   };
@@ -68,8 +73,12 @@ class PadiChatOptions {
   }
 
   static List<String> supportedEffortsForModel(String model) {
-    return supportedEffortsByModel[model] ??
+    return supportedEffortsByModel[_normalizeModelId(model)] ??
         supportedEffortsByModel[defaultModel]!;
+  }
+
+  static bool supportsReasoningModel(String model) {
+    return supportedEffortsByModel.containsKey(_normalizeModelId(model));
   }
 
   static String normalizeEffort(String model, String effort) {
@@ -81,5 +90,9 @@ class PadiChatOptions {
       return defaultReasoningEffort;
     }
     return supported.first;
+  }
+
+  static String _normalizeModelId(String model) {
+    return model.trim().toLowerCase();
   }
 }

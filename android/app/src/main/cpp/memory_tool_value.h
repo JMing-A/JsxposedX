@@ -16,6 +16,7 @@ enum class SpecialSearchMode : int {
     kXor = 1,
     kAuto = 2,
     kFuzzy = 3,
+    kGroup = 4,
 };
 
 struct AutoSearchPlan {
@@ -44,6 +45,10 @@ bool ParseFuzzyCompareMode(const SearchValue& value,
 bool BuildAutoSearchPlan(const SearchValue& value,
                          AutoSearchPlan* plan,
                          std::string* error);
+
+bool BuildGroupSearchPlan(const SearchValue& value,
+                          GroupSearchPlan* plan,
+                          std::string* error);
 
 BytesDisplayEncoding ResolveBytesDisplayEncoding(const SearchValue& value);
 

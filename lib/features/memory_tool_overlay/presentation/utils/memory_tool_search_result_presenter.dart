@@ -44,21 +44,26 @@ String resolveMemoryToolSearchResultValueByType({
   try {
     return switch (type) {
       SearchValueType.i8 => byteData.getInt8(0).toString(),
-      SearchValueType.i16 => rawBytes.length < 2
-          ? fallbackDisplayValue
-          : byteData.getInt16(0, Endian.little).toString(),
-      SearchValueType.i32 => rawBytes.length < 4
-          ? fallbackDisplayValue
-          : byteData.getInt32(0, Endian.little).toString(),
-      SearchValueType.i64 => rawBytes.length < 8
-          ? fallbackDisplayValue
-          : byteData.getInt64(0, Endian.little).toString(),
-      SearchValueType.f32 => rawBytes.length < 4
-          ? fallbackDisplayValue
-          : _formatFloatingValue(byteData.getFloat32(0, Endian.little)),
-      SearchValueType.f64 => rawBytes.length < 8
-          ? fallbackDisplayValue
-          : _formatFloatingValue(byteData.getFloat64(0, Endian.little)),
+      SearchValueType.i16 =>
+        rawBytes.length < 2
+            ? fallbackDisplayValue
+            : byteData.getInt16(0, Endian.little).toString(),
+      SearchValueType.i32 =>
+        rawBytes.length < 4
+            ? fallbackDisplayValue
+            : byteData.getInt32(0, Endian.little).toString(),
+      SearchValueType.i64 =>
+        rawBytes.length < 8
+            ? fallbackDisplayValue
+            : byteData.getInt64(0, Endian.little).toString(),
+      SearchValueType.f32 =>
+        rawBytes.length < 4
+            ? fallbackDisplayValue
+            : _formatFloatingValue(byteData.getFloat32(0, Endian.little)),
+      SearchValueType.f64 =>
+        rawBytes.length < 8
+            ? fallbackDisplayValue
+            : _formatFloatingValue(byteData.getFloat64(0, Endian.little)),
       SearchValueType.bytes => _formatBytesDisplayValue(rawBytes),
     };
   } catch (_) {
@@ -109,22 +114,22 @@ SearchValue buildMemoryToolWriteValue({
 
   return switch (bytesInputMode) {
     MemoryToolBytesInputMode.hex => SearchValue(
-        type: SearchValueType.bytes,
-        bytesValue: _parseHexBytes(trimmed),
-        littleEndian: littleEndian,
-      ),
+      type: SearchValueType.bytes,
+      bytesValue: _parseHexBytes(trimmed),
+      littleEndian: littleEndian,
+    ),
     MemoryToolBytesInputMode.utf8 => SearchValue(
-        type: SearchValueType.bytes,
-        textValue: '__jsx_text_utf8__:$trimmed',
-        bytesValue: Uint8List.fromList(utf8.encode(trimmed)),
-        littleEndian: littleEndian,
-      ),
+      type: SearchValueType.bytes,
+      textValue: '__jsx_text_utf8__:$trimmed',
+      bytesValue: Uint8List.fromList(utf8.encode(trimmed)),
+      littleEndian: littleEndian,
+    ),
     MemoryToolBytesInputMode.utf16Le => SearchValue(
-        type: SearchValueType.bytes,
-        textValue: '__jsx_text_utf16le__:$trimmed',
-        bytesValue: Uint8List.fromList(_encodeUtf16Le(trimmed)),
-        littleEndian: littleEndian,
-      ),
+      type: SearchValueType.bytes,
+      textValue: '__jsx_text_utf16le__:$trimmed',
+      bytesValue: Uint8List.fromList(_encodeUtf16Le(trimmed)),
+      littleEndian: littleEndian,
+    ),
   };
 }
 
@@ -157,15 +162,15 @@ String resolveMemoryToolIncrementedInput({
     SearchValueType.i16 ||
     SearchValueType.i32 ||
     SearchValueType.i64 => _resolveIncrementedIntegerInput(
-        baseInput: trimmedBase,
-        incrementInput: trimmedIncrement,
-        index: index,
-      ),
+      baseInput: trimmedBase,
+      incrementInput: trimmedIncrement,
+      index: index,
+    ),
     SearchValueType.f32 || SearchValueType.f64 => _resolveIncrementedFloatInput(
-        baseInput: trimmedBase,
-        incrementInput: trimmedIncrement,
-        index: index,
-      ),
+      baseInput: trimmedBase,
+      incrementInput: trimmedIncrement,
+      index: index,
+    ),
     SearchValueType.bytes => throw const FormatException('增量模式仅支持数值类型。'),
   };
 }
@@ -260,11 +265,12 @@ String mapMemoryToolEntryTypeLabel({
     SearchValueType.i64 => 'I64',
     SearchValueType.f32 => 'F32',
     SearchValueType.f64 => 'F64',
-    SearchValueType.bytes => entryKind == MemoryToolEntryKind.instruction
-        ? 'ASM'
-        : _looksLikeHexByteSequence(displayValue)
-        ? 'AOB'
-        : 'TEXT',
+    SearchValueType.bytes =>
+      entryKind == MemoryToolEntryKind.instruction
+          ? 'ASM'
+          : _looksLikeHexByteSequence(displayValue)
+          ? 'AOB'
+          : 'TEXT',
   };
 }
 
@@ -414,7 +420,8 @@ bool _isReadableText(String value) {
     if (codePoint == 0) {
       return false;
     }
-    final isControl = codePoint < 32 && codePoint != 9 && codePoint != 10 && codePoint != 13;
+    final isControl =
+        codePoint < 32 && codePoint != 9 && codePoint != 10 && codePoint != 13;
     if (isControl) {
       return false;
     }
@@ -432,10 +439,7 @@ Uint8List _parseHexBytes(String value) {
 
   final bytes = <int>[];
   for (int index = 0; index < sanitized.length; index += 2) {
-    final byte = int.tryParse(
-      sanitized.substring(index, index + 2),
-      radix: 16,
-    );
+    final byte = int.tryParse(sanitized.substring(index, index + 2), radix: 16);
     if (byte == null) {
       throw const FormatException('Invalid byte sequence.');
     }
@@ -489,8 +493,4 @@ List<int> _encodeUtf16Le(String value) {
   return bytes;
 }
 
-enum MemoryToolBytesInputMode {
-  hex,
-  utf8,
-  utf16Le,
-}
+enum MemoryToolBytesInputMode { hex, utf8, utf16Le }

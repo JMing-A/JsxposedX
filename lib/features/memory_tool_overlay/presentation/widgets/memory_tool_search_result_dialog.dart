@@ -61,7 +61,12 @@ class MemoryToolSearchResultDialog extends HookConsumerWidget {
           ),
         ),
       ],
-      <Object>[processPid ?? 0, result.address, selectedType.value, sourceBytesLength],
+      <Object>[
+        processPid ?? 0,
+        result.address,
+        selectedType.value,
+        sourceBytesLength,
+      ],
     );
     final selectedPreviewAsync = processPid == null
         ? const AsyncValue.data(<MemoryValuePreview>[])

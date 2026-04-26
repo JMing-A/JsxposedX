@@ -112,8 +112,8 @@ class MemoryToolSearchResultTile extends StatelessWidget {
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final valueMaxWidth = constraints.maxWidth *
-                        (isInstruction ? 0.72 : 0.52);
+                    final valueMaxWidth =
+                        constraints.maxWidth * (isInstruction ? 0.72 : 0.52);
 
                     return Row(
                       crossAxisAlignment: isInstruction

@@ -15,6 +15,7 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memor
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_pending_interaction_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_instruction_history_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/states/memory_tool_value_history_state.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_tool_group_search_parser.dart';
 import 'package:JsxposedX/generated/memory_tool.g.dart';
 
 class MemoryAiOverlayToolRuntimeContext {
@@ -95,13 +96,9 @@ class MemoryAiOverlayToolRuntimeContext {
     required MemoryInstructionPatchRequest request,
   })
   patchMemoryInstructionAction;
-  final Future<void> Function({
-    required MemoryFreezeRequest request,
-  })
+  final Future<void> Function({required MemoryFreezeRequest request})
   setMemoryFreezeAction;
-  final Future<void> Function({
-    required List<MemoryFreezeRequest> requests,
-  })
+  final Future<void> Function({required List<MemoryFreezeRequest> requests})
   setMemoryFreezesAction;
   final Future<int> Function({
     required List<int> addresses,
@@ -259,7 +256,8 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
   yield _MemoryAiOverlayCallbackToolHandler(
     toolName: 'reset_search_session',
     onHandleWithProgress: (call, {onProgress}) async {
-      final session = await context.memoryQueryRepository.getSearchSessionState();
+      final session = await context.memoryQueryRepository
+          .getSearchSessionState();
       if (!session.hasActiveSession) {
         return '当前没有活动搜索会话。';
       }
@@ -786,7 +784,9 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
             labelBuilder: _formatAddress,
             descriptionBuilder: (address) {
               final entry = historyByAddress[address];
-              return entry == null ? null : 'type=${entry.type.name} | value=${entry.displayValue}';
+              return entry == null
+                  ? null
+                  : 'type=${entry.type.name} | value=${entry.displayValue}';
             },
             onProgress: onProgress,
           );
@@ -817,7 +817,8 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
         addresses: addresses,
         valueTypesByAddress: <int, SearchValueType>{
           for (final address in addresses)
-            if (historyByAddress[address] case final entry?) address: entry.type,
+            if (historyByAddress[address] case final entry?)
+              address: entry.type,
         },
         valueLengthsByAddress: <int, int?>{
           for (final address in addresses)
@@ -923,12 +924,12 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
         onProgress: onProgress,
       );
       if (!confirmed) {
-        return context.isZh ? '已取消批量冻结操作。' : 'Batch freeze operation cancelled.';
+        return context.isZh
+            ? '已取消批量冻结操作。'
+            : 'Batch freeze operation cancelled.';
       }
 
-      await context.setMemoryFreezesAction(
-        requests: requests,
-      );
+      await context.setMemoryFreezesAction(requests: requests);
       await _syncSavedValueItemsAfterMutation(
         context,
         addresses: addresses,
@@ -1010,13 +1011,12 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
             labelBuilder: _formatAddress,
             descriptionBuilder: (address) {
               final entry = historyByAddress[address];
-              return entry == null ? null : 'previous=${entry.previousDisplayValue}';
+              return entry == null
+                  ? null
+                  : 'previous=${entry.previousDisplayValue}';
             },
             onProgress: onProgress,
           );
-      final savedItemsByAddress = <int, MemoryToolSavedItem>{
-        for (final item in context.listSavedItems()) item.address: item,
-      };
       final confirmed = await _confirmDangerousAction(
         context,
         toolName: 'restore_instruction_patches',
@@ -1029,7 +1029,9 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
         onProgress: onProgress,
       );
       if (!confirmed) {
-        return context.isZh ? '已取消指令补丁恢复。' : 'Instruction patch restore cancelled.';
+        return context.isZh
+            ? '已取消指令补丁恢复。'
+            : 'Instruction patch restore cancelled.';
       }
       var restoredCount = 0;
       for (final address in addresses) {
@@ -1282,7 +1284,9 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
         onProgress: onProgress,
       );
       if (!confirmed) {
-        return context.isZh ? '已取消清空断点命中记录。' : 'Clearing breakpoint hits cancelled.';
+        return context.isZh
+            ? '已取消清空断点命中记录。'
+            : 'Clearing breakpoint hits cancelled.';
       }
       await context.memoryActionRepository.clearMemoryBreakpointHits(
         pid: context.pid,
@@ -1312,7 +1316,9 @@ Iterable<AiChatToolHandler> buildMemoryAiOverlayToolHandlers({
         onProgress: onProgress,
       );
       if (!confirmed) {
-        return context.isZh ? '已取消恢复进程执行。' : 'Resume after breakpoint cancelled.';
+        return context.isZh
+            ? '已取消恢复进程执行。'
+            : 'Resume after breakpoint cancelled.';
       }
       await context.memoryActionRepository.resumeAfterBreakpoint(
         pid: context.pid,
@@ -1548,10 +1554,10 @@ class _MemoryAiOverlayCallbackToolHandler implements AiChatToolHandler {
   }) async {
     try {
       if (_onHandleWithProgress != null) {
-        return await _onHandleWithProgress!(call, onProgress: onProgress);
+        return await _onHandleWithProgress(call, onProgress: onProgress);
       }
       if (_onHandle != null) {
-        return await _onHandle!(call);
+        return await _onHandle(call);
       }
       throw const _MemoryAiOverlayToolException('工具处理器未实现。');
     } catch (error) {
@@ -1816,6 +1822,13 @@ SearchValue _buildSearchValueFromToolCall(
         textValue: '__jsx_auto__:$value',
         littleEndian: littleEndian,
       );
+    case 'group':
+      final normalizedDsl = normalizeMemoryToolGroupSearchDsl(value);
+      return SearchValue(
+        type: SearchValueType.bytes,
+        textValue: '__jsx_group__:$normalizedDsl',
+        littleEndian: littleEndian,
+      );
     case 'bytes':
       final resolvedMode = bytesMode == 'auto'
           ? (_looksLikeHexByteSequence(value) ? 'hex' : 'utf8')
@@ -2037,8 +2050,7 @@ Future<void> _syncSavedValueItemsAfterMutation(
         displayValue: preview.displayValue,
       ),
       preview: preview,
-      isFrozen:
-          frozenStatesByAddress[preview.address] ?? savedItem.isFrozen,
+      isFrozen: frozenStatesByAddress[preview.address] ?? savedItem.isFrozen,
       entryKind: MemoryToolEntryKind.value,
     );
   }

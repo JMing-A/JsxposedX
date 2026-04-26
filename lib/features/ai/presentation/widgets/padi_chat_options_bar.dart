@@ -297,6 +297,9 @@ bool _supportsReasoningForModel(AiModel? model, bool fallback) {
   if (model == null) {
     return fallback;
   }
+  if (PadiChatOptions.supportsReasoningModel(model.id)) {
+    return true;
+  }
   return model.ownedBy.trim().toLowerCase() == 'codex';
 }
 

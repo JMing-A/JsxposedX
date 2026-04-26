@@ -1,4 +1,4 @@
-﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -33,15 +33,22 @@ class SettingsTile extends StatelessWidget {
         ),
         title: Text(
           title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (subtitle != null)
-              Text(
-                subtitle!,
-                style: TextStyle(color: Colors.grey, fontSize: 14.sp),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 130.w),
+                child: Text(
+                  subtitle!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.grey, fontSize: 14.sp),
+                ),
               ),
             if (subtitle != null && onTap != null) SizedBox(width: 4.w),
             if (onTap != null)

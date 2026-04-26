@@ -6,7 +6,6 @@ import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/providers/locale_provider.dart';
 import 'package:JsxposedX/core/providers/status_management_provider.dart';
 import 'package:JsxposedX/core/providers/theme_provider.dart';
-import 'package:JsxposedX/core/routes/routes/home_route.dart';
 import 'package:JsxposedX/core/utils/procedure_utils.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_config_sheet.dart';
@@ -17,7 +16,6 @@ import 'package:JsxposedX/features/home/presentation/widgets/theme_color_picker.
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 const String _forumHost = 'muxue.pro';
@@ -173,6 +171,12 @@ class SettingsTab extends HookConsumerWidget {
               const _AboutSummaryTile(),
               const SettingsDivider(),
               SettingsTile(
+                icon: Icons.policy_rounded,
+                title: context.l10n.disclaimer,
+                onTap: () => _showDisclaimerDialog(context),
+              ),
+              const SettingsDivider(),
+              SettingsTile(
                 icon: Icons.public_rounded,
                 title: context.isChinese ? "官网" : "Site",
                 subtitle: context.isZh ? '获取最新教程' : 'tutorials',
@@ -289,6 +293,137 @@ class SettingsTab extends HookConsumerWidget {
       ],
     );
   }
+
+  Future<void> _showDisclaimerDialog(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    final items = [
+      _DisclaimerItem(
+        icon: Icons.verified_user_rounded,
+        title: context.l10n.disclaimerLegalTitle,
+        body: context.l10n.disclaimerLegalBody,
+      ),
+      _DisclaimerItem(
+        icon: Icons.block_rounded,
+        title: context.l10n.disclaimerProhibitedTitle,
+        body: context.l10n.disclaimerProhibitedBody,
+      ),
+      _DisclaimerItem(
+        icon: Icons.assignment_turned_in_rounded,
+        title: context.l10n.disclaimerResponsibilityTitle,
+        body: context.l10n.disclaimerResponsibilityBody,
+      ),
+      _DisclaimerItem(
+        icon: Icons.smart_toy_rounded,
+        title: context.l10n.disclaimerAiTitle,
+        body: context.l10n.disclaimerAiBody,
+      ),
+    ];
+
+    return CustomDialog.show<void>(
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.policy_rounded, color: colorScheme.primary),
+          SizedBox(width: 8.w),
+          Text(context.l10n.disclaimer),
+        ],
+      ),
+      hasClose: true,
+      width: 0.9.sw,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: 0.68.sh),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.disclaimerDialogIntro,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  height: 1.55,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              SizedBox(height: 14.h),
+              ...items.map(
+                (item) => Padding(
+                  padding: EdgeInsets.only(bottom: 10.h),
+                  child: _DisclaimerBlock(item: item),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actionButtons: [
+        TextButton(
+          onPressed: () => SmartDialog.dismiss(),
+          child: Text(context.l10n.confirm),
+        ),
+      ],
+    );
+  }
+}
+
+class _DisclaimerBlock extends StatelessWidget {
+  const _DisclaimerBlock({required this.item});
+
+  final _DisclaimerItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.42),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(item.icon, size: 18.sp, color: colorScheme.primary),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  item.title,
+                  style: context.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            item.body,
+            style: context.textTheme.bodySmall?.copyWith(
+              height: 1.55,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DisclaimerItem {
+  const _DisclaimerItem({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
 }
 
 class _AboutSummaryTile extends StatelessWidget {

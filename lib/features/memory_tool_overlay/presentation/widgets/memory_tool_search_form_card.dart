@@ -71,8 +71,21 @@ class MemoryToolSearchFormCard extends StatelessWidget {
             controller: valueController,
             valueTypeOption: state.effectiveValueTypeOption,
             selectedType: state.nativeSearchValueType,
+            isGroupType: state.isGroupType,
             onChanged: onValueChanged,
           ),
+          if (state.shouldShowGroupSyntaxHint) ...<Widget>[
+            SizedBox(height: 6.r),
+            Text(
+              context.isZh
+                  ? '格式：type:value[;type:value...]::window，例：i32:100;i32:200::32'
+                  : 'Format: type:value[;type:value...]::window, e.g. i32:100;i32:200::32',
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
           SizedBox(height: 12.r),
         ],
         _FieldLabel(label: context.l10n.memoryToolFieldValueCategory),
@@ -241,6 +254,26 @@ class MemoryToolSearchFormCard extends StatelessWidget {
         context.l10n.memoryToolValidationIntegerOutOfRange,
       MemoryToolSearchValidationError.invalidDecimal =>
         context.l10n.memoryToolValidationDecimalInvalid,
+      MemoryToolSearchValidationError.invalidGroupSearch =>
+        context.isZh
+            ? '联合搜索格式错误，例：i32:100;i32:200::32'
+            : 'Invalid group search format. Example: i32:100;i32:200::32',
+      MemoryToolSearchValidationError.groupSearchMissingWindow =>
+        context.isZh
+            ? '联合搜索缺少 ::window，例：i32:100;i32:200::32'
+            : 'Group search is missing ::window. Example: i32:100;i32:200::32',
+      MemoryToolSearchValidationError.groupSearchInvalidWindow =>
+        context.isZh
+            ? '联合搜索 window 必须是大于 0 的整数。'
+            : 'Group search window must be an integer greater than 0.',
+      MemoryToolSearchValidationError.groupSearchWindowTooLarge =>
+        context.isZh
+            ? '联合搜索 window 最大支持 4096 字节。'
+            : 'Group search window supports at most 4096 bytes.',
+      MemoryToolSearchValidationError.groupSearchTooFewConditions =>
+        context.isZh
+            ? '联合搜索至少需要两个条件。'
+            : 'Group search requires at least two conditions.',
       MemoryToolSearchValidationError.unsupportedType =>
         context.l10n.memoryToolValidationTypeUnsupported,
     };
@@ -276,12 +309,14 @@ class _MemoryToolSearchValueField extends StatelessWidget {
     required this.controller,
     required this.valueTypeOption,
     required this.selectedType,
+    required this.isGroupType,
     required this.onChanged,
   });
 
   final TextEditingController controller;
   final MemorySearchValueTypeOptionEnum valueTypeOption;
   final SearchValueType? selectedType;
+  final bool isGroupType;
   final ValueChanged<String> onChanged;
 
   @override
@@ -296,6 +331,8 @@ class _MemoryToolSearchValueField extends StatelessWidget {
         selectedType == SearchValueType.f64;
     final keyboardType = isBytes
         ? TextInputType.visiblePassword
+        : isGroupType
+        ? TextInputType.multiline
         : isText
         ? TextInputType.text
         : TextInputType.numberWithOptions(decimal: isFloatType, signed: !isXor);
@@ -304,9 +341,11 @@ class _MemoryToolSearchValueField extends StatelessWidget {
       controller: controller,
       onChanged: onChanged,
       keyboardType: keyboardType,
+      minLines: isGroupType ? 2 : 1,
+      maxLines: isGroupType ? 3 : 1,
       enableInteractiveSelection: true,
       contextMenuBuilder: buildOverlayTextInputContextMenu,
-      inputFormatters: isBytes
+      inputFormatters: isBytes && !isGroupType
           ? <TextInputFormatter>[
               FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-FxX ]')),
             ]
@@ -338,6 +377,9 @@ class _MemoryToolSearchValueField extends StatelessWidget {
     }
     if (valueTypeOption == MemorySearchValueTypeOptionEnum.text) {
       return context.l10n.memoryToolSearchTextHint;
+    }
+    if (valueTypeOption == MemorySearchValueTypeOptionEnum.group) {
+      return 'i32:100;i32:200::32';
     }
     return context.l10n.memoryToolFieldValueHint;
   }

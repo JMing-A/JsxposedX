@@ -150,6 +150,43 @@ class AppLocalizationsZh extends AppLocalizations {
   String get about => '关于';
 
   @override
+  String get disclaimer => '免责声明';
+
+  @override
+  String get disclaimerSubtitle => '合法用途、AI 输出与责任说明';
+
+  @override
+  String get disclaimerDialogIntro => '以下内容提取自项目 README，继续使用本项目即视为已阅读并同意本声明。';
+
+  @override
+  String get disclaimerLegalTitle => '合法用途';
+
+  @override
+  String get disclaimerLegalBody =>
+      '本项目为开源技术研究工具，仅用于软件调试、程序分析、内存机制学习、开发测试及授权环境研究等合法用途。作者公开本项目旨在促进技术交流与学习，不针对任何特定游戏、平台、软件或在线服务，不提供作弊、绕过保护或违规使用指导。';
+
+  @override
+  String get disclaimerProhibitedTitle => '禁止用途';
+
+  @override
+  String get disclaimerProhibitedBody =>
+      '严禁用于网络游戏作弊、外挂制作、自动化违规操作、干扰服务器或客户端正常运行、未经授权修改第三方程序数据、破坏公平竞争环境，或任何违反法律法规及平台规则的用途。';
+
+  @override
+  String get disclaimerResponsibilityTitle => '责任归属';
+
+  @override
+  String get disclaimerResponsibilityBody =>
+      '使用者应自行确保使用行为符合所在地法律法规及相关服务条款。因使用、传播、二次开发本项目产生的任何直接或间接后果，由使用者自行承担，与作者无关。';
+
+  @override
+  String get disclaimerAiTitle => 'AI 功能说明';
+
+  @override
+  String get disclaimerAiBody =>
+      '内置 AI 功能仅作为通用智能辅助模块，用于数据分析、内容解释、结果筛选、信息整理、操作指引及学习研究等场景。AI 输出可能存在误差、遗漏或不适用于特定场景，仅供参考；用户应自行判断并承担最终使用责任。';
+
+  @override
   String get community => '社区';
 
   @override
@@ -1817,6 +1854,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memoryToolValueCategoryText => '文本';
 
   @override
+  String get memoryToolValueCategoryGroup => '联合';
+
+  @override
   String get memoryToolValueCategoryAdvanced => '高级';
 
   @override
@@ -1848,6 +1888,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memoryToolValueTypeText => 'TEXT';
+
+  @override
+  String get memoryToolValueTypeGroup => '联合';
 
   @override
   String get memoryToolRangePresetCommon => '常用';
@@ -2496,6 +2539,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memoryToolValidationDecimalInvalid => '小数类型请输入有效的数字。';
+
+  @override
+  String get memoryToolValidationGroupInvalid =>
+      '联合搜索格式错误，例：i32:100;i32:200::32';
+
+  @override
+  String get memoryToolValidationGroupMissingWindow =>
+      '联合搜索缺少 ::window，例：i32:100;i32:200::32';
+
+  @override
+  String get memoryToolValidationGroupInvalidWindow =>
+      '联合搜索 window 必须是大于 0 的整数。';
+
+  @override
+  String get memoryToolValidationGroupWindowTooLarge =>
+      '联合搜索 window 最大支持 4096 字节。';
+
+  @override
+  String get memoryToolValidationGroupTooFewConditions => '联合搜索至少需要两个条件。';
 
   @override
   String get memoryToolValidationTypeUnsupported => '当前搜索类型尚未接入扫描内核。';

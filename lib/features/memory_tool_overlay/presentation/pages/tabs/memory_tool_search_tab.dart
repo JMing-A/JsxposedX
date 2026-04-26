@@ -96,6 +96,17 @@ class MemoryToolSearchTab extends HookConsumerWidget {
         if (didEnterTerminalStatus) {
           scheduleSearchRefresh();
           scheduleSelectionClear();
+          if (currentStatus == SearchTaskStatus.failed) {
+            final message = state.message.trim().isEmpty
+                ? context.l10n.memoryToolTaskFailedFallback
+                : state.message.trim();
+            unawaited(
+              ToastOverlayMessage.show(
+                message,
+                duration: const Duration(milliseconds: 2200),
+              ),
+            );
+          }
         }
         previousTaskStatus.value = currentStatus;
       });
