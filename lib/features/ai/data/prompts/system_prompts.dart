@@ -209,6 +209,40 @@ Key principles:
 When generating Hook scripts, strictly use the project's API. Quick reference:
 ''';
 
+  // ==================== 本地 API 手册检索 ====================
+
+  /// 完整 API 手册不拼接进提示词，改为导出到设备本地文件，
+  /// 由模型通过 shell_exec 按需检索（见 manualGuideEn）。
+  static const String manualGuideZh = '''
+
+【API 手册检索（生成脚本前必须查阅）】
+完整 API 手册已导出到设备本地文件，请用 shell_exec 工具按需检索，不要凭记忆编造 API：
+- Jx（Xposed 语法糖）手册：{xposedPath}
+- Fx（Frida 语法糖）手册：{fridaPath}
+
+检索方式（先定位章节、再读取片段，避免整份输出）：
+- 查看章节标题：grep -n '^#' {xposedPath}
+- 关键词查找：grep -n -i hookMethod {xposedPath}
+- 读取指定行段：sed -n '120,180p' {xposedPath}
+
+生成 Hook 脚本前，必须先用上述命令确认 API 名称、参数与返回类型；若手册中确实没有对应 API，说明该能力不支持，不要自行发明。
+''';
+
+  static const String manualGuideEn = '''
+
+[API Manual Lookup (required before generating scripts)]
+The full API manuals are exported to local device files. Use the shell_exec tool to look up what you need instead of relying on memory:
+- Jx (Xposed sugar) manual: {xposedPath}
+- Fx (Frida sugar) manual: {fridaPath}
+
+Lookup pattern (locate the section first, then read only a slice):
+- List section headings: grep -n '^#' {xposedPath}
+- Keyword search: grep -n -i hookMethod {xposedPath}
+- Read a line range: sed -n '120,180p' {xposedPath}
+
+Before generating a hook script, confirm the API name, parameters, and return type with the commands above. If the manual truly has no such API, the capability is unsupported; do not invent one.
+''';
+
   // ==================== 输出规范 ====================
 
   static const String outputGuideZh = '''

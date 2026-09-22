@@ -875,7 +875,7 @@ class AiToolRegistry {
   static final _shellExec = AiToolDefinition(
     name: 'shell_exec',
     description:
-        '执行 shell 命令（可选 su root 权限）。可替代 launch/stop_target_app、read_target_logs、get_device_info 等工具。常用命令：\n- pm list packages [keyword] 列出已装应用\n- am start -n pkg/activity 启动应用\n- am force-stop pkg 停止应用\n- logcat -d --pid=<pid> 读取日志\n- getprop ro.build.version.sdk 获取 SDK 版本\n- screencap -p /sdcard/screen.png 截图',
+        '执行 shell 命令（可选 su root 权限）。读取项目 API 手册时，仅使用 grep、sed、awk 等只读命令检索关键章节，不要一次性读取整份手册；生成 Frida/Xposed 脚本前必须先检索对应手册。可替代 launch/stop_target_app、read_target_logs、get_device_info 等工具。常用命令：\n- pm list packages [keyword] 列出已装应用\n- am start -n pkg/activity 启动应用\n- am force-stop pkg 停止应用\n- logcat -d --pid=<pid> 读取日志\n- getprop ro.build.version.sdk 获取 SDK 版本\n- screencap -p /sdcard/screen.png 截图',
     descriptionEn:
         'Execute a shell command (optional su root). Can replace launch/stop_target_app, read_target_logs, get_device_info, etc. Common commands:\n- pm list packages [keyword] list installed apps\n- am start -n pkg/activity launch app\n- am force-stop pkg stop app\n- logcat -d --pid=<pid> read logs\n- getprop ro.build.version.sdk get SDK version\n- screencap -p /sdcard/screen.png screenshot',
     parameters:

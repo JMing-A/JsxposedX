@@ -11,7 +11,7 @@ import 'package:JsxposedX/features/apk_analysis/domain/repositories/apk_analysis
 import 'package:JsxposedX/features/apk_analysis/domain/repositories/apk_analysis_query_repository.dart';
 import 'package:JsxposedX/features/so_analysis/data/datasources/so_analysis_datasource.dart';
 
-import 'apk_reverse_chat_tools_spec.dart';
+import 'package:JsxposedX/features/ai/domain/environments/apk_reverse_chat_tools_spec.dart';
 
 class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
   ApkReverseChatEnvironmentAdapter({
@@ -39,7 +39,7 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
 
   @override
   String get environmentVersion =>
-      'apk_reverse:${isZh ? "zh" : "en"}:so_tools_v1';
+      'apk_reverse:${isZh ? "zh" : "en"}:so_tools_v2_manual_lookup';
 
   String? get sessionId => _sessionId;
 
@@ -56,7 +56,9 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
       await _apkActionRepository.closeApkSession(previousSessionId);
     }
 
-    final nextSessionId = await _apkActionRepository.openApkSession(packageName);
+    final nextSessionId = await _apkActionRepository.openApkSession(
+      packageName,
+    );
     _sessionId = nextSessionId;
 
     final manifest = await _apkQueryRepository.parseManifest(nextSessionId);
@@ -71,10 +73,10 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
         .toList(growable: false);
 
     final apkContext = AiApkContext.fromManifest(manifest, soFiles: soFiles);
-    final apiSummary = await ApkReversePromptBuilder.loadApiSummary();
+    final manualBundle = await ApkReversePromptBuilder.exportManualBundle();
     final systemPrompt = ApkReversePromptBuilder(isZh: isZh)
         .withApkContext(apkContext)
-        .withApiSummary(apiSummary)
+        .withManualBundle(manualBundle)
         .withTools()
         .buildSystemPrompt();
 
@@ -111,9 +113,7 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
         handlers: {
           for (final r in allRegs) r.definition.name: r.handlerFactory(ctx),
         },
-        registrations: {
-          for (final r in allRegs) r.definition.name: r,
-        },
+        registrations: {for (final r in allRegs) r.definition.name: r},
       ),
     );
   }

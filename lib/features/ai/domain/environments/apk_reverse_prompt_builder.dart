@@ -1,6 +1,20 @@
+import 'dart:io';
+
 import 'package:JsxposedX/features/ai/data/prompts/system_prompts.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_context.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+
+/// 已导出到设备本地的 API 手册路径（供 shell_exec 检索）
+class AiManualBundle {
+  const AiManualBundle({
+    required this.xposedManualPath,
+    required this.fridaManualPath,
+  });
+
+  final String xposedManualPath;
+  final String fridaManualPath;
+}
 
 class ApkReversePromptBuilder {
   ApkReversePromptBuilder({bool isZh = true})
@@ -9,7 +23,7 @@ class ApkReversePromptBuilder {
 
   bool _isZh;
   AiApkContext? _apkContext;
-  String? _apiSummary;
+  AiManualBundle? _manualBundle;
   bool _withTools;
 
   ApkReversePromptBuilder lang(bool isZh) {
@@ -22,8 +36,10 @@ class ApkReversePromptBuilder {
     return this;
   }
 
-  ApkReversePromptBuilder withApiSummary(String summary) {
-    _apiSummary = summary;
+  /// 注入本地手册检索指引：脚本生成前由模型通过 shell_exec 按需查阅，
+  /// 避免把整份 API 手册拼接进每轮系统提示词。
+  ApkReversePromptBuilder withManualBundle(AiManualBundle bundle) {
+    _manualBundle = bundle;
     return this;
   }
 
@@ -50,12 +66,12 @@ class ApkReversePromptBuilder {
       );
     }
 
-    if (_apiSummary != null && _apiSummary!.isNotEmpty) {
-      buffer
-        ..writeln(
-          _isZh ? SystemPrompts.apiRefHeaderZh : SystemPrompts.apiRefHeaderEn,
-        )
-        ..writeln(_apiSummary);
+    if (_manualBundle != null) {
+      final guide =
+          (_isZh ? SystemPrompts.manualGuideZh : SystemPrompts.manualGuideEn)
+              .replaceAll('{xposedPath}', _manualBundle!.xposedManualPath)
+              .replaceAll('{fridaPath}', _manualBundle!.fridaManualPath);
+      buffer.writeln(guide);
     }
 
     buffer.writeln(
@@ -64,7 +80,23 @@ class ApkReversePromptBuilder {
     return buffer.toString();
   }
 
-  static Future<String> loadApiSummary() async {
-    return rootBundle.loadString('assets/raws/api_summary.md');
+  static Future<AiManualBundle> exportManualBundle() async {
+    final directory = await getApplicationSupportDirectory();
+    final manualDirectory = Directory('${directory.path}/ai_manuals');
+    await manualDirectory.create(recursive: true);
+
+    final xposedPath = '${manualDirectory.path}/JsxposedX_API.md';
+    final fridaPath = '${manualDirectory.path}/Frida_API.md';
+    await _copyAsset('assets/raws/JsxposedX_API.md', xposedPath);
+    await _copyAsset('assets/raws/Frida_API.md', fridaPath);
+    return AiManualBundle(
+      xposedManualPath: xposedPath,
+      fridaManualPath: fridaPath,
+    );
+  }
+
+  static Future<void> _copyAsset(String assetPath, String targetPath) async {
+    final content = await rootBundle.loadString(assetPath);
+    await File(targetPath).writeAsString(content, flush: true);
   }
 }

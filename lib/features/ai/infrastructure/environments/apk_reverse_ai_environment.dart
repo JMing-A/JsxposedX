@@ -64,10 +64,10 @@ class ApkReverseAiEnvironment {
         .toList(growable: false);
 
     final apkContext = AiApkContext.fromManifest(manifest, soFiles: soFiles);
-    final apiSummary = await ApkReversePromptBuilder.loadApiSummary();
+    final manualBundle = await ApkReversePromptBuilder.exportManualBundle();
     final prompt = ApkReversePromptBuilder(isZh: isZh)
         .withApkContext(apkContext)
-        .withApiSummary(apiSummary)
+        .withManualBundle(manualBundle)
         .withTools()
         .buildSystemPrompt();
     final allRegs = [
@@ -94,9 +94,7 @@ class ApkReverseAiEnvironment {
       handlers: {
         for (final r in allRegs) r.definition.name: r.handlerFactory(ctx),
       },
-      registrations: {
-        for (final r in allRegs) r.definition.name: r,
-      },
+      registrations: {for (final r in allRegs) r.definition.name: r},
     );
 
     final configuration = AiChatSessionEnvironment(
