@@ -201,11 +201,37 @@ abstract class AiContextPolicy with _$AiContextPolicy {
   }) = _AiContextPolicy;
 }
 
+/// 每轮用户消息可用的工具调用轮数预算。
+///
+/// 逆向场景单轮任务常需要 10 次以上工具调用（检索类名 → 反编译 → 生成
+/// Hook → 校验脚本），历史默认值 8 偏小，会在任务中途触发上限终止。
+/// 因此上调默认值，同时限定上限避免配置异常导致无限调用。
+const int kDefaultMaxToolRounds = 24;
+
+/// 合法区间下界：至少允许一轮工具调用，否则所有工具调用都会立即被判为
+/// 超限，等于静默禁用工具调用。
+const int kMinMaxToolRounds = 1;
+const int kMaxMaxToolRounds = 32;
+
+/// 历史默认值：早期版本 toolPolicy.maxRounds 默认为 8。读取配置时把仍然
+/// 停留在该值的项视为“未调整过”，解析为新默认值，让存量配置无需手动修改
+/// 即可获得修复；用户显式配置的其他数值保持原样。
+const int kLegacyDefaultMaxToolRounds = 8;
+
+/// 解析工具调用轮数配置：非正值与历史默认值回落到 [kDefaultMaxToolRounds]，
+/// 其余取值收敛到 [kMinMaxToolRounds]~[kMaxMaxToolRounds]。
+int resolveMaxToolRounds(int configured) {
+  if (configured <= 0 || configured == kLegacyDefaultMaxToolRounds) {
+    return kDefaultMaxToolRounds;
+  }
+  return configured.clamp(kMinMaxToolRounds, kMaxMaxToolRounds);
+}
+
 @freezed
 abstract class AiToolPolicy with _$AiToolPolicy {
   const factory AiToolPolicy({
     @Default(AiToolApprovalMode.riskyOnly) AiToolApprovalMode approvalMode,
-    @Default(8) int maxRounds,
+    @Default(kDefaultMaxToolRounds) int maxRounds,
     @Default(1024 * 1024) int maxResultBytes,
   }) = _AiToolPolicy;
 }

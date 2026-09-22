@@ -3873,7 +3873,7 @@ return $default(_that.approvalMode,_that.maxRounds,_that.maxResultBytes);case _:
 
 
 class _AiToolPolicy implements AiToolPolicy {
-  const _AiToolPolicy({this.approvalMode = AiToolApprovalMode.riskyOnly, this.maxRounds = 8, this.maxResultBytes = 1024 * 1024});
+  const _AiToolPolicy({this.approvalMode = AiToolApprovalMode.riskyOnly, this.maxRounds = kDefaultMaxToolRounds, this.maxResultBytes = 1024 * 1024});
   
 
 @override@JsonKey() final  AiToolApprovalMode approvalMode;

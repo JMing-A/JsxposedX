@@ -123,7 +123,55 @@ void main() {
     });
 
     test(
-      'prepares an OpenAI request using resolved secret and explicit endpoint',
+      'groups parallel tool call fragments by id when index is missing',
+      () async {
+        // 复现网关省略 index 字段时的并行工具调用：若不按 id 归组，
+        // 两个工具的 arguments 分片会拼进同一缓冲区导致 JSON 错乱。
+        String chunk(Object? id, String name, String arguments) => jsonEncode({
+              'choices': [
+                {
+                  'delta': {
+                    'tool_calls': [
+                      {
+                        'id': id,
+                        'function': {'name': name, 'arguments': arguments},
+                      },
+                    ],
+                  },
+                  'finish_reason': null,
+                },
+              ],
+            });
+
+        final values = await adapter
+            .decodeStream(
+              Stream.fromIterable([
+                utf8.encode('data: ${chunk('call-a', 'search_classes', '{"q"')}\n\n'),
+                utf8.encode('data: ${chunk('call-b', 'get_manifest', '{"k"')}\n\n'),
+                utf8.encode('data: ${chunk('call-a', '', ': 1}')}\n\n'),
+                utf8.encode('data: ${chunk('call-b', '', ': 2}')}\n\n'),
+                utf8.encode('data: ${chunk(null, '', '')}\n\n'),
+                utf8.encode('data: [DONE]\n\n'),
+              ]),
+              requestId: 'r-parallel',
+            )
+            .toList();
+
+        final deltas = values.whereType<AiToolCallDelta>().toList();
+        // call-a 的所有分片归到同一 index，call-b 归到另一 index，
+        // 两个工具的参数互不混拼。
+        expect(deltas.map((event) => event.index).toList(), [0, 1, 0, 1, 0]);
+        expect(
+          deltas[0].toolCallId,
+          'call-a',
+        );
+        expect(deltas[2].index, deltas[0].index);
+        expect(deltas[3].index, deltas[1].index);
+        expect(deltas[4].toolCallId, isNull);
+      },
+    );
+
+    test('prepares an OpenAI request using resolved secret and explicit endpoint',
       () {
         final connection = AiProviderConnection(
           id: 'c1',

@@ -85,7 +85,7 @@ abstract class AiToolPolicyDto with _$AiToolPolicyDto {
 
   const factory AiToolPolicyDto({
     @Default('riskyOnly') String approvalMode,
-    @Default(8) int maxRounds,
+    @Default(kDefaultMaxToolRounds) int maxRounds,
     @Default(1024 * 1024) int maxResultBytes,
   }) = _AiToolPolicyDto;
 
@@ -104,7 +104,9 @@ abstract class AiToolPolicyDto with _$AiToolPolicyDto {
       approvalMode,
       AiToolApprovalMode.riskyOnly,
     ),
-    maxRounds: maxRounds,
+    // 读取时统一解析轮数：存量配置里的历史默认值、非正值都会回落到
+    // 业务默认值，避免旧配置继续触发过早的工具调用终止。
+    maxRounds: resolveMaxToolRounds(maxRounds),
     maxResultBytes: maxResultBytes,
   );
 }

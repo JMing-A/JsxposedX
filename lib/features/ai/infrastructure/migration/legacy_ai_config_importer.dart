@@ -231,10 +231,13 @@ class LegacyAiConfigImporter {
                             approvalMode ??
                             existingAssistant?.toolPolicy.approvalMode ??
                             AiToolApprovalMode.riskyOnly,
-                        maxRounds:
-                            maxToolRounds?.clamp(0, 32).toInt() ??
-                            existingAssistant?.toolPolicy.maxRounds ??
-                            8,
+                        // 统一走解析收敛：非正值（含 0）回落默认值，
+                        // 历史默认 8 视为未调整迁移为 24，显式合法值保留。
+                        maxRounds: resolveMaxToolRounds(
+                          maxToolRounds ??
+                              existingAssistant?.toolPolicy.maxRounds ??
+                              kDefaultMaxToolRounds,
+                        ),
                       ),
               updatedAt: now,
             );

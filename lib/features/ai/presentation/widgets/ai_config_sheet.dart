@@ -291,7 +291,8 @@ class AIConfigSheet extends HookConsumerWidget {
           contextPolicy?.recentMessageLimit?.toString() ?? '',
       'assistant_tool_approval':
           toolPolicy?.approvalMode.name ?? AiToolApprovalMode.riskyOnly.name,
-      'assistant_tool_rounds': (toolPolicy?.maxRounds ?? 8).toString(),
+      'assistant_tool_rounds': (toolPolicy?.maxRounds ?? kDefaultMaxToolRounds)
+          .toString(),
     };
   }
 
@@ -1400,13 +1401,16 @@ class AIConfigSheet extends HookConsumerWidget {
                                               '',
                                         )
                                       : null;
+                                  // 空值/非法输入回落业务默认值；显式输入的
+                                  // 非法区间（如 0、超上限）在保存链路统一
+                                  // 解析收敛，避免静默禁用工具调用。
                                   final maxToolRounds =
                                       int.tryParse(
                                         values['assistant_tool_rounds']
                                                 ?.toString() ??
                                             '',
                                       ) ??
-                                      8;
+                                      kDefaultMaxToolRounds;
                                   final existsInList = configList.any(
                                     (item) => item.id == resolvedConfig.id,
                                   );

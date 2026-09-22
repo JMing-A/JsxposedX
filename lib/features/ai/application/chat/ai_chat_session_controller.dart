@@ -401,7 +401,7 @@ class AiChatSessionController {
     await _runAssistantLoop(
       initialHistory: [...history, toolMessage],
       initialParentId: toolMessage.id,
-      startingToolRound: _toolRoundsIn(history),
+      startingToolRound: _toolRoundsInCurrentTurn(history),
     );
   }
 
@@ -416,17 +416,45 @@ class AiChatSessionController {
     return null;
   }
 
-  int _toolRoundsIn(List<AiMessage> messages) {
-    return messages
-        .where(
-          (message) =>
-              message.role == AiMessageRole.assistant &&
-              message.parts.whereType<AiToolCallPart>().isNotEmpty,
-        )
-        .length;
+  /// 统计“当前用户轮次”内已发生的工具调用轮数。
+  ///
+  /// 轮数上限是每轮用户消息的预算（`_startGeneration` 始终从 0 起算），
+  /// 因此重试失败的工具结果时也必须从最近一条用户消息之后开始计数。
+  /// 若沿用整段会话的累计值，历史越长越容易在重试时误判超限，表现为
+  /// 间歇性的“工具调用被强行终止”。
+  int _toolRoundsInCurrentTurn(List<AiMessage> messages) {
+    var rounds = 0;
+    for (var index = messages.length - 1; index >= 0; index--) {
+      final message = messages[index];
+      if (message.role == AiMessageRole.user) break;
+      if (message.role == AiMessageRole.assistant &&
+          message.parts.whereType<AiToolCallPart>().isNotEmpty) {
+        rounds++;
+      }
+    }
+    return rounds;
   }
 
   Future<void> _runAssistantLoop({
+    required List<AiMessage> initialHistory,
+    required String initialParentId,
+    int startingToolRound = 0,
+  }) async {
+    try {
+      await _runAssistantLoopUnsafe(
+        initialHistory: initialHistory,
+        initialParentId: initialParentId,
+        startingToolRound: startingToolRound,
+      );
+    } catch (error, stackTrace) {
+      // 工具调用链路熔断：任何未捕获异常（DB 写入失败、状态错乱等）
+      // 都不允许让会话永久停留在 requesting/streaming 中间状态，
+      // 统一恢复到 failed（可重试），保证功能不会直接卡死。
+      await _recoverFromLoopFailure(error, stackTrace);
+    }
+  }
+
+  Future<void> _runAssistantLoopUnsafe({
     required List<AiMessage> initialHistory,
     required String initialParentId,
     int startingToolRound = 0,
@@ -439,9 +467,12 @@ class AiChatSessionController {
     final tools = model.capabilities.toolCalling
         ? environment?.tools ?? const <AiToolSpec>[]
         : const <AiToolSpec>[];
-    final maxToolRounds = assistant.toolPolicy.maxRounds.clamp(0, 32);
+    final maxToolRounds = resolveMaxToolRounds(assistant.toolPolicy.maxRounds);
 
     for (var toolRound = startingToolRound; ; toolRound++) {
+      // 轮数预算耗尽时本轮不再下发工具，让模型基于已获取的信息直接给出
+      // 文本结论，避免“达到上限即强行终止”导致整轮结果被丢弃。
+      final toolRoundsExhausted = toolRound >= maxToolRounds;
       final requestId = _idFactory();
       final assistantMessageId = _idFactory();
       final previousTime =
@@ -477,7 +508,10 @@ class AiChatSessionController {
         options: assistant.generation.copyWith(
           stream: assistant.generation.stream && model.capabilities.streaming,
         ),
-        tools: tools,
+        // 轮数预算耗尽后转为纯文本轮：不下发工具定义，模型只能输出文本
+        // 总结收尾；若模型仍违规返回 tool_calls（部分网关不遵守），
+        // 再在下方以 toolRoundsExceeded 失败收尾，避免无限循环。
+        tools: toolRoundsExhausted ? const <AiToolSpec>[] : tools,
       );
 
       _emit(
@@ -519,11 +553,12 @@ class AiChatSessionController {
         await _finishRun(finalSnapshot, placeholder);
         return;
       }
+      // 仅 name 缺失才视为协议畸形整轮失败；call id 缺失（部分 DeepSeek
+      // 流式分片全程 id 为 null）由 _messageFromSnapshot 合成稳定 id 继续，
+      // OpenAI 协议只要求 assistant.tool_calls[].id 与 tool 消息的
+      // tool_call_id 配对一致，合成 id 不影响回传。
       final invalidToolCall = finalSnapshot.toolCalls.firstWhere(
-        (call) =>
-            call.id == null ||
-            call.id!.trim().isEmpty ||
-            call.name.trim().isEmpty,
+        (call) => call.name.trim().isEmpty,
         orElse: () => const AiToolCallSnapshot(index: -1),
       );
       if (invalidToolCall.index >= 0) {
@@ -533,14 +568,14 @@ class AiChatSessionController {
             failure: AiFailure(
               code: AiFailureCode.protocolMalformed,
               messageKey:
-                  'Responses tool call ${invalidToolCall.index} is missing call_id or name',
+                  'Responses tool call ${invalidToolCall.index} is missing name',
             ),
           ),
           placeholder,
         );
         return;
       }
-      if (toolRound >= maxToolRounds || environment?.toolExecutor == null) {
+      if (toolRoundsExhausted || environment?.toolExecutor == null) {
         await _finishRun(
           finalSnapshot.copyWith(
             status: AiStreamStatus.failed,
@@ -560,7 +595,10 @@ class AiChatSessionController {
       );
       workingHistory = [...workingHistory, assistantMessage];
 
-      final needsApproval = _needsToolApproval(assistant.toolPolicy, assistantMessage);
+      final needsApproval = _needsToolApproval(
+        assistant.toolPolicy,
+        assistantMessage,
+      );
       if (needsApproval) {
         _emit(
           _state.copyWith(
@@ -671,20 +709,37 @@ class AiChatSessionController {
   }) async {
     final executor = environment!.toolExecutor!;
     AiToolResult rawResult;
-    try {
-      rawResult = await executor.execute(
-        toolCall,
-        onProgress: (progress) {
-          _sendToolProgress(toolCall.id, progress);
-        },
-      );
-    } catch (error) {
+    final rawArguments = toolCall.arguments['_rawArguments'];
+    if (rawArguments is String) {
+      // 兜底重试：参数拼接并修复后仍不是合法 JSON 时不执行工具，
+      // 把格式错误连同原始参数文本明确回传给模型，模型在下一轮
+      // 自我修正后重新调用（受 maxToolRounds 约束，不会无限循环）。
       rawResult = AiToolResult(
         toolCallId: toolCall.id,
         name: toolCall.name,
         success: false,
-        content: 'Tool execution failed: $error',
+        content:
+            'Tool arguments are not a valid JSON object; the tool was not '
+            'executed. Raw arguments received: $rawArguments. Call the tool '
+            'again with a complete JSON object, e.g. '
+            '{"keyword": "value"}.',
       );
+    } else {
+      try {
+        rawResult = await executor.execute(
+          toolCall,
+          onProgress: (progress) {
+            _sendToolProgress(toolCall.id, progress);
+          },
+        );
+      } catch (error) {
+        rawResult = AiToolResult(
+          toolCallId: toolCall.id,
+          name: toolCall.name,
+          success: false,
+          content: 'Tool execution failed: $error',
+        );
+      }
     }
     final content = _truncateUtf8Like(rawResult.content, maxResultBytes);
     final now = _now().toUtc();
@@ -724,10 +779,7 @@ class AiChatSessionController {
     // 当前版本通过工具执行状态变更（preparing -> running -> succeeded/failed）来展示进度
   }
 
-  bool _needsToolApproval(
-    AiToolPolicy toolPolicy,
-    AiMessage assistantMessage,
-  ) {
+  bool _needsToolApproval(AiToolPolicy toolPolicy, AiMessage assistantMessage) {
     if (toolPolicy.approvalMode == AiToolApprovalMode.never) return false;
     if (toolPolicy.approvalMode == AiToolApprovalMode.always) return true;
     // riskyOnly: 仅当消息中包含危险工具时才需要审批
@@ -737,9 +789,9 @@ class AiChatSessionController {
         .where((d) => d.isRisky == true)
         .map((d) => d.name)
         .toSet();
-    return assistantMessage.parts
-        .whereType<AiToolCallPart>()
-        .any((part) => riskyNames.contains(part.toolCall.name));
+    return assistantMessage.parts.whereType<AiToolCallPart>().any(
+      (part) => riskyNames.contains(part.toolCall.name),
+    );
   }
 
   List<AiMessage> _createRejectedToolResults(
@@ -795,7 +847,8 @@ class AiChatSessionController {
   }
 
   /// 是否有等待审批的工具调用
-  bool get hasPendingToolApproval => _approvalCompleter != null && !_approvalCompleter!.isCompleted;
+  bool get hasPendingToolApproval =>
+      _approvalCompleter != null && !_approvalCompleter!.isCompleted;
 
   void cancel() {
     // 如果有等待审批的工具，先拒绝它们
@@ -838,6 +891,69 @@ class AiChatSessionController {
           .then((_) => _conversationRepository.saveMessage(checkpoint))
           .catchError((Object _) {});
     });
+  }
+
+  /// 熔断恢复：把会话从异常中恢复到可重试的 failed 状态。
+  /// 将本轮未完成的 assistant 占位消息标记为失败并尽力持久化，
+  /// 同时清理运行中的传输订阅、checkpoint 与审批挂起状态。
+  Future<void> _recoverFromLoopFailure(
+    Object error,
+    StackTrace stackTrace,
+  ) async {
+    _runSubscription?.cancel();
+    _runSubscription = null;
+    _activeRun = null;
+    _checkpointTimer?.cancel();
+    _checkpointTimer = null;
+    _pendingCheckpointSnapshot = null;
+    final approvalCompleter = _approvalCompleter;
+    if (approvalCompleter != null && !approvalCompleter.isCompleted) {
+      approvalCompleter.complete(false);
+    }
+    _approvalCompleter = null;
+    _pendingApprovalAssistantMessage = null;
+    try {
+      await _checkpointTail;
+    } catch (_) {}
+
+    final failure = AiFailure(
+      code: AiFailureCode.unknown,
+      messageKey: 'ai.error.unknown',
+      detail: error.toString(),
+      retryable: true,
+    );
+    var messages = _state.messages;
+    final placeholderIndex = messages.lastIndexWhere(
+      (message) =>
+          message.role == AiMessageRole.assistant &&
+          message.status != AiMessageStatus.completed &&
+          message.status != AiMessageStatus.failed &&
+          message.status != AiMessageStatus.cancelled,
+    );
+    if (placeholderIndex >= 0) {
+      final failedMessage = messages[placeholderIndex].copyWith(
+        status: AiMessageStatus.failed,
+        failure: failure,
+        completedAt: _now().toUtc(),
+      );
+      messages = [
+        for (var i = 0; i < messages.length; i++)
+          i == placeholderIndex ? failedMessage : messages[i],
+      ];
+      try {
+        await _conversationRepository.saveMessage(failedMessage);
+      } catch (_) {}
+    }
+    _emit(
+      _state.copyWith(
+        messages: messages,
+        phase: AiChatSessionPhase.failed,
+        activeRequestId: null,
+        activeAssistantMessageId: null,
+        runSnapshot: null,
+        failure: failure,
+      ),
+    );
   }
 
   Future<void> _finishRun(
@@ -889,14 +1005,15 @@ class AiChatSessionController {
         AiContentPart.reasoning(snapshot.reasoning),
       if (snapshot.text.isNotEmpty) AiContentPart.text(snapshot.text),
       for (final call in snapshot.toolCalls)
-        if (_decodeArguments(call.argumentsJson) case final arguments?)
-          AiContentPart.toolCall(
-            toolCall: AiToolCall(
-              id: call.id ?? 'tool-${call.index}',
-              name: call.name,
-              arguments: arguments,
-            ),
+        AiContentPart.toolCall(
+          toolCall: AiToolCall(
+            id: call.id != null && call.id!.trim().isNotEmpty
+                ? call.id!
+                : 'tool-${placeholder.id}-${call.index}',
+            name: call.name,
+            arguments: _decodeArguments(call.argumentsJson),
           ),
+        ),
     ];
     final status = switch (snapshot.status) {
       AiStreamStatus.idle => AiMessageStatus.queued,
@@ -916,13 +1033,45 @@ class AiChatSessionController {
     );
   }
 
-  static Map<String, Object?>? _decodeArguments(String source) {
+  /// 拼接完成后的工具参数解码：先按原始 JSON 校验，失败时对 DeepSeek
+  /// 流式分片截断的典型畸形（缺外层大括号、尾随逗号）做保守修复，
+  /// 仍失败则保留原始文本（_rawArguments），由工具执行阶段生成格式
+  /// 错误回传模型自我修正，而不是让 toolCall part 凭空消失。
+  static Map<String, Object?> _decodeArguments(String source) {
     if (source.isEmpty) return const {};
+    final direct = _tryDecodeArgumentsJson(source);
+    if (direct != null) return direct;
+    final repaired = _repairArgumentsJson(source);
+    if (repaired != null) return repaired;
+    final raw = source.length > 512 ? source.substring(0, 512) : source;
+    return <String, Object?>{'_rawArguments': raw};
+  }
+
+  static Map<String, Object?>? _tryDecodeArgumentsJson(String source) {
     try {
       final decoded = jsonDecode(source);
       return decoded is Map
           ? Map<String, Object?>.from(decoded)
           : <String, Object?>{'value': decoded};
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// 保守修复两类常见拼接畸形：
+  /// 1. 分片截断导致缺外层大括号（如 `"keyword": "vip"`）→ 包裹大括号；
+  /// 2. 对象字面量带尾随逗号（如 `{"a": 1,}`）→ 清理后重试。
+  /// 修复后仍不是 JSON 对象则返回 null 交给兜底重试。
+  static Map<String, Object?>? _repairArgumentsJson(String source) {
+    var candidate = source.trim();
+    if (candidate.isEmpty) return null;
+    if (!candidate.startsWith('{')) {
+      candidate = '{$candidate}';
+    }
+    candidate = candidate.replaceAll(RegExp(r',\s*([}\]])'), r'$1');
+    try {
+      final decoded = jsonDecode(candidate);
+      return decoded is Map ? Map<String, Object?>.from(decoded) : null;
     } on FormatException {
       return null;
     }

@@ -770,7 +770,7 @@ return $default(_that.approvalMode,_that.maxRounds,_that.maxResultBytes);case _:
 @JsonSerializable()
 
 class _AiToolPolicyDto extends AiToolPolicyDto {
-  const _AiToolPolicyDto({this.approvalMode = 'riskyOnly', this.maxRounds = 8, this.maxResultBytes = 1024 * 1024}): super._();
+  const _AiToolPolicyDto({this.approvalMode = 'riskyOnly', this.maxRounds = kDefaultMaxToolRounds, this.maxResultBytes = 1024 * 1024}): super._();
   factory _AiToolPolicyDto.fromJson(Map<String, dynamic> json) => _$AiToolPolicyDtoFromJson(json);
 
 @override@JsonKey() final  String approvalMode;

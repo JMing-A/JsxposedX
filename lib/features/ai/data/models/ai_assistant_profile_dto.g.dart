@@ -54,7 +54,7 @@ Map<String, dynamic> _$AiContextPolicyDtoToJson(_AiContextPolicyDto instance) =>
 _AiToolPolicyDto _$AiToolPolicyDtoFromJson(Map<String, dynamic> json) =>
     _AiToolPolicyDto(
       approvalMode: json['approvalMode'] as String? ?? 'riskyOnly',
-      maxRounds: (json['maxRounds'] as num?)?.toInt() ?? 8,
+      maxRounds: (json['maxRounds'] as num?)?.toInt() ?? kDefaultMaxToolRounds,
       maxResultBytes: (json['maxResultBytes'] as num?)?.toInt() ?? 1024 * 1024,
     );
 

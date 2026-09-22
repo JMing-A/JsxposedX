@@ -88,6 +88,27 @@ class AiConfigActionDatasource {
       list[index] = config;
       await saveConfigList(list);
     }
+    // 若更新的正是当前生效配置，需同步刷新当前配置快照（ai_config 键），
+    // 否则读取端（如快捷设置面板）在刷新后仍会拿到切换前的旧模型。
+    await _syncCurrentConfigIfActive(config);
+  }
+
+  /// 当 [config] 是当前生效配置时，将其写入当前配置存储键。
+  Future<void> _syncCurrentConfigIfActive(AiConfigDto config) async {
+    final currentRaw = await _storage.getString(_currentConfigStorageKey);
+    if (currentRaw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(currentRaw);
+      if (decoded is! Map<String, dynamic>) return;
+      final current = AiConfigDto.fromJson(decoded);
+      if (current.id != config.id) return;
+      await _storage.setString(
+        _currentConfigStorageKey,
+        jsonEncode(config.toJson()),
+      );
+    } catch (_) {
+      // 当前配置快照损坏时跳过同步，不影响列表更新结果。
+    }
   }
 
   /// 删除配置

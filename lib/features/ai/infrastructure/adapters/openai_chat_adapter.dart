@@ -69,6 +69,12 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
     required String requestId,
   }) async* {
     var sequence = 0;
+    // Tool call fragments are grouped by call id first: some gateways omit
+    // the index field (or reuse 0) while streaming parallel tool calls.
+    // Grouping by id keeps arguments of different calls from interleaving
+    // into one buffer, which would corrupt the assembled JSON.
+    final toolCallIndexById = <String, int>{};
+    var nextToolCallIndex = 0;
     yield AiStreamEvent.started(requestId: requestId, sequence: sequence++);
     var completed = false;
     try {
@@ -142,11 +148,24 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
               final functionMap = function is Map
                   ? Map<String, Object?>.from(function)
                   : const <String, Object?>{};
+              final deltaId = call['id']?.toString();
+              var index = aiIntValue(call['index']);
+              if (deltaId != null && deltaId.isNotEmpty) {
+                final knownIndex = toolCallIndexById[deltaId];
+                if (knownIndex != null) {
+                  // 后续分块 id 为 null 时由 index 归组；这里以 id 归组，
+                  // 防止网关省略/复用 index 时不同工具的参数被拼进同一缓冲区。
+                  index = knownIndex;
+                } else {
+                  index ??= nextToolCallIndex++;
+                  toolCallIndexById[deltaId] = index;
+                }
+              }
               yield AiStreamEvent.toolCallDelta(
                 requestId: requestId,
                 sequence: sequence++,
-                index: aiIntValue(call['index']) ?? 0,
-                toolCallId: call['id']?.toString(),
+                index: index ?? 0,
+                toolCallId: deltaId,
                 name: functionMap['name']?.toString(),
                 argumentsDelta: functionMap['arguments']?.toString(),
               );
