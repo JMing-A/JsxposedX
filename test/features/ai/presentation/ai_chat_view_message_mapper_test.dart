@@ -96,6 +96,54 @@ void main() {
     );
   });
 
+  test('renders assistant text alongside tool results without losing either', () {
+    final result = mapper.mapHistory([
+      AiMessage(
+        id: 'assistant-turn',
+        conversationId: 'conversation',
+        role: AiMessageRole.assistant,
+        parts: const [
+          AiContentPart.reasoning('need to inspect'),
+          AiContentPart.text('Let me inspect the APK first.'),
+          AiContentPart.toolCall(
+            toolCall: AiToolCall(
+              id: 'call-1',
+              name: 'inspect_apk',
+              arguments: {},
+            ),
+          ),
+        ],
+        createdAt: _epoch,
+      ),
+      AiMessage(
+        id: 'result-message',
+        conversationId: 'conversation',
+        role: AiMessageRole.tool,
+        parts: const [
+          AiContentPart.toolResult(
+            toolResult: AiToolResult(
+              toolCallId: 'call-1',
+              name: 'inspect_apk',
+              success: true,
+              content: 'done',
+            ),
+          ),
+        ],
+        createdAt: _epoch.add(const Duration(seconds: 1)),
+      ),
+    ]);
+
+    // 多轮工具调用中，assistant 的自然语言文本不再被工具气泡覆盖丢失。
+    expect(result, hasLength(2));
+    expect(result[0].id, 'assistant-turn');
+    expect(result[0].isToolResultBubble, isFalse);
+    expect(result[0].content, contains('need to inspect'));
+    expect(result[0].content, contains('Let me inspect the APK first.'));
+    expect(result[1].isToolResultBubble, isTrue);
+    expect(result[1].id, 'tool-result-result-message-call-1');
+    expect(result[1].toolInvocations.single.callId, 'call-1');
+  });
+
   test('keeps tool call and result paired when multiple calls are present', () {
     final result = mapper.mapHistory([
       AiMessage(

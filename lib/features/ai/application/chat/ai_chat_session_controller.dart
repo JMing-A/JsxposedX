@@ -154,27 +154,43 @@ class AiChatSessionController {
     ], persistUserMessage: true);
   }
 
-  Future<void> retryLastResponse() async {
+  /// 中断后的非破坏性接续：保留全部历史消息（含工具调用与部分回复），
+  /// 追加一条与当前语言匹配的“继续”指令，基于中断前的上下文继续推进任务，
+  /// 而不是回退到会话起始状态重新生成。
+  Future<void> continueFromInterruption({required bool isZh}) async {
     await initialize();
     _ensureCanStart();
-    final assistantIndex = _state.messages.lastIndexWhere(
-      (message) =>
-          message.role == AiMessageRole.assistant &&
-          (message.status == AiMessageStatus.failed ||
-              message.status == AiMessageStatus.cancelled ||
-              message.status == AiMessageStatus.interrupted),
+    final keyword = isZh ? '继续' : 'Continue';
+    final createdAt = _now().toUtc();
+    final userMessage = AiMessage(
+      id: _idFactory(),
+      conversationId: conversationId,
+      role: AiMessageRole.user,
+      parts: [AiContentPart.text(keyword)],
+      parentId: _state.messages.lastOrNull?.id,
+      createdAt: createdAt,
     );
-    if (assistantIndex <= 0) {
-      throw StateError('There is no failed response to retry');
-    }
-    final userMessage = _findUserMessageBefore(assistantIndex);
-    if (userMessage == null) {
-      throw StateError('The failed response has no user parent');
-    }
-    await _regenerateFrom(userMessage);
+    await _startGeneration(userMessage, [
+      ..._state.messages,
+      userMessage,
+    ], persistUserMessage: true);
   }
 
-  Future<void> retryByMessageId(String messageId) async {
+  Future<void> retryLastResponse({bool isZh = true}) async {
+    await initialize();
+    _ensureCanStart();
+    final hasInterrupted = _state.messages.any(
+      (message) =>
+          message.role == AiMessageRole.assistant && _isResumable(message),
+    );
+    if (!hasInterrupted) {
+      throw StateError('There is no failed response to retry');
+    }
+    // 中断后的重试不再回退会话，改为发送“继续”指令接续推进。
+    await continueFromInterruption(isZh: isZh);
+  }
+
+  Future<void> retryByMessageId(String messageId, {bool isZh = true}) async {
     await initialize();
     _ensureCanStart();
     final index = _state.messages.indexWhere(
@@ -187,6 +203,12 @@ class AiChatSessionController {
           (part) => !part.toolResult.success,
         )) {
       await _retryFailedToolResult(index);
+      return;
+    }
+    // 中断/取消/失败的 assistant 轮次：保留既有上下文，
+    // 以“继续”指令接续推进，避免会话跳回初始消息。
+    if (target.role == AiMessageRole.assistant && _isResumable(target)) {
+      await continueFromInterruption(isZh: isZh);
       return;
     }
     if (target.role == AiMessageRole.user) {
@@ -244,10 +266,9 @@ class AiChatSessionController {
     await deleteMessage(messageId);
   }
 
-  /// Continues a cancelled/interrupted assistant turn by replaying its user
-  /// parent. The existing assistant row is replaced rather than duplicating
-  /// the user message.
-  Future<void> continueGeneration(String messageId) async {
+  /// 以非破坏性方式接续被中断的 assistant 轮次：不删除任何历史消息，
+  /// 发送与当前语言匹配的“继续”指令，基于中断前的上下文继续推进任务。
+  Future<void> continueGeneration(String messageId, {bool isZh = true}) async {
     await initialize();
     _ensureCanStart();
     final index = _state.messages.indexWhere(
@@ -260,9 +281,13 @@ class AiChatSessionController {
             target.status != AiMessageStatus.interrupted)) {
       throw StateError('Message is not resumable');
     }
-    final user = _findUserMessageBefore(index);
-    if (user == null) throw StateError('The response has no user parent');
-    await _regenerateFrom(user);
+    await continueFromInterruption(isZh: isZh);
+  }
+
+  static bool _isResumable(AiMessage message) {
+    return message.status == AiMessageStatus.failed ||
+        message.status == AiMessageStatus.cancelled ||
+        message.status == AiMessageStatus.interrupted;
   }
 
   Future<void> editUserMessageAndResend({

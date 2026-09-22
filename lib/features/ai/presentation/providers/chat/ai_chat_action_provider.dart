@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:JsxposedX/core/enums/ai_api_type.dart';
 import 'package:JsxposedX/core/models/ai_config.dart';
+import 'package:JsxposedX/core/providers/locale_provider.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_controller.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_environment.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_state.dart';
@@ -648,7 +649,7 @@ class AiChatAction extends _$AiChatAction {
     final controller = _readyController();
     if (controller == null) return;
     try {
-      await controller.retryByMessageId(messageId);
+      await controller.retryByMessageId(messageId, isZh: _resolveIsZh());
     } catch (error) {
       if (!_disposed) {
         state = state.copyWith(
@@ -688,19 +689,47 @@ class AiChatAction extends _$AiChatAction {
     final controller = _readyController();
     if (controller == null) return;
     try {
-      await controller.continueGeneration(messageId);
+      await controller.continueGeneration(messageId, isZh: _resolveIsZh());
     } catch (error) {
       if (!_disposed) state = state.copyWith(error: '继续生成失败：$error');
     }
   }
 
   Future<void> retryLastTurn() async {
-    if (state.isStreaming || !state.hasUserMessages) return;
+    if (state.isStreaming) return;
+    final controller = _readyController();
+    if (controller == null) return;
+    // 存在中断/失败的 assistant 轮次时，不回退会话，
+    // 改为发送语言匹配的“继续”指令，基于中断前的上下文接续推进。
+    final hasInterrupted = controller.state.messages.any(
+      (message) =>
+          message.role == standard.AiMessageRole.assistant &&
+          (message.status == standard.AiMessageStatus.failed ||
+              message.status == standard.AiMessageStatus.cancelled ||
+              message.status == standard.AiMessageStatus.interrupted),
+    );
+    if (hasInterrupted) {
+      try {
+        await controller.continueFromInterruption(isZh: _resolveIsZh());
+      } catch (error) {
+        if (!_disposed) {
+          state = state.copyWith(
+            error: '重试失败：$error',
+            lastResponseIssue: AiResponseIssue.networkError,
+          );
+        }
+      }
+      return;
+    }
+    if (!state.hasUserMessages) return;
     final lastUser = state.standardMessages.lastWhere(
       (message) => message.role == standard.AiMessageRole.user,
     );
     await retryByMessageId(lastUser.id);
   }
+
+  /// 读取当前应用语言，用于生成语言匹配的“继续”指令。
+  bool _resolveIsZh() => ref.read(localeProvider).languageCode == 'zh';
 
   Future<void> stopStreaming() async {
     if (!state.isStreaming) return;

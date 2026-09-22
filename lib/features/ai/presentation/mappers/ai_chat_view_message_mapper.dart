@@ -53,6 +53,33 @@ class AiChatViewMessageMapper {
       final calls = message.parts.whereType<AiToolCallPart>();
       if (message.role == AiMessageRole.assistant && calls.isNotEmpty) {
         flushPending();
+        // 先渲染该 assistant 消息自身的文本/思考内容，
+        // 保证多轮工具调用中每轮的自然语言回复不会丢失。
+        final text = message.parts
+            .whereType<AiTextPart>()
+            .map((part) => part.text)
+            .join();
+        final reasoning = message.parts
+            .whereType<AiReasoningPart>()
+            .map((part) => part.text)
+            .join();
+        final assistantContent = AiThinkingMarkup.compose(
+          thinking: reasoning,
+          answer: text,
+          duration: null,
+        );
+        if (assistantContent.isNotEmpty) {
+          display.add(
+            AiChatViewMessage(
+              id: message.id,
+              sourceMessageId: message.id,
+              role: message.role.name,
+              content: assistantContent,
+              rawDetails: _historyDetails(message),
+              transportTrace: message.transportTrace,
+            ),
+          );
+        }
         for (final part in calls) {
           final id = part.toolCall.id;
           if (id.isEmpty) continue;

@@ -334,6 +334,76 @@ void main() {
       await controller.close();
     },
   );
+
+  test(
+    'continues from an interruption with a Chinese continue prompt',
+    () async {
+      final transport = _CancelThenTextTransport();
+      final controller = _controller(catalog, conversations, transport);
+      await controller.initialize();
+
+      final sending = controller.sendText('analyze this app');
+      await transport.sent.future;
+      controller.cancel();
+      await sending;
+      expect(
+        controller.state.messages.last.status,
+        AiMessageStatus.cancelled,
+      );
+
+      await controller.retryLastResponse(isZh: true);
+
+      // 中断历史完整保留，不回退到会话起始状态。
+      final stored = await conversations.getMessages('conversation');
+      expect(stored, hasLength(4));
+      expect(
+        stored[0].parts.whereType<AiTextPart>().single.text,
+        'analyze this app',
+      );
+      expect(stored[1].status, AiMessageStatus.cancelled);
+      expect(stored[2].role, AiMessageRole.user);
+      expect(stored[2].parts.whereType<AiTextPart>().single.text, '继续');
+      expect(
+        stored.last.parts.whereType<AiTextPart>().single.text,
+        'resumed answer',
+      );
+      // 接续请求基于既有上下文，包含原始问题与“继续”指令。
+      expect(transport.requests, hasLength(2));
+      final secondMessages = transport.requests[1].body['messages'] as List;
+      final contents = secondMessages
+          .whereType<Map>()
+          .map((message) => message['content'])
+          .toList();
+      expect(contents, contains('analyze this app'));
+      expect(contents, contains('继续'));
+      await controller.close();
+    },
+  );
+
+  test(
+    'continues from an interruption with an English continue prompt',
+    () async {
+      final transport = _CancelThenTextTransport();
+      final controller = _controller(catalog, conversations, transport);
+      await controller.initialize();
+
+      final sending = controller.sendText('analyze this app');
+      await transport.sent.future;
+      controller.cancel();
+      await sending;
+
+      await controller.retryLastResponse(isZh: false);
+
+      final stored = await conversations.getMessages('conversation');
+      expect(stored, hasLength(4));
+      expect(stored[2].parts.whereType<AiTextPart>().single.text, 'Continue');
+      expect(
+        stored.last.parts.whereType<AiTextPart>().single.text,
+        'resumed answer',
+      );
+      await controller.close();
+    },
+  );
 }
 
 AiChatSessionController _controller(
@@ -513,6 +583,57 @@ class _ScriptedToolTransport implements AiTransport {
       statusCode: 200,
       headers: const {},
       body: Stream.value(body),
+    );
+  }
+}
+
+class _CancelThenTextTransport implements AiTransport {
+  final List<PreparedAiRequest> requests = [];
+  final StreamController<List<int>> _firstBody = StreamController<List<int>>();
+  final Completer<void> sent = Completer<void>();
+
+  @override
+  Future<AiTransportResponse> send(
+    PreparedAiRequest request, {
+    required AiCancellationToken cancellation,
+  }) async {
+    requests.add(request);
+    if (requests.length == 1) {
+      if (!sent.isCompleted) sent.complete();
+      unawaited(
+        cancellation.cancelled.then((_) {
+          _firstBody.addError(
+            const AiTransportException(
+              AiFailure(
+                code: AiFailureCode.cancelled,
+                messageKey: 'ai.error.cancelled',
+              ),
+            ),
+          );
+          _firstBody.close();
+        }),
+      );
+      return AiTransportResponse(
+        statusCode: 200,
+        headers: const {},
+        body: _firstBody.stream,
+      );
+    }
+    // 第二轮起：模拟模型基于“继续”指令返回接续内容。
+    final event = {
+      'choices': [
+        {
+          'delta': {'content': 'resumed answer'},
+          'finish_reason': 'stop',
+        },
+      ],
+    };
+    return AiTransportResponse(
+      statusCode: 200,
+      headers: const {},
+      body: Stream.value(
+        utf8.encode('data: ${jsonEncode(event)}\n\ndata: [DONE]\n\n'),
+      ),
     );
   }
 }
