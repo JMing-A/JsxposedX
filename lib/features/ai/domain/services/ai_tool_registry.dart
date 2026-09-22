@@ -59,7 +59,8 @@ class AiToolRegistration {
   final AiToolDangerLevel danger;
 
   /// handler 延迟构造工厂（环境装配时传入运行时上下文）
-  final AiChatToolHandler Function(ApkReverseToolRuntimeContext ctx) handlerFactory;
+  final AiChatToolHandler Function(ApkReverseToolRuntimeContext ctx)
+  handlerFactory;
 
   /// 执行超时（封装标准 §4.2 超时矩阵）
   final Duration timeout;
@@ -81,8 +82,7 @@ class AiToolRegistry {
     AiToolRegistration(
       definition: AiToolDefinition(
         name: 'get_manifest',
-        description:
-            '获取 APK 的完整 Manifest 信息，包括权限、四大组件、SDK 版本、debuggable 等',
+        description: '获取 APK 的完整 Manifest 信息，包括权限、四大组件、SDK 版本、debuggable 等',
         descriptionEn:
             'Get the full APK Manifest, including permissions, components, SDK versions, debuggable flag, etc.',
         parameters: ToolParametersBuilder.empty(),
@@ -184,9 +184,10 @@ class AiToolRegistry {
     description: '反编译指定类为 Java 源代码。需要提供完整类名（如 com.example.app.MainActivity）',
     descriptionEn:
         'Decompile the specified class into Java source code. Requires the fully qualified class name (e.g., com.example.app.MainActivity).',
-    parameters: (ToolParametersBuilder()
-          ..addString('className', '要反编译的类的全限定名', required: true))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('className', '要反编译的类的全限定名', required: true))
+            .build(),
   );
 
   static final _getSmali = AiToolDefinition(
@@ -194,9 +195,10 @@ class AiToolRegistry {
     description: '获取指定类的 Smali 字节码。适合需要查看底层实现细节的场景',
     descriptionEn:
         'Get the Smali bytecode for the specified class. Useful for inspecting low-level implementation details.',
-    parameters: (ToolParametersBuilder()
-          ..addString('className', '要查看的类的全限定名', required: true))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('className', '要查看的类的全限定名', required: true))
+            .build(),
   );
 
   static final _listPackages = AiToolDefinition(
@@ -205,13 +207,13 @@ class AiToolRegistry {
         '列出指定前缀下的子包名。传空字符串列出顶层包。注意：此工具只用于浏览包结构，不能搜索关键词。如果需要搜索类，使用 search_classes',
     descriptionEn:
         'List sub-packages under a given prefix. Pass an empty string for top-level packages. Note: this tool only browses package structure, not keyword search. Use search_classes to find classes.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'prefix',
-            '包名前缀，如 "com.example"，空字符串表示顶层',
-            required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'prefix',
+              '包名前缀，如 "com.example"，空字符串表示顶层',
+              required: true,
+            ))
+            .build(),
   );
 
   static final _listClasses = AiToolDefinition(
@@ -220,9 +222,13 @@ class AiToolRegistry {
         '列出指定包下的所有类，返回类名、方法数、字段数、是否抽象/接口/枚举等信息。注意：此工具需要精确的包名，不能搜索关键词。如果不知道包名，使用 search_classes',
     descriptionEn:
         'List all classes under the specified package, returning class names, method/field counts, and flags such as abstract/interface/enum. Requires an exact package name; use search_classes if unsure.',
-    parameters: (ToolParametersBuilder()
-          ..addString('packageName', '包名，如 "com.example.app"', required: true))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'packageName',
+              '包名，如 "com.example.app"',
+              required: true,
+            ))
+            .build(),
   );
 
   static final _searchClasses = AiToolDefinition(
@@ -231,13 +237,13 @@ class AiToolRegistry {
         '在所有包中搜索类名包含指定关键词的类，返回匹配的全限定类名列表。用于查找 VIP、支付、登录、加密等功能相关的类。重要：严格使用用户提到的关键词，不要自己发明新关键词',
     descriptionEn:
         'Search all packages for classes whose names contain the given keyword and return matching fully-qualified class names. Use it to locate classes related to VIP, payment, login, encryption, etc. Important: use only the keywords the user mentioned; do not invent new ones.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'keyword',
-            '搜索关键词，不区分大小写，如 "vip"、"pay"、"login"、"encrypt"',
-            required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'keyword',
+              '搜索关键词，不区分大小写，如 "vip"、"pay"、"login"、"encrypt"',
+              required: true,
+            ))
+            .build(),
   );
 
   static final _listApkFiles = AiToolDefinition(
@@ -246,44 +252,43 @@ class AiToolRegistry {
         '列出 APK 内指定目录下的文件和子目录。传空字符串列出根目录，传 "lib/" 列出所有架构目录，传 "lib/arm64-v8a/" 列出该架构下的所有 SO 文件。分析 Native 层前先用此工具确认 SO 文件路径',
     descriptionEn:
         'List files and subdirectories under the given path inside the APK. Pass an empty string for the root, "lib/" for architecture folders, or "lib/arm64-v8a/" for all SO files of that ABI. Use this before analyzing the native layer to confirm SO paths.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'path',
-            '目录路径，如 ""（根目录）、"lib/"、"lib/arm64-v8a/"',
-          required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'path',
+              '目录路径，如 ""（根目录）、"lib/"、"lib/arm64-v8a/"',
+              required: true,
+            ))
+            .build(),
   );
 
   static final _getSoInfo = AiToolDefinition(
     name: 'get_so_info',
-    description:
-        '获取指定 SO 文件的基本信息，包括 ELF 头信息、架构、依赖库、导出/导入符号数量、JNI 函数数量等',
+    description: '获取指定 SO 文件的基本信息，包括 ELF 头信息、架构、依赖库、导出/导入符号数量、JNI 函数数量等',
     descriptionEn:
         'Get basic information about the specified SO file, including ELF header, architecture, dependencies, exported/imported symbol counts, and JNI function count.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'soPath',
-            'SO 文件在 APK 中的路径，如 "lib/arm64-v8a/libnative.so"',
-            required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'soPath',
+              'SO 文件在 APK 中的路径，如 "lib/arm64-v8a/libnative.so"',
+              required: true,
+            ))
+            .build(),
   );
 
   static final _searchSoSymbols = AiToolDefinition(
     name: 'search_so_symbols',
-    description:
-        '在 SO 文件中搜索符号（函数名），支持搜索导出和导入符号。用于查找加密、签名、校验等关键函数',
+    description: '在 SO 文件中搜索符号（函数名），支持搜索导出和导入符号。用于查找加密、签名、校验等关键函数',
     descriptionEn:
         'Search symbols (function names) in an SO file, covering both exported and imported symbols. Useful for locating key functions for encryption, signing, and verification.',
-    parameters: (ToolParametersBuilder()
-          ..addString('soPath', 'SO 文件路径', required: true)
-          ..addString(
-            'keyword',
-            '搜索关键词，如 "encrypt"、"sign"、"check"',
-            required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('soPath', 'SO 文件路径', required: true)
+              ..addString(
+                'keyword',
+                '搜索关键词，如 "encrypt"、"sign"、"check"',
+                required: true,
+              ))
+            .build(),
   );
 
   static final _getJniFunctions = AiToolDefinition(
@@ -292,25 +297,26 @@ class AiToolRegistry {
         '获取 SO 文件中的所有 JNI 函数列表，包括静态注册和动态注册的 JNI 函数，返回 Java 类名、方法名、地址等信息',
     descriptionEn:
         'List all JNI functions in the SO file, including statically and dynamically registered ones, returning Java class names, method names, addresses, etc.',
-    parameters: (ToolParametersBuilder()
-          ..addString('soPath', 'SO 文件路径', required: true))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('soPath', 'SO 文件路径', required: true))
+            .build(),
   );
 
   static final _searchSoStrings = AiToolDefinition(
     name: 'search_so_strings',
-    description:
-        '在 SO 文件中搜索字符串，用于查找加密密钥、API URL、调试信息等敏感字符串',
+    description: '在 SO 文件中搜索字符串，用于查找加密密钥、API URL、调试信息等敏感字符串',
     descriptionEn:
         'Search strings in the SO file to locate sensitive strings such as encryption keys, API URLs, and debug messages.',
-    parameters: (ToolParametersBuilder()
-          ..addString('soPath', 'SO 文件路径', required: true)
-          ..addString(
-            'keyword',
-            '搜索关键词，如 "key"、"http"、"password"',
-            required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('soPath', 'SO 文件路径', required: true)
+              ..addString(
+                'keyword',
+                '搜索关键词，如 "key"、"http"、"password"',
+                required: true,
+              ))
+            .build(),
   );
 
   static final _generateSoHook = AiToolDefinition(
@@ -318,190 +324,180 @@ class AiToolRegistry {
     description: '为指定的 SO 符号生成 Frida Hook 代码模板，包括参数解析、返回值修改等',
     descriptionEn:
         'Generate a Frida hook code template for the specified SO symbol, including argument parsing and return-value modification.',
-    parameters: (ToolParametersBuilder()
-          ..addString('soPath', 'SO 文件路径', required: true)
-          ..addString('symbolName', '符号名称', required: true)
-          ..addString(
-            'address',
-            '符号地址（十六进制字符串，如 "0x1234"）',
-            required: true,
-          ))
-        .build(),
-    // 注意：仅生成代码模板文本、不写文件，按"非文件修改不危险"原则
-    // 不设系统默认危险标记，危险与否完全由用户自行配置。
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('soPath', 'SO 文件路径', required: true)
+              ..addString('symbolName', '符号名称', required: true)
+              ..addString(
+                'address',
+                '符号地址（十六进制字符串，如 "0x1234"）',
+                required: true,
+              ))
+            .build(),
+    // 可执行 Hook 代码属于敏感能力，即使只返回文本也必须先获得用户确认。
+    isRisky: true,
   );
 
   // ---- 脚本生命周期工具定义 ----
 
   static final _genXposedHook = AiToolDefinition(
     name: 'generate_xposed_hook',
-    description:
-        '为指定 Java 类/方法生成 Jx 糖 Xposed Hook 脚本模板。缺省方法名时生成所有方法的枚举骨架。',
+    description: '为指定 Java 类/方法生成 Jx 糖 Xposed Hook 脚本模板。缺省方法名时生成所有方法的枚举骨架。',
     descriptionEn:
         'Generate a Jx sugar Xposed Hook script template for a specific Java class/method. If no method name is given, enumerates all method skeletons.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'className',
-            '要 Hook 的类全限定名 / Fully qualified class name to hook',
-            required: true,
-          )
-          ..addString(
-            'methodName',
-            '方法名 / Method name (optional; omit to enumerate all methods)',
-            required: false,
-          )
-          ..addStringArray(
-            'parameterTypes',
-            '参数类型列表如 ["int", "String"] / Parameter type list e.g. ["int", "String"]',
-            required: false,
-          )
-          ..addString(
-            'hookType',
-            'Hook 模式 / Hook mode',
-            enumValues: ['before_after', 'before', 'after', 'replace'],
-            required: false,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'className',
+                '要 Hook 的类全限定名 / Fully qualified class name to hook',
+                required: true,
+              )
+              ..addString(
+                'methodName',
+                '方法名 / Method name (optional; omit to enumerate all methods)',
+                required: false,
+              )
+              ..addStringArray(
+                'parameterTypes',
+                '参数类型列表如 ["int", "String"] / Parameter type list e.g. ["int", "String"]',
+                required: false,
+              )
+              ..addString(
+                'hookType',
+                'Hook 模式 / Hook mode',
+                enumValues: ['before_after', 'before', 'after', 'replace'],
+                required: false,
+              ))
+            .build(),
   );
 
   static final _genFridaHook = AiToolDefinition(
     name: 'generate_frida_hook',
     description:
-        '统一的 Fx 糖 Frida Hook 模板生成（升级替代 generate_so_hook）。支持三种模式：javaMethod（Java方法） / jniSymbol（JNI符号） / address（地址Hook）。generate_so_hook 仍可用但建议改用本工具。',
+        '统一的 Fx 糖 Frida Hook 模板生成（升级替代 generate_so_hook）。支持三种模式：javaMethod（Java方法） / jniSymbol（JNI符号） / address（地址Hook）。generate_so_hook 仍可用但建议改用本工具。调用前必须先向用户询问是否确认生成，未获得明确肯定答复不得调用。',
     descriptionEn:
-        'Unified Fx sugar Frida Hook template generation (upgrade, supersedes generate_so_hook). Supports three modes: javaMethod / jniSymbol / address. generate_so_hook is still available but this tool is recommended.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'mode',
-            '模板模式 / Template mode',
-            enumValues: ['javaMethod', 'jniSymbol', 'address'],
-            required: true,
-          )
-          ..addString(
-            'className',
-            'Java 类全限定名（javaMethod 模式必填）',
-            required: false,
-          )
-          ..addString(
-            'methodName',
-            'Java 方法名（javaMethod 模式必填）',
-            required: false,
-          )
-          ..addStringArray(
-            'parameterTypes',
-            '参数类型列表（可选）',
-            required: false,
-          )
-          ..addString(
-            'soPath',
-            'SO 文件路径如 lib/arm64-v8a/libnative.so（jniSymbol/address 模式必填）',
-            required: false,
-          )
-          ..addString(
-            'symbolName',
-            '符号名称（jniSymbol 模式必填）',
-            required: false,
-          )
-          ..addString(
-            'address',
-            '十六进制地址如 0x1234（address 模式必填）',
-            required: false,
-          ))
-        .build(),
+        'Unified Fx sugar Frida Hook template generation (upgrade, supersedes generate_so_hook). Supports javaMethod, jniSymbol, and address modes. Ask for explicit user confirmation before calling; do not call without an affirmative reply.',
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'mode',
+                '模板模式 / Template mode',
+                enumValues: ['javaMethod', 'jniSymbol', 'address'],
+                required: true,
+              )
+              ..addString(
+                'className',
+                'Java 类全限定名（javaMethod 模式必填）',
+                required: false,
+              )
+              ..addString(
+                'methodName',
+                'Java 方法名（javaMethod 模式必填）',
+                required: false,
+              )
+              ..addStringArray('parameterTypes', '参数类型列表（可选）', required: false)
+              ..addString(
+                'soPath',
+                'SO 文件路径如 lib/arm64-v8a/libnative.so（jniSymbol/address 模式必填）',
+                required: false,
+              )
+              ..addString('symbolName', '符号名称（jniSymbol 模式必填）', required: false)
+              ..addString(
+                'address',
+                '十六进制地址如 0x1234（address 模式必填）',
+                required: false,
+              ))
+            .build(),
+    isRisky: true,
   );
 
   static final _saveScript = AiToolDefinition(
     name: 'save_script',
-    description:
-        '将脚本保存部署到目标包。Xposed 脚本自动加 [tradition] 前缀。同名不覆盖时返回冲突。',
+    description: '将脚本保存部署到目标包。Xposed 脚本自动加 [tradition] 前缀。同名不覆盖时返回冲突。',
     descriptionEn:
         'Save and deploy a script to the target package. Xposed scripts get [tradition] prefix automatically. Returns conflict if same name exists without overwrite flag.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'scriptType',
-            '脚本类型 / Script type',
-            enumValues: ['frida', 'xposed'],
-            required: true,
-          )
-          ..addString(
-            'fileName',
-            '脚本文件名 / Script file name (auto-appends .js)',
-            required: true,
-          )
-          ..addString(
-            'code',
-            '脚本完整代码 / Full script code',
-            required: true,
-          )
-          ..addBoolean(
-            'overwrite',
-            '是否覆盖同名文件 / Whether to overwrite existing file',
-            required: false,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'scriptType',
+                '脚本类型 / Script type',
+                enumValues: ['frida', 'xposed'],
+                required: true,
+              )
+              ..addString(
+                'fileName',
+                '脚本文件名 / Script file name (auto-appends .js)',
+                required: true,
+              )
+              ..addString('code', '脚本完整代码 / Full script code', required: true)
+              ..addBoolean(
+                'overwrite',
+                '是否覆盖同名文件 / Whether to overwrite existing file',
+                required: false,
+              ))
+            .build(),
   );
 
   static final _listScripts = AiToolDefinition(
     name: 'list_scripts',
-    description:
-        '列出目标包已有脚本及启用状态（AI 的环境感知）。可选过滤 scriptType。',
+    description: '列出目标包已有脚本及启用状态（AI 的环境感知）。可选过滤 scriptType。',
     descriptionEn:
         'List existing scripts for the target package with enable/disable status (environment awareness for AI). Optionally filter by scriptType.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'scriptType',
-            '脚本类型过滤 / Filter by script type',
-            enumValues: ['frida', 'xposed'],
-            required: false,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'scriptType',
+              '脚本类型过滤 / Filter by script type',
+              enumValues: ['frida', 'xposed'],
+              required: false,
+            ))
+            .build(),
   );
 
   static final _toggleScript = AiToolDefinition(
     name: 'toggle_script',
-    description:
-        '启用或停用指定脚本（影响下次注入行为）。',
+    description: '启用或停用指定脚本（影响下次注入行为）。',
     descriptionEn:
         'Enable or disable a specified script (affects next injection).',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'scriptType',
-            '脚本类型 / Script type',
-            enumValues: ['frida', 'xposed'],
-            required: true,
-          )
-          ..addString(
-            'fileName',
-            '脚本文件名 / Script file name',
-            required: true,
-          )
-          ..addBoolean(
-            'enabled',
-            '是否启用 / Whether to enable',
-            required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'scriptType',
+                '脚本类型 / Script type',
+                enumValues: ['frida', 'xposed'],
+                required: true,
+              )
+              ..addString(
+                'fileName',
+                '脚本文件名 / Script file name',
+                required: true,
+              )
+              ..addBoolean(
+                'enabled',
+                '是否启用 / Whether to enable',
+                required: true,
+              ))
+            .build(),
   );
 
   static final _validateScript = AiToolDefinition(
     name: 'validate_script',
-    description:
-        '校验脚本文本语法合法性（括号配对/引号闭合等基础检查），部署前把关。',
+    description: '校验脚本文本语法合法性（括号配对/引号闭合等基础检查），部署前把关。',
     descriptionEn:
         'Validate script text syntax (brackets/quotes balancing, basic checks) before deployment.',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'code',
-            '待校验的脚本全文 / Full script code to validate',
-            required: true,
-          )
-          ..addString(
-            'engine',
-            '脚本引擎 / Script engine',
-            enumValues: ['frida', 'xposed'],
-            required: false,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'code',
+                '待校验的脚本全文 / Full script code to validate',
+                required: true,
+              )
+              ..addString(
+                'engine',
+                '脚本引擎 / Script engine',
+                enumValues: ['frida', 'xposed'],
+                required: false,
+              ))
+            .build(),
   );
 
   static final _readScript = AiToolDefinition(
@@ -509,45 +505,46 @@ class AiToolRegistry {
     description: '读取已存在脚本的完整内容（AI 修改/迭代前置条件）。',
     descriptionEn:
         'Read the full content of an existing script (prerequisite for AI modification/iteration).',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'scriptType',
-            '脚本类型 / Script type',
-            enumValues: ['frida', 'xposed'],
-            required: true,
-          )
-          ..addString(
-            'fileName',
-            '脚本文件名 / Script file name',
-            required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'scriptType',
+                '脚本类型 / Script type',
+                enumValues: ['frida', 'xposed'],
+                required: true,
+              )
+              ..addString(
+                'fileName',
+                '脚本文件名 / Script file name',
+                required: true,
+              ))
+            .build(),
   );
 
   static final _deleteScript = AiToolDefinition(
     name: 'delete_script',
-    description:
-        '删除指定脚本文件（需 confirm=true 二次确认，拒绝删除保留文件 hook.js/loader.js）。',
+    description: '删除指定脚本文件（需 confirm=true 二次确认，拒绝删除保留文件 hook.js/loader.js）。',
     descriptionEn:
         'Delete a specified script file (requires confirm=true for confirmation; refuses to delete reserved files hook.js/loader.js).',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'scriptType',
-            '脚本类型 / Script type',
-            enumValues: ['frida', 'xposed'],
-            required: true,
-          )
-          ..addString(
-            'fileName',
-            '脚本文件名 / Script file name',
-            required: true,
-          )
-          ..addBoolean(
-            'confirm',
-            '确认删除 / Confirm deletion (must be true)',
-            required: true,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'scriptType',
+                '脚本类型 / Script type',
+                enumValues: ['frida', 'xposed'],
+                required: true,
+              )
+              ..addString(
+                'fileName',
+                '脚本文件名 / Script file name',
+                required: true,
+              )
+              ..addBoolean(
+                'confirm',
+                '确认删除 / Confirm deletion (must be true)',
+                required: true,
+              ))
+            .build(),
   );
 
   // ---- 脚本生命周期工具注册 ----
@@ -616,13 +613,21 @@ class AiToolRegistry {
     name: 'export_conversation',
     description: '导出当前会话为 Markdown 文件。',
     descriptionEn: 'Export the current conversation as a Markdown file.',
-    parameters: (ToolParametersBuilder()
-          ..addString('format', '导出格式 / Format',
-              enumValues: ['markdown', 'json'], required: false)
-          ..addBoolean('includeToolCalls', '是否包含工具调用 / Include tool calls',
-              required: false)
-          ..addString('fileName', '文件名 / File name', required: false))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'format',
+                '导出格式 / Format',
+                enumValues: ['markdown', 'json'],
+                required: false,
+              )
+              ..addBoolean(
+                'includeToolCalls',
+                '是否包含工具调用 / Include tool calls',
+                required: false,
+              )
+              ..addString('fileName', '文件名 / File name', required: false))
+            .build(),
   );
 
   static final _generateReport = AiToolDefinition(
@@ -630,43 +635,54 @@ class AiToolRegistry {
     description: '汇总会话中的分析成果生成结构化逆向分析报告。',
     descriptionEn:
         'Summarize analysis findings from the session into a structured reverse engineering report.',
-    parameters: (ToolParametersBuilder()
-          ..addStringArray('sections', '所需章节 / Sections',
-              required: false)
-          ..addString('format', '格式 / Format',
-              enumValues: ['preview', 'save'], required: false))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addStringArray('sections', '所需章节 / Sections', required: false)
+              ..addString(
+                'format',
+                '格式 / Format',
+                enumValues: ['preview', 'save'],
+                required: false,
+              ))
+            .build(),
   );
 
   static final _saveNote = AiToolDefinition(
     name: 'save_note',
     description: '将分析笔记保存到包项目的 notes 目录。',
-    descriptionEn: 'Save an analysis note to the package project notes directory.',
-    parameters: (ToolParametersBuilder()
-          ..addString('title', '笔记标题 / Note title', required: true)
-          ..addString('content', '笔记内容（Markdown）/ Note content (Markdown)',
-              required: true))
-        .build(),
+    descriptionEn:
+        'Save an analysis note to the package project notes directory.',
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('title', '笔记标题 / Note title', required: true)
+              ..addString(
+                'content',
+                '笔记内容（Markdown）/ Note content (Markdown)',
+                required: true,
+              ))
+            .build(),
   );
 
   // ---- 数据分析工具定义 ----
 
   static final _analyzeManifest = AiToolDefinition(
     name: 'analyze_manifest',
-    description:
-        'Manifest 风险体检：危险权限分级、导出组件暴露面、debuggable/allowBackup 风险。',
+    description: 'Manifest 风险体检：危险权限分级、导出组件暴露面、debuggable/allowBackup 风险。',
     descriptionEn:
         'Manifest risk scan: dangerous permission grading, exported component exposure, debuggable/allowBackup risks.',
-    parameters: (ToolParametersBuilder()
-          ..addString('focus', '分析焦点 / Focus',
-              enumValues: ['permissions', 'components', 'all'], required: false))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'focus',
+              '分析焦点 / Focus',
+              enumValues: ['permissions', 'components', 'all'],
+              required: false,
+            ))
+            .build(),
   );
 
   static final _detectPackers = AiToolDefinition(
     name: 'detect_packers',
-    description:
-        '加固/壳识别（360、梆梆、爱加密、腾讯乐固等），输出壳类型与脱壳建议。',
+    description: '加固/壳识别（360、梆梆、爱加密、腾讯乐固等），输出壳类型与脱壳建议。',
     descriptionEn:
         'Packer detection (360, Bangcle, Ijiami, Tencent Legu, etc.), with packer type and unpacking suggestions.',
     parameters: ToolParametersBuilder.empty(),
@@ -685,20 +701,27 @@ class AiToolRegistry {
     description: '跨类代码模式搜索：批量扫描方法调用特征（如加密、签名校验）。',
     descriptionEn:
         'Cross-class code pattern search: batch scan for method call signatures (e.g., encryption, signature verification).',
-    parameters: (ToolParametersBuilder()
-          ..addString('pattern', '搜索正则 / Search regex', required: true)
-          ..addStringArray('classNames', '限定类名列表 / Class name filter',
-              required: false)
-          ..addInteger('maxClasses', '最大扫描类数 / Max classes', required: false))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('pattern', '搜索正则 / Search regex', required: true)
+              ..addStringArray(
+                'classNames',
+                '限定类名列表 / Class name filter',
+                required: false,
+              )
+              ..addInteger(
+                'maxClasses',
+                '最大扫描类数 / Max classes',
+                required: false,
+              ))
+            .build(),
   );
 
   // ---- 系统管控工具定义 ----
 
   static final _getDeviceInfo = AiToolDefinition(
     name: 'get_device_info',
-    description:
-        '环境感知：ABI、Android 版本、Root 状态、Zygisk/LSPosed 状态等。',
+    description: '环境感知：ABI、Android 版本、Root 状态、Zygisk/LSPosed 状态等。',
     descriptionEn:
         'Environment awareness: ABI, Android version, Root status, Zygisk/LSPosed status, etc.',
     parameters: ToolParametersBuilder.empty(),
@@ -709,10 +732,14 @@ class AiToolRegistry {
     description: '拉起/停止/重启目标应用（验证脚本注入效果的前置操作）。',
     descriptionEn:
         'Launch/stop/restart the target app (prerequisite for verifying script injection).',
-    parameters: (ToolParametersBuilder()
-          ..addString('action', '操作 / Action',
-              enumValues: ['launch', 'stop', 'restart'], required: true))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'action',
+              '操作 / Action',
+              enumValues: ['launch', 'stop', 'restart'],
+              required: true,
+            ))
+            .build(),
   );
 
   static final _listInstalledApps = AiToolDefinition(
@@ -720,23 +747,32 @@ class AiToolRegistry {
     description: '列出设备已装应用（非当前会话目标），辅助切换分析对象。',
     descriptionEn:
         'List installed apps on the device (not current target), assists switching analysis targets.',
-    parameters: (ToolParametersBuilder()
-          ..addString('keyword', '搜索关键词 / Search keyword', required: false)
-          ..addBoolean('includeSystem', '是否含系统应用 / Include system apps',
-              required: false))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('keyword', '搜索关键词 / Search keyword', required: false)
+              ..addBoolean(
+                'includeSystem',
+                '是否含系统应用 / Include system apps',
+                required: false,
+              ))
+            .build(),
   );
 
   static final _readTargetLogs = AiToolDefinition(
     name: 'read_target_logs',
     description: '读取目标 App 的 logcat（系统级日志）。',
     descriptionEn: 'Read logcat for the target app (system-level logs).',
-    parameters: (ToolParametersBuilder()
-          ..addString('keyword', '过滤关键词 / Filter keyword', required: false)
-          ..addString('level', '日志级别 / Log level',
-              enumValues: ['V', 'D', 'I', 'W', 'E'], required: false)
-          ..addInteger('limit', '最大行数 / Max lines', required: false))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('keyword', '过滤关键词 / Filter keyword', required: false)
+              ..addString(
+                'level',
+                '日志级别 / Log level',
+                enumValues: ['V', 'D', 'I', 'W', 'E'],
+                required: false,
+              )
+              ..addInteger('limit', '最大行数 / Max lines', required: false))
+            .build(),
   );
 
   // ---- 多模态工具定义 ----
@@ -754,11 +790,15 @@ class AiToolRegistry {
     description: 'dump 目标 App 当前界面视图树（类名/资源id/文本）。',
     descriptionEn:
         'Dump the target app current UI view hierarchy (class names, resource IDs, text content).',
-    parameters: (ToolParametersBuilder()
-          ..addInteger('maxDepth', '最大深度 / Max depth', required: false)
-          ..addString('filterById', '按资源ID过滤 / Filter by resource ID',
-              required: false))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addInteger('maxDepth', '最大深度 / Max depth', required: false)
+              ..addString(
+                'filterById',
+                '按资源ID过滤 / Filter by resource ID',
+                required: false,
+              ))
+            .build(),
   );
 
   static final _extractApkResource = AiToolDefinition(
@@ -766,10 +806,13 @@ class AiToolRegistry {
     description: '从 APK 提取指定图片资源并展示。',
     descriptionEn:
         'Extract and display a specified image resource from the APK.',
-    parameters: (ToolParametersBuilder()
-          ..addString('resourcePath', 'APK 内资源路径 / Resource path inside APK',
-              required: true))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()..addString(
+              'resourcePath',
+              'APK 内资源路径 / Resource path inside APK',
+              required: true,
+            ))
+            .build(),
   );
 
   // ---- 内容生产工具注册 ----
@@ -835,23 +878,24 @@ class AiToolRegistry {
         '执行 shell 命令（可选 su root 权限）。可替代 launch/stop_target_app、read_target_logs、get_device_info 等工具。常用命令：\n- pm list packages [keyword] 列出已装应用\n- am start -n pkg/activity 启动应用\n- am force-stop pkg 停止应用\n- logcat -d --pid=<pid> 读取日志\n- getprop ro.build.version.sdk 获取 SDK 版本\n- screencap -p /sdcard/screen.png 截图',
     descriptionEn:
         'Execute a shell command (optional su root). Can replace launch/stop_target_app, read_target_logs, get_device_info, etc. Common commands:\n- pm list packages [keyword] list installed apps\n- am start -n pkg/activity launch app\n- am force-stop pkg stop app\n- logcat -d --pid=<pid> read logs\n- getprop ro.build.version.sdk get SDK version\n- screencap -p /sdcard/screen.png screenshot',
-    parameters: (ToolParametersBuilder()
-          ..addString(
-            'command',
-            '完整的 shell 命令 / Full shell command',
-            required: true,
-          )
-          ..addBoolean(
-            'useSu',
-            '是否使用 su root 权限 / Use su for root access',
-            required: false,
-          )
-          ..addInteger(
-            'timeoutSeconds',
-            '超时秒数默认15 / Timeout seconds default 15',
-            required: false,
-          ))
-        .build(),
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'command',
+                '完整的 shell 命令 / Full shell command',
+                required: true,
+              )
+              ..addBoolean(
+                'useSu',
+                '是否使用 su root 权限 / Use su for root access',
+                required: false,
+              )
+              ..addInteger(
+                'timeoutSeconds',
+                '超时秒数默认15 / Timeout seconds default 15',
+                required: false,
+              ))
+            .build(),
   );
 
   // ---- 系统管控工具注册 ----
@@ -925,8 +969,7 @@ class AiToolRegistry {
   };
 
   /// 按工具名查找注册项（不限场景）
-  static AiToolRegistration? byName(String toolName) =>
-      _allByName[toolName];
+  static AiToolRegistration? byName(String toolName) => _allByName[toolName];
 
   /// 按工具名查询类别（UI 分组用，未注册返回 null）
   static AiToolCategory? categoryOf(String toolName) =>

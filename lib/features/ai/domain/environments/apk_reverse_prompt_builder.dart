@@ -53,9 +53,7 @@ class ApkReversePromptBuilder {
     if (_apiSummary != null && _apiSummary!.isNotEmpty) {
       buffer
         ..writeln(
-          _isZh
-              ? SystemPrompts.apiRefHeaderZh
-              : SystemPrompts.apiRefHeaderEn,
+          _isZh ? SystemPrompts.apiRefHeaderZh : SystemPrompts.apiRefHeaderEn,
         )
         ..writeln(_apiSummary);
     }

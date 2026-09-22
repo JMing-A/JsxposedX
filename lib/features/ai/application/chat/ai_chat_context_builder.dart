@@ -109,9 +109,17 @@ class AiChatContextBuilder {
             contextTokens,
             systemPromptTokens: systemPromptTokens,
           );
-    final protocolSafeSelected = _repairToolCallPairs(
+    // 修复工具调用配对可能重新带回被预算截断的历史消息；修复后必须
+    // 再次执行预算裁剪，避免“配对合法但请求超出上下文上限”。
+    final pairedSelected = _repairToolCallPairs(
       boundedSelected,
       eligible,
+    );
+    final protocolSafeSelected = _withinTokenBudget(
+      pairedSelected,
+      assistant.contextPolicy,
+      contextTokens,
+      systemPromptTokens: systemPromptTokens,
     );
     if (systemPrompt.isEmpty) return protocolSafeSelected;
     return [
@@ -219,10 +227,9 @@ class AiChatContextBuilder {
     var used = 0;
     for (final message in messages.reversed) {
       final estimated = _tokenEstimator.estimate(message);
-      if (selected.length >= policy.recentMessageMinimum &&
-          used + estimated > budget) {
-        break;
-      }
+      // 上下文硬预算优先于“至少保留 N 条消息”。否则一条超大的
+      // 工具结果或代码消息会让最终请求必然超过模型上下文限制。
+      if (used > 0 && used + estimated > budget) break;
       selected.add(message);
       used += estimated;
     }
