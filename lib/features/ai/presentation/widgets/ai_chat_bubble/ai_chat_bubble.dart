@@ -22,6 +22,7 @@ abstract class BaseAiChatBubble extends StatelessWidget {
   final List<AiToolInvocationView> toolInvocations;
   final VoidCallback? onToolApprove;
   final VoidCallback? onToolReject;
+  final String? errorHint;
 
   const BaseAiChatBubble({
     super.key,
@@ -40,6 +41,7 @@ abstract class BaseAiChatBubble extends StatelessWidget {
     this.toolInvocations = const <AiToolInvocationView>[],
     this.onToolApprove,
     this.onToolReject,
+    this.errorHint,
   });
 
   @protected
@@ -60,6 +62,7 @@ abstract class BaseAiChatBubble extends StatelessWidget {
       toolInvocations: toolInvocations,
       onToolApprove: onToolApprove,
       onToolReject: onToolReject,
+      errorHint: errorHint,
     );
   }
 
@@ -111,5 +114,6 @@ class AiChatBubble extends BaseAiChatBubble {
     super.toolInvocations,
     super.onToolApprove,
     super.onToolReject,
+    super.errorHint,
   });
 }

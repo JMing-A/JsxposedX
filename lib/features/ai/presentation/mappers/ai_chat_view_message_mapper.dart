@@ -5,6 +5,7 @@ import 'package:JsxposedX/features/ai/application/chat/ai_stream_snapshot.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_transport_trace.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_thinking_markup.dart';
+import 'package:JsxposedX/features/ai/infrastructure/migration/legacy_ai_conversation_migrator.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_view_message.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_tool_invocation_view.dart';
 
@@ -75,6 +76,13 @@ class AiChatViewMessageMapper {
               sourceMessageId: message.id,
               role: message.role.name,
               content: assistantContent,
+              // 工具调用轮次中断但已输出部分文本：保持正常气泡，仅附加提示。
+              errorHint: message.status == AiMessageStatus.failed &&
+                      message.failure != null
+                  ? LegacyAiConversationMigrator.describeAiFailure(
+                      message.failure!,
+                    )
+                  : null,
               rawDetails: _historyDetails(message),
               transportTrace: message.transportTrace,
             ),
@@ -146,7 +154,13 @@ class AiChatViewMessageMapper {
               duration: null, // Note: persisted messages don't yet store duration directly
             )
           : text;
-      if (content.isEmpty && message.status != AiMessageStatus.failed) continue;
+      if (content.isEmpty && message.status != AiMessageStatus.failed) {
+        continue;
+      }
+      // 与 mapStreaming 相同的分流：已输出部分内容后失败的持久化消息保持
+      // 正常气泡样式，仅附加 errorHint 提示；空内容失败保留异常气泡。
+      final failed = message.status == AiMessageStatus.failed;
+      final hasContent = content.trim().isNotEmpty;
       display.add(
         AiChatViewMessage(
           id: message.id,
@@ -155,7 +169,12 @@ class AiChatViewMessageMapper {
           content: content.isNotEmpty
               ? content
               : _failureDetail(message.failure),
-          isError: message.status == AiMessageStatus.failed,
+          isError: failed && !hasContent,
+          errorHint: failed && hasContent && message.failure != null
+              ? LegacyAiConversationMigrator.describeAiFailure(
+                  message.failure!,
+                )
+              : null,
           rawDetails: _historyDetails(message),
           transportTrace: message.transportTrace,
         ),
@@ -169,6 +188,12 @@ class AiChatViewMessageMapper {
     required String messageId,
     required AiStreamSnapshot snapshot,
   }) {
+    // 区分「空对话失败」与「已输出部分内容后失败」：
+    // 前者保留异常气泡（红边框 + 重试）；后者保持正常气泡样式与已有
+    // 内容，失败信息以 errorHint 提示条附加展示，不篡改气泡本身。
+    final failed = snapshot.status == AiStreamStatus.failed;
+    final hasContent =
+        snapshot.text.trim().isNotEmpty || snapshot.reasoning.trim().isNotEmpty;
     return AiChatViewMessage(
       id: messageId,
       sourceMessageId: messageId,
@@ -178,7 +203,16 @@ class AiChatViewMessageMapper {
         answer: snapshot.text,
         duration: snapshot.reasoningDuration,
       ),
-      isError: snapshot.status == AiStreamStatus.failed,
+      isError: failed && !hasContent,
+      errorHint: failed && hasContent
+          ? LegacyAiConversationMigrator.describeAiFailure(
+              snapshot.failure ??
+                  const AiFailure(
+                    code: AiFailureCode.unknown,
+                    messageKey: 'ai.error.unknown',
+                  ),
+            )
+          : null,
       rawDetails: _snapshotDetails(snapshot),
       transportTrace: snapshot.transportTrace,
       toolInvocations: snapshot.toolCalls

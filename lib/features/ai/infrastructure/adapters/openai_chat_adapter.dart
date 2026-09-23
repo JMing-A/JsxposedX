@@ -39,7 +39,7 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
 
     final body = <String, Object?>{
       'model': request.model.id,
-      'messages': request.messages.map(_messageJson).toList(growable: false),
+      'messages': _sanitizeMessages(request.messages),
       'stream': request.options.stream,
     };
     final options = request.options;
@@ -299,20 +299,82 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
     }
   }
 
-  static Map<String, Object?> _messageJson(AiMessage message) {
+  /// 序列化并净化历史消息。旧会话可能残留结构异常的消息：工具结果丢失
+  /// 导致的孤儿 tool_call、id 为空的 tool_call、配对断裂的孤立 tool 结果、
+  /// 流中断留下的空壳消息。OpenAI 兼容网关（如 SiliconFlow 报 20015
+  /// "messages in request are illegal"）会拒绝整个请求而非忽略异常条目，
+  /// 因此必须在请求侧丢弃这些无法回放的片段，让会话可以继续。
+  static List<Object?> _sanitizeMessages(List<AiMessage> messages) {
+    final serialized = <Object?>[];
+    var index = 0;
+    while (index < messages.length) {
+      final message = messages[index];
+      // tool 结果只能由前一条 assistant tool_calls 消费；单独出现必然非法。
+      if (message.role == AiMessageRole.tool) {
+        index += 1;
+        continue;
+      }
+
+      final callsById = <String, AiToolCallPart>{};
+      for (final part in message.parts.whereType<AiToolCallPart>()) {
+        final id = part.toolCall.id.trim();
+        if (id.isNotEmpty) callsById.putIfAbsent(id, () => part);
+      }
+      if (callsById.isEmpty) {
+        final json = _messageJson(message, const <String>{});
+        if (json != null) serialized.add(json);
+        index += 1;
+        continue;
+      }
+
+      // 协议要求 tool 结果紧邻 assistant tool_calls。只检查后续连续的 tool
+      // 消息，不能用全局 ID 配对，否则被 user/assistant 消息隔开的同 ID 结果
+      // 仍会形成服务端拒绝的非法序列。
+      final resultsById = <String, AiToolResult>{};
+      var cursor = index + 1;
+      while (cursor < messages.length &&
+          messages[cursor].role == AiMessageRole.tool) {
+        final result = messages[cursor].parts
+            .whereType<AiToolResultPart>()
+            .firstOrNull
+            ?.toolResult;
+        if (result != null && callsById.containsKey(result.toolCallId)) {
+          resultsById.putIfAbsent(result.toolCallId, () => result);
+        }
+        cursor += 1;
+      }
+      final pairedIds = callsById.keys.where(resultsById.containsKey).toSet();
+      final json = _messageJson(message, pairedIds);
+      if (json != null) serialized.add(json);
+      for (final id in callsById.keys) {
+        final result = resultsById[id];
+        if (result == null) continue;
+        serialized.add({
+          'role': 'tool',
+          'tool_call_id': id,
+          'content': result.content,
+        });
+      }
+      index = cursor;
+    }
+    return serialized;
+  }
+
+  static Map<String, Object?>? _messageJson(
+    AiMessage message,
+    Set<String> pairedToolCallIds,
+  ) {
     final content = aiTextContent(message);
-    final reasoning = message.parts
-        .whereType<AiReasoningPart>()
-        .map((part) => part.text)
-        .join();
-    final toolCalls = message.parts.whereType<AiToolCallPart>().toList();
-    final toolResult = message.parts.whereType<AiToolResultPart>().firstOrNull;
-    if (message.role == AiMessageRole.tool && toolResult != null) {
-      return {
-        'role': 'tool',
-        'tool_call_id': toolResult.toolResult.toolCallId,
-        'content': toolResult.toolResult.content,
-      };
+    // OpenAI 协议要求每个 tool_call 后必须紧跟对应的 tool 消息，反之亦然。
+    // 只回传两侧都存在的配对；id 为空的 tool_call（流中断的残留）直接丢弃。
+    final toolCalls = message.parts
+        .whereType<AiToolCallPart>()
+        .where((part) => pairedToolCallIds.contains(part.toolCall.id))
+        .toList(growable: false);
+    if (content.trim().isEmpty && toolCalls.isEmpty) {
+      // 净化后既无正文也无工具调用的空壳消息对上下文没有贡献，部分网关
+      // 会拒绝 content 为 null/空且无 tool_calls 的 assistant 消息。
+      return null;
     }
     final requestContent =
         message.role == AiMessageRole.user &&
@@ -321,10 +383,12 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
         : content;
     return {
       'role': message.role.name,
+      // 思考内容只存在于响应中，绝不能回传：DeepSeek 等推理模型的服务端
+      // （含 SiliconFlow，报 20015 "messages in request are illegal"）会
+      // 直接拒绝携带 reasoning_content 字段的请求。历史上下文只回传正文。
       'content': content.isEmpty && toolCalls.isNotEmpty
           ? null
           : requestContent,
-      if (reasoning.isNotEmpty) 'reasoning_content': reasoning,
       if (toolCalls.isNotEmpty)
         'tool_calls': toolCalls
             .map(

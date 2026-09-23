@@ -827,6 +827,8 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                           role: message.role,
                                                           isError:
                                                               message.isError,
+                                                          errorHint:
+                                                              message.errorHint,
                                                           isToolResultBubble:
                                                               message
                                                                   .isToolResultBubble,
@@ -853,6 +855,8 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                           role: message.role,
                                                           isError:
                                                               message.isError,
+                                                          errorHint:
+                                                              message.errorHint,
                                                           isToolResultBubble:
                                                               message
                                                                   .isToolResultBubble,

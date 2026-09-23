@@ -374,9 +374,9 @@ class AiToolRegistry {
   static final _genFridaHook = AiToolDefinition(
     name: 'generate_frida_hook',
     description:
-        '统一的 Fx 糖 Frida Hook 模板生成（升级替代 generate_so_hook）。支持三种模式：javaMethod（Java方法） / jniSymbol（JNI符号） / address（地址Hook）。generate_so_hook 仍可用但建议改用本工具。调用前必须先向用户询问是否确认生成，未获得明确肯定答复不得调用。',
+        '使用 Fx API 生成 Frida Hook 代码。支持三种模式：javaMethod（Java方法 Hook）、jniSymbol（JNI 符号 Hook）、address（地址 Hook）。调用前必须先向用户询问是否确认生成，未获得明确肯定答复不得调用。',
     descriptionEn:
-        'Unified Fx sugar Frida Hook template generation (upgrade, supersedes generate_so_hook). Supports javaMethod, jniSymbol, and address modes. Ask for explicit user confirmation before calling; do not call without an affirmative reply.',
+        'Generate Frida Hook code using the Fx API. Supports three modes: javaMethod (Java method hook), jniSymbol (JNI symbol hook), address (address-based hook). Ask for explicit user confirmation before calling; do not call without an affirmative reply.',
     parameters:
         (ToolParametersBuilder()
               ..addString(
@@ -875,9 +875,9 @@ class AiToolRegistry {
   static final _shellExec = AiToolDefinition(
     name: 'shell_exec',
     description:
-        '执行 shell 命令（可选 su root 权限）。读取项目 API 手册时，仅使用 grep、sed、awk 等只读命令检索关键章节，不要一次性读取整份手册；生成 Frida/Xposed 脚本前必须先检索对应手册。可替代 launch/stop_target_app、read_target_logs、get_device_info 等工具。常用命令：\n- pm list packages [keyword] 列出已装应用\n- am start -n pkg/activity 启动应用\n- am force-stop pkg 停止应用\n- logcat -d --pid=<pid> 读取日志\n- getprop ro.build.version.sdk 获取 SDK 版本\n- screencap -p /sdcard/screen.png 截图',
+        '执行 shell 命令（可选 su root 权限）。读取项目 API 手册时，仅使用 grep、sed、awk 等只读命令检索关键章节，不要一次性读取整份手册；生成 Frida/Xposed 脚本前必须先检索对应手册。常用命令：\n- pm list packages [keyword] 列出已装应用\n- am start -n pkg/activity 启动应用\n- am force-stop pkg 停止应用\n- logcat -d --pid=<pid> 读取日志\n- getprop ro.build.version.sdk 获取 SDK 版本\n- screencap -p /sdcard/screen.png 截图',
     descriptionEn:
-        'Execute a shell command (optional su root). Can replace launch/stop_target_app, read_target_logs, get_device_info, etc. Common commands:\n- pm list packages [keyword] list installed apps\n- am start -n pkg/activity launch app\n- am force-stop pkg stop app\n- logcat -d --pid=<pid> read logs\n- getprop ro.build.version.sdk get SDK version\n- screencap -p /sdcard/screen.png screenshot',
+        'Execute a shell command (optional su root). When reading the project API manual, use only read-only commands like grep, sed, awk to look up key sections; do not read the full manual at once. Before generating a Frida/Xposed script, always look up the corresponding manual first. Common commands:\n- pm list packages [keyword] list installed apps\n- am start -n pkg/activity launch app\n- am force-stop pkg stop app\n- logcat -d --pid=<pid> read logs\n- getprop ro.build.version.sdk get SDK version\n- screencap -p /sdcard/screen.png screenshot',
     parameters:
         (ToolParametersBuilder()
               ..addString(

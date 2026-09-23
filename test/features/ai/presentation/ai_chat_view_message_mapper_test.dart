@@ -287,6 +287,144 @@ void main() {
     expect(result.content, contains('partial'));
     expect(result.content, contains('thinking'));
     expect(result.isError, isFalse);
+    expect(result.errorHint, isNull);
+  });
+
+  test('keeps a partially streamed failed bubble normal with an error hint', () {
+    final result = mapper.mapStreaming(
+      messageId: 'streaming',
+      snapshot: const AiStreamSnapshot(
+        requestId: 'request',
+        text: 'Here is the partial answer before the stream died.',
+        status: AiStreamStatus.failed,
+        failure: AiFailure(
+          code: AiFailureCode.protocolTruncated,
+          messageKey: 'ai.error.protocolTruncated',
+        ),
+      ),
+    );
+
+    // 已输出部分内容后失败：气泡保持正常样式（isError=false），
+    // 错误信息通过 errorHint 附加展示，不篡改气泡。
+    expect(result.isError, isFalse);
+    expect(result.content, contains('partial answer'));
+    expect(result.errorHint, isNotNull);
+    expect(result.errorHint, contains('流式响应提前中断'));
+  });
+
+  test('keeps a partially streamed failed bubble normal for reasoning only', () {
+    final result = mapper.mapStreaming(
+      messageId: 'streaming',
+      snapshot: const AiStreamSnapshot(
+        requestId: 'request',
+        reasoning: 'partial thinking',
+        status: AiStreamStatus.failed,
+        failure: AiFailure(
+          code: AiFailureCode.serverFailure,
+          messageKey: 'Sorry, your account balance is insufficient',
+        ),
+      ),
+    );
+
+    // 仅思考内容也属于「已输出部分内容」，保持正常气泡 + 提示条。
+    expect(result.isError, isFalse);
+    expect(result.content, contains('partial thinking'));
+    expect(result.errorHint, contains('Sorry, your account balance'));
+  });
+
+  test('marks an empty failed stream as an error bubble without a hint', () {
+    final result = mapper.mapStreaming(
+      messageId: 'streaming',
+      snapshot: const AiStreamSnapshot(
+        requestId: 'request',
+        status: AiStreamStatus.failed,
+        failure: AiFailure(
+          code: AiFailureCode.serverFailure,
+          messageKey: 'Sorry, your account balance is insufficient',
+        ),
+      ),
+    );
+
+    // 完全未输出内容就中断：保留原异常气泡逻辑。
+    expect(result.isError, isTrue);
+    expect(result.errorHint, isNull);
+  });
+
+  test('keeps a failed persisted message with content normal with a hint', () {
+    final result = mapper.mapHistory([
+      AiMessage(
+        id: 'failed-with-content',
+        conversationId: 'conversation',
+        role: AiMessageRole.assistant,
+        parts: const [AiContentPart.text('partial persisted answer')],
+        status: AiMessageStatus.failed,
+        failure: const AiFailure(
+          code: AiFailureCode.protocolTruncated,
+          messageKey: 'ai.error.protocolTruncated',
+        ),
+        createdAt: _epoch,
+      ),
+    ]);
+
+    expect(result, hasLength(1));
+    expect(result.single.isError, isFalse);
+    expect(result.single.content, contains('partial persisted answer'));
+    expect(result.single.errorHint, contains('流式响应提前中断'));
+  });
+
+  test('marks an empty failed persisted message as an error bubble', () {
+    final result = mapper.mapHistory([
+      AiMessage(
+        id: 'failed-empty',
+        conversationId: 'conversation',
+        role: AiMessageRole.assistant,
+        parts: const [],
+        status: AiMessageStatus.failed,
+        failure: const AiFailure(
+          code: AiFailureCode.authenticationFailed,
+          messageKey: 'ai.error.authenticationFailed',
+        ),
+        createdAt: _epoch,
+      ),
+    ]);
+
+    expect(result, hasLength(1));
+    expect(result.single.isError, isTrue);
+    expect(result.single.errorHint, isNull);
+    expect(result.single.content, isNotEmpty);
+  });
+
+  test('attaches a hint to a failed tool-round with partial text', () {
+    final result = mapper.mapHistory([
+      AiMessage(
+        id: 'tool-round',
+        conversationId: 'conversation',
+        role: AiMessageRole.assistant,
+        parts: const [
+          AiContentPart.text('Let me inspect it first.'),
+          AiContentPart.toolCall(
+            toolCall: AiToolCall(
+              id: 'call-1',
+              name: 'inspect_apk',
+              arguments: {},
+            ),
+          ),
+        ],
+        status: AiMessageStatus.failed,
+        failure: const AiFailure(
+          code: AiFailureCode.receiveTimeout,
+          messageKey: 'ai.error.receiveTimeout',
+        ),
+        createdAt: _epoch,
+      ),
+    ]);
+
+    expect(result, hasLength(2));
+    expect(result[0].isError, isFalse);
+    expect(result[0].content, contains('Let me inspect it first.'));
+    expect(result[0].errorHint, contains('等待 AI 响应超时'));
+    expect(result[1].isToolResultBubble, isTrue);
+    expect(result[1].errorHint, isNull);
   });
 
   test('includes transport trace in active stream raw details', () {

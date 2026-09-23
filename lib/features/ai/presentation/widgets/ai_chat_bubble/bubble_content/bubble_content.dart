@@ -23,19 +23,34 @@ abstract class BaseBubbleContentPart {
     BubbleState state, {
     required BaseBubbleToolbarPart toolbarPart,
   }) {
+    Widget body;
     if (state.isUser && AiMultimodalMessageCodec.isEncoded(state.content)) {
-      return buildUserAttachments(context, state, toolbarPart: toolbarPart);
+      body = buildUserAttachments(context, state, toolbarPart: toolbarPart);
+    } else if (state.isLoading) {
+      body = buildLoading(context, state);
+    } else if (state.toolInvocations.isNotEmpty) {
+      body = buildToolInvocations(context, state);
+    } else if (state.isToolResult) {
+      body = buildToolResult(context, state);
+    } else {
+      body = buildMarkdown(context, state, toolbarPart: toolbarPart);
     }
-    if (state.isLoading) {
-      return buildLoading(context, state);
+    final hint = state.errorHint?.trim() ?? '';
+    if (hint.isEmpty || state.isUser) {
+      return body;
     }
-    if (state.toolInvocations.isNotEmpty) {
-      return buildToolInvocations(context, state);
-    }
-    if (state.isToolResult) {
-      return buildToolResult(context, state);
-    }
-    return buildMarkdown(context, state, toolbarPart: toolbarPart);
+    // 非侵入式错误提示：已输出部分内容后流式中断/失败时，在气泡内容
+    // 下方附加提示条；不改变气泡边框、阴影与已有内容。
+    final scale = AiChatCompactScope.scaleOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        body,
+        SizedBox(height: 8 * scale),
+        _StreamErrorHint(hint: hint),
+      ],
+    );
   }
 
   @protected
@@ -244,6 +259,59 @@ abstract class BaseBubbleContentPart {
 
 class DefaultBubbleContentPart extends BaseBubbleContentPart {
   const DefaultBubbleContentPart();
+}
+
+/// 流式中断/失败的非侵入式提示条。仅在气泡已有正常内容时附加，
+/// 不改变气泡本身的样式（边框、阴影、背景均保持正常状态）。
+class _StreamErrorHint extends StatelessWidget {
+  const _StreamErrorHint({required this.hint});
+
+  final String hint;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
+    final color = context.colorScheme.error;
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: 10 * scale,
+        vertical: 8 * scale,
+      ),
+      decoration: BoxDecoration(
+        color: context.colorScheme.errorContainer.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(8 * scale),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(top: 1 * scale),
+            child: Icon(
+              Icons.info_outline_rounded,
+              size: 14 * scale,
+              color: color,
+            ),
+          ),
+          SizedBox(width: 6 * scale),
+          Expanded(
+            child: Text(
+              hint,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5 * scale,
+                height: 1.35,
+                color: context.colorScheme.onErrorContainer.withValues(
+                  alpha: 0.9,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 String _withStreamingCursor(String markdown) {

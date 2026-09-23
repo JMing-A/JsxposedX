@@ -20,6 +20,10 @@ class BubbleState {
   final VoidCallback? onToolApprove;
   final VoidCallback? onToolReject;
 
+  /// 非侵入式错误提示：气泡内容正常展示时，流式中断/失败的补充说明。
+  /// 非空时不影响 isError（红边框、重试按钮）等既有样式。
+  final String? errorHint;
+
   const BubbleState({
     required this.content,
     required this.role,
@@ -36,6 +40,7 @@ class BubbleState {
     this.toolInvocations = const <AiToolInvocationView>[],
     this.onToolApprove,
     this.onToolReject,
+    this.errorHint,
   });
 
   bool get isUser => role == 'user';

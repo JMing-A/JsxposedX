@@ -22,6 +22,7 @@ class MemoryAiChatBubble extends BaseAiChatBubble {
     super.streaming,
     super.onEdit,
     super.rawDetails,
+    super.errorHint,
     this.isToolResultBubble = false,
   });
 
@@ -40,6 +41,7 @@ class MemoryAiChatBubble extends BaseAiChatBubble {
       streaming: streaming,
       onEdit: onEdit,
       rawDetails: rawDetails,
+      errorHint: errorHint,
       isToolResultBubble: isToolResultBubble,
     );
   }
@@ -70,6 +72,7 @@ class MemoryAiStreamingChatBubble extends HookWidget {
     required this.retryLabel,
     required this.streamingContentStream,
     required this.streamingThinkingStream,
+    this.errorHint,
     this.onRetry,
     this.packageName,
   });
@@ -78,6 +81,7 @@ class MemoryAiStreamingChatBubble extends HookWidget {
   final String role;
   final bool isError;
   final bool isToolResultBubble;
+  final String? errorHint;
   final String retryLabel;
   final Stream<String> streamingContentStream;
   final Stream<bool> streamingThinkingStream;
@@ -131,6 +135,7 @@ class MemoryAiStreamingChatBubble extends HookWidget {
       role: role,
       isError: isError,
       isToolResultBubble: isToolResultBubble,
+      errorHint: errorHint,
       retryLabel: retryLabel,
       onRetry: onRetry,
       packageName: packageName,

@@ -81,5 +81,19 @@ AiFailure aiProviderPayloadFailure(Map<String, Object?> payload) {
 bool aiPayloadIsError(Map<String, Object?> payload) {
   if (payload['error'] != null) return true;
   final status = payload['status']?.toString().toLowerCase();
-  return status == 'error' || status == 'failed' || status == 'failure';
+  if (status == 'error' || status == 'failed' || status == 'failure') {
+    return true;
+  }
+  // 部分网关在 HTTP 200 的流内直接下发业务错误信封
+  // （如 {"code":30001,"message":"...","data":null}），既无 error 键也无
+  // status 字段。若不识别，事件会被当作无效事件忽略，流随后以
+  // protocolTruncated 收尾，错误详情丢失。正常 chunk 不会同时携带
+  // code+message 且不含 choices，以此区分。
+  final code = payload['code'];
+  final message = payload['message'];
+  final hasBusinessEnvelope = code != null &&
+      message is String &&
+      message.trim().isNotEmpty &&
+      !payload.containsKey('choices');
+  return hasBusinessEnvelope;
 }

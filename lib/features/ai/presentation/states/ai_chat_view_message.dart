@@ -17,6 +17,7 @@ class AiChatViewMessage {
     this.transportTrace,
     this.sourceMessageId,
     this.toolInvocations = const <AiToolInvocationView>[],
+    this.errorHint,
   });
 
   final String id;
@@ -28,4 +29,9 @@ class AiChatViewMessage {
   final AiTransportTrace? transportTrace;
   final String? sourceMessageId;
   final List<AiToolInvocationView> toolInvocations;
+
+  /// 非侵入式错误提示。仅当「已输出部分有效内容后流式中断/失败」时非空：
+  /// 此时气泡保持正常样式与已有内容（isError 为 false），错误信息以附加
+  /// 提示条的形式补充展示，而不是把整个气泡标记为异常。
+  final String? errorHint;
 }

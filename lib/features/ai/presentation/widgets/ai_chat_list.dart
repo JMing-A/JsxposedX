@@ -257,6 +257,7 @@ class AiChatList extends HookConsumerWidget {
                       initialContent: message.content,
                       role: message.role,
                       isError: message.isError,
+                      errorHint: message.errorHint,
                       retryLabel: retryLabel,
                       streamingContentStream:
                           chatNotifier.streamingContentStream,
@@ -297,6 +298,7 @@ class AiChatList extends HookConsumerWidget {
                             content: message.content,
                             role: message.role,
                             isError: message.isError,
+                            errorHint: message.errorHint,
                             retryLabel: retryLabel,
                             onRetry: () => chatNotifier.retryByMessageId(
                               message.sourceMessageId ?? message.id,
@@ -746,6 +748,7 @@ class _StreamingAiChatBubble extends HookWidget {
     required this.retryLabel,
     required this.streamingContentStream,
     required this.streamingThinkingStream,
+    this.errorHint,
     this.toolInvocations = const <AiToolInvocationView>[],
     this.onRetry,
     this.packageName,
@@ -756,6 +759,7 @@ class _StreamingAiChatBubble extends HookWidget {
   final String initialContent;
   final String role;
   final bool isError;
+  final String? errorHint;
   final String retryLabel;
   final Stream<String> streamingContentStream;
   final Stream<bool> streamingThinkingStream;
@@ -826,6 +830,7 @@ class _StreamingAiChatBubble extends HookWidget {
         content: content.value,
         role: role,
         isError: isError,
+        errorHint: errorHint,
         retryLabel: retryLabel,
         onRetry: onRetry,
         packageName: packageName,

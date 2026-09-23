@@ -13,6 +13,7 @@ class MemoryAiBubbleState extends BubbleState {
     super.streaming,
     super.onEdit,
     super.rawDetails,
+    super.errorHint,
   });
 
   final bool isToolResultBubble;
