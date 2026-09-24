@@ -53,6 +53,7 @@ class LogcatEntry {
   final String tid;
   final String stackTrace;
   late final String searchText;
+  late final String searchTextRaw;
 
   LogcatEntry({
     required this.rawLine,
@@ -68,7 +69,8 @@ class LogcatEntry {
     this.tid = '',
     this.stackTrace = '',
   }) {
-    searchText = [
+    // searchText 供默认的忽略大小写检索，searchTextRaw 供大小写敏感检索。
+    searchTextRaw = [
       rawLine,
       message,
       source,
@@ -77,7 +79,8 @@ class LogcatEntry {
       tag,
       stackTrace,
       pid,
-    ].join('\n').toLowerCase();
+    ].join('\n');
+    searchText = searchTextRaw.toLowerCase();
   }
 }
 
@@ -107,6 +110,7 @@ class Logcat extends _$Logcat {
   bool _hasReportedPersistenceError = false;
   bool _isAutoScroll = true;
   bool _isPaused = false;
+  int _droppedPausedEntries = 0;
   String _targetPackage = '';
   String _searchQuery = '';
   String _sessionId = '';
@@ -161,6 +165,24 @@ class Logcat extends _$Logcat {
       _isPaused = true;
     } else {
       _isPaused = false;
+      // 暂停期间超出上限被丢弃的日志不能静默消失，恢复时补一条占位说明。
+      if (_droppedPausedEntries > 0) {
+        _pausedEntries.insert(
+          0,
+          LogcatEntry(
+            rawLine: '',
+            level: 'W',
+            message:
+                '暂停期间有 $_droppedPausedEntries 条日志因超出缓存上限被丢弃'
+                ' / $_droppedPausedEntries entries were dropped while paused',
+            source: _sessionSource,
+            scriptName: _sessionScriptName,
+            sessionId: _sessionId,
+            tag: 'console',
+          ),
+        );
+        _droppedPausedEntries = 0;
+      }
       if (_pausedEntries.isNotEmpty) {
         _pendingEntries.addAll(_pausedEntries);
         _pausedEntries.clear();
@@ -256,7 +278,7 @@ class Logcat extends _$Logcat {
       } catch (error, stackTrace) {
         _pendingScriptLogs.insertAll(0, batch);
         debugPrint('Script log persistence write failed: $error\n$stackTrace');
-        _reportPersistenceError(error.toString());
+        _reportPersistenceError('write-error', error.toString());
       }
     });
     return _scriptLogWriteChain;
@@ -315,6 +337,7 @@ class Logcat extends _$Logcat {
     // Auto clear on start.
     _pendingEntries.clear();
     _pausedEntries.clear();
+    _droppedPausedEntries = 0;
     _flushTimer?.cancel();
     _flushTimer = null;
     state = const [];
@@ -344,10 +367,9 @@ class Logcat extends _$Logcat {
               if (_isPaused) {
                 _pausedEntries.add(entry);
                 if (_pausedEntries.length > _maxPausedEntries) {
-                  _pausedEntries.removeRange(
-                    0,
-                    _pausedEntries.length - _maxPausedEntries,
-                  );
+                  final overflow = _pausedEntries.length - _maxPausedEntries;
+                  _pausedEntries.removeRange(0, overflow);
+                  _droppedPausedEntries += overflow;
                 }
                 return;
               }
@@ -439,6 +461,7 @@ class Logcat extends _$Logcat {
   void clear() {
     _pendingEntries.clear();
     _pausedEntries.clear();
+    _droppedPausedEntries = 0;
     _flushTimer?.cancel();
     _flushTimer = null;
     if (state.isNotEmpty) state = const [];

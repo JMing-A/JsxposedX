@@ -23,6 +23,73 @@ const _kSourceFilters = [
 
 const _kLevelFilters = [(value: 'D'), (value: 'I'), (value: 'W'), (value: 'E')];
 
+/// 复制的日志条数上限，避免超长文本写入剪贴板时卡顿或失败。
+const _kMaxCopyEntries = 5000;
+
+/// 统一封装普通检索与正则检索，供过滤和命中高亮复用。
+class _SearchMatcher {
+  final RegExp? regex;
+  final String? needle;
+  final bool caseSensitive;
+
+  const _SearchMatcher({this.regex, this.needle, required this.caseSensitive});
+
+  bool matches(String haystack) {
+    final pattern = regex;
+    if (pattern != null) return pattern.hasMatch(haystack);
+    final target = needle;
+    if (target == null) return true;
+    return caseSensitive
+        ? haystack.contains(target)
+        : haystack.toLowerCase().contains(target);
+  }
+
+  /// 把 [text] 按命中位置切分为高亮与非高亮片段。
+  List<TextSpan> split(String text, TextStyle base, TextStyle highlight) {
+    if (text.isEmpty) return [TextSpan(text: text, style: base)];
+    final spans = <TextSpan>[];
+    final pattern = regex;
+    if (pattern != null) {
+      var last = 0;
+      for (final match in pattern.allMatches(text)) {
+        if (match.end == match.start) continue;
+        if (match.start > last) {
+          spans.add(TextSpan(text: text.substring(last, match.start), style: base));
+        }
+        spans.add(
+          TextSpan(text: text.substring(match.start, match.end), style: highlight),
+        );
+        last = match.end;
+      }
+      if (last < text.length) {
+        spans.add(TextSpan(text: text.substring(last), style: base));
+      }
+    } else {
+      final target = needle!;
+      if (target.isEmpty) return [TextSpan(text: text, style: base)];
+      final haystack = caseSensitive ? text : text.toLowerCase();
+      final probe = caseSensitive ? target : target.toLowerCase();
+      var last = 0;
+      var index = haystack.indexOf(probe);
+      while (index >= 0) {
+        if (index > last) {
+          spans.add(TextSpan(text: text.substring(last, index), style: base));
+        }
+        spans.add(
+          TextSpan(text: text.substring(index, index + probe.length), style: highlight),
+        );
+        last = index + probe.length;
+        index = haystack.indexOf(probe, last);
+      }
+      if (last < text.length) {
+        spans.add(TextSpan(text: text.substring(last), style: base));
+      }
+    }
+    if (spans.isEmpty) spans.add(TextSpan(text: text, style: base));
+    return spans;
+  }
+}
+
 class LogcatPanelView extends HookConsumerWidget {
   final bool isFullscreen;
   final VoidCallback onToggleFullscreen;
@@ -42,6 +109,8 @@ class LogcatPanelView extends HookConsumerWidget {
     final scrollController = useScrollController();
     final selectedSource = useState<String?>(null);
     final selectedLevel = useState<String?>(null);
+    final regexEnabled = useState(false);
+    final caseSensitive = useState(false);
     final showHistory = useState(false);
     final historyLoading = useState(false);
     final historyHasMore = useState(false);
@@ -112,18 +181,46 @@ class LogcatPanelView extends HookConsumerWidget {
       return () => searchDebounce.value?.cancel();
     }, const []);
 
+    // 检索匹配器：普通检索与正则检索统一封装，正则非法时返回 null 并单独提示。
+    final searchMatcher = useMemoized(() {
+      if (searchQuery.isEmpty) return null;
+      if (regexEnabled.value) {
+        try {
+          return _SearchMatcher(
+            regex: RegExp(searchQuery, caseSensitive: caseSensitive.value),
+            caseSensitive: caseSensitive.value,
+          );
+        } catch (_) {
+          return null;
+        }
+      }
+      return _SearchMatcher(
+        needle: caseSensitive.value ? searchQuery : searchQuery.toLowerCase(),
+        caseSensitive: caseSensitive.value,
+      );
+    }, [searchQuery, regexEnabled.value, caseSensitive.value]);
+
+    final hasRegexError = useMemoized(() {
+      if (!regexEnabled.value || searchQuery.isEmpty) return false;
+      try {
+        RegExp(searchQuery);
+        return false;
+      } catch (_) {
+        return true;
+      }
+    }, [regexEnabled.value, searchQuery]);
+
     // 使用 useMemoized 缓存过滤结果，避免每次都重新计算
     final filteredEntries = useMemoized(() {
-      final normalizedQuery = searchQuery.toLowerCase();
       final hasFilter =
-          normalizedQuery.isNotEmpty ||
+          searchQuery.isNotEmpty ||
           selectedSource.value != null ||
           selectedLevel.value != null;
       if (!hasFilter) return logEntries;
       return logEntries.where((entry) {
         // Text search filter (from provider search query)
-        if (normalizedQuery.isNotEmpty &&
-            !entry.searchText.contains(normalizedQuery)) {
+        if (searchMatcher != null &&
+            !searchMatcher.matches(entry.searchTextRaw)) {
           return false;
         }
         if (selectedSource.value != null &&
@@ -135,21 +232,36 @@ class LogcatPanelView extends HookConsumerWidget {
         }
         return true;
       }).toList();
-    }, [logEntries, searchQuery, selectedSource.value, selectedLevel.value]);
+    }, [
+      logEntries,
+      searchQuery,
+      searchMatcher,
+      selectedSource.value,
+      selectedLevel.value,
+    ]);
+
+    // 当前可见日志的级别分布，用于工具栏徽标与错误直达。
+    final levelCounts = useMemoized(() {
+      final counts = <String, int>{'D': 0, 'I': 0, 'W': 0, 'E': 0};
+      for (final entry in filteredEntries) {
+        final current = counts[entry.level];
+        if (current != null) counts[entry.level] = current + 1;
+      }
+      return counts;
+    }, [filteredEntries]);
 
     // 历史条目复用同一套过滤条件，保证统一时间轴行为一致。
     final filteredHistory = useMemoized(() {
       if (!showHistory.value) return const <ScriptLogRecord>[];
-      final normalizedQuery = searchQuery.toLowerCase();
       return historyLogs.value.where((log) {
-        if (normalizedQuery.isNotEmpty) {
+        if (searchMatcher != null) {
           final haystack = [
             log.message,
             log.scriptName,
             log.source,
             log.stackTrace,
-          ].join('\n').toLowerCase();
-          if (!haystack.contains(normalizedQuery)) return false;
+          ].join('\n');
+          if (!searchMatcher.matches(haystack)) return false;
         }
         if (selectedSource.value != null && log.source != selectedSource.value) {
           return false;
@@ -162,7 +274,7 @@ class LogcatPanelView extends HookConsumerWidget {
     }, [
       showHistory.value,
       historyLogs.value,
-      searchQuery,
+      searchMatcher,
       selectedSource.value,
       selectedLevel.value,
     ]);
@@ -187,12 +299,23 @@ class LogcatPanelView extends HookConsumerWidget {
         selectedLevel.value != null;
 
     Future<void> copyVisibleLogs() async {
-      final text = filteredEntries.map(_formatEntry).join('\n');
+      final truncated = filteredEntries.length > _kMaxCopyEntries;
+      final source = truncated
+          ? filteredEntries.sublist(filteredEntries.length - _kMaxCopyEntries)
+          : filteredEntries;
+      final text = source.map(_formatEntry).join('\n');
       await Clipboard.setData(ClipboardData(text: text));
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(context.l10n.consoleCopied(filteredEntries.length)),
+          content: Text(
+            truncated
+                ? context.l10n.consoleCopiedTruncated(
+                    source.length,
+                    filteredEntries.length,
+                  )
+                : context.l10n.consoleCopied(source.length),
+          ),
         ),
       );
     }
@@ -263,7 +386,10 @@ class LogcatPanelView extends HookConsumerWidget {
           controller: scrollController,
           padding: EdgeInsets.symmetric(vertical: 4.h),
           itemCount: filteredEntries.length,
-          itemBuilder: (context, index) => _LogRow(entry: filteredEntries[index]),
+          itemBuilder: (context, index) => _LogRow(
+            entry: filteredEntries[index],
+            matcher: searchMatcher,
+          ),
         );
       }
 
@@ -352,9 +478,19 @@ class LogcatPanelView extends HookConsumerWidget {
             autoScroll: autoScroll,
             filteredCount: filteredEntries.length,
             totalCount: logEntries.length,
+            levelCounts: levelCounts,
+            selectedLevel: selectedLevel.value,
             isFullscreen: isFullscreen,
             isPaused: logcatNotifier.isPaused,
             isRunning: logcatNotifier.isRunning,
+            regexEnabled: regexEnabled.value,
+            caseSensitive: caseSensitive.value,
+            hasRegexError: hasRegexError,
+            onRegexToggle: () => regexEnabled.value = !regexEnabled.value,
+            onCaseSensitiveToggle: () =>
+                caseSensitive.value = !caseSensitive.value,
+            onLevelTap: (level) =>
+                selectedLevel.value = selectedLevel.value == level ? null : level,
             onSearchChanged: (query) {
               searchDebounce.value?.cancel();
               searchDebounce.value = Timer(
@@ -406,9 +542,17 @@ class _LogcatToolbar extends StatelessWidget {
   final bool autoScroll;
   final int filteredCount;
   final int totalCount;
+  final Map<String, int> levelCounts;
+  final String? selectedLevel;
   final bool isFullscreen;
   final bool isPaused;
   final bool isRunning;
+  final bool regexEnabled;
+  final bool caseSensitive;
+  final bool hasRegexError;
+  final VoidCallback onRegexToggle;
+  final VoidCallback onCaseSensitiveToggle;
+  final ValueChanged<String> onLevelTap;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onAutoScrollToggle;
   final VoidCallback onPauseToggle;
@@ -424,9 +568,17 @@ class _LogcatToolbar extends StatelessWidget {
     required this.autoScroll,
     required this.filteredCount,
     required this.totalCount,
+    required this.levelCounts,
+    required this.selectedLevel,
     required this.isFullscreen,
     required this.isPaused,
     required this.isRunning,
+    required this.regexEnabled,
+    required this.caseSensitive,
+    required this.hasRegexError,
+    required this.onRegexToggle,
+    required this.onCaseSensitiveToggle,
+    required this.onLevelTap,
     required this.onSearchChanged,
     required this.onAutoScrollToggle,
     required this.onPauseToggle,
@@ -512,6 +664,19 @@ class _LogcatToolbar extends StatelessWidget {
                   ),
                 ),
               SizedBox(width: 6.w),
+              // Level distribution; tapping a badge filters that level.
+              if (!compact)
+                for (final level in const ['E', 'W', 'I', 'D'])
+                  if ((levelCounts[level] ?? 0) > 0) ...[
+                    _LevelCountBadge(
+                      level: level,
+                      count: levelCounts[level]!,
+                      isSelected: selectedLevel == level,
+                      onTap: () => onLevelTap(level),
+                    ),
+                    SizedBox(width: 3.w),
+                  ],
+              if (!compact) SizedBox(width: 3.w),
               // Search takes the space left after the fixed-size actions.
               Expanded(
                 child: SizedBox(
@@ -529,9 +694,47 @@ class _LogcatToolbar extends StatelessWidget {
                       prefixIcon: Icon(
                         Icons.search_rounded,
                         size: 13.sp,
-                        color: Colors.grey[600],
+                        color: hasRegexError
+                            ? const Color(0xFFEF5350)
+                            : Colors.grey[600],
                       ),
                       prefixIconConstraints: BoxConstraints(minWidth: 26.w),
+                      suffixIcon: regexEnabled || caseSensitive
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (caseSensitive)
+                                  Padding(
+                                    padding: EdgeInsets.only(right: 2.w),
+                                    child: Text(
+                                      'Aa',
+                                      style: TextStyle(
+                                        fontSize: 9.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue[300],
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                  ),
+                                if (regexEnabled)
+                                  Padding(
+                                    padding: EdgeInsets.only(right: 4.w),
+                                    child: Text(
+                                      '.*',
+                                      style: TextStyle(
+                                        fontSize: 9.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: hasRegexError
+                                            ? const Color(0xFFEF5350)
+                                            : Colors.blue[300],
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            )
+                          : null,
+                      suffixIconConstraints: BoxConstraints(minWidth: 26.w),
                       contentPadding: EdgeInsets.symmetric(vertical: 4.h),
                       isDense: true,
                       filled: true,
@@ -543,7 +746,9 @@ class _LogcatToolbar extends StatelessWidget {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(6.r),
                         borderSide: BorderSide(
-                          color: Colors.grey[600]!,
+                          color: hasRegexError
+                              ? const Color(0xFFEF5350)
+                              : Colors.grey[600]!,
                           width: 0.8,
                         ),
                       ),
@@ -553,6 +758,20 @@ class _LogcatToolbar extends StatelessWidget {
                 ),
               ),
               SizedBox(width: 4.w),
+              _ToolbarIconButton(
+                icon: Icons.code_rounded,
+                tooltip: context.l10n.consoleRegexSearch,
+                color: regexEnabled
+                    ? (hasRegexError ? const Color(0xFFEF5350) : Colors.blue[300]!)
+                    : Colors.grey[600]!,
+                onPressed: onRegexToggle,
+              ),
+              _ToolbarIconButton(
+                icon: Icons.text_fields_rounded,
+                tooltip: context.l10n.consoleCaseSensitive,
+                color: caseSensitive ? Colors.blue[300]! : Colors.grey[600]!,
+                onPressed: onCaseSensitiveToggle,
+              ),
               _ToolbarIconButton(
                 icon: autoScroll
                     ? Icons.vertical_align_bottom_rounded
@@ -814,6 +1033,53 @@ class _LiveSectionDivider extends StatelessWidget {
   }
 }
 
+class _LevelCountBadge extends StatelessWidget {
+  final String level;
+  final int count;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _LevelCountBadge({
+    required this.level,
+    required this.count,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  Color get _color => switch (level) {
+    'E' => const Color(0xFFEF5350),
+    'W' => const Color(0xFFFFA726),
+    'D' => const Color(0xFF42A5F5),
+    _ => const Color(0xFF90A4AE),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
+        decoration: BoxDecoration(
+          color: _color.withValues(alpha: isSelected ? 0.28 : 0.12),
+          borderRadius: BorderRadius.circular(4.r),
+          border: isSelected
+              ? Border.all(color: _color.withValues(alpha: 0.7), width: 0.8)
+              : null,
+        ),
+        child: Text(
+          '$level$count',
+          style: TextStyle(
+            fontSize: 9.sp,
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.w600,
+            color: _color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PersistedLogRow extends StatelessWidget {
   const _PersistedLogRow({required this.log});
 
@@ -843,10 +1109,20 @@ class _PersistedLogRow extends StatelessWidget {
   }
 }
 
-class _LogRow extends StatelessWidget {
+class _LogRow extends StatefulWidget {
   final LogcatEntry entry;
+  final _SearchMatcher? matcher;
 
-  const _LogRow({required this.entry});
+  const _LogRow({required this.entry, this.matcher});
+
+  @override
+  State<_LogRow> createState() => _LogRowState();
+}
+
+class _LogRowState extends State<_LogRow> {
+  bool _stackExpanded = false;
+
+  LogcatEntry get entry => widget.entry;
 
   Color get _levelColor => switch (entry.level) {
     'E' => const Color(0xFFEF5350),
@@ -877,6 +1153,22 @@ class _LogRow extends StatelessWidget {
     final timeDisplay = entry.timestamp.length > 6
         ? entry.timestamp.substring(6)
         : '';
+    final messageText = hasStructured ? entry.message : entry.rawLine;
+    final messageStyle = TextStyle(
+      fontFamily: 'monospace',
+      fontSize: 11.sp,
+      color: entry.level == 'E' || entry.level == 'F'
+          ? const Color(0xFFEF9A9A)
+          : entry.level == 'W'
+          ? const Color(0xFFFFCC80)
+          : Colors.white70,
+      height: 1.35,
+    );
+    final highlightStyle = messageStyle.copyWith(
+      color: const Color(0xFF111111),
+      backgroundColor: const Color(0xFFFFD54F),
+      fontWeight: FontWeight.w600,
+    );
 
     return InkWell(
       onLongPress: () {
@@ -947,31 +1239,50 @@ class _LogRow extends StatelessWidget {
                           ),
                       ],
                     ),
-                  Text(
-                    hasStructured ? entry.message : entry.rawLine,
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 11.sp,
-                      color: entry.level == 'E' || entry.level == 'F'
-                          ? const Color(0xFFEF9A9A)
-                          : entry.level == 'W'
-                          ? const Color(0xFFFFCC80)
-                          : Colors.white70,
-                      height: 1.35,
+                  Text.rich(
+                    TextSpan(
+                      children: widget.matcher?.split(
+                            messageText,
+                            messageStyle,
+                            highlightStyle,
+                          ) ??
+                          [TextSpan(text: messageText, style: messageStyle)],
                     ),
+                    style: messageStyle,
                   ),
                   if (entry.stackTrace.isNotEmpty)
                     Padding(
                       padding: EdgeInsets.only(top: 3.h),
-                      child: Text(
-                        entry.stackTrace,
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 10.sp,
-                          color: const Color(0xFFEF9A9A),
-                          height: 1.3,
+                      child: GestureDetector(
+                        onTap: () =>
+                            setState(() => _stackExpanded = !_stackExpanded),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              entry.stackTrace,
+                              maxLines: _stackExpanded ? null : 5,
+                              overflow: _stackExpanded
+                                  ? TextOverflow.visible
+                                  : TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 10.sp,
+                                color: const Color(0xFFEF9A9A),
+                                height: 1.3,
+                              ),
+                            ),
+                            Text(
+                              _stackExpanded
+                                  ? context.l10n.consoleCollapseStack
+                                  : context.l10n.consoleExpandStack,
+                              style: TextStyle(
+                                fontSize: 9.sp,
+                                color: Colors.blue[300],
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

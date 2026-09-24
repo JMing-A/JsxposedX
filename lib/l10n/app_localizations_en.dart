@@ -1065,7 +1065,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoScroll => 'Auto Scroll';
 
   @override
-  String get clearPanel => 'Clear Panel';
+  String get clearPanel => 'Clear view';
+
+  @override
+  String get consoleClearViewTooltip =>
+      'Clears the current view only; persisted logs are kept';
 
   @override
   String get noLogs => 'No output yet';
@@ -1133,16 +1137,54 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String consoleCopiedTruncated(Object count, Object total) {
+    return 'Too many logs; copied the latest $count of $total. Use export for the full set.';
+  }
+
+  @override
+  String get consoleRegexSearch => 'Regex search';
+
+  @override
+  String get consoleCaseSensitive => 'Case sensitive';
+
+  @override
+  String get consoleExpandStack => 'Expand stack';
+
+  @override
+  String get consoleCollapseStack => 'Collapse stack';
+
+  @override
   String get consoleExportDialogTitle => 'Export console logs';
 
   @override
   String get consoleNoHistory => 'No persisted script logs';
 
   @override
+  String get consoleLiveBelow => 'Live output below';
+
+  @override
   String get consoleLoadOlder => 'Load older logs';
 
   @override
   String get consoleLogCopied => 'Log copied';
+
+  @override
+  String get consoleDeleteHistory => 'Delete this conversation\'s logs';
+
+  @override
+  String get consoleDeleteHistoryConfirmTitle => 'Delete history logs?';
+
+  @override
+  String get consoleDeleteHistoryConfirmMessage =>
+      'Persisted script logs for this conversation will be permanently deleted. This cannot be undone.';
+
+  @override
+  String get consoleDeleteHistoryDone =>
+      'History logs deleted for this conversation';
+
+  @override
+  String get consoleDeleteHistoryUnavailable =>
+      'No persisted records are linked to this session';
 
   @override
   String get apiManual => 'Manual';

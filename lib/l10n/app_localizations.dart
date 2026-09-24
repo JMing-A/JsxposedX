@@ -2111,8 +2111,14 @@ abstract class AppLocalizations {
   /// No description provided for @clearPanel.
   ///
   /// In zh, this message translates to:
-  /// **'清空面板'**
+  /// **'清空视图'**
   String get clearPanel;
+
+  /// No description provided for @consoleClearViewTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅清空当前视图，已持久化的日志不受影响'**
+  String get consoleClearViewTooltip;
 
   /// No description provided for @noLogs.
   ///
@@ -2240,6 +2246,36 @@ abstract class AppLocalizations {
   /// **'已复制 {count} 条日志'**
   String consoleCopied(Object count);
 
+  /// No description provided for @consoleCopiedTruncated.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志过多，已复制最近 {count} 条（共 {total} 条），完整内容请用导出'**
+  String consoleCopiedTruncated(Object count, Object total);
+
+  /// No description provided for @consoleRegexSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'正则检索'**
+  String get consoleRegexSearch;
+
+  /// No description provided for @consoleCaseSensitive.
+  ///
+  /// In zh, this message translates to:
+  /// **'区分大小写'**
+  String get consoleCaseSensitive;
+
+  /// No description provided for @consoleExpandStack.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开堆栈'**
+  String get consoleExpandStack;
+
+  /// No description provided for @consoleCollapseStack.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起堆栈'**
+  String get consoleCollapseStack;
+
   /// No description provided for @consoleExportDialogTitle.
   ///
   /// In zh, this message translates to:
@@ -2252,6 +2288,12 @@ abstract class AppLocalizations {
   /// **'暂无持久化脚本日志'**
   String get consoleNoHistory;
 
+  /// No description provided for @consoleLiveBelow.
+  ///
+  /// In zh, this message translates to:
+  /// **'以下为实时输出'**
+  String get consoleLiveBelow;
+
   /// No description provided for @consoleLoadOlder.
   ///
   /// In zh, this message translates to:
@@ -2263,6 +2305,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'日志已复制'**
   String get consoleLogCopied;
+
+  /// No description provided for @consoleDeleteHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除该会话历史日志'**
+  String get consoleDeleteHistory;
+
+  /// No description provided for @consoleDeleteHistoryConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除历史日志？'**
+  String get consoleDeleteHistoryConfirmTitle;
+
+  /// No description provided for @consoleDeleteHistoryConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将永久删除当前会话已持久化的脚本日志，该操作不可撤销。'**
+  String get consoleDeleteHistoryConfirmMessage;
+
+  /// No description provided for @consoleDeleteHistoryDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除该会话的历史日志'**
+  String get consoleDeleteHistoryDone;
+
+  /// No description provided for @consoleDeleteHistoryUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前会话没有关联的持久化记录'**
+  String get consoleDeleteHistoryUnavailable;
 
   /// No description provided for @apiManual.
   ///

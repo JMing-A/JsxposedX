@@ -1048,7 +1048,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoScroll => '自动滚屏';
 
   @override
-  String get clearPanel => '清空面板';
+  String get clearPanel => '清空视图';
+
+  @override
+  String get consoleClearViewTooltip => '仅清空当前视图，已持久化的日志不受影响';
 
   @override
   String get noLogs => '暂无日志';
@@ -1116,16 +1119,52 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String consoleCopiedTruncated(Object count, Object total) {
+    return '日志过多，已复制最近 $count 条（共 $total 条），完整内容请用导出';
+  }
+
+  @override
+  String get consoleRegexSearch => '正则检索';
+
+  @override
+  String get consoleCaseSensitive => '区分大小写';
+
+  @override
+  String get consoleExpandStack => '展开堆栈';
+
+  @override
+  String get consoleCollapseStack => '收起堆栈';
+
+  @override
   String get consoleExportDialogTitle => '导出控制台日志';
 
   @override
   String get consoleNoHistory => '暂无持久化脚本日志';
 
   @override
+  String get consoleLiveBelow => '以下为实时输出';
+
+  @override
   String get consoleLoadOlder => '加载更早日志';
 
   @override
   String get consoleLogCopied => '日志已复制';
+
+  @override
+  String get consoleDeleteHistory => '删除该会话历史日志';
+
+  @override
+  String get consoleDeleteHistoryConfirmTitle => '删除历史日志？';
+
+  @override
+  String get consoleDeleteHistoryConfirmMessage =>
+      '将永久删除当前会话已持久化的脚本日志，该操作不可撤销。';
+
+  @override
+  String get consoleDeleteHistoryDone => '已删除该会话的历史日志';
+
+  @override
+  String get consoleDeleteHistoryUnavailable => '当前会话没有关联的持久化记录';
 
   @override
   String get apiManual => '手册';
