@@ -147,6 +147,102 @@ final class AiConversationRepositoryV2Provider
 String _$aiConversationRepositoryV2Hash() =>
     r'40a0537ca89501583965fd7b2e33b564cae22e94';
 
+@ProviderFor(scriptLogRepository)
+const scriptLogRepositoryProvider = ScriptLogRepositoryProvider._();
+
+final class ScriptLogRepositoryProvider
+    extends
+        $FunctionalProvider<
+          ScriptLogRepository,
+          ScriptLogRepository,
+          ScriptLogRepository
+        >
+    with $Provider<ScriptLogRepository> {
+  const ScriptLogRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'scriptLogRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$scriptLogRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<ScriptLogRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ScriptLogRepository create(Ref ref) {
+    return scriptLogRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ScriptLogRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ScriptLogRepository>(value),
+    );
+  }
+}
+
+String _$scriptLogRepositoryHash() =>
+    r'6616bbed29b5d19176b4a8a685cc2c1e1a04f648';
+
+@ProviderFor(scriptConversationBinding)
+const scriptConversationBindingProvider = ScriptConversationBindingProvider._();
+
+final class ScriptConversationBindingProvider
+    extends
+        $FunctionalProvider<
+          ScriptConversationBinding,
+          ScriptConversationBinding,
+          ScriptConversationBinding
+        >
+    with $Provider<ScriptConversationBinding> {
+  const ScriptConversationBindingProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'scriptConversationBindingProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$scriptConversationBindingHash();
+
+  @$internal
+  @override
+  $ProviderElement<ScriptConversationBinding> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ScriptConversationBinding create(Ref ref) {
+    return scriptConversationBinding(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ScriptConversationBinding value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ScriptConversationBinding>(value),
+    );
+  }
+}
+
+String _$scriptConversationBindingHash() =>
+    r'b53cf14d26b35a07434735b71971148ca4bc0fc8';
+
 @ProviderFor(aiCredentialStore)
 const aiCredentialStoreProvider = AiCredentialStoreProvider._();
 

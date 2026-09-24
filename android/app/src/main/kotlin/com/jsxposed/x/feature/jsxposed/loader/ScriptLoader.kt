@@ -69,11 +69,16 @@ class ScriptLoader(
                     continue
                 }
 
+                val runContextKey = "jx_script_run_context_${packageName}_xposed_$scriptName"
+                val runContext = runCatching {
+                    JSONObject(piniaRoot.getString(runContextKey, ""))
+                }.getOrNull()
+                val runId = runContext?.optString("runId").orEmpty()
                 val removed = bridgeManager.unhookScript(localPath)
                 LogX.d(TAG, "script-reload-cleanup package=$packageName script=$scriptName removed=$removed")
                 LogX.d(TAG, "script-execute-start package=$packageName script=$scriptName size=${sourceCode.length}")
                 val executeStart = System.currentTimeMillis()
-                bridgeManager.beginScriptScope(localPath)
+                bridgeManager.beginScriptScope(localPath, runId)
                 try {
                     executeScript(scriptName, sourceCode)
                 } finally {

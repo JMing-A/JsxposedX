@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:JsxposedX/features/ai/data/repositories/drift_ai_catalog_repository.dart';
 import 'package:JsxposedX/features/ai/data/repositories/drift_ai_conversation_repository.dart';
+import 'package:JsxposedX/features/ai/data/repositories/drift_script_log_repository.dart';
+import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/ai_conversation_repository.dart';
 import 'package:JsxposedX/features/ai/infrastructure/persistence/ai_database.dart'
@@ -15,11 +20,13 @@ void main() {
   late AiDatabase database;
   late DriftAiCatalogRepository catalog;
   late DriftAiConversationRepository conversations;
+  late DriftScriptLogRepository scriptLogs;
 
   setUp(() async {
     database = AiDatabase.forTesting(NativeDatabase.memory());
     catalog = DriftAiCatalogRepository(database);
     conversations = DriftAiConversationRepository(database);
+    scriptLogs = DriftScriptLogRepository(database);
     final now = DateTime.utc(2026, 9, 5);
     await catalog.saveConnectionBundle(
       connection: AiProviderConnection(
@@ -51,6 +58,27 @@ void main() {
   });
 
   tearDown(() => database.close());
+
+  test(
+    'marks runs left running by a previous process as interrupted',
+    () async {
+      final startedAt = DateTime.utc(2026, 9, 5);
+      await scriptLogs.startRun(
+        runId: 'stale-run',
+        conversationId: 'conversation',
+        source: 'xposed',
+        scriptName: 'hook.js',
+        startedAt: startedAt,
+      );
+
+      await scriptLogs.recoverInterruptedRuns();
+
+      final run = await scriptLogs.getRun('stale-run');
+      expect(run?.status, 'interrupted');
+      expect(run?.finishedAt, isNotNull);
+      expect(run?.conversationId, 'conversation');
+    },
+  );
 
   test('persists connection, model and assistant as entities', () async {
     final now = DateTime.utc(2026, 9, 5);
@@ -331,5 +359,252 @@ void main() {
 
     expect(await conversations.getConversation('conversation'), isNull);
     expect(await conversations.getMessages('conversation'), isEmpty);
+  });
+
+  test('stores, paginates, trims and cascades script logs', () async {
+    final now = DateTime.utc(2026, 9, 5);
+    await conversations.saveConversation(
+      AiConversation(
+        id: 'conversation',
+        title: 'Chat',
+        assistantId: 'assistant',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await scriptLogs.startRun(
+      runId: 'run-1',
+      conversationId: 'conversation',
+      source: 'xposed',
+      scriptName: 'hook.js',
+      startedAt: now,
+    );
+    await scriptLogs.startRun(
+      runId: 'run-active',
+      conversationId: 'conversation',
+      source: 'frida',
+      scriptName: 'active.js',
+      startedAt: now,
+    );
+    await scriptLogs.appendLogs([
+      for (var index = 0; index < 3; index++)
+        ScriptLogRecord(
+          id: index,
+          runId: 'run-1',
+          conversationId: 'conversation',
+          source: 'xposed',
+          scriptName: 'hook.js',
+          level: 'I',
+          message: 'message-$index',
+          stackTrace: '',
+          timestamp: now.add(Duration(seconds: index)),
+        ),
+      ScriptLogRecord(
+        id: 0,
+        runId: 'run-active',
+        conversationId: 'conversation',
+        source: 'frida',
+        scriptName: 'active.js',
+        level: 'I',
+        message: 'active-message',
+        stackTrace: '',
+        timestamp: now.subtract(const Duration(days: 60)),
+      ),
+    ]);
+
+    final latest = await scriptLogs.getLogs(
+      conversationId: 'conversation',
+      runId: 'run-1',
+      limit: 2,
+    );
+    final older = await scriptLogs.getLogs(
+      conversationId: 'conversation',
+      runId: 'run-1',
+      before: latest.last.timestamp,
+      beforeId: latest.last.id,
+      limit: 2,
+    );
+
+    expect(latest.map((log) => log.message), ['message-2', 'message-1']);
+    expect(older.map((log) => log.message), ['message-0']);
+
+    await scriptLogs.finishRun(
+      'run-1',
+      status: 'stopped',
+      finishedAt: now.add(const Duration(seconds: 3)),
+    );
+    await scriptLogs.trimLogs(olderThan: now.add(const Duration(seconds: 1)));
+    expect(
+      (await scriptLogs.getLogs(
+        conversationId: 'conversation',
+        runId: 'run-1',
+      )).map((log) => log.message),
+      ['message-2', 'message-1'],
+    );
+    expect(
+      (await scriptLogs.getLogs(
+        conversationId: 'conversation',
+        runId: 'run-active',
+      )).map((log) => log.message),
+      ['active-message'],
+    );
+
+    await conversations.deleteConversation('conversation');
+    expect(await scriptLogs.getLogs(conversationId: 'conversation'), isEmpty);
+  });
+
+  test(
+    'keeps xposed logs after database reopen and isolates projects',
+    () async {
+      final tempDirectory = await Directory.systemTemp.createTemp(
+        'jsxposedx-script-logs-',
+      );
+      final databaseFile = File('${tempDirectory.path}/logs.sqlite');
+      addTearDown(() async {
+        if (tempDirectory.existsSync()) {
+          await tempDirectory.delete(recursive: true);
+        }
+      });
+
+      final firstDatabase = AiDatabase.forTesting(NativeDatabase(databaseFile));
+      final firstRepository = DriftScriptLogRepository(firstDatabase);
+      final now = DateTime.utc(2026, 9, 24);
+      for (final project in ['project-a', 'project-b']) {
+        await firstRepository.startRun(
+          runId: 'run-$project',
+          conversationId: 'standalone:$project:xposed:hook.js[Java]',
+          source: 'xposed',
+          scriptName: 'hook.js[Java]',
+          startedAt: now,
+        );
+        await firstRepository.appendLogs([
+          ScriptLogRecord(
+            id: 0,
+            runId: 'run-$project',
+            conversationId: 'standalone:$project:xposed:hook.js[Java]',
+            source: 'xposed',
+            scriptName: 'hook.js[Java]',
+            level: 'I',
+            message: 'log-$project',
+            stackTrace: '',
+            timestamp: now,
+          ),
+        ]);
+      }
+      await firstDatabase.close();
+
+      final reopenedDatabase = AiDatabase.forTesting(
+        NativeDatabase(databaseFile),
+      );
+      final reopenedRepository = DriftScriptLogRepository(reopenedDatabase);
+      final projectALogs = await reopenedRepository.getLogs(
+        conversationId: 'standalone:project-a:xposed:hook.js[Java]',
+      );
+      final projectBLogs = await reopenedRepository.getLogs(
+        conversationId: 'standalone:project-b:xposed:hook.js[Java]',
+      );
+
+      expect(projectALogs.map((log) => log.message), ['log-project-a']);
+      expect(projectBLogs.map((log) => log.message), ['log-project-b']);
+      await reopenedDatabase.close();
+    },
+  );
+
+  test('restores a persisted conversation context snapshot', () async {
+    final now = DateTime.utc(2026, 9, 5);
+    await conversations.saveConversation(
+      AiConversation(
+        id: 'conversation',
+        title: 'Chat',
+        assistantId: 'assistant',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    final snapshot = AiChatSessionContext(
+      sessionRules: 'environment rules',
+      sessionMemory: const AiChatSessionMemory(userGoals: ['goal']),
+      taskState: const AiChatTaskState(lastUserGoal: 'goal', lastError: 'boom'),
+      toolTrace: const AiToolExecutionTrace(
+        toolCallIds: ['fc_1'],
+        resultSummaries: {'fc_1': 'ok'},
+      ),
+      checkpoint: const AiChatCheckpoint(
+        createdAtIso: '2026-09-05T00:00:00.000Z',
+      ),
+      stats: const AiChatContextStats(
+        tokenBudget: 4096,
+        estimatedTokens: 12,
+        remainingTokens: 4084,
+      ),
+    );
+
+    expect(await conversations.getConversationContext('conversation'), isNull);
+
+    await conversations.saveConversationContext('conversation', snapshot);
+    final restored = await conversations.getConversationContext('conversation');
+
+    expect(restored, isNotNull);
+    expect(restored!.toStorageJson(), snapshot.toStorageJson());
+    expect(restored.checkpoint!.createdAtIso, '2026-09-05T00:00:00.000Z');
+    expect(restored.stats.tokenBudget, 4096);
+  });
+
+  test('overwrites the previous snapshot for the same conversation', () async {
+    final now = DateTime.utc(2026, 9, 5);
+    await conversations.saveConversation(
+      AiConversation(
+        id: 'conversation',
+        title: 'Chat',
+        assistantId: 'assistant',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    await conversations.saveConversationContext(
+      'conversation',
+      const AiChatSessionContext(sessionRules: 'first'),
+    );
+    await conversations.saveConversationContext(
+      'conversation',
+      const AiChatSessionContext(sessionRules: 'second'),
+    );
+
+    final restored = await conversations.getConversationContext('conversation');
+    expect(restored!.sessionRules, 'second');
+  });
+
+  test('refuses to persist a context for a missing conversation', () async {
+    await expectLater(
+      conversations.saveConversationContext(
+        'missing',
+        const AiChatSessionContext(),
+      ),
+      throwsStateError,
+    );
+
+    expect(await conversations.getConversationContext('missing'), isNull);
+  });
+
+  test('deletes the stored context with its conversation', () async {
+    final now = DateTime.utc(2026, 9, 5);
+    await conversations.saveConversation(
+      AiConversation(
+        id: 'conversation',
+        title: 'Chat',
+        assistantId: 'assistant',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await conversations.saveConversationContext(
+      'conversation',
+      const AiChatSessionContext(sessionRules: 'rules'),
+    );
+
+    await conversations.deleteConversation('conversation');
+
+    expect(await conversations.getConversationContext('conversation'), isNull);
   });
 }

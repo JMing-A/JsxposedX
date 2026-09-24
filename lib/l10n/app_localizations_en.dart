@@ -1077,6 +1077,74 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logcatFullscreen => 'Fullscreen';
 
   @override
+  String get consoleSourceSession => 'Session';
+
+  @override
+  String get consoleSourceFrida => 'Frida';
+
+  @override
+  String get consoleSourceXposed => 'Xposed';
+
+  @override
+  String get consoleSourceApp => 'App';
+
+  @override
+  String get consoleSourceCore => 'Core';
+
+  @override
+  String get consoleSourceSystem => 'System';
+
+  @override
+  String get consoleLevelDebug => 'Debug';
+
+  @override
+  String get consoleLevelInfo => 'Info';
+
+  @override
+  String get consoleLevelWarn => 'Warn';
+
+  @override
+  String get consoleLevelError => 'Error';
+
+  @override
+  String get consoleAll => 'All';
+
+  @override
+  String get consoleHistory => 'Persisted script logs';
+
+  @override
+  String get consolePauseOutput => 'Pause output';
+
+  @override
+  String get consoleResumeOutput => 'Resume output';
+
+  @override
+  String get consoleActions => 'Console actions';
+
+  @override
+  String get consoleCopyVisible => 'Copy visible logs';
+
+  @override
+  String get consoleExportVisible => 'Export visible logs';
+
+  @override
+  String consoleCopied(Object count) {
+    return '$count logs copied';
+  }
+
+  @override
+  String get consoleExportDialogTitle => 'Export console logs';
+
+  @override
+  String get consoleNoHistory => 'No persisted script logs';
+
+  @override
+  String get consoleLoadOlder => 'Load older logs';
+
+  @override
+  String get consoleLogCopied => 'Log copied';
+
+  @override
   String get apiManual => 'Manual';
 
   @override

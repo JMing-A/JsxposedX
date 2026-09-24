@@ -20,15 +20,18 @@ class ApkReverseAiEnvironment {
     required ApkAnalysisActionRepository apkActionRepository,
     required ApkAnalysisQueryRepository apkQueryRepository,
     required SoAnalysisDatasource soDataSource,
+    required ScriptConversationBinding conversationBinding,
   }) : _apkActionRepository = apkActionRepository,
        _apkQueryRepository = apkQueryRepository,
-       _soDataSource = soDataSource;
+       _soDataSource = soDataSource,
+       _conversationBinding = conversationBinding;
 
   final String packageName;
   final bool isZh;
   final ApkAnalysisActionRepository _apkActionRepository;
   final ApkAnalysisQueryRepository _apkQueryRepository;
   final SoAnalysisDatasource _soDataSource;
+  final ScriptConversationBinding _conversationBinding;
 
   String? _sessionId;
   List<String> _dexPaths = const [];
@@ -84,6 +87,7 @@ class ApkReverseAiEnvironment {
       soDataSource: _soDataSource,
       sessionId: sessionId,
       dexPaths: _dexPaths,
+      conversationBinding: _conversationBinding,
       packageName: packageName,
       isZh: isZh,
     );

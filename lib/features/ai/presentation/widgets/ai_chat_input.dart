@@ -32,6 +32,7 @@ class AiChatInput extends HookConsumerWidget {
   final String Function(String rawText)? composeOutgoingText;
   final bool hasComposedContent;
   final VoidCallback? onSendCommitted;
+  final Widget? inputTopContent;
 
   const AiChatInput({
     super.key,
@@ -46,6 +47,7 @@ class AiChatInput extends HookConsumerWidget {
     this.composeOutgoingText,
     this.hasComposedContent = false,
     this.onSendCommitted,
+    this.inputTopContent,
   });
 
   @override
@@ -254,6 +256,7 @@ class AiChatInput extends HookConsumerWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (inputTopContent != null) inputTopContent!,
         if (showQuickActions)
           AiQuickActions(
             packageName: packageName,
@@ -348,15 +351,28 @@ class AiChatInput extends HookConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         PopupMenuButton<_AiInputMenuAction>(
-                          tooltip: context.isZh ? '更多操作' : 'More actions',
-                          offset: const Offset(0, -180),
+                          tooltip: context.isZh ? '添加内容' : 'Add content',
+                          offset: Offset(0, -180 * scopeScale),
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(
+                            minWidth: 220 * scopeScale,
+                            maxWidth: MediaQuery.sizeOf(context).width -
+                                (32 * scopeScale),
+                          ),
                           color: popupMenuColor,
                           surfaceTintColor: Colors.transparent,
-                          shadowColor: Colors.black.withValues(alpha: 0.18),
+                          elevation: 8,
+                          shadowColor: context.colorScheme.shadow.withValues(
+                            alpha: 0.22,
+                          ),
                           clipBehavior: Clip.antiAlias,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
                               14 * scopeScale,
+                            ),
+                            side: BorderSide(
+                              color: context.colorScheme.outlineVariant
+                                  .withValues(alpha: context.isDark ? 0.65 : 0.5),
                             ),
                           ),
                           onSelected: handleMenuAction,
@@ -365,10 +381,10 @@ class AiChatInput extends HookConsumerWidget {
                               value: _AiInputMenuAction.previewContext,
                               enabled: hasContextDetails,
                               child: _AiInputMenuItem(
-                                icon: Icons.data_object_rounded,
+                                icon: Icons.subject_rounded,
                                 title: context.isZh
-                                    ? '查看上下文'
-                                    : 'Preview context',
+                                    ? '查看对话上下文'
+                                    : 'View conversation context',
                                 subtitle: context.isZh
                                     ? '预览自动压缩后的对话上下文'
                                     : 'Preview the current compressed context',
@@ -377,8 +393,8 @@ class AiChatInput extends HookConsumerWidget {
                             PopupMenuItem(
                               value: _AiInputMenuAction.uploadImage,
                               child: _AiInputMenuItem(
-                                icon: Icons.image_outlined,
-                                title: context.isZh ? '上传图片' : 'Upload image',
+                                icon: Icons.add_photo_alternate_outlined,
+                                title: context.isZh ? '添加图片' : 'Add image',
                                 subtitle: context.isZh
                                     ? '添加图片到待发送附件'
                                     : 'Add an image as a pending attachment',
@@ -387,8 +403,8 @@ class AiChatInput extends HookConsumerWidget {
                             PopupMenuItem(
                               value: _AiInputMenuAction.uploadFile,
                               child: _AiInputMenuItem(
-                                icon: Icons.attach_file_rounded,
-                                title: context.isZh ? '上传文件' : 'Upload file',
+                                icon: Icons.note_add_outlined,
+                                title: context.isZh ? '添加文件' : 'Add file',
                                 subtitle: context.isZh
                                     ? '添加文件到待发送附件'
                                     : 'Add a file as a pending attachment',
@@ -521,8 +537,11 @@ class _AiInputMenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scopeScale = AiChatCompactScope.scaleOf(context);
-    return SizedBox(
-      width: 210 * scopeScale,
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minWidth: 188 * scopeScale,
+        maxWidth: 272 * scopeScale,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

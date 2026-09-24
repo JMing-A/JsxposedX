@@ -231,6 +231,183 @@ void main() {
       hasLength(1),
     );
   });
+
+  test('reports the real token budget and compaction reason', () {
+    final result = AiChatContextBuilder(tokenEstimator: const _FixedEstimator())
+        .buildWithStats(
+          assistant: _assistant(
+            contextPolicy: const AiContextPolicy(reservedOutputTokens: 0),
+          ),
+          // 2048 protocol overhead + 16 message tokens.
+          model: _model(contextTokens: 2064),
+          messages: [_message('one'), _message('two'), _message('three')],
+          idFactory: () => 'unused',
+          now: _epoch,
+        );
+
+    expect(result.messages.map((message) => message.id), ['two', 'three']);
+    expect(result.stats.tokenBudget, 2064);
+    expect(result.stats.estimatedTokens, 16);
+    expect(result.stats.remainingTokens, 2048);
+    expect(result.stats.didCompact, isTrue);
+    expect(result.stats.compactReason, 'budget');
+    expect(result.stats.recentRoundsKept, 2);
+    expect(result.stats.includedLayers, ['token_budget']);
+  });
+
+  test('reports every participating layer when nothing is trimmed', () {
+    final call = AiMessage(
+      id: 'assistant-call',
+      conversationId: 'conversation',
+      role: AiMessageRole.assistant,
+      parts: const [
+        AiContentPart.toolCall(
+          toolCall: AiToolCall(id: 'fc_1', name: 'inspect', arguments: {}),
+        ),
+      ],
+      createdAt: _epoch,
+    );
+    final output = AiMessage(
+      id: 'tool-result',
+      conversationId: 'conversation',
+      role: AiMessageRole.tool,
+      parts: const [
+        AiContentPart.toolResult(
+          toolResult: AiToolResult(
+            toolCallId: 'fc_1',
+            name: 'inspect',
+            success: true,
+            content: 'ok',
+          ),
+        ),
+      ],
+      createdAt: _epoch.add(const Duration(seconds: 1)),
+    );
+
+    final result = const AiChatContextBuilder().buildWithStats(
+      assistant: _assistant(
+        systemPrompt: 'instructions',
+        contextPolicy: const AiContextPolicy(mode: AiContextMode.fullHistory),
+      ),
+      model: _model(contextTokens: 100000),
+      messages: [call, output],
+      idFactory: () => 'prompt',
+      now: _epoch,
+    );
+
+    expect(result.stats.didCompact, isFalse);
+    expect(result.stats.compactReason, isNull);
+    expect(result.stats.repairedToolContext, isFalse);
+    expect(result.stats.tokenBudget, 100000);
+    expect(
+      result.stats.estimatedTokens,
+      lessThanOrEqualTo(result.stats.tokenBudget),
+    );
+    expect(
+      result.stats.remainingTokens,
+      result.stats.tokenBudget - result.stats.estimatedTokens,
+    );
+    expect(result.stats.includedLayers, [
+      'system_prompt',
+      'full_history',
+      'tool_context',
+    ]);
+  });
+
+  test('flags recent-message trimming without a budget reason', () {
+    final result = const AiChatContextBuilder().buildWithStats(
+      assistant: _assistant(
+        contextPolicy: const AiContextPolicy(
+          mode: AiContextMode.recentMessages,
+          recentMessageLimit: 1,
+        ),
+      ),
+      model: _model(),
+      messages: [_message('one'), _message('two'), _message('three')],
+      idFactory: () => 'unused',
+      now: _epoch,
+    );
+
+    expect(result.stats.didCompact, isTrue);
+    expect(result.stats.compactReason, isNull);
+    expect(result.stats.recentRoundsKept, 1);
+    expect(result.stats.includedLayers, ['recent_messages']);
+  });
+
+  test('flags a repaired tool context when pairing restores a call', () {
+    final call = AiMessage(
+      id: 'assistant-call',
+      conversationId: 'conversation',
+      role: AiMessageRole.assistant,
+      parts: const [
+        AiContentPart.toolCall(
+          toolCall: AiToolCall(id: 'fc_1', name: 'inspect', arguments: {}),
+        ),
+      ],
+      createdAt: _epoch,
+    );
+    final output = AiMessage(
+      id: 'tool-result',
+      conversationId: 'conversation',
+      role: AiMessageRole.tool,
+      parts: const [
+        AiContentPart.toolResult(
+          toolResult: AiToolResult(
+            toolCallId: 'fc_1',
+            name: 'inspect',
+            success: true,
+            content: 'ok',
+          ),
+        ),
+      ],
+      createdAt: _epoch.add(const Duration(seconds: 1)),
+    );
+
+    final result = const AiChatContextBuilder().buildWithStats(
+      assistant: _assistant(
+        contextPolicy: const AiContextPolicy(
+          mode: AiContextMode.recentMessages,
+          recentMessageLimit: 1,
+        ),
+      ),
+      model: _model(),
+      messages: [call, output],
+      idFactory: () => 'unused',
+      now: _epoch,
+    );
+
+    expect(result.messages.map((message) => message.id), [
+      'assistant-call',
+      'tool-result',
+    ]);
+    expect(result.stats.repairedToolContext, isTrue);
+    expect(result.stats.didCompact, isFalse);
+  });
+
+  test('exposes the composed system prompt it actually sends', () {
+    final result = const AiChatContextBuilder().buildWithStats(
+      assistant: _assistant(systemPrompt: 'profile rules'),
+      model: _model(),
+      messages: [_message('one')],
+      idFactory: () => 'prompt',
+      now: _epoch,
+      environmentSystemPrompt: 'environment rules',
+    );
+
+    expect(result.systemPrompt, 'environment rules\n\nprofile rules');
+  });
+
+  test('reports an empty system prompt when no rules are configured', () {
+    final result = const AiChatContextBuilder().buildWithStats(
+      assistant: _assistant(),
+      model: _model(),
+      messages: [_message('one')],
+      idFactory: () => 'prompt',
+      now: _epoch,
+    );
+
+    expect(result.systemPrompt, isEmpty);
+  });
 }
 
 AiAssistantProfile _assistant({

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:JsxposedX/core/enums/ai_api_type.dart';
 import 'package:JsxposedX/core/models/ai_config.dart';
@@ -373,6 +374,7 @@ class AiChatAction extends _$AiChatAction {
         startRun: ref.read(aiChatOrchestratorProvider).start,
         idFactory: const Uuid().v4,
         environment: environment,
+        onContextAssembled: _handleContextAssembled,
       );
       _sessionController = controller;
       _sessionSubscription = controller.states.listen(_applySessionState);
@@ -395,6 +397,32 @@ class AiChatAction extends _$AiChatAction {
         lastResponseIssue: AiResponseIssue.toolInitError,
       );
     }
+  }
+
+  /// 写入当前会话真实的上下文状态：组装统计（token 预算/裁剪/参与层）
+  /// 与从消息派生的工具轨迹、任务状态，供控制台可视化。
+  void _handleContextAssembled(
+    String conversationId,
+    AiChatSessionContext context,
+  ) {
+    if (_disposed || conversationId != state.currentSessionId) return;
+    if (_sameContext(state.sessionContext, context)) return;
+    state = state.copyWith(
+      sessionContext: context,
+      contextStats: context.stats,
+      contextVersion: context.version,
+    );
+  }
+
+  /// 上下文状态逐字段比较成本高，这里以持久化 JSON 作为等价性基准，
+  /// 既能覆盖嵌套结构，又能避免无变化时的重复重建。
+  static bool _sameContext(
+    AiChatSessionContext left,
+    AiChatSessionContext right,
+  ) {
+    if (identical(left, right)) return true;
+    return jsonEncode(left.toStorageJson()) ==
+        jsonEncode(right.toStorageJson());
   }
 
   void _applySessionState(AiChatSessionState next) {

@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_context_builder.dart';
+import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_context_deriver.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_environment.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_orchestrator.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_state.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_stream_snapshot.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/ai_catalog_repository.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/ai_conversation_repository.dart';
@@ -19,7 +21,10 @@ class AiChatSessionController {
     required String Function() idFactory,
     DateTime Function()? now,
     AiChatContextBuilder contextBuilder = const AiChatContextBuilder(),
+    AiChatSessionContextDeriver contextDeriver =
+        const AiChatSessionContextDeriver(),
     this.environment,
+    this.onContextAssembled,
     this.pageSize = 50,
     this.checkpointInterval = const Duration(milliseconds: 300),
   }) : _catalogRepository = catalogRepository,
@@ -28,18 +33,25 @@ class AiChatSessionController {
        _idFactory = idFactory,
        _now = now ?? DateTime.now,
        _contextBuilder = contextBuilder,
+       _contextDeriver = contextDeriver,
        _state = AiChatSessionState(conversationId: conversationId);
 
   final String conversationId;
   final int pageSize;
   final Duration checkpointInterval;
   final AiChatSessionEnvironment? environment;
+
+  /// 每次完成上下文组装（初始化恢复、每轮请求下发前）后回调该对话最新的
+  /// 上下文状态（含真实组装统计），供控制台展示，不参与请求本身。
+  final void Function(String conversationId, AiChatSessionContext context)?
+  onContextAssembled;
   final AiCatalogRepository _catalogRepository;
   final AiConversationRepository _conversationRepository;
   final AiChatRun Function(AiRequest request) _startRun;
   final String Function() _idFactory;
   final DateTime Function() _now;
   final AiChatContextBuilder _contextBuilder;
+  final AiChatSessionContextDeriver _contextDeriver;
   final StreamController<AiChatSessionState> _states =
       StreamController<AiChatSessionState>.broadcast(sync: true);
 
@@ -49,6 +61,11 @@ class AiChatSessionController {
   Timer? _checkpointTimer;
   AiStreamSnapshot? _pendingCheckpointSnapshot;
   Future<void> _checkpointTail = Future.value();
+  /// 上次持久化的对话级上下文快照，初始化时读回，用于恢复无法从消息
+  /// 历史重建的状态（固定约束、恢复点、迁移标记）。
+  AiChatSessionContext? _restoredContext;
+  /// 上下文快照落盘串行链，避免并发写覆盖并保证关闭前写完。
+  Future<void> _contextTail = Future.value();
   Future<void>? _initialization;
   bool _closed = false;
   Completer<bool>? _approvalCompleter;
@@ -104,6 +121,20 @@ class AiChatSessionController {
         hasOlderMessages: hasOlder,
         failure: null,
       ),
+    );
+    _restoredContext = await _conversationRepository.getConversationContext(
+      conversationId,
+    );
+    _publishContext(
+      _contextBuilder.buildWithStats(
+        assistant: assistant,
+        model: model,
+        messages: repaired,
+        idFactory: _idFactory,
+        now: _now().toUtc(),
+        environmentSystemPrompt: environment?.systemPrompt,
+      ),
+      repaired,
     );
   }
 
@@ -492,19 +523,21 @@ class AiChatSessionController {
       );
       await _conversationRepository.saveMessage(placeholder);
       final visibleMessages = [...workingHistory, placeholder];
-      final requestMessages = _contextBuilder.build(
-        assistant: assistant,
-        model: model,
-        messages: workingHistory,
-        idFactory: _idFactory,
-        now: currentTime,
-        environmentSystemPrompt: environment?.systemPrompt,
-      );
+      final requestMessages = _contextBuilder
+          .buildWithStats(
+            assistant: assistant,
+            model: model,
+            messages: workingHistory,
+            idFactory: _idFactory,
+            now: currentTime,
+            environmentSystemPrompt: environment?.systemPrompt,
+          );
+      _publishContext(requestMessages, workingHistory);
       final request = AiRequest(
         requestId: requestId,
         connection: connection,
         model: model,
-        messages: requestMessages,
+        messages: requestMessages.messages,
         options: assistant.generation.copyWith(
           stream: assistant.generation.stream && model.capabilities.streaming,
         ),
@@ -1120,6 +1153,39 @@ class AiChatSessionController {
     _states.add(next);
   }
 
+  /// 组装完成后发布并持久化该对话的上下文状态：同步回调控制台（保证
+  /// 交互低延迟），异步串行落盘（不阻塞请求链路）。
+  void _publishContext(
+    AiChatContextBuildResult assembled,
+    List<AiMessage> history,
+  ) {
+    if (_closed) return;
+    final restored = _restoredContext;
+    final context = _contextDeriver
+        .derive(
+          history: history,
+          stats: assembled.stats,
+          sessionRules: assembled.systemPrompt,
+        )
+        .copyWith(
+          // 恢复点与固定约束无法从消息历史重建，保留上次持久化的取值。
+          checkpoint: restored?.checkpoint,
+          pinnedContext: restored?.pinnedContext ?? const [],
+          migratedFromLegacySummary:
+              restored?.migratedFromLegacySummary ?? false,
+        );
+    _restoredContext = context;
+    onContextAssembled?.call(conversationId, context);
+    _contextTail = _contextTail
+        .then(
+          (_) => _conversationRepository.saveConversationContext(
+            conversationId,
+            context,
+          ),
+        )
+        .catchError((Object _) {});
+  }
+
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
@@ -1131,6 +1197,7 @@ class AiChatSessionController {
     _activeRun?.cancel();
     await _runSubscription?.cancel();
     await _checkpointTail;
+    await _contextTail;
     await _states.close();
   }
 }

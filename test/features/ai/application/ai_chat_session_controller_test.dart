@@ -9,6 +9,7 @@ import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_controlle
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_state.dart';
 import 'package:JsxposedX/features/ai/data/repositories/drift_ai_catalog_repository.dart';
 import 'package:JsxposedX/features/ai/data/repositories/drift_ai_conversation_repository.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/ports/ai_credential_store.dart';
 import 'package:JsxposedX/features/ai/domain/ports/ai_protocol_adapter.dart';
@@ -147,6 +148,42 @@ void main() {
       (await conversations.getMessages('conversation')).single.status,
       AiMessageStatus.interrupted,
     );
+    await controller.close();
+  });
+
+  test('publishes real context stats for the active conversation', () async {
+    final transport = _TextTransport(['answer']);
+    final assembled = <AiChatSessionContext>[];
+    final controller = _controller(
+      catalog,
+      conversations,
+      transport,
+      onContextAssembled: (conversationId, context) {
+        expect(conversationId, 'conversation');
+        assembled.add(context);
+      },
+    );
+
+    // 初始化恢复阶段即产出统计：预算来自模型上下文上限（4096），
+    // 空历史下估算值仍为 0 而不是伪造值。
+    await controller.initialize();
+    expect(assembled, hasLength(1));
+    expect(assembled.single.stats.tokenBudget, 4096);
+    expect(assembled.single.stats.estimatedTokens, 0);
+    expect(assembled.single.stats.remainingTokens, 4096);
+    expect(assembled.single.stats.includedLayers, ['token_budget']);
+
+    await controller.sendText('question');
+
+    // 每轮请求下发前再次产出统计，且估算值真实、不超预算。
+    expect(assembled, hasLength(2));
+    final stats = assembled.last.stats;
+    expect(stats.tokenBudget, 4096);
+    expect(stats.estimatedTokens, greaterThan(0));
+    expect(stats.remainingTokens, 4096 - stats.estimatedTokens);
+    expect(stats.didCompact, isFalse);
+    expect(stats.recentRoundsKept, 1);
+    expect(stats.includedLayers, ['token_budget']);
     await controller.close();
   });
 
@@ -977,6 +1014,8 @@ AiChatSessionController _controller(
   AiConversationRepository conversations,
   AiTransport transport, {
   AiChatSessionEnvironment? environment,
+  void Function(String conversationId, AiChatSessionContext context)?
+  onContextAssembled,
 }) {
   final ids = _IdFactory();
   final orchestrator = AiChatOrchestrator(
@@ -1000,6 +1039,7 @@ AiChatSessionController _controller(
     now: () => _epoch.add(const Duration(minutes: 1)),
     checkpointInterval: const Duration(milliseconds: 20),
     environment: environment,
+    onContextAssembled: onContextAssembled,
   );
 }
 
@@ -1452,6 +1492,17 @@ class _FailingSaveMessageRepository implements AiConversationRepository {
     String conversationId,
     Iterable<String> ids,
   ) => _inner.deleteMessagesById(conversationId, ids);
+
+  @override
+  Future<AiChatSessionContext?> getConversationContext(
+    String conversationId,
+  ) => _inner.getConversationContext(conversationId);
+
+  @override
+  Future<void> saveConversationContext(
+    String conversationId,
+    AiChatSessionContext context,
+  ) => _inner.saveConversationContext(conversationId, context);
 }
 
 /// 记录型工具执行器：不执行任何真实逻辑，仅记录收到的调用供断言。

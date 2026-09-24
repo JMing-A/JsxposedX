@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:JsxposedX/features/ai/data/models/ai_conversation_dto.dart';
 import 'package:JsxposedX/features/ai/data/models/ai_message_record_dto.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/ai_conversation_repository.dart';
 import 'package:JsxposedX/features/ai/infrastructure/persistence/ai_database.dart'
@@ -82,6 +83,15 @@ class DriftAiConversationRepository implements AiConversationRepository {
     await _database.transaction(() async {
       await (_database.delete(
         _database.aiMessageRecords,
+      )..where((table) => table.conversationId.equals(id))).go();
+      await (_database.delete(
+        _database.aiConversationContexts,
+      )..where((table) => table.conversationId.equals(id))).go();
+      await (_database.delete(
+        _database.scriptLogs,
+      )..where((table) => table.conversationId.equals(id))).go();
+      await (_database.delete(
+        _database.scriptRuns,
       )..where((table) => table.conversationId.equals(id))).go();
       await (_database.delete(
         _database.aiConversations,
@@ -185,6 +195,50 @@ class DriftAiConversationRepository implements AiConversationRepository {
               table.id.isIn(messageIds),
         ))
         .go();
+  }
+
+  @override
+  Future<AiChatSessionContext?> getConversationContext(
+    String conversationId,
+  ) async {
+    final row =
+        await (_database.select(_database.aiConversationContexts)
+              ..where((table) => table.conversationId.equals(conversationId)))
+            .getSingleOrNull();
+    if (row == null) return null;
+    try {
+      return AiChatSessionContext.fromStorageJson(
+        Map<String, dynamic>.from(jsonDecode(row.payloadJson) as Map),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveConversationContext(
+    String conversationId,
+    AiChatSessionContext context,
+  ) async {
+    final conversation =
+        await (_database.select(_database.aiConversations)
+              ..where((table) => table.id.equals(conversationId)))
+            .getSingleOrNull();
+    if (conversation == null) {
+      throw StateError(
+        'Cannot save context for missing conversation $conversationId',
+      );
+    }
+    await _database
+        .into(_database.aiConversationContexts)
+        .insertOnConflictUpdate(
+          AiConversationContextsCompanion.insert(
+            conversationId: conversationId,
+            contextVersion: context.version,
+            payloadJson: jsonEncode(context.toStorageJson()),
+            updatedAt: DateTime.now().toUtc(),
+          ),
+        );
   }
 
   static AiConversation _conversationFromJson(String source) =>

@@ -1,3 +1,4 @@
+import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 
 abstract interface class AiConversationRepository {
@@ -25,6 +26,15 @@ abstract interface class AiConversationRepository {
   Future<void> deleteMessagesAfter(String conversationId, DateTime createdAt);
 
   Future<void> deleteMessagesById(String conversationId, Iterable<String> ids);
+
+  /// 读取该对话上次持久化的上下文快照；不存在时返回 null。
+  Future<AiChatSessionContext?> getConversationContext(String conversationId);
+
+  /// 覆盖写入该对话的上下文快照，使上下文状态在重启后可恢复。
+  Future<void> saveConversationContext(
+    String conversationId,
+    AiChatSessionContext context,
+  );
 }
 
 class AiConversationCursor {

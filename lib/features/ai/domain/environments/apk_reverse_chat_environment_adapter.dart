@@ -17,6 +17,7 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
   ApkReverseChatEnvironmentAdapter({
     required this.packageName,
     required this.isZh,
+    required this.conversationBinding,
     required ApkAnalysisActionRepository apkActionRepository,
     required ApkAnalysisQueryRepository apkQueryRepository,
     required SoAnalysisDatasource soDataSource,
@@ -26,6 +27,7 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
 
   final String packageName;
   final bool isZh;
+  final ScriptConversationBinding conversationBinding;
   final ApkAnalysisActionRepository _apkActionRepository;
   final ApkAnalysisQueryRepository _apkQueryRepository;
   final SoAnalysisDatasource _soDataSource;
@@ -94,6 +96,7 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
       soDataSource: _soDataSource,
       sessionId: nextSessionId,
       dexPaths: _dexPaths,
+      conversationBinding: conversationBinding,
       packageName: packageName,
       isZh: isZh,
     );

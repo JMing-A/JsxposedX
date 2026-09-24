@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/logcat_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -11,20 +13,15 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 const _kSourceFilters = [
-  (label: 'Session', value: 'session'),
-  (label: 'Frida', value: 'frida'),
-  (label: 'Xposed', value: 'xposed'),
-  (label: 'App', value: 'app'),
-  (label: 'Core', value: 'framework'),
-  (label: 'System', value: 'system'),
+  (value: 'session'),
+  (value: 'frida'),
+  (value: 'xposed'),
+  (value: 'app'),
+  (value: 'framework'),
+  (value: 'system'),
 ];
 
-const _kLevelFilters = [
-  (label: 'Debug', value: 'D'),
-  (label: 'Info', value: 'I'),
-  (label: 'Warn', value: 'W'),
-  (label: 'Error', value: 'E'),
-];
+const _kLevelFilters = [(value: 'D'), (value: 'I'), (value: 'W'), (value: 'E')];
 
 class LogcatPanelView extends HookConsumerWidget {
   final bool isFullscreen;
@@ -45,6 +42,70 @@ class LogcatPanelView extends HookConsumerWidget {
     final scrollController = useScrollController();
     final selectedSource = useState<String?>(null);
     final selectedLevel = useState<String?>(null);
+    final showHistory = useState(false);
+    final historyLoading = useState(false);
+    final historyHasMore = useState(false);
+    final historyError = useState<String?>(null);
+    final historyLogs = useState<List<ScriptLogRecord>>([]);
+    final conversationId =
+        logcatNotifier.sessionConversationId ??
+        ref.watch(scriptConversationBindingProvider).conversationId;
+    final repository = ref.watch(scriptLogRepositoryProvider);
+    final historyCursor = historyLogs.value.isEmpty
+        ? null
+        : historyLogs.value.last;
+    final historyRequestGeneration = useRef(0);
+
+    Future<void> loadHistory({bool older = false}) async {
+      if (conversationId == null ||
+          conversationId.isEmpty ||
+          historyLoading.value) {
+        return;
+      }
+      final generation = ++historyRequestGeneration.value;
+      final requestConversationId = conversationId;
+      final last = older ? historyCursor : null;
+      historyLoading.value = true;
+      historyError.value = null;
+      try {
+        if (!older) await logcatNotifier.flushPersistedLogs();
+        final page = await repository.getLogs(
+          conversationId: requestConversationId,
+          before: last?.timestamp,
+          beforeId: last?.id,
+          limit: 100,
+        );
+        if (generation != historyRequestGeneration.value ||
+            conversationId != requestConversationId) {
+          return;
+        }
+        historyHasMore.value = page.length == 100;
+        if (older) {
+          historyLogs.value = [...historyLogs.value, ...page];
+        } else {
+          historyLogs.value = page;
+        }
+      } catch (error) {
+        if (generation == historyRequestGeneration.value &&
+            conversationId == requestConversationId) {
+          historyError.value = error.toString();
+        }
+      } finally {
+        if (generation == historyRequestGeneration.value) {
+          historyLoading.value = false;
+        }
+      }
+    }
+
+    useEffect(() {
+      historyRequestGeneration.value++;
+      historyLoading.value = false;
+      historyLogs.value = [];
+      historyHasMore.value = false;
+      historyError.value = null;
+      if (showHistory.value) unawaited(loadHistory());
+      return null;
+    }, [conversationId, showHistory.value, repository]);
     final searchDebounce = useRef<Timer?>(null);
 
     useEffect(() {
@@ -76,6 +137,36 @@ class LogcatPanelView extends HookConsumerWidget {
       }).toList();
     }, [logEntries, searchQuery, selectedSource.value, selectedLevel.value]);
 
+    // 历史条目复用同一套过滤条件，保证统一时间轴行为一致。
+    final filteredHistory = useMemoized(() {
+      if (!showHistory.value) return const <ScriptLogRecord>[];
+      final normalizedQuery = searchQuery.toLowerCase();
+      return historyLogs.value.where((log) {
+        if (normalizedQuery.isNotEmpty) {
+          final haystack = [
+            log.message,
+            log.scriptName,
+            log.source,
+            log.stackTrace,
+          ].join('\n').toLowerCase();
+          if (!haystack.contains(normalizedQuery)) return false;
+        }
+        if (selectedSource.value != null && log.source != selectedSource.value) {
+          return false;
+        }
+        if (selectedLevel.value != null && log.level != selectedLevel.value) {
+          return false;
+        }
+        return true;
+      }).toList();
+    }, [
+      showHistory.value,
+      historyLogs.value,
+      searchQuery,
+      selectedSource.value,
+      selectedLevel.value,
+    ]);
+
     final scrollScheduled = useRef(false);
     ref.listen(logcatProvider, (previous, next) {
       if (logcatNotifier.isAutoScroll && scrollController.hasClients) {
@@ -100,16 +191,148 @@ class LogcatPanelView extends HookConsumerWidget {
       await Clipboard.setData(ClipboardData(text: text));
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${filteredEntries.length} logs copied')),
+        SnackBar(
+          content: Text(context.l10n.consoleCopied(filteredEntries.length)),
+        ),
       );
     }
 
     Future<void> exportVisibleLogs() async {
       final text = filteredEntries.map(_formatEntry).join('\n');
       await FilePicker.platform.saveFile(
-        dialogTitle: 'Export console logs',
+        dialogTitle: context.l10n.consoleExportDialogTitle,
         fileName: 'jsxposed-console-${logcatNotifier.sessionId}.log',
         bytes: utf8.encode(text),
+      );
+    }
+
+    Future<void> deleteConversationHistory() async {
+      final target = conversationId;
+      if (target == null || target.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.consoleDeleteHistoryUnavailable),
+          ),
+        );
+        return;
+      }
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(context.l10n.consoleDeleteHistoryConfirmTitle),
+          content: Text(context.l10n.consoleDeleteHistoryConfirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(context.l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(context.l10n.delete),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      try {
+        // 先落盘待写队列，避免删除后旧数据又被写回。
+        await logcatNotifier.flushPersistedLogs();
+        await repository.deleteConversationLogs(target);
+        if (!context.mounted) return;
+        historyRequestGeneration.value++;
+        historyLogs.value = [];
+        historyHasMore.value = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.consoleDeleteHistoryDone)),
+        );
+      } catch (error) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.toString())),
+        );
+      }
+    }
+
+    Widget buildLogList(BuildContext context) {
+      // 历史模式：历史段在上、实时段在下，共用同一个滚动视图。
+      if (!showHistory.value) {
+        if (filteredEntries.isEmpty) {
+          return _EmptyState(isFiltered: isAnyFiltered);
+        }
+        return ListView.builder(
+          controller: scrollController,
+          padding: EdgeInsets.symmetric(vertical: 4.h),
+          itemCount: filteredEntries.length,
+          itemBuilder: (context, index) => _LogRow(entry: filteredEntries[index]),
+        );
+      }
+
+      if (historyError.value != null) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(historyError.value!),
+              TextButton(
+                onPressed: () => loadHistory(),
+                child: Text(context.l10n.retry),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (historyLoading.value &&
+          filteredHistory.isEmpty &&
+          filteredEntries.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      final loadOlderCount =
+          historyHasMore.value && filteredHistory.isNotEmpty ? 1 : 0;
+      final separatorCount =
+          filteredHistory.isNotEmpty && filteredEntries.isNotEmpty ? 1 : 0;
+      final itemCount =
+          loadOlderCount +
+          filteredHistory.length +
+          separatorCount +
+          filteredEntries.length;
+
+      if (itemCount == 0) {
+        return filteredEntries.isEmpty && filteredHistory.isEmpty
+            ? _EmptyState(isFiltered: isAnyFiltered)
+            : Center(child: Text(context.l10n.consoleNoHistory));
+      }
+
+      return ListView.builder(
+        controller: scrollController,
+        padding: EdgeInsets.symmetric(vertical: 4.h),
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          var cursor = index;
+          if (loadOlderCount == 1 && cursor == 0) {
+            return Center(
+              child: TextButton(
+                onPressed: historyLoading.value
+                    ? null
+                    : () => loadHistory(older: true),
+                child: historyLoading.value
+                    ? const CircularProgressIndicator()
+                    : Text(context.l10n.consoleLoadOlder),
+              ),
+            );
+          }
+          cursor -= loadOlderCount;
+          if (cursor < filteredHistory.length) {
+            return _PersistedLogRow(log: filteredHistory[cursor]);
+          }
+          cursor -= filteredHistory.length;
+          if (separatorCount == 1 && cursor == 0) {
+            return _LiveSectionDivider(label: context.l10n.consoleLiveBelow);
+          }
+          cursor -= separatorCount;
+          return _LogRow(entry: filteredEntries[cursor]);
+        },
       );
     }
 
@@ -144,8 +367,11 @@ class LogcatPanelView extends HookConsumerWidget {
                 logcatNotifier.setPaused(!logcatNotifier.isPaused),
             onCopy: copyVisibleLogs,
             onExport: exportVisibleLogs,
+            onDeleteHistory: deleteConversationHistory,
             onClear: logcatNotifier.clear,
             onToggleFullscreen: onToggleFullscreen,
+            showHistory: showHistory.value,
+            onHistoryToggle: () => showHistory.value = !showHistory.value,
           ),
           Divider(
             height: 1,
@@ -165,17 +391,7 @@ class LogcatPanelView extends HookConsumerWidget {
             color: Colors.white.withValues(alpha: 0.04),
           ),
           // ── Log List ──
-          Expanded(
-            child: filteredEntries.isEmpty
-                ? _EmptyState(isFiltered: isAnyFiltered)
-                : ListView.builder(
-                    controller: scrollController,
-                    padding: EdgeInsets.symmetric(vertical: 4.h),
-                    itemCount: filteredEntries.length,
-                    itemBuilder: (context, index) =>
-                        _LogRow(entry: filteredEntries[index]),
-                  ),
-          ),
+          Expanded(child: buildLogList(context)),
         ],
       ),
     );
@@ -198,8 +414,11 @@ class _LogcatToolbar extends StatelessWidget {
   final VoidCallback onPauseToggle;
   final VoidCallback onCopy;
   final VoidCallback onExport;
+  final VoidCallback onDeleteHistory;
   final VoidCallback onClear;
   final VoidCallback onToggleFullscreen;
+  final bool showHistory;
+  final VoidCallback onHistoryToggle;
 
   const _LogcatToolbar({
     required this.autoScroll,
@@ -213,8 +432,11 @@ class _LogcatToolbar extends StatelessWidget {
     required this.onPauseToggle,
     required this.onCopy,
     required this.onExport,
+    required this.onDeleteHistory,
     required this.onClear,
     required this.onToggleFullscreen,
+    required this.showHistory,
+    required this.onHistoryToggle,
   });
 
   @override
@@ -340,8 +562,18 @@ class _LogcatToolbar extends StatelessWidget {
                 onPressed: onAutoScrollToggle,
               ),
               _ToolbarIconButton(
+                icon: showHistory
+                    ? Icons.history_rounded
+                    : Icons.history_toggle_off_rounded,
+                tooltip: context.l10n.consoleHistory,
+                color: showHistory ? Colors.blue[300]! : Colors.grey[600]!,
+                onPressed: onHistoryToggle,
+              ),
+              _ToolbarIconButton(
                 icon: isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                tooltip: isPaused ? 'Resume output' : 'Pause output',
+                tooltip: isPaused
+                    ? context.l10n.consoleResumeOutput
+                    : context.l10n.consolePauseOutput,
                 color: isPaused ? Colors.orange : Colors.grey[600]!,
                 onPressed: onPauseToggle,
               ),
@@ -349,7 +581,7 @@ class _LogcatToolbar extends StatelessWidget {
                 width: 27.w,
                 height: 28.h,
                 child: PopupMenuButton<String>(
-                  tooltip: 'Console actions',
+                  tooltip: context.l10n.consoleActions,
                   padding: EdgeInsets.zero,
                   style: IconButton.styleFrom(
                     padding: EdgeInsets.zero,
@@ -361,15 +593,20 @@ class _LogcatToolbar extends StatelessWidget {
                   onSelected: (value) {
                     if (value == 'copy') onCopy();
                     if (value == 'export') onExport();
+                    if (value == 'deleteHistory') onDeleteHistory();
                   },
-                  itemBuilder: (_) => const [
+                  itemBuilder: (_) => [
                     PopupMenuItem(
                       value: 'copy',
-                      child: Text('Copy visible logs'),
+                      child: Text(context.l10n.consoleCopyVisible),
                     ),
                     PopupMenuItem(
                       value: 'export',
-                      child: Text('Export visible logs'),
+                      child: Text(context.l10n.consoleExportVisible),
+                    ),
+                    PopupMenuItem(
+                      value: 'deleteHistory',
+                      child: Text(context.l10n.consoleDeleteHistory),
                     ),
                   ],
                 ),
@@ -395,6 +632,24 @@ class _LogcatToolbar extends StatelessWidget {
     );
   }
 }
+
+String _sourceLabel(BuildContext context, String value) => switch (value) {
+  'session' => context.l10n.consoleSourceSession,
+  'frida' => context.l10n.consoleSourceFrida,
+  'xposed' => context.l10n.consoleSourceXposed,
+  'app' => context.l10n.consoleSourceApp,
+  'framework' => context.l10n.consoleSourceCore,
+  'system' => context.l10n.consoleSourceSystem,
+  _ => value,
+};
+
+String _levelLabel(BuildContext context, String value) => switch (value) {
+  'D' => context.l10n.consoleLevelDebug,
+  'I' => context.l10n.consoleLevelInfo,
+  'W' => context.l10n.consoleLevelWarn,
+  'E' => context.l10n.consoleLevelError,
+  _ => value,
+};
 
 // ─────────────────────────────────────────────
 // Tag Filter Row
@@ -426,7 +681,7 @@ class _FilterRow extends StatelessWidget {
         itemBuilder: (context, index) {
           if (index == 0) {
             return _TagChip(
-              label: 'All',
+              label: context.l10n.consoleAll,
               isSelected: selectedSource == null && selectedLevel == null,
               onTap: () {
                 onSourceSelected(null);
@@ -437,7 +692,7 @@ class _FilterRow extends StatelessWidget {
           if (index <= _kSourceFilters.length) {
             final filter = _kSourceFilters[index - 1];
             return _TagChip(
-              label: filter.label,
+              label: _sourceLabel(context, filter.value),
               isSelected: selectedSource == filter.value,
               onTap: () => onSourceSelected(
                 selectedSource == filter.value ? null : filter.value,
@@ -454,7 +709,7 @@ class _FilterRow extends StatelessWidget {
           }
           final filter = _kLevelFilters[index - _kSourceFilters.length - 2];
           return _TagChip(
-            label: filter.label,
+            label: _levelLabel(context, filter.value),
             isSelected: selectedLevel == filter.value,
             onTap: () => onLevelSelected(
               selectedLevel == filter.value ? null : filter.value,
@@ -516,6 +771,78 @@ class _TagChip extends StatelessWidget {
 // Log Row
 // ─────────────────────────────────────────────
 
+/// 统一时间轴中"历史段"与"实时段"的分界提示。
+class _LiveSectionDivider extends StatelessWidget {
+  final String label;
+
+  const _LiveSectionDivider({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      child: Row(
+        children: [
+          Expanded(
+            child: Divider(
+              height: 1,
+              thickness: 0.5,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.w),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 9.sp,
+                fontFamily: 'monospace',
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+          Expanded(
+            child: Divider(
+              height: 1,
+              thickness: 0.5,
+              color: Colors.white.withValues(alpha: 0.12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PersistedLogRow extends StatelessWidget {
+  const _PersistedLogRow({required this.log});
+
+  final ScriptLogRecord log;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (log.level) {
+      'E' || 'F' => const Color(0xFFEF5350),
+      'W' => const Color(0xFFFFA726),
+      'D' => const Color(0xFF42A5F5),
+      _ => const Color(0xFFB0BEC5),
+    };
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+      child: SelectableText(
+        '[${log.timestamp.toLocal()}] [${log.source}/${log.level}] '
+        '${log.scriptName} (run ${log.runId}): ${log.message}'
+        '${log.stackTrace.isEmpty ? '' : '\n${log.stackTrace}'}',
+        style: TextStyle(
+          fontSize: 11.sp,
+          color: color,
+          fontFamily: 'monospace',
+        ),
+      ),
+    );
+  }
+}
+
 class _LogRow extends StatelessWidget {
   final LogcatEntry entry;
 
@@ -556,7 +883,7 @@ class _LogRow extends StatelessWidget {
         Clipboard.setData(ClipboardData(text: _formatEntry(entry)));
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Log copied')));
+        ).showSnackBar(SnackBar(content: Text(context.l10n.consoleLogCopied)));
       },
       child: Container(
         color: _rowBgColor,

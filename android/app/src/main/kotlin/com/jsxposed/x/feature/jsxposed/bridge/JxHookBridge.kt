@@ -31,13 +31,18 @@ class JxHookBridge(
     @Volatile
     private var currentScriptKey: String? = null
 
-    fun beginScriptScope(scriptKey: String) {
+    @Volatile
+    private var currentRunId: String = ""
+
+    fun beginScriptScope(scriptKey: String, runId: String) {
         currentScriptKey = scriptKey
+        currentRunId = runId
         LogX.d(TAG, "script-scope-begin script=$scriptKey")
     }
 
     fun endScriptScope() {
         currentScriptKey = null
+        currentRunId = ""
     }
 
     fun unhookScript(scriptKey: String): Int {
@@ -211,13 +216,14 @@ class JxHookBridge(
     private fun buildCallback(callbacks: JSObject): XC_MethodHook {
         val beforeCb = callbacks.getProperty("before") as? JSFunction
         val afterCb = callbacks.getProperty("after") as? JSFunction
-        val scriptName = currentScriptKey ?: "<unknown>"
+        val scriptName = (currentScriptKey ?: "<unknown>").substringAfterLast('/')
+        val runId = currentRunId
         return object : XC_MethodHook() {
             override fun beforeHookedMethod(param: MethodHookParam) {
                 try {
                     if (beforeCb != null) {
                         dispatcher.submit {
-                            logBridge.withScriptScope(scriptName) {
+                            logBridge.withScriptScope(scriptName, runId) {
                                 beforeCb.call(wrapParam(param))
                             }
                         }
@@ -229,7 +235,7 @@ class JxHookBridge(
                 try {
                     if (afterCb != null) {
                         dispatcher.submit {
-                            logBridge.withScriptScope(scriptName) {
+                            logBridge.withScriptScope(scriptName, runId) {
                                 afterCb.call(wrapParam(param))
                             }
                         }

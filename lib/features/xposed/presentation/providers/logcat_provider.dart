@@ -5,7 +5,39 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
+import 'package:JsxposedX/features/xposed/domain/services/jxconsole_log_protocol.dart';
+
 part 'logcat_provider.g.dart';
+
+DateTime _logcatTimestamp(String value) {
+  final parsed = DateTime.tryParse(value);
+  if (parsed != null) return parsed.toUtc();
+  final match = RegExp(
+    r'^(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d+)$',
+  ).firstMatch(value);
+  if (match == null) return DateTime.now().toUtc();
+  final now = DateTime.now();
+  final fraction = match.group(6)!.padRight(6, '0').substring(0, 6);
+  final candidates = [now.year - 1, now.year, now.year + 1].map(
+    (year) => DateTime(
+      year,
+      int.parse(match.group(1)!),
+      int.parse(match.group(2)!),
+      int.parse(match.group(3)!),
+      int.parse(match.group(4)!),
+      int.parse(match.group(5)!),
+      int.parse(fraction.substring(0, 3)),
+      int.parse(fraction.substring(3, 6)),
+    ),
+  );
+  return candidates
+      .reduce(
+        (a, b) => a.difference(now).abs() <= b.difference(now).abs() ? a : b,
+      )
+      .toUtc();
+}
 
 class LogcatEntry {
   final String rawLine;
@@ -15,6 +47,7 @@ class LogcatEntry {
   final String timestamp;
   final String source;
   final String scriptName;
+  final String runId;
   final String sessionId;
   final String pid;
   final String tid;
@@ -29,6 +62,7 @@ class LogcatEntry {
     this.timestamp = '',
     this.source = 'system',
     this.scriptName = '',
+    this.runId = '',
     this.sessionId = '',
     this.pid = '',
     this.tid = '',
@@ -39,6 +73,7 @@ class LogcatEntry {
       message,
       source,
       scriptName,
+      runId,
       tag,
       stackTrace,
       pid,
@@ -52,6 +87,7 @@ class Logcat extends _$Logcat {
   static const _maxPausedEntries = 4000;
   static const _flushBatchSize = 32;
   static const _flushInterval = Duration(milliseconds: 50);
+  static const _scriptLogFlushInterval = Duration(milliseconds: 250);
 
   Process? _process;
   int _processGeneration = 0;
@@ -59,8 +95,16 @@ class Logcat extends _$Logcat {
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
   Timer? _flushTimer;
+  Timer? _scriptLogFlushTimer;
   final List<LogcatEntry> _pendingEntries = <LogcatEntry>[];
   final List<LogcatEntry> _pausedEntries = <LogcatEntry>[];
+  final StreamController<LogcatEntry> _structuredLogController =
+      StreamController<LogcatEntry>.broadcast();
+  final Map<String, ScriptRunRecord> _knownRuns = {};
+  final List<ScriptLogRecord> _pendingScriptLogs = [];
+  Future<void> _structuredLogChain = Future<void>.value();
+  Future<void> _scriptLogWriteChain = Future<void>.value();
+  bool _hasReportedPersistenceError = false;
   bool _isAutoScroll = true;
   bool _isPaused = false;
   String _targetPackage = '';
@@ -68,6 +112,7 @@ class Logcat extends _$Logcat {
   String _sessionId = '';
   String _sessionSource = 'all';
   String _sessionScriptName = '';
+  String? _sessionConversationId;
   bool _isDisposed = false;
 
   @override
@@ -76,6 +121,8 @@ class Logcat extends _$Logcat {
     ref.onDispose(() {
       _isDisposed = true;
       _stopProcess();
+      _scriptLogFlushTimer?.cancel();
+      _structuredLogController.close();
       _pendingEntries.clear();
       _pausedEntries.clear();
     });
@@ -83,6 +130,13 @@ class Logcat extends _$Logcat {
   }
 
   bool get isAutoScroll => _isAutoScroll;
+
+  /// 结构化脚本日志广播流。
+  ///
+  /// 该流在 UI 过滤、暂停、清屏之前发出，供持久化 recorder 独立消费，
+  /// 不受控制台视图状态影响。仅推送带 runId 的可识别结构化日志。
+  Stream<LogcatEntry> get structuredLogs => _structuredLogController.stream;
+
   bool get isPaused => _isPaused;
   bool get isRunning => _process != null;
   bool get isStarting => _isStarting;
@@ -90,6 +144,7 @@ class Logcat extends _$Logcat {
   String get sessionId => _sessionId;
   String get sessionSource => _sessionSource;
   String get sessionScriptName => _sessionScriptName;
+  String? get sessionConversationId => _sessionConversationId;
   String get targetPackage => _targetPackage;
 
   void setAutoScroll(bool value) {
@@ -122,13 +177,135 @@ class Logcat extends _$Logcat {
     state = List<LogcatEntry>.unmodifiable(state);
   }
 
-  void configureSession(String source, String scriptName) {
+  void configureSession(
+    String source,
+    String scriptName, {
+    String? conversationId,
+  }) {
     _sessionSource = source;
     _sessionScriptName = scriptName;
+    _sessionConversationId = conversationId;
+  }
+
+  Future<void> _persistStructuredLog(LogcatEntry entry) async {
+    if (entry.runId.isEmpty) return;
+    try {
+      final repository = ref.read(scriptLogRepositoryProvider);
+      var run = _knownRuns[entry.runId];
+      run ??= await repository.getRun(entry.runId);
+      final entryScriptName = entry.scriptName.split('/').last;
+      if (run == null) {
+        _reportPersistenceError('run-missing', 'runId=${entry.runId}');
+        return;
+      }
+      if (run.source != entry.source ||
+          run.scriptName.split('/').last != entryScriptName) {
+        _reportPersistenceError(
+          'metadata-mismatch',
+          'expected ${run.source}/${run.scriptName}, '
+              'received ${entry.source}/${entry.scriptName}',
+        );
+        return;
+      }
+      _knownRuns[entry.runId] = run;
+      _pendingScriptLogs.add(
+        ScriptLogRecord(
+          id: 0,
+          runId: run.runId,
+          conversationId: run.conversationId,
+          source: entry.source,
+          scriptName: run.scriptName,
+          level: entry.level,
+          message: entry.message,
+          stackTrace: entry.stackTrace,
+          timestamp: _logcatTimestamp(entry.timestamp),
+        ),
+      );
+      if (_pendingScriptLogs.length >= _flushBatchSize) {
+        await _flushScriptLogs();
+      } else {
+        _scheduleScriptLogFlush();
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Script log persistence lookup failed: $error\n$stackTrace');
+      _reportPersistenceError('lookup-error', error.toString());
+    }
+  }
+
+  void _scheduleScriptLogFlush() {
+    if (_scriptLogFlushTimer != null || _isDisposed) return;
+    _scriptLogFlushTimer = Timer(_scriptLogFlushInterval, () {
+      _scriptLogFlushTimer = null;
+      unawaited(_flushScriptLogs());
+    });
+  }
+
+  Future<void> _flushScriptLogs() {
+    _scriptLogFlushTimer?.cancel();
+    _scriptLogFlushTimer = null;
+    if (_pendingScriptLogs.isEmpty) return _scriptLogWriteChain;
+    final batch = List<ScriptLogRecord>.of(_pendingScriptLogs);
+    _pendingScriptLogs.clear();
+    final repository = ref.read(scriptLogRepositoryProvider);
+    _scriptLogWriteChain = _scriptLogWriteChain.catchError((_) {}).then((
+      _,
+    ) async {
+      try {
+        await repository.appendLogs(batch);
+        _hasReportedPersistenceError = false;
+      } catch (error, stackTrace) {
+        _pendingScriptLogs.insertAll(0, batch);
+        debugPrint('Script log persistence write failed: $error\n$stackTrace');
+        _reportPersistenceError(error.toString());
+      }
+    });
+    return _scriptLogWriteChain;
+  }
+
+  /// 脚本日志未持久化时的诊断提示。
+  ///
+  /// [reason] 用于区分失败环节，便于定位是运行记录缺失、元数据不一致，
+  /// 还是数据库读写本身出错。
+  void _reportPersistenceError(String reason, String detail) {
+    if (_hasReportedPersistenceError || _isDisposed) return;
+    _hasReportedPersistenceError = true;
+    _enqueueEntry(
+      LogcatEntry(
+        rawLine: detail,
+        level: 'E',
+        message:
+            '脚本日志未持久化（$reason）/ Script log not persisted '
+            '($reason): $detail',
+        source: 'session',
+        scriptName: _sessionScriptName,
+        sessionId: _sessionId,
+        tag: 'persistence',
+      ),
+    );
+  }
+
+  void _queueStructuredLog(LogcatEntry entry) {
+    _structuredLogChain = _structuredLogChain.then((_) async {
+      await _persistStructuredLog(entry);
+      if (!_structuredLogController.isClosed) {
+        _structuredLogController.add(entry);
+      }
+    });
+  }
+
+  Future<void> _flushAllScriptLogs() async {
+    await _structuredLogChain;
+    await _flushScriptLogs();
   }
 
   Future<void> start(String packageName) async {
-    _targetPackage = packageName;
+    if (_targetPackage != packageName && (_process != null || _isStarting)) {
+      _targetPackage = packageName;
+      await _flushScriptLogs();
+      _stopProcess();
+    } else {
+      _targetPackage = packageName;
+    }
     if (_process != null || _isStarting) return;
     _isStarting = true;
     final generation = ++_processGeneration;
@@ -160,6 +337,9 @@ class Logcat extends _$Logcat {
             (line) {
               if (_isDisposed || generation != _processGeneration) return;
               final entry = _parseLine(line);
+              if (entry.runId.isNotEmpty) {
+                _queueStructuredLog(entry);
+              }
               if (!_passesFilter(entry)) return;
               if (_isPaused) {
                 _pausedEntries.add(entry);
@@ -190,9 +370,10 @@ class Logcat extends _$Logcat {
               LogcatEntry(
                 rawLine: line,
                 level: 'E',
-                message: line,
-                source: 'system',
+                message: _describeCaptureStderr(line),
+                source: 'session',
                 sessionId: _sessionId,
+                scriptName: _sessionScriptName,
                 tag: 'logcat',
               ),
             );
@@ -208,14 +389,32 @@ class Logcat extends _$Logcat {
           tag: _sessionSource,
         ),
       );
-      unawaited(process.exitCode.then((_) => _handleProcessDone(process)));
+      unawaited(
+        process.exitCode.then((code) {
+          final isUserStopped = _isDisposed || generation != _processGeneration;
+          if (!isUserStopped && code != 0) {
+            _enqueueEntry(
+              LogcatEntry(
+                rawLine: 'exit code $code',
+                level: 'E',
+                message: _describeCaptureExit(code),
+                source: 'session',
+                scriptName: _sessionScriptName,
+                sessionId: _sessionId,
+                tag: _sessionSource,
+              ),
+            );
+          }
+          _handleProcessDone(process);
+        }),
+      );
     } catch (e) {
       debugPrint("Logcat error: $e");
       _enqueueEntry(
         LogcatEntry(
           rawLine: e.toString(),
           level: 'E',
-          message: 'Unable to start console: $e',
+          message: _describeCaptureStartFailure(e),
           source: 'session',
           scriptName: _sessionScriptName,
           sessionId: _sessionId,
@@ -231,8 +430,11 @@ class Logcat extends _$Logcat {
 
   void stop() {
     _flushPending();
+    unawaited(_flushScriptLogs());
     _stopProcess();
   }
+
+  Future<void> flushPersistedLogs() => _flushAllScriptLogs();
 
   void clear() {
     _pendingEntries.clear();
@@ -261,6 +463,47 @@ class Logcat extends _$Logcat {
     );
   }
 
+  /// 采集进程 stderr 的常见 root 环境错误，转成可操作的提示。
+  String _describeCaptureStderr(String line) {
+    final lower = line.toLowerCase();
+    if (lower.contains('permission denied') || lower.contains('not allowed')) {
+      return 'su 授权被拒绝，请在 root 管理器中允许本应用'
+          ' / su permission denied: $line';
+    }
+    if (lower.contains('no such file') || lower.contains('not found')) {
+      return '未找到 su 或 logcat 命令 / su or logcat not found: $line';
+    }
+    return line;
+  }
+
+  /// 采集进程非用户主动停止时的异常退出提示。
+  String _describeCaptureExit(int code) {
+    if (code == 1 || code == 255) {
+      return 'su 授权被拒绝或 logcat 不可用（退出码 $code）'
+          ' / su denied or logcat unavailable (exit code $code)';
+    }
+    return '日志采集进程异常退出（退出码 $code）'
+        ' / Log capture exited abnormally (exit code $code)';
+  }
+
+  /// 采集进程无法启动时的原因分类。
+  String _describeCaptureStartFailure(Object error) {
+    if (error is ProcessException) {
+      final message = error.message.toLowerCase();
+      if (error.errorCode == 2 || message.contains('no such file')) {
+        return '未找到 su 可执行文件，请确认 root 管理工具已正确安装'
+            ' / su executable not found; verify your root manager is installed';
+      }
+      if (error.errorCode == 13 || message.contains('permission denied')) {
+        return 'su 执行被拒绝，请在 root 管理器中允许本应用'
+            ' / su execution denied; allow this app in your root manager';
+      }
+      return '无法启动日志采集（${error.message}）'
+          ' / Unable to start log capture (${error.message})';
+    }
+    return '无法启动日志采集：$error / Unable to start log capture: $error';
+  }
+
   void _scheduleFlush() {
     if (_flushTimer != null || _isDisposed) return;
     _flushTimer = Timer(_flushInterval, () {
@@ -283,6 +526,7 @@ class Logcat extends _$Logcat {
   void _handleProcessDone(Process process) {
     if (_isDisposed || !identical(_process, process)) return;
     _flushPending();
+    unawaited(_flushAllScriptLogs());
     _stdoutSubscription = null;
     _stderrSubscription?.cancel();
     _stderrSubscription = null;
@@ -378,7 +622,7 @@ class Logcat extends _$Logcat {
       tid: tid,
     );
 
-    final marker = _parseStructuredMessage(message);
+    final marker = _protocol.parse(message);
     if (marker != null) {
       entry = LogcatEntry(
         rawLine: line,
@@ -388,6 +632,7 @@ class Logcat extends _$Logcat {
         message: marker.message,
         source: marker.source,
         scriptName: marker.scriptName,
+        runId: marker.runId,
         sessionId: _sessionId,
         pid: pid,
         tid: tid,
@@ -411,49 +656,5 @@ class Logcat extends _$Logcat {
     return 'system';
   }
 
-  _StructuredLog? _parseStructuredMessage(String message) {
-    const prefix = 'JXCONSOLE|v1|';
-    if (!message.startsWith(prefix)) return null;
-    final parts = message.split('|');
-    if (parts.length < 6) return null;
-    final source = parts[2];
-    final scriptName = _decode(parts[3]);
-    final level = parts[4].isEmpty ? 'I' : parts[4];
-    final decodedMessage = _decode(parts.sublist(5).join('|'));
-    final stackSeparator = decodedMessage.indexOf('\n--STACK--\n');
-    if (stackSeparator < 0) {
-      return _StructuredLog(source, scriptName, level, decodedMessage, '');
-    }
-    return _StructuredLog(
-      source,
-      scriptName,
-      level,
-      decodedMessage.substring(0, stackSeparator),
-      decodedMessage.substring(stackSeparator + '\n--STACK--\n'.length),
-    );
-  }
-
-  String _decode(String value) {
-    try {
-      return Uri.decodeComponent(value);
-    } catch (_) {
-      return value;
-    }
-  }
-}
-
-class _StructuredLog {
-  final String source;
-  final String scriptName;
-  final String level;
-  final String message;
-  final String stackTrace;
-
-  const _StructuredLog(
-    this.source,
-    this.scriptName,
-    this.level,
-    this.message,
-    this.stackTrace,
-  );
+  static const _protocol = JxConsoleLogProtocol();
 }

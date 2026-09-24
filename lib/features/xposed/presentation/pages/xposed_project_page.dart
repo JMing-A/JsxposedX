@@ -9,6 +9,11 @@ import 'package:JsxposedX/core/routes/routes/home_route.dart';
 import 'package:JsxposedX/core/utils/file_picker_util.dart';
 import 'package:JsxposedX/core/utils/path_utils.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_action_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
+import 'package:JsxposedX/core/providers/pinia_provider.dart';
+import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
+import 'package:uuid/uuid.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_query_provider.dart';
 import 'package:JsxposedX/features/xposed/presentation/widgets/create_xposed_project_dialog.dart';
 import 'package:JsxposedX/features/xposed/presentation/widgets/xposed_script_item.dart';
@@ -205,16 +210,49 @@ class _XposedScriptRow extends ConsumerWidget {
             actionButtons: [
               ElevatedButton(
                 onPressed: () async {
+                  final name = PathUtils.getName(path: scriptPath);
+                  final pinia = ref.read(piniaProvider);
+                  final logs = ref.read(scriptLogRepositoryProvider);
+                  final contextKey =
+                      'jx_script_run_context_${packageName}_xposed_$name';
+                  final rawContext = await pinia.getString(
+                    key: contextKey,
+                    defaultValue: '',
+                  );
+                  if (rawContext.isNotEmpty) {
+                    final value = jsonDecode(rawContext) as Map<String, dynamic>;
+                    final runId = value['runId'] as String?;
+                    final run = runId == null ? null : await logs.getRun(runId);
+                    if (run?.status == 'running') {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              context.isZh
+                                  ? '脚本正在运行，请先停用'
+                                  : 'The script is running. Stop it before deleting it.',
+                            ),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
                   await ref.read(
                     deleteJsScriptProvider(
                       packageName: packageName,
                       localPath: scriptPath,
                     ).future,
                   );
-                  ref.invalidate(
-                    jsScriptsProvider(packageName: packageName),
-                  );
-                  SmartDialog.dismiss();
+                  if (rawContext.isNotEmpty) {
+                    await pinia.remove(key: contextKey);
+                  }
+                  if (context.mounted) {
+                    ref.invalidate(
+                      jsScriptsProvider(packageName: packageName),
+                    );
+                    SmartDialog.dismiss();
+                  }
                 },
                 child: Text(context.l10n.confirm),
               ),
@@ -228,19 +266,143 @@ class _XposedScriptRow extends ConsumerWidget {
         path: scriptPath,
         enabled: status,
         onToggle: (enabled) async {
-          await ref.read(
-            setJsScriptStatusProvider(
-              packageName: packageName,
-              localPath: scriptPath,
-              status: enabled,
-            ).future,
-          );
-          ref.invalidate(
-            getJsScriptStatusProvider(
-              packageName: packageName,
-              localPath: scriptPath,
-            ),
-          );
+          final name = PathUtils.getName(path: scriptPath);
+          final pinia = ref.read(piniaProvider);
+          final logs = ref.read(scriptLogRepositoryProvider);
+          final contextKey =
+              'jx_script_run_context_${packageName}_xposed_$name';
+          var runId = '';
+          if (enabled) {
+            final sessions = await ref
+                .read(aiChatRuntimeProvider(packageName: packageName).notifier)
+                .getSessionsAsync();
+            if (!context.mounted) return;
+            if (sessions.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    context.isZh
+                        ? '该应用暂无 AI 会话，无法关联脚本日志'
+                        : 'No AI conversation exists for this app to link script logs.',
+                  ),
+                ),
+              );
+              return;
+            }
+            final conversationId = await showDialog<String>(
+              context: context,
+              builder: (dialogContext) => SimpleDialog(
+                title: Text(
+                  context.isZh ? '关联日志会话' : 'Link logs to a conversation',
+                ),
+                children: [
+                  for (final session in sessions)
+                    SimpleDialogOption(
+                      onPressed: () => Navigator.pop(dialogContext, session.id),
+                      child: Text(session.name),
+                    ),
+                ],
+              ),
+            );
+            if (!context.mounted || conversationId == null) return;
+            final key = contextKey;
+            final existing = await pinia.getString(key: key, defaultValue: '');
+            if (existing.isNotEmpty) {
+              final value = jsonDecode(existing) as Map<String, dynamic>;
+              final existingRunId = value['runId'] as String?;
+              final existingRun = existingRunId == null
+                  ? null
+                  : await logs.getRun(existingRunId);
+              if (existingRun == null || existingRun.status != 'running') {
+                await pinia.remove(key: key);
+              } else {
+                throw StateError(
+                  context.isZh
+                      ? '脚本已运行，请先关闭再关联新会话'
+                      : 'The script is already running. Stop it before relinking.',
+                );
+              }
+            }
+            runId = const Uuid().v4();
+            final now = DateTime.now().toUtc();
+            await logs.startRun(
+              runId: runId,
+              conversationId: conversationId,
+              source: 'xposed',
+              scriptName: name,
+              startedAt: now,
+            );
+            try {
+              await pinia.setString(
+                key: key,
+                value: jsonEncode({
+                  'runId': runId,
+                  'conversationId': conversationId,
+                  'source': 'xposed',
+                  'scriptName': name,
+                  'startedAt': now.toIso8601String(),
+                }),
+              );
+            } catch (_) {
+              try {
+                await pinia.remove(key: key);
+              } finally {
+                await logs.finishRun(
+                  runId,
+                  status: 'failed',
+                  finishedAt: DateTime.now().toUtc(),
+                );
+              }
+              rethrow;
+            }
+          } else {
+            final existing = await pinia.getString(
+              key: contextKey,
+              defaultValue: '',
+            );
+            if (existing.isNotEmpty) {
+              final value = jsonDecode(existing) as Map<String, dynamic>;
+              runId = value['runId'] as String? ?? '';
+            }
+          }
+          try {
+            await ref.read(
+              setJsScriptStatusProvider(
+                packageName: packageName,
+                localPath: scriptPath,
+                status: enabled,
+              ).future,
+            );
+            if (!enabled && runId.isNotEmpty) {
+              try {
+                await logs.finishRun(
+                  runId,
+                  status: 'stopped',
+                  finishedAt: DateTime.now().toUtc(),
+                );
+              } finally {
+                await pinia.remove(key: contextKey);
+              }
+            }
+          } catch (_) {
+            if (enabled && runId.isNotEmpty) {
+              await logs.finishRun(
+                runId,
+                status: 'failed',
+                finishedAt: DateTime.now().toUtc(),
+              );
+              await pinia.remove(key: contextKey);
+            }
+            rethrow;
+          }
+          if (context.mounted) {
+            ref.invalidate(
+              getJsScriptStatusProvider(
+                packageName: packageName,
+                localPath: scriptPath,
+              ),
+            );
+          }
         },
       ),
       error: (error, _) => Text(error.toString()),

@@ -550,7 +550,29 @@ class AiToolRegistry {
   // ---- 脚本生命周期工具注册 ----
 
   /// 脚本生命周期全部工具注册项
+  static final _getScriptLogs = AiToolDefinition(
+    name: 'get_script_logs',
+    description: '读取当前 AI 会话关联的脚本运行日志，支持 run、脚本、来源、级别和游标过滤。',
+    descriptionEn:
+        'Read script logs associated with the current AI conversation, with run, script, source, level, and cursor filters.',
+    parameters: (ToolParametersBuilder()
+          ..addString('runId', '运行 ID / Run ID')
+          ..addString('scriptName', '脚本名 / Script name')
+          ..addString('source', '来源：xposed 或 frida / Source')
+          ..addString('level', '级别 / Level')
+          ..addInteger('limit', '返回条数，默认 50，最大 500 / Page size')
+          ..addString('before', '时间游标 ISO-8601 / Timestamp cursor')
+          ..addInteger('beforeId', '数据库 ID 游标 / Database ID cursor'))
+        .build(),
+  );
+
   static List<AiToolRegistration> scriptLifecycle() => [
+    AiToolRegistration(
+      definition: _getScriptLogs,
+      category: AiToolCategory.scriptLifecycle,
+      danger: AiToolDangerLevel.read,
+      handlerFactory: GetScriptLogsHandler.new,
+    ),
     AiToolRegistration(
       definition: _genXposedHook,
       category: AiToolCategory.scriptLifecycle,

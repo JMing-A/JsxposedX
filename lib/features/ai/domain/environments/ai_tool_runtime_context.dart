@@ -1,5 +1,14 @@
+import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
 import 'package:JsxposedX/features/apk_analysis/domain/repositories/apk_analysis_query_repository.dart';
 import 'package:JsxposedX/features/so_analysis/data/datasources/so_analysis_datasource.dart';
+
+class ScriptConversationBinding {
+  ScriptConversationBinding(this.logs);
+
+  final ScriptLogRepository logs;
+  String? conversationId;
+}
+
 
 /// APK 逆向工具运行时上下文。
 ///
@@ -11,6 +20,7 @@ class ApkReverseToolRuntimeContext {
     required this.soDataSource,
     required this.sessionId,
     required this.dexPaths,
+    required this.conversationBinding,
     this.packageName = '',
     this.isZh = true,
   });
@@ -19,6 +29,7 @@ class ApkReverseToolRuntimeContext {
   final SoAnalysisDatasource soDataSource;
   final String sessionId;
   final List<String> dexPaths;
+  final ScriptConversationBinding conversationBinding;
 
   /// 当前分析的目标包名（阶段1 起供脚本保存/开关类工具使用）
   final String packageName;

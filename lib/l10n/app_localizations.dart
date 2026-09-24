@@ -2132,6 +2132,138 @@ abstract class AppLocalizations {
   /// **'全屏'**
   String get logcatFullscreen;
 
+  /// No description provided for @consoleSourceSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话'**
+  String get consoleSourceSession;
+
+  /// No description provided for @consoleSourceFrida.
+  ///
+  /// In zh, this message translates to:
+  /// **'Frida'**
+  String get consoleSourceFrida;
+
+  /// No description provided for @consoleSourceXposed.
+  ///
+  /// In zh, this message translates to:
+  /// **'Xposed'**
+  String get consoleSourceXposed;
+
+  /// No description provided for @consoleSourceApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get consoleSourceApp;
+
+  /// No description provided for @consoleSourceCore.
+  ///
+  /// In zh, this message translates to:
+  /// **'核心'**
+  String get consoleSourceCore;
+
+  /// No description provided for @consoleSourceSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统'**
+  String get consoleSourceSystem;
+
+  /// No description provided for @consoleLevelDebug.
+  ///
+  /// In zh, this message translates to:
+  /// **'调试'**
+  String get consoleLevelDebug;
+
+  /// No description provided for @consoleLevelInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'信息'**
+  String get consoleLevelInfo;
+
+  /// No description provided for @consoleLevelWarn.
+  ///
+  /// In zh, this message translates to:
+  /// **'警告'**
+  String get consoleLevelWarn;
+
+  /// No description provided for @consoleLevelError.
+  ///
+  /// In zh, this message translates to:
+  /// **'错误'**
+  String get consoleLevelError;
+
+  /// No description provided for @consoleAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get consoleAll;
+
+  /// No description provided for @consoleHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'持久化脚本日志'**
+  String get consoleHistory;
+
+  /// No description provided for @consolePauseOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停输出'**
+  String get consolePauseOutput;
+
+  /// No description provided for @consoleResumeOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续输出'**
+  String get consoleResumeOutput;
+
+  /// No description provided for @consoleActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'控制台操作'**
+  String get consoleActions;
+
+  /// No description provided for @consoleCopyVisible.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制可见日志'**
+  String get consoleCopyVisible;
+
+  /// No description provided for @consoleExportVisible.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出可见日志'**
+  String get consoleExportVisible;
+
+  /// No description provided for @consoleCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制 {count} 条日志'**
+  String consoleCopied(Object count);
+
+  /// No description provided for @consoleExportDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出控制台日志'**
+  String get consoleExportDialogTitle;
+
+  /// No description provided for @consoleNoHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无持久化脚本日志'**
+  String get consoleNoHistory;
+
+  /// No description provided for @consoleLoadOlder.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更早日志'**
+  String get consoleLoadOlder;
+
+  /// No description provided for @consoleLogCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志已复制'**
+  String get consoleLogCopied;
+
   /// No description provided for @apiManual.
   ///
   /// In zh, this message translates to:

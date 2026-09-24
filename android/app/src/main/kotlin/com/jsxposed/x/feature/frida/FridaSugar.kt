@@ -355,35 +355,35 @@ object FridaSugar {
                 return String(value);
             }
 
-            Fx._logWithScript = function(scriptName, level, args) {
+            Fx._logWithScript = function(scriptName, runId, level, args) {
                 var values = Array.prototype.slice.call(args || []);
                 var msg = values.map(_formatValue).join(" ");
-                var marker = "JXCONSOLE|v1|frida|" + _encode(scriptName || "<unknown>") +
-                    "|" + level + "|" + _encode(msg);
+                var marker = "JXCONSOLE|v2|frida|" + _encode(runId || "") + "|" +
+                    _encode(scriptName || "<unknown>") + "|" + level + "|" + _encode(msg);
                 var priority = level === "E" ? 6 : (level === "W" ? 5 : (level === "D" ? 3 : 4));
                 _AndroidLog.println(priority, _TAG, marker);
             };
 
             Fx.log = function(msg) {
-                Fx._logWithScript(Fx._activeScript || "<unknown>", "I", arguments);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "I", arguments);
             };
             Fx.logError = function(msg) {
-                Fx._logWithScript(Fx._activeScript || "<unknown>", "E", arguments);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "E", arguments);
             };
 
             // 保留全局 console，同时允许生成器为每个脚本绑定脚本名。
             console.log = function() {
-                Fx._logWithScript(Fx._activeScript || "<unknown>", "I", arguments);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "I", arguments);
             };
             console.info = console.log;
             console.debug = function() {
-                Fx._logWithScript(Fx._activeScript || "<unknown>", "D", arguments);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "D", arguments);
             };
             console.warn = function() {
-                Fx._logWithScript(Fx._activeScript || "<unknown>", "W", arguments);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "W", arguments);
             };
             console.error = function() {
-                Fx._logWithScript(Fx._activeScript || "<unknown>", "E", arguments);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "E", arguments);
             };
 
             // ========== 内部工具：自动类型转换 ==========

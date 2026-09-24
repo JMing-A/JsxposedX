@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:uuid/uuid.dart';
 import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tool_handler.dart';
 import 'package:JsxposedX/features/ai/domain/environments/ai_tool_runtime_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_tool_call.dart';
@@ -144,9 +147,198 @@ abstract class ScriptLifecycleToolHandler implements AiChatToolHandler {
     if (_pkg.isEmpty) {
       throw ArgumentError(
         _isZh ? '当前无目标应用，请先在 APK 逆向会话中打开一个应用'
-            : 'No target app. Please open an APK in a reverse session first.',
+            : 'No target app. Please open an APK in an APK reverse session first.',
       );
     }
+  }
+
+  String _runContextKey(String source, String scriptName) =>
+      'jx_script_run_context_${_pkg}_${source}_$scriptName';
+
+  /// 脚本启用开关 key。
+  ///
+  /// 两个引擎的原生消费端都用「项目目录 + 纯文件名」的完整路径作为 key：
+  /// - Xposed：`ScriptLoader` 用快照里的 `localPath` 拼 `xposed_check_status_` 前缀。
+  /// - Frida：`FridaInjector` 用 `getFridaScripts` 返回的完整路径拼 `frida_check_status_` 前缀。
+  /// 因此这里必须还原为完整路径，不能用纯文件名。
+  String _switchKey(String source, String relativePath) {
+    if (source == 'frida') {
+      return 'frida_check_status_${_pkg}_/data/local/tmp/JsxposedX/$_pkg/$relativePath';
+    }
+    return 'xposed_check_status_${_pkg}_'
+        '/data/user/0/com.jsxposed.x/app_flutter/flutter_assets/Projects/$_pkg/JsProjects/$relativePath';
+  }
+
+  /// 把原生返回的脚本路径归一化为「纯文件名 + 完整路径」。
+  ///
+  /// `Project.getFridaScripts` / `getJsScripts` 返回的 `Shell.getFileList` 结果是完整路径，
+  /// 而 AI 工具的入参、run context key 和脚本读取都使用纯文件名。
+  List<({String name, String path})> _normalizeScripts(List<String> raw) {
+    return raw.map((item) {
+      final name = item.split('/').last;
+      return (name: name, path: item);
+    }).toList();
+  }
+
+  String? _findScriptPath(List<({String name, String path})> scripts, String fileName) {
+    for (final script in scripts) {
+      if (script.name == fileName) return script.path;
+    }
+    return null;
+  }
+
+  Future<({String runId, bool created})> _startScriptRun(
+    String source,
+    String scriptName,
+  ) async {
+    final conversationId = context.conversationBinding.conversationId;
+    if (conversationId == null || conversationId.isEmpty) {
+      throw StateError(_isZh ? '当前会话无法关联脚本运行' : 'No conversation is bound to this script run.');
+    }
+
+    final existingRaw = await _piniaNative.getString(
+      key: _runContextKey(source, scriptName),
+      defaultValue: '',
+    );
+    if (existingRaw.isNotEmpty) {
+      final existing = jsonDecode(existingRaw) as Map<String, dynamic>;
+      final existingRunId = existing['runId'] as String?;
+      final existingConversationId = existing['conversationId'] as String?;
+      if (existingRunId != null && existingRunId.isNotEmpty) {
+        final existingRun = await context.conversationBinding.logs.getRun(
+          existingRunId,
+        );
+        if (existingRun == null || existingRun.status != 'running') {
+          await _piniaNative.remove(key: _runContextKey(source, scriptName));
+        } else {
+          if (existingConversationId == conversationId) {
+            return (runId: existingRunId, created: false);
+          }
+          throw StateError(
+            _isZh
+                ? '脚本 $scriptName 已在其他会话中运行，请先停用'
+                : 'Script $scriptName is already running in another conversation.',
+          );
+        }
+      }
+    }
+
+    final runId = const Uuid().v4();
+    final startedAt = DateTime.now().toUtc();
+    final runContext = {
+      'runId': runId,
+      'conversationId': conversationId,
+      'source': source,
+      'scriptName': scriptName,
+      'startedAt': startedAt.toIso8601String(),
+    };
+    await context.conversationBinding.logs.startRun(
+      runId: runId,
+      conversationId: conversationId,
+      source: source,
+      scriptName: scriptName,
+      startedAt: startedAt,
+    );
+    try {
+      await _piniaNative.setString(
+        key: _runContextKey(source, scriptName),
+        value: jsonEncode(runContext),
+      );
+    } catch (_) {
+      try {
+        await _piniaNative.remove(key: _runContextKey(source, scriptName));
+      } finally {
+        await context.conversationBinding.logs.finishRun(
+          runId,
+          status: 'failed',
+          finishedAt: DateTime.now().toUtc(),
+        );
+      }
+      rethrow;
+    }
+    return (runId: runId, created: true);
+  }
+
+  Future<void> _failScriptRun({
+    required String source,
+    required String scriptName,
+    required String runId,
+    required String toggleKey,
+  }) async {
+    try {
+      await _piniaNative.setBool(key: toggleKey, value: false);
+    } finally {
+      try {
+        await context.conversationBinding.logs.finishRun(
+          runId,
+          status: 'failed',
+          finishedAt: DateTime.now().toUtc(),
+        );
+      } finally {
+        await _piniaNative.remove(key: _runContextKey(source, scriptName));
+      }
+    }
+  }
+
+  Future<void> _finishScriptRun(String source, String scriptName) async {
+    final key = _runContextKey(source, scriptName);
+    final raw = await _piniaNative.getString(key: key, defaultValue: '');
+    try {
+      if (raw.isNotEmpty) {
+        final value = jsonDecode(raw) as Map<String, dynamic>;
+        final runId = value['runId'] as String?;
+        if (runId != null && runId.isNotEmpty) {
+          await context.conversationBinding.logs.finishRun(
+            runId,
+            status: 'stopped',
+            finishedAt: DateTime.now().toUtc(),
+          );
+        }
+      }
+    } finally {
+      await _piniaNative.remove(key: key);
+    }
+  }
+}
+
+class GetScriptLogsHandler extends ScriptLifecycleToolHandler {
+  const GetScriptLogsHandler(super.context);
+
+  @override
+  String get toolName => 'get_script_logs';
+
+  @override
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
+    final conversationId = context.conversationBinding.conversationId;
+    if (conversationId == null || conversationId.isEmpty) {
+      return _isZh ? '当前会话暂无脚本日志。' : 'No script logs for the current conversation.';
+    }
+    final before = DateTime.tryParse(call.getString('before'))?.toUtc();
+    final beforeId = call.getInt('beforeId');
+    final logs = await context.conversationBinding.logs.getLogs(
+      conversationId: conversationId,
+      runId: call.getString('runId').isEmpty ? null : call.getString('runId'),
+      scriptName: call.getString('scriptName').isEmpty
+          ? null
+          : call.getString('scriptName'),
+      source: call.getString('source').isEmpty ? null : call.getString('source'),
+      level: call.getString('level').isEmpty ? null : call.getString('level'),
+      before: before,
+      beforeId: beforeId == 0 ? null : beforeId,
+      limit: call.getInt('limit', 50),
+    );
+    if (logs.isEmpty) {
+      return _isZh ? '当前会话暂无匹配的脚本日志。' : 'No matching script logs.';
+    }
+    return logs.map((log) {
+      final time = log.timestamp.toUtc().toIso8601String();
+      final stack = log.stackTrace.isEmpty ? '' : '\n${log.stackTrace}';
+      return '[$time] [${log.source}/${log.level}] ${log.scriptName} '
+          '(run ${log.runId}): ${log.message}$stack';
+    }).join('\n');
   }
 }
 
@@ -332,7 +524,9 @@ class SaveScriptHandler extends ScriptLifecycleToolHandler {
     final code = call.getString('code');
     final overwrite = call.getBool('overwrite');
 
-    if (scriptType.isEmpty) throw ArgumentError('scriptType 不能为空');
+    if (scriptType != 'frida' && scriptType != 'xposed') {
+      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+    }
     if (fileName.isEmpty) throw ArgumentError('fileName 不能为空');
     if (code.isEmpty) throw ArgumentError('code 不能为空');
 
@@ -358,10 +552,12 @@ class SaveScriptHandler extends ScriptLifecycleToolHandler {
 
     // 检查是否已存在（不 overwrite 时）
     if (!overwrite) {
-      final existing = scriptType == 'frida'
-          ? await _projectNative.getFridaScripts(_pkg)
-          : await _projectNative.getJsScripts(_pkg);
-      if (existing.contains(finalName)) {
+      final existing = _normalizeScripts(
+        scriptType == 'frida'
+            ? await _projectNative.getFridaScripts(_pkg)
+            : await _projectNative.getJsScripts(_pkg),
+      );
+      if (_findScriptPath(existing, finalName) != null) {
         throw ArgumentError(
           _isZh
               ? '脚本 $finalName 已存在。设置 overwrite=true 覆盖 / '
@@ -371,18 +567,50 @@ class SaveScriptHandler extends ScriptLifecycleToolHandler {
       }
     }
 
-    // 写盘
-    if (scriptType == 'frida') {
-      await _projectNative.createFridaScript(_pkg, code, finalName, false);
-    } else {
-      await _projectNative.createJsScript(_pkg, code, finalName, false);
+    final runKey = _runContextKey(scriptType, finalName);
+    final currentRunContext = await _piniaNative.getString(
+      key: runKey,
+      defaultValue: '',
+    );
+    if (overwrite && currentRunContext.isNotEmpty) {
+      final current = jsonDecode(currentRunContext) as Map<String, dynamic>;
+      final currentRunId = current['runId'] as String?;
+      final currentRun = currentRunId == null
+          ? null
+          : await context.conversationBinding.logs.getRun(currentRunId);
+      if (currentRun?.status == 'running') {
+        throw StateError(
+          _isZh
+              ? '脚本 $finalName 正在运行，不能覆盖'
+              : 'Cannot overwrite $finalName while it is running.',
+        );
+      }
     }
 
-    // 默认启用
-    final toggleKey = scriptType == 'frida'
-        ? 'frida_check_status_${_pkg}_$finalName'
-        : 'xposed_check_status_${_pkg}_$finalName';
-    await _piniaNative.setBool(key: toggleKey, value: true);
+    // 建立日志归属后再启用，失败时不留下已启用但无 run 的状态。
+    final run = await _startScriptRun(scriptType, finalName);
+    if (!run.created) {
+      return _isZh
+          ? '脚本 $finalName 已在当前会话中运行'
+          : 'Script $finalName is already running in this conversation.';
+    }
+    final toggleKey = _switchKey(scriptType, finalName);
+    try {
+      if (scriptType == 'frida') {
+        await _projectNative.createFridaScript(_pkg, code, finalName, overwrite);
+      } else {
+        await _projectNative.createJsScript(_pkg, code, finalName, overwrite);
+      }
+      await _piniaNative.setBool(key: toggleKey, value: true);
+    } catch (_) {
+      await _failScriptRun(
+        source: scriptType,
+        scriptName: finalName,
+        runId: run.runId,
+        toggleKey: toggleKey,
+      );
+      rethrow;
+    }
 
     return _isZh
         ? '脚本 $finalName 已保存并启用'
@@ -406,6 +634,9 @@ class ListScriptsHandler extends ScriptLifecycleToolHandler {
     _requirePackage();
 
     final scriptType = call.getString('scriptType');
+    if (scriptType != '' && scriptType != 'frida' && scriptType != 'xposed') {
+      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+    }
     final showFrida = scriptType.isEmpty || scriptType == 'frida';
     final showXposed = scriptType.isEmpty || scriptType == 'xposed';
 
@@ -419,17 +650,19 @@ class ListScriptsHandler extends ScriptLifecycleToolHandler {
     if (showFrida) {
       buf.writeln(_isZh ? '### Frida 脚本' : '### Frida Scripts');
       try {
-        final fridaScripts = await _projectNative.getFridaScripts(_pkg);
+        final fridaScripts = _normalizeScripts(
+          await _projectNative.getFridaScripts(_pkg),
+        );
         if (fridaScripts.isEmpty) {
           buf.writeln(_isZh ? '（无）\n' : '(none)\n');
         } else {
-          for (final name in fridaScripts) {
+          for (final script in fridaScripts) {
             final enabled = await _piniaNative.getBool(
-              key: 'frida_check_status_${_pkg}_$name',
+              key: _switchKey('frida', script.name),
               defaultValue: false,
             );
             buf.writeln(
-              '- $name ${enabled ? (_isZh ? '✅ 启用' : '✅ enabled') : (_isZh ? '⏸️ 停用' : '⏸️ disabled')}',
+              '- ${script.name} ${enabled ? (_isZh ? '✅ 启用' : '✅ enabled') : (_isZh ? '⏸️ 停用' : '⏸️ disabled')}',
             );
           }
           buf.writeln();
@@ -442,17 +675,19 @@ class ListScriptsHandler extends ScriptLifecycleToolHandler {
     if (showXposed) {
       buf.writeln(_isZh ? '### Xposed 脚本' : '### Xposed Scripts');
       try {
-        final xposedScripts = await _projectNative.getJsScripts(_pkg);
+        final xposedScripts = _normalizeScripts(
+          await _projectNative.getJsScripts(_pkg),
+        );
         if (xposedScripts.isEmpty) {
           buf.writeln(_isZh ? '（无）\n' : '(none)\n');
         } else {
-          for (final name in xposedScripts) {
+          for (final script in xposedScripts) {
             final enabled = await _piniaNative.getBool(
-              key: 'xposed_check_status_${_pkg}_$name',
+              key: _switchKey('xposed', script.name),
               defaultValue: false,
             );
             buf.writeln(
-              '- $name ${enabled ? (_isZh ? '✅ 启用' : '✅ enabled') : (_isZh ? '⏸️ 停用' : '⏸️ disabled')}',
+              '- ${script.name} ${enabled ? (_isZh ? '✅ 启用' : '✅ enabled') : (_isZh ? '⏸️ 停用' : '⏸️ disabled')}',
             );
           }
           buf.writeln();
@@ -485,14 +720,18 @@ class ToggleScriptHandler extends ScriptLifecycleToolHandler {
     final fileName = call.getString('fileName');
     final enabled = call.getBool('enabled', true);
 
-    if (scriptType.isEmpty) throw ArgumentError('scriptType 不能为空');
+    if (scriptType != 'frida' && scriptType != 'xposed') {
+      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+    }
     if (fileName.isEmpty) throw ArgumentError('fileName 不能为空');
 
     // 验证脚本存在
-    final scripts = scriptType == 'frida'
-        ? await _projectNative.getFridaScripts(_pkg)
-        : await _projectNative.getJsScripts(_pkg);
-    if (!scripts.contains(fileName)) {
+    final scripts = _normalizeScripts(
+      scriptType == 'frida'
+          ? await _projectNative.getFridaScripts(_pkg)
+          : await _projectNative.getJsScripts(_pkg),
+    );
+    if (_findScriptPath(scripts, fileName) == null) {
       throw ArgumentError(
         _isZh
             ? '脚本 $fileName 不存在 / Script $fileName not found'
@@ -500,10 +739,32 @@ class ToggleScriptHandler extends ScriptLifecycleToolHandler {
       );
     }
 
-    final toggleKey = scriptType == 'frida'
-        ? 'frida_check_status_${_pkg}_$fileName'
-        : 'xposed_check_status_${_pkg}_$fileName';
-    await _piniaNative.setBool(key: toggleKey, value: enabled);
+    final toggleKey = _switchKey(scriptType, fileName);
+    if (enabled) {
+      final run = await _startScriptRun(scriptType, fileName);
+      if (!run.created) {
+        return _isZh
+            ? '脚本 $fileName 已在当前会话中运行'
+            : 'Script $fileName is already running in this conversation.';
+      }
+      try {
+        await _piniaNative.setBool(key: toggleKey, value: true);
+      } catch (_) {
+        await _failScriptRun(
+          source: scriptType,
+          scriptName: fileName,
+          runId: run.runId,
+          toggleKey: toggleKey,
+        );
+        rethrow;
+      }
+    } else {
+      try {
+        await _piniaNative.setBool(key: toggleKey, value: false);
+      } finally {
+        await _finishScriptRun(scriptType, fileName);
+      }
+    }
 
     return _isZh
         ? '脚本 $fileName 已${enabled ? "启用" : "停用"}'
@@ -649,13 +910,17 @@ class ReadScriptHandler extends ScriptLifecycleToolHandler {
     final scriptType = call.getString('scriptType');
     final fileName = call.getString('fileName');
 
-    if (scriptType.isEmpty) throw ArgumentError('scriptType 不能为空');
+    if (scriptType != 'frida' && scriptType != 'xposed') {
+      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+    }
     if (fileName.isEmpty) throw ArgumentError('fileName 不能为空');
 
-    final scripts = scriptType == 'frida'
-        ? await _projectNative.getFridaScripts(_pkg)
-        : await _projectNative.getJsScripts(_pkg);
-    if (!scripts.contains(fileName)) {
+    final scripts = _normalizeScripts(
+      scriptType == 'frida'
+          ? await _projectNative.getFridaScripts(_pkg)
+          : await _projectNative.getJsScripts(_pkg),
+    );
+    if (_findScriptPath(scripts, fileName) == null) {
       throw ArgumentError(
         '${_isZh ? "脚本 $fileName 不存在" : "Script $fileName not found"}',
       );
@@ -690,7 +955,9 @@ class DeleteScriptHandler extends ScriptLifecycleToolHandler {
     final fileName = call.getString('fileName');
     final confirm = call.getBool('confirm');
 
-    if (scriptType.isEmpty) throw ArgumentError('scriptType 不能为空');
+    if (scriptType != 'frida' && scriptType != 'xposed') {
+      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+    }
     if (fileName.isEmpty) throw ArgumentError('fileName 不能为空');
     if (!confirm) {
       throw ArgumentError(
@@ -706,19 +973,44 @@ class DeleteScriptHandler extends ScriptLifecycleToolHandler {
       );
     }
 
-    final scripts = scriptType == 'frida'
-        ? await _projectNative.getFridaScripts(_pkg)
-        : await _projectNative.getJsScripts(_pkg);
-    if (!scripts.contains(fileName)) {
+    final scripts = _normalizeScripts(
+      scriptType == 'frida'
+          ? await _projectNative.getFridaScripts(_pkg)
+          : await _projectNative.getJsScripts(_pkg),
+    );
+    if (_findScriptPath(scripts, fileName) == null) {
       throw ArgumentError(
         '${_isZh ? "脚本 $fileName 不存在" : "Script $fileName not found"}',
       );
+    }
+
+    final contextKey = _runContextKey(scriptType, fileName);
+    final runContext = await _piniaNative.getString(
+      key: contextKey,
+      defaultValue: '',
+    );
+    if (runContext.isNotEmpty) {
+      final value = jsonDecode(runContext) as Map<String, dynamic>;
+      final runId = value['runId'] as String?;
+      final run = runId == null
+          ? null
+          : await context.conversationBinding.logs.getRun(runId);
+      if (run?.status == 'running') {
+        throw StateError(
+          _isZh
+              ? '脚本 $fileName 正在运行，请先停用'
+              : 'Script $fileName is running. Stop it before deleting it.',
+        );
+      }
     }
 
     if (scriptType == 'frida') {
       await _projectNative.deleteFridaScript(_pkg, fileName);
     } else {
       await _projectNative.deleteJsScript(_pkg, fileName);
+    }
+    if (runContext.isNotEmpty) {
+      await _piniaNative.remove(key: contextKey);
     }
 
     return _isZh

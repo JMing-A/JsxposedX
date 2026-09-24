@@ -19,9 +19,9 @@ class JxBridgeManager(
     private val fieldBridge = JxFieldBridge(qjs, classLoader)
     private val methodBridge = JxMethodBridge(qjs, classLoader)
 
-    fun beginScriptScope(scriptKey: String) {
-        hookBridge.beginScriptScope(scriptKey)
-        logBridge.beginScriptScope(scriptKey)
+    fun beginScriptScope(scriptKey: String, runId: String) {
+        hookBridge.beginScriptScope(scriptKey, runId)
+        logBridge.beginScriptScope(scriptKey, runId)
     }
 
     fun endScriptScope() {
@@ -44,12 +44,27 @@ class JxBridgeManager(
         }
 
         // --- 1. 注入 LogBridge 模块 ---
-        jx.setProperty("log") { args -> 
+        jx.setProperty("log") { args ->
             logBridge.log(args?.get(0)?.toString() ?: "")
         }
-        jx.setProperty("logException") { args -> 
+        jx.setProperty("logException") { args ->
             logBridge.logException(args?.get(0)?.toString() ?: "")
         }
+
+        val console = qjs.createNewJSObject()
+        console.setProperty("log") { args ->
+            logBridge.log("I", args?.get(0)?.toString() ?: "")
+        }
+        console.setProperty("info") { args ->
+            logBridge.log("I", args?.get(0)?.toString() ?: "")
+        }
+        console.setProperty("warn") { args ->
+            logBridge.log("W", args?.get(0)?.toString() ?: "")
+        }
+        console.setProperty("error") { args ->
+            logBridge.log("E", args?.get(0)?.toString() ?: "")
+        }
+        globalObj.setProperty("console", console)
 
         // --- 2. 注入 ClassBridge 模块 ---
         jx.setProperty("findClass") { args ->

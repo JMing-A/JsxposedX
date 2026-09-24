@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:uuid/uuid.dart';
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/app_code_editor/widgets/code_find_panel_view.dart';
 import 'package:JsxposedX/common/widgets/app_code_editor/app_code_editor.dart';
@@ -11,6 +13,8 @@ import 'package:JsxposedX/features/frida/presentation/providers/frida_action_pro
 import 'package:JsxposedX/features/frida/presentation/providers/frida_query_provider.dart';
 import 'package:JsxposedX/features/frida/presentation/constants/frida_prompts.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/logcat_provider.dart';
+import 'package:JsxposedX/core/providers/pinia_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/xposed/presentation/widgets/editor_tab_button.dart';
 import 'package:JsxposedX/features/xposed/presentation/widgets/logcat_panel_view.dart';
 import 'package:JsxposedX/generated/app.g.dart';
@@ -40,7 +44,31 @@ class FridaEditorPage extends HookConsumerWidget {
         localPath: PathUtils.getName(path: path),
       ).future,
     );
-    // 移除自动注入，改为在 RunAppButton 里手动触发
+  }
+
+  Future<void> _prepareScriptRun(WidgetRef ref, String scriptName) async {
+    final conversationId = 'standalone:$packageName:frida:$scriptName';
+    final key = 'jx_script_run_context_${packageName}_frida_$scriptName';
+    final pinia = ref.read(piniaProvider);
+    final runId = const Uuid().v4();
+    final startedAt = DateTime.now().toUtc();
+    await ref.read(scriptLogRepositoryProvider).startRun(
+          runId: runId,
+          conversationId: conversationId,
+          source: 'frida',
+          scriptName: scriptName,
+          startedAt: startedAt,
+        );
+    await pinia.setString(
+      key: key,
+      value: jsonEncode({
+        'runId': runId,
+        'conversationId': conversationId,
+        'source': 'frida',
+        'scriptName': scriptName,
+        'startedAt': startedAt.toIso8601String(),
+      }),
+    );
   }
 
   @override
@@ -107,12 +135,16 @@ class FridaEditorPage extends HookConsumerWidget {
         name: context.l10n.terminal,
         icon: Icons.terminal_rounded,
         color: showLogcat.value ? Colors.green : Colors.grey,
-        onClick: (ctrl) {
+        onClick: (ctrl) async {
           showLogcat.value = !showLogcat.value;
           if (showLogcat.value) {
             final console = ref.read(logcatProvider.notifier);
-            console.configureSession('frida', scriptName);
-            console.start(packageName);
+            console.configureSession(
+              'frida',
+              scriptName,
+              conversationId: 'standalone:$packageName:frida:$scriptName',
+            );
+            await console.start(packageName);
           } else {
             ref.read(logcatProvider.notifier).stop();
             isLogcatFullscreen.value = false;
@@ -170,12 +202,17 @@ class FridaEditorPage extends HookConsumerWidget {
               await _saveScript(ref, controller.text);
               // 启动 logcat 监听
               final console = ref.read(logcatProvider.notifier);
-              console.configureSession('frida', scriptName);
-              await console.start(packageName);
-              // 保存后重新注入，实现热更新（异步执行，不阻塞 UI）
+              await _prepareScriptRun(ref, scriptName);
+              console.configureSession(
+                'frida',
+                scriptName,
+                conversationId: 'standalone:$packageName:frida:$scriptName',
+              );
+              // 先生成带当前 runId 的 hook，再启动日志监听。
               await ref.read(
                 bundleFridaHookJsProvider(packageName: packageName).future,
               );
+              await console.start(packageName);
               if (!context.mounted) return;
               ToastMessage.show(context.l10n.scriptSaved);
             },
@@ -186,11 +223,16 @@ class FridaEditorPage extends HookConsumerWidget {
             onPressed: () {
               Future.microtask(() async {
                 await _saveScript(ref, controller.text);
+                final console = ref.read(logcatProvider.notifier);
+                await _prepareScriptRun(ref, scriptName);
+                console.configureSession(
+                  'frida',
+                  scriptName,
+                  conversationId: 'standalone:$packageName:frida:$scriptName',
+                );
                 await ref.read(
                   bundleFridaHookJsProvider(packageName: packageName).future,
                 );
-                final console = ref.read(logcatProvider.notifier);
-                console.configureSession('frida', scriptName);
                 await console.start(packageName);
                 // The generated hook must exist before the target process starts.
                 await AppNative().openAppX(packageName);
@@ -271,7 +313,7 @@ class FridaEditorPage extends HookConsumerWidget {
 class _TabButtonData {
   final String name;
   final IconData icon;
-  final void Function(CodeLineEditingController) onClick;
+  final FutureOr<void> Function(CodeLineEditingController) onClick;
   final Color? color;
 
   const _TabButtonData({

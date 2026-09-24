@@ -13,38 +13,50 @@ class JxLogBridge(private val qjs: QuickJSContext) {
     @Volatile
     private var currentScriptName: String = "<unknown>"
 
-    fun beginScriptScope(scriptKey: String) {
+    @Volatile
+    private var currentRunId: String = ""
+
+    fun beginScriptScope(scriptKey: String, runId: String) {
         currentScriptName = scriptKey.substringAfterLast('/')
+        currentRunId = runId
     }
 
     fun endScriptScope() {
         currentScriptName = "<unknown>"
+        currentRunId = ""
     }
 
-    fun <T> withScriptScope(scriptName: String, block: () -> T): T {
-        val previous = currentScriptName
-        currentScriptName = scriptName
+    fun <T> withScriptScope(scriptName: String, runId: String, block: () -> T): T {
+        val previousName = currentScriptName
+        val previousRunId = currentRunId
+        currentScriptName = scriptName.substringAfterLast('/')
+        currentRunId = runId
         return try {
             block()
         } finally {
-            currentScriptName = previous
+            currentScriptName = previousName
+            currentRunId = previousRunId
         }
     }
 
     fun log(message: String): Any? {
-        emit("I", message)
+        return log("I", message)
+    }
+
+    fun log(level: String, message: String): Any? {
+        emit(level, message)
         return null
     }
 
     fun logException(message: String): Any? {
-        emit("E", message)
-        return null
+        return log("E", message)
     }
 
     private fun emit(level: String, message: String) {
+        val encodedRunId = encode(currentRunId)
         val encodedScript = encode(currentScriptName)
         val encodedMessage = encode(message)
-        XposedBridge.log("JXCONSOLE|v1|xposed|$encodedScript|$level|$encodedMessage")
+        XposedBridge.log("JXCONSOLE|v2|xposed|$encodedRunId|$encodedScript|$level|$encodedMessage")
     }
 
     private fun encode(value: String): String =

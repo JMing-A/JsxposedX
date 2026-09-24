@@ -1826,6 +1826,1372 @@ class AiMessageRecordsCompanion extends UpdateCompanion<AiMessageRecord> {
   }
 }
 
+class $AiConversationContextsTable extends AiConversationContexts
+    with TableInfo<$AiConversationContextsTable, AiConversationContext> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiConversationContextsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+    'conversation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contextVersionMeta = const VerificationMeta(
+    'contextVersion',
+  );
+  @override
+  late final GeneratedColumn<int> contextVersion = GeneratedColumn<int>(
+    'context_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadJsonMeta = const VerificationMeta(
+    'payloadJson',
+  );
+  @override
+  late final GeneratedColumn<String> payloadJson = GeneratedColumn<String>(
+    'payload_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    conversationId,
+    contextVersion,
+    payloadJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_conversation_contexts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AiConversationContext> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conversationIdMeta);
+    }
+    if (data.containsKey('context_version')) {
+      context.handle(
+        _contextVersionMeta,
+        contextVersion.isAcceptableOrUnknown(
+          data['context_version']!,
+          _contextVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_contextVersionMeta);
+    }
+    if (data.containsKey('payload_json')) {
+      context.handle(
+        _payloadJsonMeta,
+        payloadJson.isAcceptableOrUnknown(
+          data['payload_json']!,
+          _payloadJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_payloadJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {conversationId};
+  @override
+  AiConversationContext map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiConversationContext(
+      conversationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}conversation_id'],
+      )!,
+      contextVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}context_version'],
+      )!,
+      payloadJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AiConversationContextsTable createAlias(String alias) {
+    return $AiConversationContextsTable(attachedDatabase, alias);
+  }
+}
+
+class AiConversationContext extends DataClass
+    implements Insertable<AiConversationContext> {
+  final String conversationId;
+  final int contextVersion;
+  final String payloadJson;
+  final DateTime updatedAt;
+  const AiConversationContext({
+    required this.conversationId,
+    required this.contextVersion,
+    required this.payloadJson,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['conversation_id'] = Variable<String>(conversationId);
+    map['context_version'] = Variable<int>(contextVersion);
+    map['payload_json'] = Variable<String>(payloadJson);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AiConversationContextsCompanion toCompanion(bool nullToAbsent) {
+    return AiConversationContextsCompanion(
+      conversationId: Value(conversationId),
+      contextVersion: Value(contextVersion),
+      payloadJson: Value(payloadJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AiConversationContext.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiConversationContext(
+      conversationId: serializer.fromJson<String>(json['conversationId']),
+      contextVersion: serializer.fromJson<int>(json['contextVersion']),
+      payloadJson: serializer.fromJson<String>(json['payloadJson']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'conversationId': serializer.toJson<String>(conversationId),
+      'contextVersion': serializer.toJson<int>(contextVersion),
+      'payloadJson': serializer.toJson<String>(payloadJson),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AiConversationContext copyWith({
+    String? conversationId,
+    int? contextVersion,
+    String? payloadJson,
+    DateTime? updatedAt,
+  }) => AiConversationContext(
+    conversationId: conversationId ?? this.conversationId,
+    contextVersion: contextVersion ?? this.contextVersion,
+    payloadJson: payloadJson ?? this.payloadJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AiConversationContext copyWithCompanion(
+    AiConversationContextsCompanion data,
+  ) {
+    return AiConversationContext(
+      conversationId: data.conversationId.present
+          ? data.conversationId.value
+          : this.conversationId,
+      contextVersion: data.contextVersion.present
+          ? data.contextVersion.value
+          : this.contextVersion,
+      payloadJson: data.payloadJson.present
+          ? data.payloadJson.value
+          : this.payloadJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiConversationContext(')
+          ..write('conversationId: $conversationId, ')
+          ..write('contextVersion: $contextVersion, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(conversationId, contextVersion, payloadJson, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiConversationContext &&
+          other.conversationId == this.conversationId &&
+          other.contextVersion == this.contextVersion &&
+          other.payloadJson == this.payloadJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AiConversationContextsCompanion
+    extends UpdateCompanion<AiConversationContext> {
+  final Value<String> conversationId;
+  final Value<int> contextVersion;
+  final Value<String> payloadJson;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AiConversationContextsCompanion({
+    this.conversationId = const Value.absent(),
+    this.contextVersion = const Value.absent(),
+    this.payloadJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiConversationContextsCompanion.insert({
+    required String conversationId,
+    required int contextVersion,
+    required String payloadJson,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : conversationId = Value(conversationId),
+       contextVersion = Value(contextVersion),
+       payloadJson = Value(payloadJson),
+       updatedAt = Value(updatedAt);
+  static Insertable<AiConversationContext> custom({
+    Expression<String>? conversationId,
+    Expression<int>? contextVersion,
+    Expression<String>? payloadJson,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (contextVersion != null) 'context_version': contextVersion,
+      if (payloadJson != null) 'payload_json': payloadJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiConversationContextsCompanion copyWith({
+    Value<String>? conversationId,
+    Value<int>? contextVersion,
+    Value<String>? payloadJson,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AiConversationContextsCompanion(
+      conversationId: conversationId ?? this.conversationId,
+      contextVersion: contextVersion ?? this.contextVersion,
+      payloadJson: payloadJson ?? this.payloadJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<String>(conversationId.value);
+    }
+    if (contextVersion.present) {
+      map['context_version'] = Variable<int>(contextVersion.value);
+    }
+    if (payloadJson.present) {
+      map['payload_json'] = Variable<String>(payloadJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiConversationContextsCompanion(')
+          ..write('conversationId: $conversationId, ')
+          ..write('contextVersion: $contextVersion, ')
+          ..write('payloadJson: $payloadJson, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ScriptRunsTable extends ScriptRuns
+    with TableInfo<$ScriptRunsTable, ScriptRun> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ScriptRunsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _runIdMeta = const VerificationMeta('runId');
+  @override
+  late final GeneratedColumn<String> runId = GeneratedColumn<String>(
+    'run_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+    'conversation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scriptNameMeta = const VerificationMeta(
+    'scriptName',
+  );
+  @override
+  late final GeneratedColumn<String> scriptName = GeneratedColumn<String>(
+    'script_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _finishedAtMeta = const VerificationMeta(
+    'finishedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> finishedAt = GeneratedColumn<DateTime>(
+    'finished_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    runId,
+    conversationId,
+    source,
+    scriptName,
+    startedAt,
+    finishedAt,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'script_runs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ScriptRun> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('run_id')) {
+      context.handle(
+        _runIdMeta,
+        runId.isAcceptableOrUnknown(data['run_id']!, _runIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_runIdMeta);
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conversationIdMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('script_name')) {
+      context.handle(
+        _scriptNameMeta,
+        scriptName.isAcceptableOrUnknown(data['script_name']!, _scriptNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scriptNameMeta);
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('finished_at')) {
+      context.handle(
+        _finishedAtMeta,
+        finishedAt.isAcceptableOrUnknown(data['finished_at']!, _finishedAtMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {runId};
+  @override
+  ScriptRun map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScriptRun(
+      runId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}run_id'],
+      )!,
+      conversationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}conversation_id'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      scriptName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}script_name'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      finishedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}finished_at'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $ScriptRunsTable createAlias(String alias) {
+    return $ScriptRunsTable(attachedDatabase, alias);
+  }
+}
+
+class ScriptRun extends DataClass implements Insertable<ScriptRun> {
+  final String runId;
+  final String conversationId;
+  final String source;
+  final String scriptName;
+  final DateTime startedAt;
+  final DateTime? finishedAt;
+  final String status;
+  const ScriptRun({
+    required this.runId,
+    required this.conversationId,
+    required this.source,
+    required this.scriptName,
+    required this.startedAt,
+    this.finishedAt,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['run_id'] = Variable<String>(runId);
+    map['conversation_id'] = Variable<String>(conversationId);
+    map['source'] = Variable<String>(source);
+    map['script_name'] = Variable<String>(scriptName);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    if (!nullToAbsent || finishedAt != null) {
+      map['finished_at'] = Variable<DateTime>(finishedAt);
+    }
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  ScriptRunsCompanion toCompanion(bool nullToAbsent) {
+    return ScriptRunsCompanion(
+      runId: Value(runId),
+      conversationId: Value(conversationId),
+      source: Value(source),
+      scriptName: Value(scriptName),
+      startedAt: Value(startedAt),
+      finishedAt: finishedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(finishedAt),
+      status: Value(status),
+    );
+  }
+
+  factory ScriptRun.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScriptRun(
+      runId: serializer.fromJson<String>(json['runId']),
+      conversationId: serializer.fromJson<String>(json['conversationId']),
+      source: serializer.fromJson<String>(json['source']),
+      scriptName: serializer.fromJson<String>(json['scriptName']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      finishedAt: serializer.fromJson<DateTime?>(json['finishedAt']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'runId': serializer.toJson<String>(runId),
+      'conversationId': serializer.toJson<String>(conversationId),
+      'source': serializer.toJson<String>(source),
+      'scriptName': serializer.toJson<String>(scriptName),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'finishedAt': serializer.toJson<DateTime?>(finishedAt),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  ScriptRun copyWith({
+    String? runId,
+    String? conversationId,
+    String? source,
+    String? scriptName,
+    DateTime? startedAt,
+    Value<DateTime?> finishedAt = const Value.absent(),
+    String? status,
+  }) => ScriptRun(
+    runId: runId ?? this.runId,
+    conversationId: conversationId ?? this.conversationId,
+    source: source ?? this.source,
+    scriptName: scriptName ?? this.scriptName,
+    startedAt: startedAt ?? this.startedAt,
+    finishedAt: finishedAt.present ? finishedAt.value : this.finishedAt,
+    status: status ?? this.status,
+  );
+  ScriptRun copyWithCompanion(ScriptRunsCompanion data) {
+    return ScriptRun(
+      runId: data.runId.present ? data.runId.value : this.runId,
+      conversationId: data.conversationId.present
+          ? data.conversationId.value
+          : this.conversationId,
+      source: data.source.present ? data.source.value : this.source,
+      scriptName: data.scriptName.present
+          ? data.scriptName.value
+          : this.scriptName,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      finishedAt: data.finishedAt.present
+          ? data.finishedAt.value
+          : this.finishedAt,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScriptRun(')
+          ..write('runId: $runId, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('source: $source, ')
+          ..write('scriptName: $scriptName, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    runId,
+    conversationId,
+    source,
+    scriptName,
+    startedAt,
+    finishedAt,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScriptRun &&
+          other.runId == this.runId &&
+          other.conversationId == this.conversationId &&
+          other.source == this.source &&
+          other.scriptName == this.scriptName &&
+          other.startedAt == this.startedAt &&
+          other.finishedAt == this.finishedAt &&
+          other.status == this.status);
+}
+
+class ScriptRunsCompanion extends UpdateCompanion<ScriptRun> {
+  final Value<String> runId;
+  final Value<String> conversationId;
+  final Value<String> source;
+  final Value<String> scriptName;
+  final Value<DateTime> startedAt;
+  final Value<DateTime?> finishedAt;
+  final Value<String> status;
+  final Value<int> rowid;
+  const ScriptRunsCompanion({
+    this.runId = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    this.source = const Value.absent(),
+    this.scriptName = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.finishedAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ScriptRunsCompanion.insert({
+    required String runId,
+    required String conversationId,
+    required String source,
+    required String scriptName,
+    required DateTime startedAt,
+    this.finishedAt = const Value.absent(),
+    required String status,
+    this.rowid = const Value.absent(),
+  }) : runId = Value(runId),
+       conversationId = Value(conversationId),
+       source = Value(source),
+       scriptName = Value(scriptName),
+       startedAt = Value(startedAt),
+       status = Value(status);
+  static Insertable<ScriptRun> custom({
+    Expression<String>? runId,
+    Expression<String>? conversationId,
+    Expression<String>? source,
+    Expression<String>? scriptName,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? finishedAt,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (runId != null) 'run_id': runId,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (source != null) 'source': source,
+      if (scriptName != null) 'script_name': scriptName,
+      if (startedAt != null) 'started_at': startedAt,
+      if (finishedAt != null) 'finished_at': finishedAt,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ScriptRunsCompanion copyWith({
+    Value<String>? runId,
+    Value<String>? conversationId,
+    Value<String>? source,
+    Value<String>? scriptName,
+    Value<DateTime>? startedAt,
+    Value<DateTime?>? finishedAt,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return ScriptRunsCompanion(
+      runId: runId ?? this.runId,
+      conversationId: conversationId ?? this.conversationId,
+      source: source ?? this.source,
+      scriptName: scriptName ?? this.scriptName,
+      startedAt: startedAt ?? this.startedAt,
+      finishedAt: finishedAt ?? this.finishedAt,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (runId.present) {
+      map['run_id'] = Variable<String>(runId.value);
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<String>(conversationId.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (scriptName.present) {
+      map['script_name'] = Variable<String>(scriptName.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (finishedAt.present) {
+      map['finished_at'] = Variable<DateTime>(finishedAt.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScriptRunsCompanion(')
+          ..write('runId: $runId, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('source: $source, ')
+          ..write('scriptName: $scriptName, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('finishedAt: $finishedAt, ')
+          ..write('status: $status, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ScriptLogsTable extends ScriptLogs
+    with TableInfo<$ScriptLogsTable, ScriptLog> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ScriptLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _runIdMeta = const VerificationMeta('runId');
+  @override
+  late final GeneratedColumn<String> runId = GeneratedColumn<String>(
+    'run_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+    'conversation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scriptNameMeta = const VerificationMeta(
+    'scriptName',
+  );
+  @override
+  late final GeneratedColumn<String> scriptName = GeneratedColumn<String>(
+    'script_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _levelMeta = const VerificationMeta('level');
+  @override
+  late final GeneratedColumn<String> level = GeneratedColumn<String>(
+    'level',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _messageMeta = const VerificationMeta(
+    'message',
+  );
+  @override
+  late final GeneratedColumn<String> message = GeneratedColumn<String>(
+    'message',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stackTraceMeta = const VerificationMeta(
+    'stackTrace',
+  );
+  @override
+  late final GeneratedColumn<String> stackTrace = GeneratedColumn<String>(
+    'stack_trace',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    runId,
+    conversationId,
+    source,
+    scriptName,
+    level,
+    message,
+    stackTrace,
+    timestamp,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'script_logs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ScriptLog> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('run_id')) {
+      context.handle(
+        _runIdMeta,
+        runId.isAcceptableOrUnknown(data['run_id']!, _runIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_runIdMeta);
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conversationIdMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('script_name')) {
+      context.handle(
+        _scriptNameMeta,
+        scriptName.isAcceptableOrUnknown(data['script_name']!, _scriptNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scriptNameMeta);
+    }
+    if (data.containsKey('level')) {
+      context.handle(
+        _levelMeta,
+        level.isAcceptableOrUnknown(data['level']!, _levelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_levelMeta);
+    }
+    if (data.containsKey('message')) {
+      context.handle(
+        _messageMeta,
+        message.isAcceptableOrUnknown(data['message']!, _messageMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_messageMeta);
+    }
+    if (data.containsKey('stack_trace')) {
+      context.handle(
+        _stackTraceMeta,
+        stackTrace.isAcceptableOrUnknown(data['stack_trace']!, _stackTraceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stackTraceMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ScriptLog map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScriptLog(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      runId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}run_id'],
+      )!,
+      conversationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}conversation_id'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      scriptName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}script_name'],
+      )!,
+      level: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}level'],
+      )!,
+      message: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}message'],
+      )!,
+      stackTrace: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stack_trace'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+    );
+  }
+
+  @override
+  $ScriptLogsTable createAlias(String alias) {
+    return $ScriptLogsTable(attachedDatabase, alias);
+  }
+}
+
+class ScriptLog extends DataClass implements Insertable<ScriptLog> {
+  final int id;
+  final String runId;
+  final String conversationId;
+  final String source;
+  final String scriptName;
+  final String level;
+  final String message;
+  final String stackTrace;
+  final DateTime timestamp;
+  const ScriptLog({
+    required this.id,
+    required this.runId,
+    required this.conversationId,
+    required this.source,
+    required this.scriptName,
+    required this.level,
+    required this.message,
+    required this.stackTrace,
+    required this.timestamp,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['run_id'] = Variable<String>(runId);
+    map['conversation_id'] = Variable<String>(conversationId);
+    map['source'] = Variable<String>(source);
+    map['script_name'] = Variable<String>(scriptName);
+    map['level'] = Variable<String>(level);
+    map['message'] = Variable<String>(message);
+    map['stack_trace'] = Variable<String>(stackTrace);
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    return map;
+  }
+
+  ScriptLogsCompanion toCompanion(bool nullToAbsent) {
+    return ScriptLogsCompanion(
+      id: Value(id),
+      runId: Value(runId),
+      conversationId: Value(conversationId),
+      source: Value(source),
+      scriptName: Value(scriptName),
+      level: Value(level),
+      message: Value(message),
+      stackTrace: Value(stackTrace),
+      timestamp: Value(timestamp),
+    );
+  }
+
+  factory ScriptLog.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScriptLog(
+      id: serializer.fromJson<int>(json['id']),
+      runId: serializer.fromJson<String>(json['runId']),
+      conversationId: serializer.fromJson<String>(json['conversationId']),
+      source: serializer.fromJson<String>(json['source']),
+      scriptName: serializer.fromJson<String>(json['scriptName']),
+      level: serializer.fromJson<String>(json['level']),
+      message: serializer.fromJson<String>(json['message']),
+      stackTrace: serializer.fromJson<String>(json['stackTrace']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'runId': serializer.toJson<String>(runId),
+      'conversationId': serializer.toJson<String>(conversationId),
+      'source': serializer.toJson<String>(source),
+      'scriptName': serializer.toJson<String>(scriptName),
+      'level': serializer.toJson<String>(level),
+      'message': serializer.toJson<String>(message),
+      'stackTrace': serializer.toJson<String>(stackTrace),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+    };
+  }
+
+  ScriptLog copyWith({
+    int? id,
+    String? runId,
+    String? conversationId,
+    String? source,
+    String? scriptName,
+    String? level,
+    String? message,
+    String? stackTrace,
+    DateTime? timestamp,
+  }) => ScriptLog(
+    id: id ?? this.id,
+    runId: runId ?? this.runId,
+    conversationId: conversationId ?? this.conversationId,
+    source: source ?? this.source,
+    scriptName: scriptName ?? this.scriptName,
+    level: level ?? this.level,
+    message: message ?? this.message,
+    stackTrace: stackTrace ?? this.stackTrace,
+    timestamp: timestamp ?? this.timestamp,
+  );
+  ScriptLog copyWithCompanion(ScriptLogsCompanion data) {
+    return ScriptLog(
+      id: data.id.present ? data.id.value : this.id,
+      runId: data.runId.present ? data.runId.value : this.runId,
+      conversationId: data.conversationId.present
+          ? data.conversationId.value
+          : this.conversationId,
+      source: data.source.present ? data.source.value : this.source,
+      scriptName: data.scriptName.present
+          ? data.scriptName.value
+          : this.scriptName,
+      level: data.level.present ? data.level.value : this.level,
+      message: data.message.present ? data.message.value : this.message,
+      stackTrace: data.stackTrace.present
+          ? data.stackTrace.value
+          : this.stackTrace,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScriptLog(')
+          ..write('id: $id, ')
+          ..write('runId: $runId, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('source: $source, ')
+          ..write('scriptName: $scriptName, ')
+          ..write('level: $level, ')
+          ..write('message: $message, ')
+          ..write('stackTrace: $stackTrace, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    runId,
+    conversationId,
+    source,
+    scriptName,
+    level,
+    message,
+    stackTrace,
+    timestamp,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScriptLog &&
+          other.id == this.id &&
+          other.runId == this.runId &&
+          other.conversationId == this.conversationId &&
+          other.source == this.source &&
+          other.scriptName == this.scriptName &&
+          other.level == this.level &&
+          other.message == this.message &&
+          other.stackTrace == this.stackTrace &&
+          other.timestamp == this.timestamp);
+}
+
+class ScriptLogsCompanion extends UpdateCompanion<ScriptLog> {
+  final Value<int> id;
+  final Value<String> runId;
+  final Value<String> conversationId;
+  final Value<String> source;
+  final Value<String> scriptName;
+  final Value<String> level;
+  final Value<String> message;
+  final Value<String> stackTrace;
+  final Value<DateTime> timestamp;
+  const ScriptLogsCompanion({
+    this.id = const Value.absent(),
+    this.runId = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    this.source = const Value.absent(),
+    this.scriptName = const Value.absent(),
+    this.level = const Value.absent(),
+    this.message = const Value.absent(),
+    this.stackTrace = const Value.absent(),
+    this.timestamp = const Value.absent(),
+  });
+  ScriptLogsCompanion.insert({
+    this.id = const Value.absent(),
+    required String runId,
+    required String conversationId,
+    required String source,
+    required String scriptName,
+    required String level,
+    required String message,
+    required String stackTrace,
+    required DateTime timestamp,
+  }) : runId = Value(runId),
+       conversationId = Value(conversationId),
+       source = Value(source),
+       scriptName = Value(scriptName),
+       level = Value(level),
+       message = Value(message),
+       stackTrace = Value(stackTrace),
+       timestamp = Value(timestamp);
+  static Insertable<ScriptLog> custom({
+    Expression<int>? id,
+    Expression<String>? runId,
+    Expression<String>? conversationId,
+    Expression<String>? source,
+    Expression<String>? scriptName,
+    Expression<String>? level,
+    Expression<String>? message,
+    Expression<String>? stackTrace,
+    Expression<DateTime>? timestamp,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (runId != null) 'run_id': runId,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (source != null) 'source': source,
+      if (scriptName != null) 'script_name': scriptName,
+      if (level != null) 'level': level,
+      if (message != null) 'message': message,
+      if (stackTrace != null) 'stack_trace': stackTrace,
+      if (timestamp != null) 'timestamp': timestamp,
+    });
+  }
+
+  ScriptLogsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? runId,
+    Value<String>? conversationId,
+    Value<String>? source,
+    Value<String>? scriptName,
+    Value<String>? level,
+    Value<String>? message,
+    Value<String>? stackTrace,
+    Value<DateTime>? timestamp,
+  }) {
+    return ScriptLogsCompanion(
+      id: id ?? this.id,
+      runId: runId ?? this.runId,
+      conversationId: conversationId ?? this.conversationId,
+      source: source ?? this.source,
+      scriptName: scriptName ?? this.scriptName,
+      level: level ?? this.level,
+      message: message ?? this.message,
+      stackTrace: stackTrace ?? this.stackTrace,
+      timestamp: timestamp ?? this.timestamp,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (runId.present) {
+      map['run_id'] = Variable<String>(runId.value);
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<String>(conversationId.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (scriptName.present) {
+      map['script_name'] = Variable<String>(scriptName.value);
+    }
+    if (level.present) {
+      map['level'] = Variable<String>(level.value);
+    }
+    if (message.present) {
+      map['message'] = Variable<String>(message.value);
+    }
+    if (stackTrace.present) {
+      map['stack_trace'] = Variable<String>(stackTrace.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScriptLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('runId: $runId, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('source: $source, ')
+          ..write('scriptName: $scriptName, ')
+          ..write('level: $level, ')
+          ..write('message: $message, ')
+          ..write('stackTrace: $stackTrace, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AiDatabase extends GeneratedDatabase {
   _$AiDatabase(QueryExecutor e) : super(e);
   $AiDatabaseManager get managers => $AiDatabaseManager(this);
@@ -1841,6 +3207,10 @@ abstract class _$AiDatabase extends GeneratedDatabase {
   late final $AiMessageRecordsTable aiMessageRecords = $AiMessageRecordsTable(
     this,
   );
+  late final $AiConversationContextsTable aiConversationContexts =
+      $AiConversationContextsTable(this);
+  late final $ScriptRunsTable scriptRuns = $ScriptRunsTable(this);
+  late final $ScriptLogsTable scriptLogs = $ScriptLogsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1851,6 +3221,9 @@ abstract class _$AiDatabase extends GeneratedDatabase {
     aiAssistantProfiles,
     aiConversations,
     aiMessageRecords,
+    aiConversationContexts,
+    scriptRuns,
+    scriptLogs,
   ];
 }
 
@@ -2911,6 +4284,726 @@ typedef $$AiMessageRecordsTableProcessedTableManager =
       AiMessageRecord,
       PrefetchHooks Function()
     >;
+typedef $$AiConversationContextsTableCreateCompanionBuilder =
+    AiConversationContextsCompanion Function({
+      required String conversationId,
+      required int contextVersion,
+      required String payloadJson,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AiConversationContextsTableUpdateCompanionBuilder =
+    AiConversationContextsCompanion Function({
+      Value<String> conversationId,
+      Value<int> contextVersion,
+      Value<String> payloadJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AiConversationContextsTableFilterComposer
+    extends Composer<_$AiDatabase, $AiConversationContextsTable> {
+  $$AiConversationContextsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get contextVersion => $composableBuilder(
+    column: $table.contextVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AiConversationContextsTableOrderingComposer
+    extends Composer<_$AiDatabase, $AiConversationContextsTable> {
+  $$AiConversationContextsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get contextVersion => $composableBuilder(
+    column: $table.contextVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AiConversationContextsTableAnnotationComposer
+    extends Composer<_$AiDatabase, $AiConversationContextsTable> {
+  $$AiConversationContextsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get contextVersion => $composableBuilder(
+    column: $table.contextVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get payloadJson => $composableBuilder(
+    column: $table.payloadJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AiConversationContextsTableTableManager
+    extends
+        RootTableManager<
+          _$AiDatabase,
+          $AiConversationContextsTable,
+          AiConversationContext,
+          $$AiConversationContextsTableFilterComposer,
+          $$AiConversationContextsTableOrderingComposer,
+          $$AiConversationContextsTableAnnotationComposer,
+          $$AiConversationContextsTableCreateCompanionBuilder,
+          $$AiConversationContextsTableUpdateCompanionBuilder,
+          (
+            AiConversationContext,
+            BaseReferences<
+              _$AiDatabase,
+              $AiConversationContextsTable,
+              AiConversationContext
+            >,
+          ),
+          AiConversationContext,
+          PrefetchHooks Function()
+        > {
+  $$AiConversationContextsTableTableManager(
+    _$AiDatabase db,
+    $AiConversationContextsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiConversationContextsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AiConversationContextsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AiConversationContextsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> conversationId = const Value.absent(),
+                Value<int> contextVersion = const Value.absent(),
+                Value<String> payloadJson = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AiConversationContextsCompanion(
+                conversationId: conversationId,
+                contextVersion: contextVersion,
+                payloadJson: payloadJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String conversationId,
+                required int contextVersion,
+                required String payloadJson,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AiConversationContextsCompanion.insert(
+                conversationId: conversationId,
+                contextVersion: contextVersion,
+                payloadJson: payloadJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AiConversationContextsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AiDatabase,
+      $AiConversationContextsTable,
+      AiConversationContext,
+      $$AiConversationContextsTableFilterComposer,
+      $$AiConversationContextsTableOrderingComposer,
+      $$AiConversationContextsTableAnnotationComposer,
+      $$AiConversationContextsTableCreateCompanionBuilder,
+      $$AiConversationContextsTableUpdateCompanionBuilder,
+      (
+        AiConversationContext,
+        BaseReferences<
+          _$AiDatabase,
+          $AiConversationContextsTable,
+          AiConversationContext
+        >,
+      ),
+      AiConversationContext,
+      PrefetchHooks Function()
+    >;
+typedef $$ScriptRunsTableCreateCompanionBuilder =
+    ScriptRunsCompanion Function({
+      required String runId,
+      required String conversationId,
+      required String source,
+      required String scriptName,
+      required DateTime startedAt,
+      Value<DateTime?> finishedAt,
+      required String status,
+      Value<int> rowid,
+    });
+typedef $$ScriptRunsTableUpdateCompanionBuilder =
+    ScriptRunsCompanion Function({
+      Value<String> runId,
+      Value<String> conversationId,
+      Value<String> source,
+      Value<String> scriptName,
+      Value<DateTime> startedAt,
+      Value<DateTime?> finishedAt,
+      Value<String> status,
+      Value<int> rowid,
+    });
+
+class $$ScriptRunsTableFilterComposer
+    extends Composer<_$AiDatabase, $ScriptRunsTable> {
+  $$ScriptRunsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get runId => $composableBuilder(
+    column: $table.runId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scriptName => $composableBuilder(
+    column: $table.scriptName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ScriptRunsTableOrderingComposer
+    extends Composer<_$AiDatabase, $ScriptRunsTable> {
+  $$ScriptRunsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get runId => $composableBuilder(
+    column: $table.runId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scriptName => $composableBuilder(
+    column: $table.scriptName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ScriptRunsTableAnnotationComposer
+    extends Composer<_$AiDatabase, $ScriptRunsTable> {
+  $$ScriptRunsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get runId =>
+      $composableBuilder(column: $table.runId, builder: (column) => column);
+
+  GeneratedColumn<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get scriptName => $composableBuilder(
+    column: $table.scriptName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get finishedAt => $composableBuilder(
+    column: $table.finishedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$ScriptRunsTableTableManager
+    extends
+        RootTableManager<
+          _$AiDatabase,
+          $ScriptRunsTable,
+          ScriptRun,
+          $$ScriptRunsTableFilterComposer,
+          $$ScriptRunsTableOrderingComposer,
+          $$ScriptRunsTableAnnotationComposer,
+          $$ScriptRunsTableCreateCompanionBuilder,
+          $$ScriptRunsTableUpdateCompanionBuilder,
+          (
+            ScriptRun,
+            BaseReferences<_$AiDatabase, $ScriptRunsTable, ScriptRun>,
+          ),
+          ScriptRun,
+          PrefetchHooks Function()
+        > {
+  $$ScriptRunsTableTableManager(_$AiDatabase db, $ScriptRunsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ScriptRunsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ScriptRunsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ScriptRunsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> runId = const Value.absent(),
+                Value<String> conversationId = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> scriptName = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> finishedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ScriptRunsCompanion(
+                runId: runId,
+                conversationId: conversationId,
+                source: source,
+                scriptName: scriptName,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String runId,
+                required String conversationId,
+                required String source,
+                required String scriptName,
+                required DateTime startedAt,
+                Value<DateTime?> finishedAt = const Value.absent(),
+                required String status,
+                Value<int> rowid = const Value.absent(),
+              }) => ScriptRunsCompanion.insert(
+                runId: runId,
+                conversationId: conversationId,
+                source: source,
+                scriptName: scriptName,
+                startedAt: startedAt,
+                finishedAt: finishedAt,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ScriptRunsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AiDatabase,
+      $ScriptRunsTable,
+      ScriptRun,
+      $$ScriptRunsTableFilterComposer,
+      $$ScriptRunsTableOrderingComposer,
+      $$ScriptRunsTableAnnotationComposer,
+      $$ScriptRunsTableCreateCompanionBuilder,
+      $$ScriptRunsTableUpdateCompanionBuilder,
+      (ScriptRun, BaseReferences<_$AiDatabase, $ScriptRunsTable, ScriptRun>),
+      ScriptRun,
+      PrefetchHooks Function()
+    >;
+typedef $$ScriptLogsTableCreateCompanionBuilder =
+    ScriptLogsCompanion Function({
+      Value<int> id,
+      required String runId,
+      required String conversationId,
+      required String source,
+      required String scriptName,
+      required String level,
+      required String message,
+      required String stackTrace,
+      required DateTime timestamp,
+    });
+typedef $$ScriptLogsTableUpdateCompanionBuilder =
+    ScriptLogsCompanion Function({
+      Value<int> id,
+      Value<String> runId,
+      Value<String> conversationId,
+      Value<String> source,
+      Value<String> scriptName,
+      Value<String> level,
+      Value<String> message,
+      Value<String> stackTrace,
+      Value<DateTime> timestamp,
+    });
+
+class $$ScriptLogsTableFilterComposer
+    extends Composer<_$AiDatabase, $ScriptLogsTable> {
+  $$ScriptLogsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get runId => $composableBuilder(
+    column: $table.runId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scriptName => $composableBuilder(
+    column: $table.scriptName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stackTrace => $composableBuilder(
+    column: $table.stackTrace,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ScriptLogsTableOrderingComposer
+    extends Composer<_$AiDatabase, $ScriptLogsTable> {
+  $$ScriptLogsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get runId => $composableBuilder(
+    column: $table.runId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scriptName => $composableBuilder(
+    column: $table.scriptName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get message => $composableBuilder(
+    column: $table.message,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stackTrace => $composableBuilder(
+    column: $table.stackTrace,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ScriptLogsTableAnnotationComposer
+    extends Composer<_$AiDatabase, $ScriptLogsTable> {
+  $$ScriptLogsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get runId =>
+      $composableBuilder(column: $table.runId, builder: (column) => column);
+
+  GeneratedColumn<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get scriptName => $composableBuilder(
+    column: $table.scriptName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get level =>
+      $composableBuilder(column: $table.level, builder: (column) => column);
+
+  GeneratedColumn<String> get message =>
+      $composableBuilder(column: $table.message, builder: (column) => column);
+
+  GeneratedColumn<String> get stackTrace => $composableBuilder(
+    column: $table.stackTrace,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+}
+
+class $$ScriptLogsTableTableManager
+    extends
+        RootTableManager<
+          _$AiDatabase,
+          $ScriptLogsTable,
+          ScriptLog,
+          $$ScriptLogsTableFilterComposer,
+          $$ScriptLogsTableOrderingComposer,
+          $$ScriptLogsTableAnnotationComposer,
+          $$ScriptLogsTableCreateCompanionBuilder,
+          $$ScriptLogsTableUpdateCompanionBuilder,
+          (
+            ScriptLog,
+            BaseReferences<_$AiDatabase, $ScriptLogsTable, ScriptLog>,
+          ),
+          ScriptLog,
+          PrefetchHooks Function()
+        > {
+  $$ScriptLogsTableTableManager(_$AiDatabase db, $ScriptLogsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ScriptLogsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ScriptLogsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ScriptLogsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> runId = const Value.absent(),
+                Value<String> conversationId = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> scriptName = const Value.absent(),
+                Value<String> level = const Value.absent(),
+                Value<String> message = const Value.absent(),
+                Value<String> stackTrace = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+              }) => ScriptLogsCompanion(
+                id: id,
+                runId: runId,
+                conversationId: conversationId,
+                source: source,
+                scriptName: scriptName,
+                level: level,
+                message: message,
+                stackTrace: stackTrace,
+                timestamp: timestamp,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String runId,
+                required String conversationId,
+                required String source,
+                required String scriptName,
+                required String level,
+                required String message,
+                required String stackTrace,
+                required DateTime timestamp,
+              }) => ScriptLogsCompanion.insert(
+                id: id,
+                runId: runId,
+                conversationId: conversationId,
+                source: source,
+                scriptName: scriptName,
+                level: level,
+                message: message,
+                stackTrace: stackTrace,
+                timestamp: timestamp,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ScriptLogsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AiDatabase,
+      $ScriptLogsTable,
+      ScriptLog,
+      $$ScriptLogsTableFilterComposer,
+      $$ScriptLogsTableOrderingComposer,
+      $$ScriptLogsTableAnnotationComposer,
+      $$ScriptLogsTableCreateCompanionBuilder,
+      $$ScriptLogsTableUpdateCompanionBuilder,
+      (ScriptLog, BaseReferences<_$AiDatabase, $ScriptLogsTable, ScriptLog>),
+      ScriptLog,
+      PrefetchHooks Function()
+    >;
 
 class $AiDatabaseManager {
   final _$AiDatabase _db;
@@ -2925,4 +5018,13 @@ class $AiDatabaseManager {
       $$AiConversationsTableTableManager(_db, _db.aiConversations);
   $$AiMessageRecordsTableTableManager get aiMessageRecords =>
       $$AiMessageRecordsTableTableManager(_db, _db.aiMessageRecords);
+  $$AiConversationContextsTableTableManager get aiConversationContexts =>
+      $$AiConversationContextsTableTableManager(
+        _db,
+        _db.aiConversationContexts,
+      );
+  $$ScriptRunsTableTableManager get scriptRuns =>
+      $$ScriptRunsTableTableManager(_db, _db.scriptRuns);
+  $$ScriptLogsTableTableManager get scriptLogs =>
+      $$ScriptLogsTableTableManager(_db, _db.scriptLogs);
 }

@@ -76,7 +76,7 @@ final class ApkReverseChatEnvironmentProvider
 }
 
 String _$apkReverseChatEnvironmentHash() =>
-    r'95efcb5c978c260612b4b696f91e56a5667bee13';
+    r'04faf9c5204f0d79a78b1afb5e4f80eee6a58673';
 
 final class ApkReverseChatEnvironmentFamily extends $Family
     with

@@ -1,3 +1,4 @@
+import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_multimodal_message_codec.dart';
 
@@ -37,6 +38,23 @@ class ConservativeAiTokenEstimator implements AiTokenEstimator {
   }
 }
 
+/// 上下文组装结果：既包含最终下发给模型的消息，也包含本次组装的真实
+/// 统计信息（token 预算、裁剪情况、保留轮次、参与层），供控制台可视化。
+class AiChatContextBuildResult {
+  const AiChatContextBuildResult({
+    required this.messages,
+    required this.stats,
+    required this.systemPrompt,
+  });
+
+  final List<AiMessage> messages;
+  final AiChatContextStats stats;
+
+  /// 本次实际拼接下发的系统提示（环境约束 + 助手人设），
+  /// 供对话级上下文快照记录会话规则。
+  final String systemPrompt;
+}
+
 class AiChatContextBuilder {
   static const int _fallbackContextTokens = 8192;
   // Input tokens also include serialized tool schemas, protocol wrappers and
@@ -50,6 +68,24 @@ class AiChatContextBuilder {
   final AiTokenEstimator _tokenEstimator;
 
   List<AiMessage> build({
+    required AiAssistantProfile assistant,
+    required AiModelDefinition model,
+    required List<AiMessage> messages,
+    required String Function() idFactory,
+    required DateTime now,
+    String? environmentSystemPrompt,
+  }) {
+    return buildWithStats(
+      assistant: assistant,
+      model: model,
+      messages: messages,
+      idFactory: idFactory,
+      now: now,
+      environmentSystemPrompt: environmentSystemPrompt,
+    ).messages;
+  }
+
+  AiChatContextBuildResult buildWithStats({
     required AiAssistantProfile assistant,
     required AiModelDefinition model,
     required List<AiMessage> messages,
@@ -121,19 +157,99 @@ class AiChatContextBuilder {
       contextTokens,
       systemPromptTokens: systemPromptTokens,
     );
-    if (systemPrompt.isEmpty) return protocolSafeSelected;
-    return [
-      AiMessage(
-        id: idFactory(),
-        conversationId: messages.firstOrNull?.conversationId ?? '',
-        role: model.capabilities.systemRole
-            ? AiMessageRole.system
-            : AiMessageRole.user,
-        parts: [AiContentPart.text(systemPrompt)],
-        createdAt: now,
+    if (systemPrompt.isEmpty) {
+      return AiChatContextBuildResult(
+        messages: protocolSafeSelected,
+        systemPrompt: systemPrompt,
+        stats: _buildStats(
+          mode: assistant.contextPolicy.mode,
+          eligible: eligible,
+          selected: protocolSafeSelected,
+          systemPrompt: systemPrompt,
+          systemPromptTokens: systemPromptTokens,
+          contextTokens: contextTokens,
+          repairedToolContext: !_sameShape(boundedSelected, pairedSelected),
+        ),
+      );
+    }
+    return AiChatContextBuildResult(
+      messages: [
+        AiMessage(
+          id: idFactory(),
+          conversationId: messages.firstOrNull?.conversationId ?? '',
+          role: model.capabilities.systemRole
+              ? AiMessageRole.system
+              : AiMessageRole.user,
+          parts: [AiContentPart.text(systemPrompt)],
+          createdAt: now,
+        ),
+        ...protocolSafeSelected,
+      ],
+      systemPrompt: systemPrompt,
+      stats: _buildStats(
+        mode: assistant.contextPolicy.mode,
+        eligible: eligible,
+        selected: protocolSafeSelected,
+        systemPrompt: systemPrompt,
+        systemPromptTokens: systemPromptTokens,
+        contextTokens: contextTokens,
+        repairedToolContext: !_sameShape(boundedSelected, pairedSelected),
       ),
-      ...protocolSafeSelected,
-    ];
+    );
+  }
+
+  AiChatContextStats _buildStats({
+    required AiContextMode mode,
+    required List<AiMessage> eligible,
+    required List<AiMessage> selected,
+    required String systemPrompt,
+    required int systemPromptTokens,
+    required int contextTokens,
+    required bool repairedToolContext,
+  }) {
+    var estimatedTokens = systemPromptTokens;
+    for (final message in selected) {
+      estimatedTokens += _tokenEstimator.estimate(message);
+    }
+    final didCompact = selected.length < eligible.length;
+    return AiChatContextStats(
+      tokenBudget: contextTokens,
+      estimatedTokens: estimatedTokens,
+      remainingTokens: (contextTokens - estimatedTokens).clamp(0, contextTokens),
+      didCompact: didCompact,
+      compactReason: didCompact && mode == AiContextMode.tokenBudget
+          ? 'budget'
+          : null,
+      repairedToolContext: repairedToolContext,
+      recentRoundsKept: selected
+          .where((message) => message.role == AiMessageRole.user)
+          .length,
+      includedLayers: [
+        if (systemPrompt.isNotEmpty) 'system_prompt',
+        switch (mode) {
+          AiContextMode.fullHistory => 'full_history',
+          AiContextMode.recentMessages => 'recent_messages',
+          AiContextMode.tokenBudget => 'token_budget',
+        },
+        if (selected.any(
+          (message) => message.parts.any(
+            (part) => part is AiToolCallPart || part is AiToolResultPart,
+          ),
+        ))
+          'tool_context',
+      ],
+    );
+  }
+
+  static bool _sameShape(List<AiMessage> left, List<AiMessage> right) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (left[index].id != right[index].id ||
+          left[index].parts.length != right[index].parts.length) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Responses requires every function_call_output to have its preceding

@@ -8,6 +8,8 @@ import 'package:JsxposedX/features/ai/data/datasources/config/ai_config_action_d
 import 'package:JsxposedX/features/ai/data/datasources/config/ai_config_query_datasource.dart';
 import 'package:JsxposedX/features/ai/data/repositories/drift_ai_catalog_repository.dart';
 import 'package:JsxposedX/features/ai/data/repositories/drift_ai_conversation_repository.dart';
+import 'package:JsxposedX/features/ai/data/repositories/drift_script_log_repository.dart';
+import 'package:JsxposedX/features/ai/domain/environments/ai_tool_runtime_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/ports/ai_credential_store.dart';
 import 'package:JsxposedX/features/ai/domain/ports/ai_protocol_adapter.dart';
@@ -15,6 +17,7 @@ import 'package:JsxposedX/features/ai/domain/registries/protocol_adapter_registr
 import 'package:JsxposedX/features/ai/domain/registries/provider_definition_registry.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/ai_catalog_repository.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/ai_conversation_repository.dart';
+import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
 import 'package:JsxposedX/features/ai/infrastructure/adapters/anthropic_messages_adapter.dart';
 import 'package:JsxposedX/features/ai/infrastructure/adapters/openai_chat_adapter.dart';
 import 'package:JsxposedX/features/ai/infrastructure/adapters/openai_responses_adapter.dart';
@@ -47,6 +50,16 @@ AiCatalogRepository aiCatalogRepository(Ref ref) {
 @Riverpod(keepAlive: true)
 AiConversationRepository aiConversationRepositoryV2(Ref ref) {
   return DriftAiConversationRepository(ref.watch(aiDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+ScriptLogRepository scriptLogRepository(Ref ref) {
+  return DriftScriptLogRepository(ref.watch(aiDatabaseProvider));
+}
+
+@Riverpod(keepAlive: true)
+ScriptConversationBinding scriptConversationBinding(Ref ref) {
+  return ScriptConversationBinding(ref.watch(scriptLogRepositoryProvider));
 }
 
 @Riverpod(keepAlive: true)

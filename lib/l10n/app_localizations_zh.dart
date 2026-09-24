@@ -1060,6 +1060,74 @@ class AppLocalizationsZh extends AppLocalizations {
   String get logcatFullscreen => '全屏';
 
   @override
+  String get consoleSourceSession => '会话';
+
+  @override
+  String get consoleSourceFrida => 'Frida';
+
+  @override
+  String get consoleSourceXposed => 'Xposed';
+
+  @override
+  String get consoleSourceApp => '应用';
+
+  @override
+  String get consoleSourceCore => '核心';
+
+  @override
+  String get consoleSourceSystem => '系统';
+
+  @override
+  String get consoleLevelDebug => '调试';
+
+  @override
+  String get consoleLevelInfo => '信息';
+
+  @override
+  String get consoleLevelWarn => '警告';
+
+  @override
+  String get consoleLevelError => '错误';
+
+  @override
+  String get consoleAll => '全部';
+
+  @override
+  String get consoleHistory => '持久化脚本日志';
+
+  @override
+  String get consolePauseOutput => '暂停输出';
+
+  @override
+  String get consoleResumeOutput => '继续输出';
+
+  @override
+  String get consoleActions => '控制台操作';
+
+  @override
+  String get consoleCopyVisible => '复制可见日志';
+
+  @override
+  String get consoleExportVisible => '导出可见日志';
+
+  @override
+  String consoleCopied(Object count) {
+    return '已复制 $count 条日志';
+  }
+
+  @override
+  String get consoleExportDialogTitle => '导出控制台日志';
+
+  @override
+  String get consoleNoHistory => '暂无持久化脚本日志';
+
+  @override
+  String get consoleLoadOlder => '加载更早日志';
+
+  @override
+  String get consoleLogCopied => '日志已复制';
+
+  @override
   String get apiManual => '手册';
 
   @override
