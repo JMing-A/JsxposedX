@@ -1,15 +1,18 @@
 import 'package:JsxposedX/common/widgets/custom_dIalog.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/ai_conversation_export_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_session_view.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_quick_settings_menu.dart';
 import 'package:JsxposedX/features/app/presentation/providers/app_query_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 class AiConversationDrawer extends HookConsumerWidget {
   const AiConversationDrawer({
@@ -230,13 +233,13 @@ class AiConversationDrawer extends HookConsumerWidget {
                         
                         return Dismissible(
                           key: ValueKey(session.id),
-                          direction: DismissDirection.endToStart,
+                          direction: DismissDirection.startToEnd,
                           background: Container(
                             decoration: BoxDecoration(
-                              color: Colors.red,
+                              color: Colors.red.withValues(alpha: 0.9),
                               borderRadius: BorderRadius.circular(12.r),
                             ),
-                            alignment: Alignment.centerRight,
+                            alignment: Alignment.centerLeft,
                             padding: EdgeInsets.symmetric(horizontal: 20.w),
                             child: Icon(
                               Icons.delete_forever_rounded,
@@ -246,25 +249,81 @@ class AiConversationDrawer extends HookConsumerWidget {
                           ),
                           confirmDismiss: (direction) async {
                             final isZh = context.isZh;
-                            return await showDialog<bool>(
+                            return await showModalBottomSheet<bool>(
                               context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text(isZh ? '删除对话' : 'Delete Conversation'),
-                                content: Text(
-                                  isZh 
-                                    ? '确定要删除对话 "${session.name}" 吗？此操作不可撤销。'
-                                    : 'Are you sure you want to delete conversation "${session.name}"? This action cannot be undone.',
+                              backgroundColor: Colors.transparent,
+                              builder: (ctx) => Container(
+                                decoration: BoxDecoration(
+                                  color: context.isDark
+                                      ? context.colorScheme.surfaceContainerLow
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(20.r),
+                                  ),
                                 ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, false),
-                                    child: Text(context.l10n.cancel),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(ctx, true),
-                                    child: Text(context.l10n.confirm),
-                                  ),
-                                ],
+                                padding: EdgeInsets.fromLTRB(
+                                  20.w,
+                                  24.h,
+                                  20.w,
+                                  MediaQuery.of(ctx).padding.bottom + 20.h,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isZh ? '删除对话' : 'Delete Conversation',
+                                      style: TextStyle(
+                                        fontSize: 18.sp,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(height: 12.h),
+                                    Text(
+                                      isZh 
+                                        ? '确定要删除对话 "${session.name}" 吗？此操作不可撤销。'
+                                        : 'Are you sure you want to delete conversation "${session.name}"? This action cannot be undone.',
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        color: context.theme.hintColor,
+                                      ),
+                                    ),
+                                    SizedBox(height: 24.h),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: OutlinedButton(
+                                            onPressed: () => Navigator.pop(ctx, false),
+                                            style: OutlinedButton.styleFrom(
+                                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12.r),
+                                              ),
+                                            ),
+                                            child: Text(context.l10n.cancel),
+                                          ),
+                                        ),
+                                        SizedBox(width: 12.w),
+                                        Expanded(
+                                          child: FilledButton(
+                                            onPressed: () => Navigator.pop(ctx, true),
+                                            style: FilledButton.styleFrom(
+                                              padding: EdgeInsets.symmetric(vertical: 12.h),
+                                              backgroundColor: Colors.red,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(12.r),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              context.l10n.confirm,
+                                              style: const TextStyle(color: Colors.white),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -277,6 +336,9 @@ class AiConversationDrawer extends HookConsumerWidget {
                               onTap: () {
                                 Navigator.pop(context);
                                 onSessionSelected(session.id);
+                              },
+                              onLongPress: () {
+                                _showSessionMenu(context, ref, session.id, session.name);
                               },
                               child: Container(
                                 padding: EdgeInsets.symmetric(
@@ -362,6 +424,129 @@ class AiConversationDrawer extends HookConsumerWidget {
       return isZh ? '${diff.inDays} 天前' : '${diff.inDays}d ago';
     } else {
       return DateFormat(isZh ? 'MM月dd日' : 'MMM dd').format(time);
+    }
+  }
+
+  void _showSessionMenu(BuildContext context, WidgetRef ref, String conversationId, String sessionName) {
+    final isZh = context.isZh;
+    
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.file_download_outlined),
+              title: Text(isZh ? '导出为 Markdown' : 'Export as Markdown'),
+              onTap: () {
+                Navigator.pop(context);
+                _exportSession(context, ref, conversationId, sessionName, isMarkdown: true);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: Text(isZh ? '导出为 JSON' : 'Export as JSON'),
+              onTap: () {
+                Navigator.pop(context);
+                _exportSession(context, ref, conversationId, sessionName, isMarkdown: false);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exportSession(
+    BuildContext context,
+    WidgetRef ref,
+    String conversationId,
+    String sessionName,
+    {required bool isMarkdown}
+  ) async {
+    final isZh = context.isZh;
+    final exportService = ref.read(aiConversationExportServiceProvider);
+    
+    try {
+      // 生成导出内容
+      SmartDialog.showLoading(msg: isZh ? '正在生成导出内容...' : 'Generating export...');
+      
+      final content = isMarkdown
+          ? await exportService.exportToMarkdown(conversationId: conversationId)
+          : await exportService.exportToJson(conversationId: conversationId);
+      
+      SmartDialog.dismiss();
+      
+      // 显示操作选项
+      final action = await showModalBottomSheet<String>(
+        context: context,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: EdgeInsets.all(16.w),
+                child: Text(
+                  isZh ? '选择导出方式' : 'Choose export method',
+                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.copy),
+                title: Text(isZh ? '复制到剪贴板' : 'Copy to clipboard'),
+                onTap: () => Navigator.pop(context, 'copy'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: Text(isZh ? '分享' : 'Share'),
+                onTap: () => Navigator.pop(context, 'share'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.save),
+                title: Text(isZh ? '保存到文件' : 'Save to file'),
+                onTap: () => Navigator.pop(context, 'save'),
+              ),
+            ],
+          ),
+        ),
+      );
+      
+      if (action == null) return;
+      
+      switch (action) {
+        case 'copy':
+          await Clipboard.setData(ClipboardData(text: content));
+          SmartDialog.showToast(isZh ? '已复制到剪贴板' : 'Copied to clipboard');
+          break;
+          
+        case 'share':
+          final ext = isMarkdown ? 'md' : 'json';
+          final fileName = '${sessionName}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+          await Share.share(content, subject: fileName);
+          break;
+          
+        case 'save':
+          final ext = isMarkdown ? 'md' : 'json';
+          final suggestedName = '${sessionName}_${DateTime.now().millisecondsSinceEpoch}.$ext'
+              .replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')
+              .replaceAll(RegExp(r'\s+'), '_');
+          
+          final file = await exportService.saveExportWithPicker(
+            content: content,
+            suggestedFileName: suggestedName,
+          );
+          
+          if (file != null && context.mounted) {
+            SmartDialog.showToast(isZh ? '已保存到 ${file.path}' : 'Saved to ${file.path}');
+          }
+          break;
+      }
+    } catch (e) {
+      SmartDialog.dismiss();
+      if (context.mounted) {
+        SmartDialog.showToast('${isZh ? '导出失败' : 'Export failed'}: $e');
+      }
     }
   }
 }

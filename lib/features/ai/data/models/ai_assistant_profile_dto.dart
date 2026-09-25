@@ -54,6 +54,7 @@ abstract class AiContextPolicyDto with _$AiContextPolicyDto {
     int? recentMessageLimit,
     @Default(true) bool includeToolResults,
     @Default(false) bool enableSummarization,
+    @Default(kDefaultFallbackContextTokens) int fallbackContextTokens,
   }) = _AiContextPolicyDto;
 
   factory AiContextPolicyDto.fromJson(Map<String, Object?> json) =>
@@ -67,6 +68,7 @@ abstract class AiContextPolicyDto with _$AiContextPolicyDto {
         recentMessageLimit: entity.recentMessageLimit,
         includeToolResults: entity.includeToolResults,
         enableSummarization: entity.enableSummarization,
+        fallbackContextTokens: entity.fallbackContextTokens,
       );
 
   AiContextPolicy toEntity() => AiContextPolicy(
@@ -76,6 +78,8 @@ abstract class AiContextPolicyDto with _$AiContextPolicyDto {
     recentMessageLimit: recentMessageLimit,
     includeToolResults: includeToolResults,
     enableSummarization: enableSummarization,
+    // 旧数据缺失该字段时回落到默认值，非法值统一收敛。
+    fallbackContextTokens: resolveFallbackContextTokens(fallbackContextTokens),
   );
 }
 
@@ -104,8 +108,7 @@ abstract class AiToolPolicyDto with _$AiToolPolicyDto {
       approvalMode,
       AiToolApprovalMode.riskyOnly,
     ),
-    // 读取时统一解析轮数：存量配置里的历史默认值、非正值都会回落到
-    // 业务默认值，避免旧配置继续触发过早的工具调用终止。
+    // 读取时统一解析轮数，确保用户自定义值和合法边界保持有效。
     maxRounds: resolveMaxToolRounds(maxRounds),
     maxResultBytes: maxResultBytes,
   );

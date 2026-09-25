@@ -296,7 +296,7 @@ as bool,
 /// @nodoc
 mixin _$AiContextPolicyDto {
 
- String get mode; int get reservedOutputTokens; int get recentMessageMinimum; int? get recentMessageLimit; bool get includeToolResults; bool get enableSummarization;
+ String get mode; int get reservedOutputTokens; int get recentMessageMinimum; int? get recentMessageLimit; bool get includeToolResults; bool get enableSummarization; int get fallbackContextTokens;
 /// Create a copy of AiContextPolicyDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -309,16 +309,16 @@ $AiContextPolicyDtoCopyWith<AiContextPolicyDto> get copyWith => _$AiContextPolic
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AiContextPolicyDto&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.reservedOutputTokens, reservedOutputTokens) || other.reservedOutputTokens == reservedOutputTokens)&&(identical(other.recentMessageMinimum, recentMessageMinimum) || other.recentMessageMinimum == recentMessageMinimum)&&(identical(other.recentMessageLimit, recentMessageLimit) || other.recentMessageLimit == recentMessageLimit)&&(identical(other.includeToolResults, includeToolResults) || other.includeToolResults == includeToolResults)&&(identical(other.enableSummarization, enableSummarization) || other.enableSummarization == enableSummarization));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AiContextPolicyDto&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.reservedOutputTokens, reservedOutputTokens) || other.reservedOutputTokens == reservedOutputTokens)&&(identical(other.recentMessageMinimum, recentMessageMinimum) || other.recentMessageMinimum == recentMessageMinimum)&&(identical(other.recentMessageLimit, recentMessageLimit) || other.recentMessageLimit == recentMessageLimit)&&(identical(other.includeToolResults, includeToolResults) || other.includeToolResults == includeToolResults)&&(identical(other.enableSummarization, enableSummarization) || other.enableSummarization == enableSummarization)&&(identical(other.fallbackContextTokens, fallbackContextTokens) || other.fallbackContextTokens == fallbackContextTokens));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode,reservedOutputTokens,recentMessageMinimum,recentMessageLimit,includeToolResults,enableSummarization);
+int get hashCode => Object.hash(runtimeType,mode,reservedOutputTokens,recentMessageMinimum,recentMessageLimit,includeToolResults,enableSummarization,fallbackContextTokens);
 
 @override
 String toString() {
-  return 'AiContextPolicyDto(mode: $mode, reservedOutputTokens: $reservedOutputTokens, recentMessageMinimum: $recentMessageMinimum, recentMessageLimit: $recentMessageLimit, includeToolResults: $includeToolResults, enableSummarization: $enableSummarization)';
+  return 'AiContextPolicyDto(mode: $mode, reservedOutputTokens: $reservedOutputTokens, recentMessageMinimum: $recentMessageMinimum, recentMessageLimit: $recentMessageLimit, includeToolResults: $includeToolResults, enableSummarization: $enableSummarization, fallbackContextTokens: $fallbackContextTokens)';
 }
 
 
@@ -329,7 +329,7 @@ abstract mixin class $AiContextPolicyDtoCopyWith<$Res>  {
   factory $AiContextPolicyDtoCopyWith(AiContextPolicyDto value, $Res Function(AiContextPolicyDto) _then) = _$AiContextPolicyDtoCopyWithImpl;
 @useResult
 $Res call({
- String mode, int reservedOutputTokens, int recentMessageMinimum, int? recentMessageLimit, bool includeToolResults, bool enableSummarization
+ String mode, int reservedOutputTokens, int recentMessageMinimum, int? recentMessageLimit, bool includeToolResults, bool enableSummarization, int fallbackContextTokens
 });
 
 
@@ -346,7 +346,7 @@ class _$AiContextPolicyDtoCopyWithImpl<$Res>
 
 /// Create a copy of AiContextPolicyDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? mode = null,Object? reservedOutputTokens = null,Object? recentMessageMinimum = null,Object? recentMessageLimit = freezed,Object? includeToolResults = null,Object? enableSummarization = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? mode = null,Object? reservedOutputTokens = null,Object? recentMessageMinimum = null,Object? recentMessageLimit = freezed,Object? includeToolResults = null,Object? enableSummarization = null,Object? fallbackContextTokens = null,}) {
   return _then(_self.copyWith(
 mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as String,reservedOutputTokens: null == reservedOutputTokens ? _self.reservedOutputTokens : reservedOutputTokens // ignore: cast_nullable_to_non_nullable
@@ -354,7 +354,8 @@ as int,recentMessageMinimum: null == recentMessageMinimum ? _self.recentMessageM
 as int,recentMessageLimit: freezed == recentMessageLimit ? _self.recentMessageLimit : recentMessageLimit // ignore: cast_nullable_to_non_nullable
 as int?,includeToolResults: null == includeToolResults ? _self.includeToolResults : includeToolResults // ignore: cast_nullable_to_non_nullable
 as bool,enableSummarization: null == enableSummarization ? _self.enableSummarization : enableSummarization // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,fallbackContextTokens: null == fallbackContextTokens ? _self.fallbackContextTokens : fallbackContextTokens // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
@@ -439,10 +440,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String mode,  int reservedOutputTokens,  int recentMessageMinimum,  int? recentMessageLimit,  bool includeToolResults,  bool enableSummarization)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String mode,  int reservedOutputTokens,  int recentMessageMinimum,  int? recentMessageLimit,  bool includeToolResults,  bool enableSummarization,  int fallbackContextTokens)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AiContextPolicyDto() when $default != null:
-return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum,_that.recentMessageLimit,_that.includeToolResults,_that.enableSummarization);case _:
+return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum,_that.recentMessageLimit,_that.includeToolResults,_that.enableSummarization,_that.fallbackContextTokens);case _:
   return orElse();
 
 }
@@ -460,10 +461,10 @@ return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String mode,  int reservedOutputTokens,  int recentMessageMinimum,  int? recentMessageLimit,  bool includeToolResults,  bool enableSummarization)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String mode,  int reservedOutputTokens,  int recentMessageMinimum,  int? recentMessageLimit,  bool includeToolResults,  bool enableSummarization,  int fallbackContextTokens)  $default,) {final _that = this;
 switch (_that) {
 case _AiContextPolicyDto():
-return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum,_that.recentMessageLimit,_that.includeToolResults,_that.enableSummarization);case _:
+return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum,_that.recentMessageLimit,_that.includeToolResults,_that.enableSummarization,_that.fallbackContextTokens);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -480,10 +481,10 @@ return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String mode,  int reservedOutputTokens,  int recentMessageMinimum,  int? recentMessageLimit,  bool includeToolResults,  bool enableSummarization)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String mode,  int reservedOutputTokens,  int recentMessageMinimum,  int? recentMessageLimit,  bool includeToolResults,  bool enableSummarization,  int fallbackContextTokens)?  $default,) {final _that = this;
 switch (_that) {
 case _AiContextPolicyDto() when $default != null:
-return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum,_that.recentMessageLimit,_that.includeToolResults,_that.enableSummarization);case _:
+return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum,_that.recentMessageLimit,_that.includeToolResults,_that.enableSummarization,_that.fallbackContextTokens);case _:
   return null;
 
 }
@@ -495,7 +496,7 @@ return $default(_that.mode,_that.reservedOutputTokens,_that.recentMessageMinimum
 @JsonSerializable()
 
 class _AiContextPolicyDto extends AiContextPolicyDto {
-  const _AiContextPolicyDto({this.mode = 'tokenBudget', this.reservedOutputTokens = 1024, this.recentMessageMinimum = 4, this.recentMessageLimit, this.includeToolResults = true, this.enableSummarization = false}): super._();
+  const _AiContextPolicyDto({this.mode = 'tokenBudget', this.reservedOutputTokens = 1024, this.recentMessageMinimum = 4, this.recentMessageLimit, this.includeToolResults = true, this.enableSummarization = false, this.fallbackContextTokens = kDefaultFallbackContextTokens}): super._();
   factory _AiContextPolicyDto.fromJson(Map<String, dynamic> json) => _$AiContextPolicyDtoFromJson(json);
 
 @override@JsonKey() final  String mode;
@@ -504,6 +505,7 @@ class _AiContextPolicyDto extends AiContextPolicyDto {
 @override final  int? recentMessageLimit;
 @override@JsonKey() final  bool includeToolResults;
 @override@JsonKey() final  bool enableSummarization;
+@override@JsonKey() final  int fallbackContextTokens;
 
 /// Create a copy of AiContextPolicyDto
 /// with the given fields replaced by the non-null parameter values.
@@ -518,16 +520,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AiContextPolicyDto&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.reservedOutputTokens, reservedOutputTokens) || other.reservedOutputTokens == reservedOutputTokens)&&(identical(other.recentMessageMinimum, recentMessageMinimum) || other.recentMessageMinimum == recentMessageMinimum)&&(identical(other.recentMessageLimit, recentMessageLimit) || other.recentMessageLimit == recentMessageLimit)&&(identical(other.includeToolResults, includeToolResults) || other.includeToolResults == includeToolResults)&&(identical(other.enableSummarization, enableSummarization) || other.enableSummarization == enableSummarization));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AiContextPolicyDto&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.reservedOutputTokens, reservedOutputTokens) || other.reservedOutputTokens == reservedOutputTokens)&&(identical(other.recentMessageMinimum, recentMessageMinimum) || other.recentMessageMinimum == recentMessageMinimum)&&(identical(other.recentMessageLimit, recentMessageLimit) || other.recentMessageLimit == recentMessageLimit)&&(identical(other.includeToolResults, includeToolResults) || other.includeToolResults == includeToolResults)&&(identical(other.enableSummarization, enableSummarization) || other.enableSummarization == enableSummarization)&&(identical(other.fallbackContextTokens, fallbackContextTokens) || other.fallbackContextTokens == fallbackContextTokens));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode,reservedOutputTokens,recentMessageMinimum,recentMessageLimit,includeToolResults,enableSummarization);
+int get hashCode => Object.hash(runtimeType,mode,reservedOutputTokens,recentMessageMinimum,recentMessageLimit,includeToolResults,enableSummarization,fallbackContextTokens);
 
 @override
 String toString() {
-  return 'AiContextPolicyDto(mode: $mode, reservedOutputTokens: $reservedOutputTokens, recentMessageMinimum: $recentMessageMinimum, recentMessageLimit: $recentMessageLimit, includeToolResults: $includeToolResults, enableSummarization: $enableSummarization)';
+  return 'AiContextPolicyDto(mode: $mode, reservedOutputTokens: $reservedOutputTokens, recentMessageMinimum: $recentMessageMinimum, recentMessageLimit: $recentMessageLimit, includeToolResults: $includeToolResults, enableSummarization: $enableSummarization, fallbackContextTokens: $fallbackContextTokens)';
 }
 
 
@@ -538,7 +540,7 @@ abstract mixin class _$AiContextPolicyDtoCopyWith<$Res> implements $AiContextPol
   factory _$AiContextPolicyDtoCopyWith(_AiContextPolicyDto value, $Res Function(_AiContextPolicyDto) _then) = __$AiContextPolicyDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String mode, int reservedOutputTokens, int recentMessageMinimum, int? recentMessageLimit, bool includeToolResults, bool enableSummarization
+ String mode, int reservedOutputTokens, int recentMessageMinimum, int? recentMessageLimit, bool includeToolResults, bool enableSummarization, int fallbackContextTokens
 });
 
 
@@ -555,7 +557,7 @@ class __$AiContextPolicyDtoCopyWithImpl<$Res>
 
 /// Create a copy of AiContextPolicyDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? mode = null,Object? reservedOutputTokens = null,Object? recentMessageMinimum = null,Object? recentMessageLimit = freezed,Object? includeToolResults = null,Object? enableSummarization = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? mode = null,Object? reservedOutputTokens = null,Object? recentMessageMinimum = null,Object? recentMessageLimit = freezed,Object? includeToolResults = null,Object? enableSummarization = null,Object? fallbackContextTokens = null,}) {
   return _then(_AiContextPolicyDto(
 mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as String,reservedOutputTokens: null == reservedOutputTokens ? _self.reservedOutputTokens : reservedOutputTokens // ignore: cast_nullable_to_non_nullable
@@ -563,7 +565,8 @@ as int,recentMessageMinimum: null == recentMessageMinimum ? _self.recentMessageM
 as int,recentMessageLimit: freezed == recentMessageLimit ? _self.recentMessageLimit : recentMessageLimit // ignore: cast_nullable_to_non_nullable
 as int?,includeToolResults: null == includeToolResults ? _self.includeToolResults : includeToolResults // ignore: cast_nullable_to_non_nullable
 as bool,enableSummarization: null == enableSummarization ? _self.enableSummarization : enableSummarization // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,fallbackContextTokens: null == fallbackContextTokens ? _self.fallbackContextTokens : fallbackContextTokens // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 

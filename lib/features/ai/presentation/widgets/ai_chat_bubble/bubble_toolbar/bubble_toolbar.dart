@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_states/bubble_state.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_toolbar/widgets/code_save_action.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_toolbar/widgets/code_run_action.dart';
 
 abstract class BaseBubbleToolbarPart {
   const BaseBubbleToolbarPart();
@@ -176,6 +177,8 @@ abstract class BaseBubbleToolbarPart {
     required BubbleState state,
     required String language,
     required String code,
+    String? scriptType,
+    String? suggestedFileName,
   }) {
     return const [];
   }
@@ -189,20 +192,22 @@ class DefaultBubbleToolbarPart extends BaseBubbleToolbarPart {
     required BubbleState state,
     required String language,
     required String code,
+    String? scriptType,
+    String? suggestedFileName,
   }) {
     return [
-      Builder(
-        builder: (context) => IconButton(
-          onPressed: () => handleCopyToClipboard(context, code),
-          tooltip: context.isZh ? '复制代码' : 'Copy code',
-          visualDensity: VisualDensity.compact,
-          icon: const Icon(Icons.copy_rounded, size: 18),
-        ),
+      CodeRunAction(
+        code: code,
+        packageName: state.packageName,
+        scriptType: scriptType,
+        suggestedFileName: suggestedFileName,
       ),
       CodeSaveAction(
         code: code,
         packageName: state.packageName,
         language: language,
+        scriptType: scriptType,
+        suggestedFileName: suggestedFileName,
       ),
       const SizedBox(width: 4),
     ];

@@ -660,6 +660,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiContextBudget => 'Context budget';
 
   @override
+  String get aiContextUsage => 'Usage';
+
+  @override
+  String get aiContextMemoryEntries => 'Memory entries';
+
+  @override
+  String get aiContextHighWatermark => 'High watermark';
+
+  @override
+  String get aiContextHighWatermarkReached => 'Reached';
+
+  @override
+  String get aiContextHighWatermarkNotReached => 'Not reached';
+
+  @override
+  String get aiContextHighWatermarkAlert =>
+      'Context is near its capacity limit; history was compacted automatically';
+
+  @override
   String get aiContextRemaining => 'Remaining budget';
 
   @override
@@ -1621,6 +1640,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String aiScriptSavedTo(String target, String name) {
     return 'Saved to $target: $name';
   }
+
+  @override
+  String get runScript => 'Run';
+
+  @override
+  String aiScriptRunning(String target, String name) {
+    return '$target script enabled: $name';
+  }
+
+  @override
+  String get exportConversation => 'Export';
+
+  @override
+  String get exportingConversation => 'Exporting conversation...';
+
+  @override
+  String conversationExported(String path) {
+    return 'Conversation exported to $path';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String get exportFormat => 'Export Format';
+
+  @override
+  String get exportOptions => 'Export Options';
+
+  @override
+  String get includeToolCalls => 'Include Tool Calls';
+
+  @override
+  String get includeToolCallsDesc =>
+      'Export AI tool invocations and parameters';
+
+  @override
+  String get includeThinking => 'Include Thinking Process';
+
+  @override
+  String get includeThinkingDesc => 'Export AI reasoning and thought content';
+
+  @override
+  String get preview => 'Preview';
+
+  @override
+  String get previewTruncated => 'Preview content truncated';
+
+  @override
+  String get copyToClipboard => 'Copy';
+
+  @override
+  String get copiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String get share => 'Share';
+
+  @override
+  String get conversationExport => 'Conversation Export';
+
+  @override
+  String get exportToFile => 'Save File';
 
   @override
   String aiScriptSaveFailed(String error) {

@@ -980,32 +980,28 @@ void main() {
     },
   );
 
-  test('resolves tool round budgets including the legacy default', () async {
-    // 域层解析规则：非正值与历史默认 8 回落新默认 24，显式合法值保留，
-    // 超上限收敛到 32，下界 1 保证工具调用不会被静默禁用。
+  test('resolves configurable tool round budgets', () async {
+    // 非正值回落默认值，1~50 的输入（包括历史默认值 8）保持用户配置，
+    // 超范围值收敛到合法边界。
     expect(const AiToolPolicy().maxRounds, kDefaultMaxToolRounds);
     expect(resolveMaxToolRounds(0), kDefaultMaxToolRounds);
     expect(resolveMaxToolRounds(-3), kDefaultMaxToolRounds);
-    expect(
-      resolveMaxToolRounds(kLegacyDefaultMaxToolRounds),
-      kDefaultMaxToolRounds,
-    );
+    expect(resolveMaxToolRounds(8), 8);
     expect(resolveMaxToolRounds(12), 12);
     expect(resolveMaxToolRounds(1), kMinMaxToolRounds);
+    expect(resolveMaxToolRounds(kMaxMaxToolRounds), 50);
+    expect(resolveMaxToolRounds(51), kMaxMaxToolRounds);
     expect(resolveMaxToolRounds(999), kMaxMaxToolRounds);
 
-    // 存量配置迁移：历史默认 8 的 assistant profile 经 DTO 往返
-    // （saveAssistant → getAssistant）后自动升级为新默认值。
+    // 用户保存的自定义值经过 DTO 往返后仍保持不变。
     final assistant = await catalog.getAssistant('assistant');
     await catalog.saveAssistant(
       assistant!.copyWith(
-        toolPolicy: assistant.toolPolicy.copyWith(
-          maxRounds: kLegacyDefaultMaxToolRounds,
-        ),
+        toolPolicy: assistant.toolPolicy.copyWith(maxRounds: 8),
       ),
     );
-    final migrated = await catalog.getAssistant('assistant');
-    expect(migrated!.toolPolicy.maxRounds, kDefaultMaxToolRounds);
+    final saved = await catalog.getAssistant('assistant');
+    expect(saved!.toolPolicy.maxRounds, 8);
   });
 }
 
@@ -1494,9 +1490,8 @@ class _FailingSaveMessageRepository implements AiConversationRepository {
   ) => _inner.deleteMessagesById(conversationId, ids);
 
   @override
-  Future<AiChatSessionContext?> getConversationContext(
-    String conversationId,
-  ) => _inner.getConversationContext(conversationId);
+  Future<AiChatSessionContext?> getConversationContext(String conversationId) =>
+      _inner.getConversationContext(conversationId);
 
   @override
   Future<void> saveConversationContext(

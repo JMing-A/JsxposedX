@@ -198,30 +198,43 @@ abstract class AiContextPolicy with _$AiContextPolicy {
     int? recentMessageLimit,
     @Default(true) bool includeToolResults,
     @Default(false) bool enableSummarization,
+
+    /// 模型元数据未提供上下文长度时使用的兜底值。正常情况下上下文预算
+    /// 按模型自身的 contextTokens 计算，该值仅在接口未返回长度字段时生效。
+    @Default(kDefaultFallbackContextTokens) int fallbackContextTokens,
   }) = _AiContextPolicy;
+}
+
+/// Default fallback context window size when model metadata is unavailable.
+/// Modern default (128K) matches current mainstream models (GPT-4, Claude 3.5, Gemini 1.5).
+/// If your model has smaller context, configure explicitly in assistant settings.
+const int kDefaultFallbackContextTokens = 128000;
+const int kMinFallbackContextTokens = 1024;
+const int kMaxFallbackContextTokens = 2000000;
+
+/// 解析兜底上下文长度：非正值回落到默认值，其余收敛到合法区间。
+int resolveFallbackContextTokens(int configured) {
+  if (configured <= 0) return kDefaultFallbackContextTokens;
+  return configured.clamp(kMinFallbackContextTokens, kMaxFallbackContextTokens);
 }
 
 /// 每轮用户消息可用的工具调用轮数预算。
 ///
 /// 逆向场景单轮任务常需要 10 次以上工具调用（检索类名 → 反编译 → 生成
 /// Hook → 校验脚本），历史默认值 8 偏小，会在任务中途触发上限终止。
-/// 因此上调默认值，同时限定上限避免配置异常导致无限调用。
+/// 因此上调默认值，同时限定上限避免配置异常导致无限调用。最大可配置为 50 轮。
 const int kDefaultMaxToolRounds = 24;
 
 /// 合法区间下界：至少允许一轮工具调用，否则所有工具调用都会立即被判为
 /// 超限，等于静默禁用工具调用。
 const int kMinMaxToolRounds = 1;
-const int kMaxMaxToolRounds = 32;
+const int kMaxMaxToolRounds = 50;
 
-/// 历史默认值：早期版本 toolPolicy.maxRounds 默认为 8。读取配置时把仍然
-/// 停留在该值的项视为“未调整过”，解析为新默认值，让存量配置无需手动修改
-/// 即可获得修复；用户显式配置的其他数值保持原样。
-const int kLegacyDefaultMaxToolRounds = 8;
-
-/// 解析工具调用轮数配置：非正值与历史默认值回落到 [kDefaultMaxToolRounds]，
+/// 解析工具调用轮数配置：非正值回落到 [kDefaultMaxToolRounds]，
 /// 其余取值收敛到 [kMinMaxToolRounds]~[kMaxMaxToolRounds]。
+/// 8 也是合法的用户自定义值，不能再被当作历史默认值覆盖。
 int resolveMaxToolRounds(int configured) {
-  if (configured <= 0 || configured == kLegacyDefaultMaxToolRounds) {
+  if (configured <= 0) {
     return kDefaultMaxToolRounds;
   }
   return configured.clamp(kMinMaxToolRounds, kMaxMaxToolRounds);

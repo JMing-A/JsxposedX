@@ -28,9 +28,26 @@ class AiCodeElementBuilder extends MarkdownElementBuilder {
 
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    final language =
+    final rawLanguage =
         element.attributes['class']?.replaceFirst('language-', '') ?? '';
     final codeContent = element.textContent.trim();
+
+    // 解析增强 Markdown 语法：javascript:xposed:fileName 或 javascript:frida:fileName
+    String language = rawLanguage;
+    String? scriptType;
+    String? suggestedFileName;
+    
+    if (rawLanguage.startsWith('javascript:')) {
+      final parts = rawLanguage.split(':');
+      if (parts.length >= 3) {
+        language = parts[0]; // javascript
+        scriptType = parts[1]; // xposed 或 frida
+        suggestedFileName = parts.sublist(2).join(':'); // 文件名（可能包含冒号）
+      } else if (parts.length == 2) {
+        language = parts[0]; // javascript
+        scriptType = parts[1]; // xposed 或 frida
+      }
+    }
 
     if (!element.textContent.contains('\n') && language.isEmpty) {
       return null;
@@ -69,6 +86,8 @@ class AiCodeElementBuilder extends MarkdownElementBuilder {
       state: state,
       language: language,
       code: codeContent,
+      scriptType: scriptType,
+      suggestedFileName: suggestedFileName,
     );
 
     if (language == 'javascript' || language == 'js') {

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_context_builder.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
+import 'package:JsxposedX/features/ai/domain/services/ai_chat_context_memory_compactor.dart';
 
 void main() {
   test(
@@ -27,24 +28,35 @@ void main() {
           ),
       ];
       final result = const AiChatContextBuilder().build(
-        assistant: _assistant(
-          contextPolicy: const AiContextPolicy(
-            mode: AiContextMode.recentMessages,
-            recentMessageLimit: 2,
-            includeToolResults: false,
-          ),
+      assistant: _assistant(
+        contextPolicy: const AiContextPolicy(
+          mode: AiContextMode.recentMessages,
+          recentMessageLimit: 2,
+          includeToolResults: false,
         ),
-        model: _model(),
-        messages: messages,
-        idFactory: () => 'system',
-        now: _epoch,
-      );
+      ),
+      model: _model(),
+      messages: messages,
+      idFactory: () => 'system',
+      now: _epoch,
+    );
 
-      expect(result.map((message) => message.id), ['message-2', 'message-3']);
-      expect(
-        result.expand((message) => message.parts).whereType<AiToolResultPart>(),
-        isEmpty,
-      );
+    // 被裁剪的历史不再静默丢弃，而是以 [context_memory] 记忆消息注入。
+    expect(result.first.parts.first, isA<AiTextPart>());
+    expect(
+      (result.first.parts.first as AiTextPart).text,
+      startsWith(AiChatContextMemoryCompactor.memoryHeader),
+    );
+    expect(
+      result.where((message) => message.role == AiMessageRole.user).map(
+            (message) => message.id,
+          ),
+      ['message-2', 'message-3'],
+    );
+    expect(
+      result.expand((message) => message.parts).whereType<AiToolResultPart>(),
+      isEmpty,
+    );
     },
   );
 
@@ -77,7 +89,18 @@ void main() {
           now: _epoch,
         );
 
-    expect(result.map((message) => message.id), ['two', 'three']);
+    // 预算失效（协议开销吞满预算）时，minimum 兜底：保留最近两条
+    // 而不是只剩一条，被裁掉的 one 以记忆消息注入。
+    expect(
+      result.where((message) => message.role == AiMessageRole.user).map(
+            (message) => message.id,
+          ),
+      ['two', 'three'],
+    );
+    expect(
+      result.first.parts.whereType<AiTextPart>().first.text,
+      startsWith(AiChatContextMemoryCompactor.memoryHeader),
+    );
   });
 
   test('keeps Responses function calls paired with their results', () {
@@ -245,14 +268,23 @@ void main() {
           now: _epoch,
         );
 
-    expect(result.messages.map((message) => message.id), ['two', 'three']);
+    expect(
+      result.messages
+          .where((message) => message.role == AiMessageRole.user)
+          .map((message) => message.id),
+      ['two', 'three'],
+    );
     expect(result.stats.tokenBudget, 2064);
-    expect(result.stats.estimatedTokens, 16);
-    expect(result.stats.remainingTokens, 2048);
+    // 记忆消息（8 token）+ 保留消息（16 token）。
+    expect(result.stats.estimatedTokens, 24);
+    expect(result.stats.remainingTokens, 2040);
     expect(result.stats.didCompact, isTrue);
     expect(result.stats.compactReason, 'budget');
     expect(result.stats.recentRoundsKept, 2);
-    expect(result.stats.includedLayers, ['token_budget']);
+    expect(result.stats.memoryEntryCount, 1);
+    expect(result.stats.includedLayers, ['context_memory', 'token_budget']);
+    // 被裁剪的 one 生成持久化记忆条目，供跨请求合并。
+    expect(result.memoryEntries, hasLength(1));
   });
 
   test('reports every participating layer when nothing is trimmed', () {
@@ -331,7 +363,7 @@ void main() {
     expect(result.stats.didCompact, isTrue);
     expect(result.stats.compactReason, isNull);
     expect(result.stats.recentRoundsKept, 1);
-    expect(result.stats.includedLayers, ['recent_messages']);
+    expect(result.stats.includedLayers, ['context_memory', 'recent_messages']);
   });
 
   test('flags a repaired tool context when pairing restores a call', () {

@@ -75,20 +75,32 @@ class ApkReversePromptBuilder {
     }
 
     buffer.writeln(
+      _isZh ? SystemPrompts.scriptRulesZh : SystemPrompts.scriptRulesEn,
+    );
+
+    buffer.writeln(
       _isZh ? SystemPrompts.outputGuideZh : SystemPrompts.outputGuideEn,
     );
     return buffer.toString();
   }
 
-  static Future<AiManualBundle> exportManualBundle() async {
+  /// 按语言导出对应版本的 API 手册到设备本地（英文界面导英文手册，
+  /// 避免模型在英文会话中检索中文手册）。
+  static Future<AiManualBundle> exportManualBundle({bool isZh = true}) async {
     final directory = await getApplicationSupportDirectory();
     final manualDirectory = Directory('${directory.path}/ai_manuals');
     await manualDirectory.create(recursive: true);
 
+    final xposedAsset = isZh
+        ? 'assets/raws/JsxposedX_API.md'
+        : 'assets/raws/JsxposedX_API_en.md';
+    final fridaAsset = isZh
+        ? 'assets/raws/Frida_API.md'
+        : 'assets/raws/Frida_API_en.md';
     final xposedPath = '${manualDirectory.path}/JsxposedX_API.md';
     final fridaPath = '${manualDirectory.path}/Frida_API.md';
-    await _copyAsset('assets/raws/JsxposedX_API.md', xposedPath);
-    await _copyAsset('assets/raws/Frida_API.md', fridaPath);
+    await _copyAsset(xposedAsset, xposedPath);
+    await _copyAsset(fridaAsset, fridaPath);
     return AiManualBundle(
       xposedManualPath: xposedPath,
       fridaManualPath: fridaPath,

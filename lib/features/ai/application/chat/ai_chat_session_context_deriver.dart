@@ -24,13 +24,16 @@ class AiChatSessionContextDeriver {
     required List<AiMessage> history,
     required AiChatContextStats stats,
     required String sessionRules,
+    List<String> memoryEntries = const [],
   }) {
     final completed = history
         .where((message) => message.status == AiMessageStatus.completed)
         .toList(growable: false);
     return AiChatSessionContext(
       sessionRules: sessionRules,
-      sessionMemory: _deriveMemory(completed),
+      sessionMemory: _deriveMemory(completed).copyWith(
+        memoryEntries: memoryEntries,
+      ),
       taskState: _deriveTaskState(completed),
       toolTrace: _deriveToolTrace(completed),
       stats: stats,

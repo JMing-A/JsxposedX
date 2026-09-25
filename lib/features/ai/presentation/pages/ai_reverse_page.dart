@@ -4,6 +4,8 @@ import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
+
+import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/environments/apk_reverse_chat_environment_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
@@ -11,6 +13,7 @@ import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_conversation_drawer.dart';
+
 import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/logcat_provider.dart';
@@ -103,6 +106,12 @@ class AiReversePage extends HookConsumerWidget {
       return null;
     }, [conversationBinding, chatState.currentSessionId]);
 
+    // 预加载模型列表
+    useEffect(() {
+      ref.read(aiModelsProvider);
+      return null;
+    }, []);
+
     Future<void> initializeReverseSession() async {
       sessionId.value = '';
       SmartDialog.showLoading();
@@ -181,19 +190,19 @@ class AiReversePage extends HookConsumerWidget {
             onTap: () => scaffoldKey.currentState?.openDrawer(),
           ),
           actions: [
-            IconButton(
-              tooltip: showScriptConsole.value
-                  ? (isZh ? '隐藏脚本控制台' : 'Hide script console')
-                  : (isZh ? '脚本控制台' : 'Script console'),
-              onPressed: () =>
-                  showScriptConsole.value = !showScriptConsole.value,
-              icon: Icon(
-                showScriptConsole.value
-                    ? Icons.terminal
-                    : Icons.terminal_outlined,
-              ),
+          IconButton(
+            tooltip: showScriptConsole.value
+                ? (isZh ? '隐藏脚本控制台' : 'Hide script console')
+                : (isZh ? '脚本控制台' : 'Script console'),
+            onPressed: () =>
+                showScriptConsole.value = !showScriptConsole.value,
+            icon: Icon(
+              showScriptConsole.value
+                  ? Icons.terminal
+                  : Icons.terminal_outlined,
             ),
-          ],
+          ),
+        ],
           title: Text(
             chatState.currentSessionId != null && sessions.isNotEmpty
                 ? sessions
@@ -301,6 +310,7 @@ class AiReversePage extends HookConsumerWidget {
       ),
     );
   }
+
 }
 
 class _SelectedScriptRecordBar extends StatelessWidget {

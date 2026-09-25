@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:JsxposedX/features/ai/domain/environments/apk_reverse_chat_environment_adapter.dart';
-import 'package:JsxposedX/features/ai/domain/environments/ai_tool_runtime_context.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/ai_conversation_export_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_action_provider.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_query_provider.dart';
@@ -42,6 +42,7 @@ ApkReverseChatEnvironmentAdapter apkReverseChatEnvironment(
     apkActionRepository: ref.watch(apkAnalysisActionRepositoryProvider),
     apkQueryRepository: ref.watch(apkAnalysisQueryRepositoryProvider),
     soDataSource: ref.watch(soAnalysisDatasourceProvider),
+    exportService: ref.watch(aiConversationExportServiceProvider),
   );
   ref.onDispose(() {
     unawaited(adapter.dispose());

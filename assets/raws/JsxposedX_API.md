@@ -4,6 +4,108 @@ JsXposed 让你用 JavaScript 编写 Xposed Hook 脚本。所有 API 都挂载�
 
 ---
 
+# 零、脚本编写规范（生成脚本前必读）
+
+以下为硬性要求。违反任意一条，脚本都无法正常运行或被校验拒绝。
+
+## 0.1 只用本文档列出的 `Jx.*` API
+
+禁止出现原生 Xposed API，禁止凭经验猜测方法名或参数：
+
+| 禁止写法 | 正确写法 |
+|---|---|
+| `XposedHelpers.findAndHookMethod(...)` | `Jx.use(cls).hook(name, types, {...})` |
+| `XposedBridge.hookAllMethods(...)` | `Jx.use(cls).hookAllMethods(name, {...})` |
+| `XposedBridge.log(...)` | `Jx.log(...)` |
+| `XposedHelpers.getObjectField(obj, name)` | `Jx.wrap(obj).getField(name)` |
+| `XposedHelpers.setIntField(...)` | `Jx.setIntField(obj, name, v)` |
+
+本文档中查不到的 API 一律视为不存在。
+
+## 0.2 Hook 回调只有一个参数 `param`
+
+不要写 `function(self, ...args)`，也不要写其他形式：
+
+```javascript
+Jx.use("com.example.Target").hook("checkVip", [], {
+  before: function(param) { /* 方法执行前 */ },
+  after:  function(param) { /* 方法执行后 */ }
+});
+```
+
+`param` 的可用成员：
+
+| 成员 | 说明 |
+|---|---|
+| `param.thisObject` | 当前实例（静态方法为 `null`） |
+| `param.method` | 被 Hook 的方法对象 |
+| `param.argsLength` | 参数个数 |
+| `param.getArg(i)` / `param.setArg(i, v)` | 读 / 写第 i 个参数 |
+| `param.getResult()` / `param.setResult(v)` | 读 / 写返回值。在 `before` 中 `setResult` 会跳过原方法直接返回；在 `after` 中则是覆盖返回值 |
+| `param.hasThrowable()` / `param.getThrowable()` / `param.setThrowable(t)` | 读 / 写抛出的异常 |
+
+## 0.3 参数类型数组必传
+
+第二个参数是 Java 参数类型数组，无参方法传 `[]`，不可省略：
+
+```javascript
+Jx.use(cls).hook("isVip", [], { ... });                               // 无参
+Jx.use(cls).hook("setFlag", ["int", "java.lang.String"], { ... });    // (int, String)
+```
+
+类型写 Java 类型名：`"int"`、`"boolean"`、`"long"`、`"java.lang.String"`、`"java.util.List"`。
+
+## 0.4 每个回调都要 try-catch
+
+单个回调抛异常会打断该 Hook，务必用 `Jx.logException` 记录：
+
+```javascript
+Jx.use("com.example.Target").hook("checkVip", [], {
+  after: function(param) {
+    try {
+      param.setResult(true);
+    } catch (e) {
+      Jx.logException(e);
+    }
+  }
+});
+```
+
+## 0.5 日志统一用 `Jx.log` / `Jx.logException`
+
+日志 tag 为 `JsxposedX-JS`，在脚本日志面板中可见。关键分支、入参、返回值都应留痕。
+
+## 0.6 `[tradition]` 不要写进脚本内容
+
+`[tradition]` 是 Xposed 脚本的**文件名前缀**，保存时由系统自动添加。写进代码里会被当成脚本体内容，导致异常。
+
+## 0.7 最小可用骨架
+
+```javascript
+// 目标：让 com.example.Target#checkVip() 恒返回 true
+Jx.use("com.example.Target").hook("checkVip", [], {
+  before: function(param) {
+    Jx.log("[Hook] checkVip 被调用");
+  },
+  after: function(param) {
+    try {
+      Jx.log("[Hook] 原返回值: " + param.getResult());
+      param.setResult(true);
+    } catch (e) {
+      Jx.logException(e);
+    }
+  }
+});
+```
+
+一行固定返回值可用简写：
+
+```javascript
+Jx.use("com.example.Target").returnConst("checkVip", [], true);
+```
+
+---
+
 # 一、基础 API（原生桥接层）
 
 这些是直接由 Kotlin Bridge 暴露的底层 API，功能最完整，适合需要精确控制的场景。

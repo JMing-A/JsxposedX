@@ -3,6 +3,7 @@ import 'package:JsxposedX/common/widgets/app_bottom_sheet.dart';
 import 'dart:developer' as developer;
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/utils/file_picker_util.dart';
+import 'package:JsxposedX/core/themes/app_colors.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_multimodal_message_codec.dart';
@@ -253,9 +254,13 @@ class AiChatInput extends HookConsumerWidget {
       }
     }
 
+    final contextStats = chatState.contextStats;
+    final usageRatio = contextStats.usageRatio.clamp(0.0, 1.0);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _ContextUsageIndicator(stats: contextStats, usageRatio: usageRatio),
         if (inputTopContent != null) inputTopContent!,
         if (showQuickActions)
           AiQuickActions(
@@ -356,7 +361,8 @@ class AiChatInput extends HookConsumerWidget {
                           padding: EdgeInsets.zero,
                           constraints: BoxConstraints(
                             minWidth: 220 * scopeScale,
-                            maxWidth: MediaQuery.sizeOf(context).width -
+                            maxWidth:
+                                MediaQuery.sizeOf(context).width -
                                 (32 * scopeScale),
                           ),
                           color: popupMenuColor,
@@ -372,7 +378,9 @@ class AiChatInput extends HookConsumerWidget {
                             ),
                             side: BorderSide(
                               color: context.colorScheme.outlineVariant
-                                  .withValues(alpha: context.isDark ? 0.65 : 0.5),
+                                  .withValues(
+                                    alpha: context.isDark ? 0.65 : 0.5,
+                                  ),
                             ),
                           ),
                           onSelected: handleMenuAction,
@@ -659,6 +667,101 @@ class _PendingAttachmentChip extends StatelessWidget {
   }
 }
 
+class _ContextUsageIndicator extends StatelessWidget {
+  const _ContextUsageIndicator({required this.stats, required this.usageRatio});
+
+  final AiChatContextStats stats;
+  final double usageRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    if (stats.tokenBudget <= 0 && stats.memoryEntryCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final scopeScale = AiChatCompactScope.scaleOf(context);
+    final isWarning = stats.highWatermarkReached;
+    final color = isWarning ? AppColors.warning : context.colorScheme.primary;
+    final background = isWarning
+        ? AppColors.warning.withValues(alpha: 0.10)
+        : context.colorScheme.surfaceContainerLow;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        16 * scopeScale,
+        4 * scopeScale,
+        16 * scopeScale,
+        2 * scopeScale,
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(
+          horizontal: 10 * scopeScale,
+          vertical: 6 * scopeScale,
+        ),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(8 * scopeScale),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isWarning
+                      ? Icons.warning_amber_rounded
+                      : Icons.data_usage_rounded,
+                  size: 15 * scopeScale,
+                  color: color,
+                ),
+                SizedBox(width: 6 * scopeScale),
+                Expanded(
+                  child: Text(
+                    '${context.l10n.aiContextUsage}: ${(usageRatio * 100).round()}%  '
+                    '${stats.estimatedTokens}/${stats.tokenBudget}  '
+                    '${context.l10n.aiContextMemoryEntries}: ${stats.memoryEntryCount}',
+                    style: TextStyle(
+                      color: isWarning
+                          ? AppColors.warning
+                          : context.colorScheme.onSurfaceVariant,
+                      fontSize: 11 * scopeScale,
+                      fontWeight: isWarning ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 4 * scopeScale),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2 * scopeScale),
+              child: LinearProgressIndicator(
+                value: usageRatio,
+                minHeight: 3 * scopeScale,
+                backgroundColor: color.withValues(alpha: 0.16),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+            if (isWarning)
+              Padding(
+                padding: EdgeInsets.only(top: 3 * scopeScale),
+                child: Text(
+                  context.l10n.aiContextHighWatermarkAlert,
+                  style: TextStyle(
+                    color: AppColors.warning,
+                    fontSize: 10 * scopeScale,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ContextSheet extends StatelessWidget {
   const _ContextSheet({required this.chatState});
 
@@ -689,6 +792,9 @@ class _ContextSheet extends StatelessWidget {
               _ContextInfoCard(
                 title: context.l10n.aiContextBudget,
                 rows: [
+                  '${context.l10n.aiContextUsage}: ${(stats.usageRatio * 100).round()}%',
+                  '${context.l10n.aiContextHighWatermark}: ${stats.highWatermarkReached ? context.l10n.aiContextHighWatermarkReached : context.l10n.aiContextHighWatermarkNotReached}',
+                  '${context.l10n.aiContextMemoryEntries}: ${stats.memoryEntryCount}',
                   '${context.l10n.aiContextBudget}: ${stats.estimatedTokens}/${stats.tokenBudget}',
                   '${context.l10n.aiContextRemaining}: ${stats.remainingTokens}',
                   '${context.l10n.aiContextLayers}: ${layers.isEmpty ? '-' : layers}',

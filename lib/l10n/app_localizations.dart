@@ -1346,6 +1346,42 @@ abstract class AppLocalizations {
   /// **'上下文预算'**
   String get aiContextBudget;
 
+  /// No description provided for @aiContextUsage.
+  ///
+  /// In zh, this message translates to:
+  /// **'占用率'**
+  String get aiContextUsage;
+
+  /// No description provided for @aiContextMemoryEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆条目'**
+  String get aiContextMemoryEntries;
+
+  /// No description provided for @aiContextHighWatermark.
+  ///
+  /// In zh, this message translates to:
+  /// **'高水位'**
+  String get aiContextHighWatermark;
+
+  /// No description provided for @aiContextHighWatermarkReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'已触发'**
+  String get aiContextHighWatermarkReached;
+
+  /// No description provided for @aiContextHighWatermarkNotReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'未触发'**
+  String get aiContextHighWatermarkNotReached;
+
+  /// No description provided for @aiContextHighWatermarkAlert.
+  ///
+  /// In zh, this message translates to:
+  /// **'上下文接近容量上限，已自动压缩历史摘要'**
+  String get aiContextHighWatermarkAlert;
+
   /// No description provided for @aiContextRemaining.
   ///
   /// In zh, this message translates to:
@@ -3193,6 +3229,120 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已保存到 {target}: {name}'**
   String aiScriptSavedTo(String target, String name);
+
+  /// 运行脚本按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'运行'**
+  String get runScript;
+
+  /// AI 脚本运行成功提示
+  ///
+  /// In zh, this message translates to:
+  /// **'已启用 {target} 脚本: {name}'**
+  String aiScriptRunning(String target, String name);
+
+  /// 导出会话按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'导出会话'**
+  String get exportConversation;
+
+  /// 导出会话中的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'正在导出会话...'**
+  String get exportingConversation;
+
+  /// 会话导出成功提示
+  ///
+  /// In zh, this message translates to:
+  /// **'会话已导出到 {path}'**
+  String conversationExported(String path);
+
+  /// 导出失败提示
+  ///
+  /// In zh, this message translates to:
+  /// **'导出失败: {error}'**
+  String exportFailed(String error);
+
+  /// 导出格式标签
+  ///
+  /// In zh, this message translates to:
+  /// **'导出格式'**
+  String get exportFormat;
+
+  /// 导出选项标签
+  ///
+  /// In zh, this message translates to:
+  /// **'导出选项'**
+  String get exportOptions;
+
+  /// 包含工具调用选项
+  ///
+  /// In zh, this message translates to:
+  /// **'包含工具调用'**
+  String get includeToolCalls;
+
+  /// 包含工具调用描述
+  ///
+  /// In zh, this message translates to:
+  /// **'导出 AI 调用的工具和参数'**
+  String get includeToolCallsDesc;
+
+  /// 包含思考过程选项
+  ///
+  /// In zh, this message translates to:
+  /// **'包含思考过程'**
+  String get includeThinking;
+
+  /// 包含思考过程描述
+  ///
+  /// In zh, this message translates to:
+  /// **'导出 AI 的推理和思考内容'**
+  String get includeThinkingDesc;
+
+  /// 预览按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get preview;
+
+  /// 预览截断提示
+  ///
+  /// In zh, this message translates to:
+  /// **'预览内容已截断'**
+  String get previewTruncated;
+
+  /// 复制到剪贴板按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'复制'**
+  String get copyToClipboard;
+
+  /// 复制成功提示
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制到剪贴板'**
+  String get copiedToClipboard;
+
+  /// 分享按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'分享'**
+  String get share;
+
+  /// 会话导出标题
+  ///
+  /// In zh, this message translates to:
+  /// **'会话导出'**
+  String get conversationExport;
+
+  /// 导出到文件按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'保存文件'**
+  String get exportToFile;
 
   /// AI 气泡保存脚本失败提示
   ///

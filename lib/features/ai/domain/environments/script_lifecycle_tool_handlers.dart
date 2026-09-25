@@ -4,58 +4,103 @@ import 'package:uuid/uuid.dart';
 import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tool_handler.dart';
 import 'package:JsxposedX/features/ai/domain/environments/ai_tool_runtime_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_tool_call.dart';
+import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
 import 'package:JsxposedX/generated/pinia.g.dart';
 import 'package:JsxposedX/generated/project.g.dart';
 
-// ═══ Xposed Hook 模板常量（对齐 JsSugar.kt 链式 API） ═══
+// ═══ Xposed Hook 模板常量（严格对齐 JsSugar.kt 的真实签名） ═══
+//
+// Jx 链式 API 的真实形态：
+//   Jx.use(cls).hook(methodName, paramTypes, { before/after/replace: function(param) })
+//   Jx.use(cls).before/after/replace(methodName, paramTypes, function(param))
+//   Jx.use(cls).returnConst(methodName, paramTypes, value)
+//   Jx.use(cls).hookConstructor(paramTypes, { before/after: function(param) })
+// 回调只有一个参数 param（不是 self + 展开参数），param 上可用：
+//   thisObject / getArg(i) / setArg(i, v) / getResult() / setResult(v)
+//   / hasThrowable() / getThrowable() / setThrowable()
 
 const _xposedHookBeforeAfter = r'''
-Jx.use("{className}")
-  .hook("{methodName}", [{paramList}], {{
-    before: function(self, ...args) {{
-      console.log("[Hook] {methodName} 调用前");
-      console.log("参数:", args);
-      // TODO: 修改参数：args[0] = newValue;
-    }},
-    after: function(self, result, ...args) {{
-      console.log("[Hook] {methodName} 返回:", result);
-      // TODO: 修改返回值：result = newValue;
-    }}
-  }});
+(function () {
+  try {
+    Jx.use("{className}").hook("{methodName}", [{paramList}], {
+      before: function(param) {
+        try {
+          Jx.log("[Hook] {methodName} argsLength=" + param.argsLength);
+        } catch (e) {
+          Jx.logException(e);
+        }
+      },
+      after: function(param) {
+        try {
+          Jx.log("[Hook] {methodName} 返回: " + param.getResult());
+        } catch (e) {
+          Jx.logException(e);
+        }
+      }
+    });
+    Jx.log("[Init] {className}.{methodName} hook installed");
+  } catch (e) {
+    Jx.logException(e);
+  }
+})();
 ''';
 
 const _xposedHookBefore = r'''
-Jx.use("{className}")
-  .hook("{methodName}", [{paramList}], {{
-    before: function(self, ...args) {{
-      console.log("[Hook] {methodName} 调用前");
-      console.log("参数:", args);
-      // TODO: 在方法执行前注入逻辑
-    }}
-  }});
+(function () {
+  try {
+    Jx.use("{className}").hook("{methodName}", [{paramList}], {
+      before: function(param) {
+        try {
+          Jx.log("[Hook] {methodName} argsLength=" + param.argsLength);
+        } catch (e) {
+          Jx.logException(e);
+        }
+      }
+    });
+    Jx.log("[Init] {className}.{methodName} hook installed");
+  } catch (e) {
+    Jx.logException(e);
+  }
+})();
 ''';
 
 const _xposedHookAfter = r'''
-Jx.use("{className}")
-  .hook("{methodName}", [{paramList}], {{
-    after: function(self, result, ...args) {{
-      console.log("[Hook] {methodName} 返回:", result);
-      console.log("参数:", args);
-      // TODO: 修改返回值：return newResult;
-    }}
-  }});
+(function () {
+  try {
+    Jx.use("{className}").hook("{methodName}", [{paramList}], {
+      after: function(param) {
+        try {
+          Jx.log("[Hook] {methodName} 返回: " + param.getResult());
+        } catch (e) {
+          Jx.logException(e);
+        }
+      }
+    });
+    Jx.log("[Init] {className}.{methodName} hook installed");
+  } catch (e) {
+    Jx.logException(e);
+  }
+})();
 ''';
 
 const _xposedHookReplace = r'''
-Jx.use("{className}")
-  .hook("{methodName}", [{paramList}], {{
-    replace: function(self, ...args) {{
-      console.log("[Hook] {methodName} 被替换");
-      console.log("参数:", args);
-      // TODO: 自定义逻辑
-      return original(self, ...args); // 或返回自定义值
-    }}
-  }});
+(function () {
+  try {
+    Jx.use("{className}").hook("{methodName}", [{paramList}], {
+      before: function(param) {
+        try {
+          Jx.log("[Hook] {methodName} 已拦截");
+          param.setResult(null);
+        } catch (e) {
+          Jx.logException(e);
+        }
+      }
+    });
+    Jx.log("[Init] {className}.{methodName} hook installed");
+  } catch (e) {
+    Jx.logException(e);
+  }
+})();
 ''';
 
 const _xposedMethodEnumTemplate = r'''
@@ -68,59 +113,107 @@ const _xposedMethodEnumTemplate = r'''
 
 const _xposedMethodSkeleton = r'''
 // --- {methodName}({paramTypes}) ---
-Jx.use("{className}")
-  .hook("{methodName}", [{paramListStr}], {{
-    before: function(self, ...args) {{
-      console.log("[Hook] {className}.{methodName} 调用");
-      // TODO: 添加业务逻辑
-    }}
-  }});
+Jx.use("{className}").hook("{methodName}", [{paramListStr}], {
+  before: function(param) {
+    try {
+      Jx.log("[Hook] {className}.{methodName} argsLength=" + param.argsLength);
+    } catch (e) {
+      Jx.logException(e);
+    }
+  }
+});
 ''';
 
-// ═══ Frida Hook 模板常量（对齐 FridaSugar.kt 的 Fx API） ═══
+// ═══ Frida Hook 模板常量（严格对齐 FridaSugar.kt 的真实签名） ═══
+//
+// Fx 链式 API 的真实形态：
+//   Fx.use(cls).hook(methodName, overloadTypes, { before/after/replace: fn })
+//   Fx.use(cls).before/after/replace(methodName, overloadTypes, fn)
+//   Fx.use(cls).returnConst(methodName, overloadTypes, value)
+//   Fx.use(cls).hookConstructor(overloadTypes, { before/after: fn })
+//   Fx.use(cls).hookAll(methodName, callbacks)
+// 注意：Fx.use() 返回的是普通 JS 对象，**不存在** ".方法名.overload(...)" 这种
+// 原生 Java.use 写法，overload 类型只通过第 2 个参数传入。
+// 回调签名：before/replace(args, thisObj)、after(retval, args, thisObj)。
 
 const _fridaJavaMethod = r'''
 // Fx 糖 Java 方法 Hook
-Fx.use("{className}")
-  .{methodName}
-  .overload({overloadArgs})
-  .implementation = function({paramList}) {{
-    console.log("[Fx] {className}.{methodName} 调用");
-    console.log("参数:", arguments);
-    // TODO: 添加业务逻辑
-    return this.{methodName}({paramList}); // 调用原方法
-  }};
+try {
+  Fx.use("{className}").hook("{methodName}", [{overloadArgs}], {
+    before: function(args, thisObj) {
+      try {
+        console.log("[Fx] {methodName} 参数数量: " + args.length);
+      } catch (e) {
+        console.log("[Fx] before error: " + e);
+      }
+    },
+    after: function(retval, args, thisObj) {
+      try {
+        console.log("[Fx] {methodName} 返回: " + retval);
+      } catch (e) {
+        console.log("[Fx] after error: " + e);
+      }
+    }
+  });
+  console.log("[Init] {className}.{methodName} hook installed");
+} catch (e) {
+  console.log("[Fx] init error: " + e);
+}
 ''';
 
 const _fridaJniSymbol = r'''
 // Fx 糖 JNI 原生符号 Hook
-Fx.hookNative("{soName}", "{symbolName}", {{
-  onEnter: function(args) {{
-    console.log("[Fx] {symbolName} 进入");
-    console.log("参数:", args);
-    // TODO: 处理参数
-  }},
-  onLeave: function(retval) {{
-    console.log("[Fx] {symbolName} 返回:", retval);
-    // TODO: 处理返回值
-  }}
-}});
+try {
+  Fx.hookNative("{soName}", "{symbolName}", {
+    onEnter: function(args) {
+      try {
+        console.log("[Fx] {symbolName} 进入, arg0=" + args[0]);
+      } catch (e) {
+        console.log("[Fx] onEnter error: " + e);
+      }
+    },
+    onLeave: function(retval) {
+      try {
+        console.log("[Fx] {symbolName} 返回: " + retval);
+      } catch (e) {
+        console.log("[Fx] onLeave error: " + e);
+      }
+    }
+  });
+  console.log("[Init] {soName}!{symbolName} hook installed");
+} catch (e) {
+  console.log("[Fx] init error: " + e);
+}
 ''';
 
 const _fridaAddress = r'''
 // Fx 糖地址 Hook（{address}）
-const module = Process.getModuleByName("{soName}");
-const targetAddr = module.base.add({offset});
-Interceptor.attach(targetAddr, {{
-  onEnter: function(args) {{
-    console.log("[Fx] 地址 Hook 进入: {address}");
-    console.log("参数:", args);
-    // TODO: 业务逻辑
-  }},
-  onLeave: function(retval) {{
-    console.log("[Fx] 地址 Hook 返回:", retval);
-  }}
-}});
+try {
+  const moduleBase = Fx.module.findBase("{soName}");
+  if (moduleBase === null) {
+    throw new Error("模块未加载: {soName}");
+  }
+  const targetAddr = moduleBase.add({offset});
+  Fx.interceptor.attach(targetAddr, {
+    onEnter: function(args) {
+      try {
+        console.log("[Fx] 地址 Hook 进入: {address}, arg0=" + args[0]);
+      } catch (e) {
+        console.log("[Fx] onEnter error: " + e);
+      }
+    },
+    onLeave: function(retval) {
+      try {
+        console.log("[Fx] 地址 Hook 返回: " + retval);
+      } catch (e) {
+        console.log("[Fx] onLeave error: " + e);
+      }
+    }
+  });
+  console.log("[Init] {soName}+{offset} hook installed");
+} catch (e) {
+  console.log("[Fx] init error: " + e);
+}
 ''';
 
 // ═══ Handler 基类 ═══
@@ -146,7 +239,8 @@ abstract class ScriptLifecycleToolHandler implements AiChatToolHandler {
   void _requirePackage() {
     if (_pkg.isEmpty) {
       throw ArgumentError(
-        _isZh ? '当前无目标应用，请先在 APK 逆向会话中打开一个应用'
+        _isZh
+            ? '当前无目标应用，请先在 APK 逆向会话中打开一个应用'
             : 'No target app. Please open an APK in an APK reverse session first.',
       );
     }
@@ -180,7 +274,10 @@ abstract class ScriptLifecycleToolHandler implements AiChatToolHandler {
     }).toList();
   }
 
-  String? _findScriptPath(List<({String name, String path})> scripts, String fileName) {
+  String? _findScriptPath(
+    List<({String name, String path})> scripts,
+    String fileName,
+  ) {
     for (final script in scripts) {
       if (script.name == fileName) return script.path;
     }
@@ -193,7 +290,9 @@ abstract class ScriptLifecycleToolHandler implements AiChatToolHandler {
   ) async {
     final conversationId = context.conversationBinding.conversationId;
     if (conversationId == null || conversationId.isEmpty) {
-      throw StateError(_isZh ? '当前会话无法关联脚本运行' : 'No conversation is bound to this script run.');
+      throw StateError(
+        _isZh ? '当前会话无法关联脚本运行' : 'No conversation is bound to this script run.',
+      );
     }
 
     final existingRaw = await _piniaNative.getString(
@@ -314,31 +413,60 @@ class GetScriptLogsHandler extends ScriptLifecycleToolHandler {
   }) async {
     final conversationId = context.conversationBinding.conversationId;
     if (conversationId == null || conversationId.isEmpty) {
-      return _isZh ? '当前会话暂无脚本日志。' : 'No script logs for the current conversation.';
+      return _isZh
+          ? '当前会话暂无脚本日志。'
+          : 'No script logs for the current conversation.';
     }
     final before = DateTime.tryParse(call.getString('before'))?.toUtc();
     final beforeId = call.getInt('beforeId');
-    final logs = await context.conversationBinding.logs.getLogs(
-      conversationId: conversationId,
-      runId: call.getString('runId').isEmpty ? null : call.getString('runId'),
-      scriptName: call.getString('scriptName').isEmpty
-          ? null
-          : call.getString('scriptName'),
-      source: call.getString('source').isEmpty ? null : call.getString('source'),
-      level: call.getString('level').isEmpty ? null : call.getString('level'),
-      before: before,
-      beforeId: beforeId == 0 ? null : beforeId,
-      limit: call.getInt('limit', 50),
-    );
-    if (logs.isEmpty) {
-      return _isZh ? '当前会话暂无匹配的脚本日志。' : 'No matching script logs.';
+    final runId = call.getString('runId');
+    final scriptName = call.getString('scriptName');
+    final source = call.getString('source');
+    final level = call.getString('level');
+    final beforeIdValue = beforeId == 0 ? null : beforeId;
+    final limit = call.getInt('limit', 50);
+    Future<List<ScriptLogRecord>> query(
+      String queryConversationId,
+      String? querySource,
+      String? queryScriptName,
+    ) {
+      return context.conversationBinding.logs.getLogs(
+        conversationId: queryConversationId,
+        runId: runId.isEmpty ? null : runId,
+        scriptName: queryScriptName?.isEmpty == true ? null : queryScriptName,
+        source: querySource?.isEmpty == true ? null : querySource,
+        level: level.isEmpty ? null : level,
+        before: before,
+        beforeId: beforeIdValue,
+        limit: limit,
+      );
     }
-    return logs.map((log) {
-      final time = log.timestamp.toUtc().toIso8601String();
-      final stack = log.stackTrace.isEmpty ? '' : '\n${log.stackTrace}';
-      return '[$time] [${log.source}/${log.level}] ${log.scriptName} '
-          '(run ${log.runId}): ${log.message}$stack';
-    }).join('\n');
+
+    var logs = await query(conversationId, source, scriptName);
+    if (logs.isEmpty && runId.isEmpty && context.packageName.isNotEmpty) {
+      logs = await context.conversationBinding.logs.getStandaloneLogs(
+        packageName: context.packageName,
+        scriptName: scriptName.isEmpty ? null : scriptName,
+        source: source.isEmpty ? null : source,
+        level: level.isEmpty ? null : level,
+        before: before,
+        beforeId: beforeIdValue,
+        limit: limit,
+      );
+    }
+    if (logs.isEmpty) {
+      return _isZh
+          ? '当前会话暂无匹配的脚本日志。若脚本使用独立运行记录，请同时提供 scriptName。'
+          : 'No matching script logs. For standalone runs, provide scriptName.';
+    }
+    return logs
+        .map((log) {
+          final time = log.timestamp.toUtc().toIso8601String();
+          final stack = log.stackTrace.isEmpty ? '' : '\n${log.stackTrace}';
+          return '[$time] [${log.source}/${log.level}] ${log.scriptName} '
+              '(run ${log.runId}): ${log.message}$stack';
+        })
+        .join('\n');
   }
 }
 
@@ -372,7 +500,10 @@ class GenerateXposedHookHandler extends ScriptLifecycleToolHandler {
   }
 
   String _genSingleMethod(
-    String cls, String method, List<String> params, String hookType,
+    String cls,
+    String method,
+    List<String> params,
+    String hookType,
   ) {
     final paramList = params.join(', ');
     String template;
@@ -404,11 +535,14 @@ class GenerateXposedHookHandler extends ScriptLifecycleToolHandler {
               ? '请先用 decompile_class 或 list_classes 查看 $cls 的方法列表，然后带 methodName 重新调用本工具'
               : 'Use decompile_class or list_classes to view methods of $cls, then call this tool again with methodName',
         )
-        .replaceAll('{methodSkeletons}', _xposedMethodSkeleton
-            .replaceAll('{className}', cls)
-            .replaceAll('{methodName}', 'methodName')
-            .replaceAll('{paramTypes}', paramListStr)
-            .replaceAll('{paramListStr}', paramListStr));
+        .replaceAll(
+          '{methodSkeletons}',
+          _xposedMethodSkeleton
+              .replaceAll('{className}', cls)
+              .replaceAll('{methodName}', 'methodName')
+              .replaceAll('{paramTypes}', paramListStr)
+              .replaceAll('{paramListStr}', paramListStr),
+        );
   }
 }
 
@@ -453,15 +587,11 @@ class GenerateFridaHookHandler extends ScriptLifecycleToolHandler {
     final overloadArgs = paramTypes.isNotEmpty
         ? paramTypes.map((t) => "'$t'").join(', ')
         : '';
-    final paramList = paramTypes.asMap().entries
-        .map((e) => 'p${e.key}')
-        .join(', ');
 
     return _fridaJavaMethod
         .replaceAll('{className}', className)
         .replaceAll('{methodName}', methodName)
-        .replaceAll('{overloadArgs}', overloadArgs)
-        .replaceAll('{paramList}', paramList);
+        .replaceAll('{overloadArgs}', overloadArgs);
   }
 
   String _genJniSymbol(AiToolCall call) {
@@ -486,7 +616,10 @@ class GenerateFridaHookHandler extends ScriptLifecycleToolHandler {
     if (addressStr.isEmpty) throw ArgumentError('address 不能为空');
 
     final soName = soPath.split('/').last;
-    final cleaned = addressStr.replaceFirst(RegExp(r'^0x', caseSensitive: false), '');
+    final cleaned = addressStr.replaceFirst(
+      RegExp(r'^0x', caseSensitive: false),
+      '',
+    );
     final addr = int.tryParse(cleaned, radix: 16);
     if (addr == null) {
       throw ArgumentError(
@@ -519,16 +652,61 @@ class SaveScriptHandler extends ScriptLifecycleToolHandler {
   }) async {
     _requirePackage();
 
-    final scriptType = call.getString('scriptType');
-    final fileName = call.getString('fileName');
-    final code = call.getString('code');
+    final useLastGenerated = call.getBool('use_last_generated', false);
+    String scriptType;
+    String fileName;
+    String code;
+    
+    if (useLastGenerated) {
+      final cachedCode = context.conversationBinding.lastGeneratedCode;
+      final cachedType = context.conversationBinding.lastGeneratedScriptType;
+      final cachedName = context.conversationBinding.lastGeneratedFileName;
+      
+      if (cachedCode == null || cachedCode.isEmpty) {
+        throw ArgumentError(
+          _isZh
+              ? '未找到最近生成的脚本，请先生成脚本或直接传入完整参数'
+              : 'No recently generated script found. Generate a script first or pass all parameters.',
+        );
+      }
+      
+      code = cachedCode;
+      scriptType = cachedType ?? 'xposed';
+      fileName = cachedName ?? 'ai_hook_${DateTime.now().millisecondsSinceEpoch}';
+    } else {
+      scriptType = call.getString('scriptType');
+      fileName = call.getString('fileName');
+      code = call.getString('code');
+      if (scriptType.isEmpty || fileName.isEmpty || code.isEmpty) {
+        throw ArgumentError('scriptType、fileName、code 都不能为空');
+      }
+    }
+    
     final overwrite = call.getBool('overwrite');
 
     if (scriptType != 'frida' && scriptType != 'xposed') {
-      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+      throw ArgumentError(
+        'scriptType 仅支持 frida/xposed / scriptType must be frida or xposed',
+      );
     }
-    if (fileName.isEmpty) throw ArgumentError('fileName 不能为空');
-    if (code.isEmpty) throw ArgumentError('code 不能为空');
+
+    final validation = await ValidateScriptHandler(context).handle(
+      AiToolCall(
+        id: '${call.id}:validate',
+        name: 'validate_script',
+        arguments: {'code': code, 'engine': scriptType},
+      ),
+    );
+    final validationPassed =
+        validation.startsWith('校验通过') ||
+        validation.startsWith('Validation passed');
+    if (!validationPassed) {
+      throw ArgumentError(
+        _isZh
+            ? '脚本未通过自动校验，请先修复后再保存：\\n$validation'
+            : 'Script failed automatic validation; fix it before saving:\\n$validation',
+      );
+    }
 
     // 校验保留名
     if (scriptType == 'frida' && _reservedFrida.contains(fileName) ||
@@ -561,7 +739,7 @@ class SaveScriptHandler extends ScriptLifecycleToolHandler {
         throw ArgumentError(
           _isZh
               ? '脚本 $finalName 已存在。设置 overwrite=true 覆盖 / '
-                  'Script $finalName already exists. Set overwrite=true to overwrite'
+                    'Script $finalName already exists. Set overwrite=true to overwrite'
               : 'Script $finalName already exists. Set overwrite=true to overwrite',
         );
       }
@@ -597,9 +775,19 @@ class SaveScriptHandler extends ScriptLifecycleToolHandler {
     final toggleKey = _switchKey(scriptType, finalName);
     try {
       if (scriptType == 'frida') {
-        await _projectNative.createFridaScript(_pkg, code, finalName, overwrite);
+        await _projectNative.createFridaScript(_pkg, code, finalName, false);
       } else {
-        await _projectNative.createJsScript(_pkg, code, finalName, overwrite);
+        await _projectNative.createJsScript(_pkg, code, finalName, false);
+      }
+      final savedCode = scriptType == 'frida'
+          ? await _projectNative.readFridaScript(_pkg, finalName)
+          : await _projectNative.readJsScript(_pkg, finalName);
+      if (savedCode.trim() != code.trim()) {
+        throw StateError(
+          _isZh
+              ? '脚本写入后校验失败，磁盘内容与提交内容不一致'
+              : 'Post-write verification failed: saved content differs from submitted code',
+        );
       }
       await _piniaNative.setBool(key: toggleKey, value: true);
     } catch (_) {
@@ -635,7 +823,9 @@ class ListScriptsHandler extends ScriptLifecycleToolHandler {
 
     final scriptType = call.getString('scriptType');
     if (scriptType != '' && scriptType != 'frida' && scriptType != 'xposed') {
-      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+      throw ArgumentError(
+        'scriptType 仅支持 frida/xposed / scriptType must be frida or xposed',
+      );
     }
     final showFrida = scriptType.isEmpty || scriptType == 'frida';
     final showXposed = scriptType.isEmpty || scriptType == 'xposed';
@@ -721,7 +911,9 @@ class ToggleScriptHandler extends ScriptLifecycleToolHandler {
     final enabled = call.getBool('enabled', true);
 
     if (scriptType != 'frida' && scriptType != 'xposed') {
-      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+      throw ArgumentError(
+        'scriptType 仅支持 frida/xposed / scriptType must be frida or xposed',
+      );
     }
     if (fileName.isEmpty) throw ArgumentError('fileName 不能为空');
 
@@ -785,10 +977,26 @@ class ValidateScriptHandler extends ScriptLifecycleToolHandler {
     AiToolCall call, {
     AiToolProgressCallback? onProgress,
   }) async {
-    final code = call.getString('code');
-    final engine = call.getString('engine', 'frida');
-
-    if (code.isEmpty) throw ArgumentError('code 不能为空');
+    final useLastGenerated = call.getBool('use_last_generated', false);
+    String code;
+    String engine;
+    
+    if (useLastGenerated) {
+      final cached = context.conversationBinding.lastGeneratedCode;
+      if (cached == null || cached.isEmpty) {
+        throw ArgumentError(
+          _isZh
+              ? '未找到最近生成的脚本，请先生成脚本或直接传入 code 参数'
+              : 'No recently generated script found. Generate a script first or pass the code parameter.',
+        );
+      }
+      code = cached;
+      engine = context.conversationBinding.lastGeneratedScriptType ?? 'frida';
+    } else {
+      code = call.getString('code');
+      engine = call.getString('engine', 'frida');
+      if (code.isEmpty) throw ArgumentError('code 不能为空');
+    }
 
     final issues = <String>[];
 
@@ -820,21 +1028,44 @@ class ValidateScriptHandler extends ScriptLifecycleToolHandler {
     int brace = 0, bracket = 0, paren = 0;
     for (var i = 0; i < code.length; i++) {
       switch (code[i]) {
-        case '{': brace++; break;
-        case '}': brace--; break;
-        case '[': bracket++; break;
-        case ']': bracket--; break;
-        case '(': paren++; break;
-        case ')': paren--; break;
+        case '{':
+          brace++;
+          break;
+        case '}':
+          brace--;
+          break;
+        case '[':
+          bracket++;
+          break;
+        case ']':
+          bracket--;
+          break;
+        case '(':
+          paren++;
+          break;
+        case ')':
+          paren--;
+          break;
       }
     }
-    if (brace != 0) issues.add('${_isZh ? "花括号 {}" : "Braces {}"} ${_isZh ? "不匹配" : "unmatched"} (差值/$brace)');
-    if (bracket != 0) issues.add('${_isZh ? "方括号 []" : "Brackets []"} ${_isZh ? "不匹配" : "unmatched"} (差值/$bracket)');
-    if (paren != 0) issues.add('${_isZh ? "圆括号 ()" : "Parentheses ()"} ${_isZh ? "不匹配" : "unmatched"} (差值/$paren)');
+    if (brace != 0) {
+      issues.add(
+        '${_isZh ? "花括号 {}" : "Braces {}"} ${_isZh ? "不匹配" : "unmatched"} (差值/$brace)',
+      );
+    }
+    if (bracket != 0) {
+      issues.add(
+        '${_isZh ? "方括号 []" : "Brackets []"} ${_isZh ? "不匹配" : "unmatched"} (差值/$bracket)',
+      );
+    }
+    if (paren != 0) {
+      issues.add(
+        '${_isZh ? "圆括号 ()" : "Parentheses ()"} ${_isZh ? "不匹配" : "unmatched"} (差值/$paren)',
+      );
+    }
   }
 
   void _checkQuotes(String code, List<String> issues) {
-    int single = 0, double = 0, backtick = 0;
     bool inSingle = false, inDouble = false, inBacktick = false;
     for (var i = 0; i < code.length; i++) {
       final c = code[i];
@@ -846,22 +1077,38 @@ class ValidateScriptHandler extends ScriptLifecycleToolHandler {
         if (c == '"' && !inSingle && !inBacktick) inDouble = !inDouble;
         if (c == '`' && !inSingle && !inDouble) inBacktick = !inBacktick;
       }
-      if (c == "'" && !inDouble && !inBacktick) single++;
-      if (c == '"' && !inSingle && !inBacktick) double++;
-      if (c == '`' && !inSingle && !inDouble) backtick++;
     }
     if (inSingle) issues.add(_isZh ? '单引号未闭合' : 'Unclosed single quote');
     if (inDouble) issues.add(_isZh ? '双引号未闭合' : 'Unclosed double quote');
-    if (inBacktick) issues.add(_isZh ? '模板字符串未闭合' : 'Unclosed template literal');
+    if (inBacktick) {
+      issues.add(_isZh ? '模板字符串未闭合' : 'Unclosed template literal');
+    }
   }
 
   void _checkKeywords(String code, List<String> issues) {
-    // Fx 糖特有校验
-    if (code.contains('Java.use(') || code.contains('Java.perform(')) {
+    if (code.contains('```')) {
       issues.add(
         _isZh
-            ? '发现原生 Frida API (Java.use/Java.perform)，请使用 Fx 糖 API (Fx.use/Fx.hookNative) 替代'
-            : 'Found raw Frida API (Java.use/Java.perform). Use Fx sugar API (Fx.use/Fx.hookNative) instead.',
+            ? '脚本包含 Markdown 代码围栏，请只提交纯 JavaScript'
+            : 'Script contains Markdown fences; submit plain JavaScript only.',
+      );
+    }
+    if (RegExp(r'\bTODO\b|自定义返回值|添加业务逻辑|处理参数|处理返回值').hasMatch(code)) {
+      issues.add(
+        _isZh
+            ? '脚本仍包含 TODO 或占位逻辑，请提交完整可运行实现'
+            : 'Script still contains TODO or placeholder logic; submit a complete runnable implementation.',
+      );
+    }
+    // Fx 糖特有校验
+    if (code.contains('Java.use(') ||
+        code.contains('Java.perform(') ||
+        code.contains('Java.cast(') ||
+        code.contains('Interceptor.attach(')) {
+      issues.add(
+        _isZh
+            ? '发现原生 Frida API，请使用 Fx 糖 API (Fx.use/Fx.hookNative/Fx.interceptor) 替代'
+            : 'Found raw Frida API. Use Fx sugar APIs (Fx.use/Fx.hookNative/Fx.interceptor) instead.',
       );
     }
     // Jx 糖特有校验
@@ -875,17 +1122,15 @@ class ValidateScriptHandler extends ScriptLifecycleToolHandler {
   }
 
   void _checkSyntax(String code, String engine, List<String> issues) {
-    // 检查是否有明显的语法错误标记
-    if (code.contains('function(') && !code.contains('function (')) {
-      // 只是风格提示，不报错
-    }
     // engine 特定校验
     if (engine == 'xposed') {
-      if (!code.contains('[tradition]')) {
+      // [tradition] 是脚本「文件名」前缀，且 save_script 会自动补全，
+      // 不应出现在脚本体内容里。若模型把它写进代码，提示移除。
+      if (code.contains('[tradition]')) {
         issues.add(
           _isZh
-              ? '提示：Xposed 脚本建议以 [tradition] 前缀命名文件'
-              : 'Hint: Xposed scripts should use the [tradition] filename prefix',
+              ? '[tradition] 前缀由 save_script 自动添加，请从脚本内容中移除'
+              : 'The [tradition] prefix is added automatically by save_script; remove it from the script body',
         );
       }
     }
@@ -911,7 +1156,9 @@ class ReadScriptHandler extends ScriptLifecycleToolHandler {
     final fileName = call.getString('fileName');
 
     if (scriptType != 'frida' && scriptType != 'xposed') {
-      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+      throw ArgumentError(
+        'scriptType 仅支持 frida/xposed / scriptType must be frida or xposed',
+      );
     }
     if (fileName.isEmpty) throw ArgumentError('fileName 不能为空');
 
@@ -956,14 +1203,14 @@ class DeleteScriptHandler extends ScriptLifecycleToolHandler {
     final confirm = call.getBool('confirm');
 
     if (scriptType != 'frida' && scriptType != 'xposed') {
-      throw ArgumentError('scriptType 仅支持 frida/xposed / scriptType must be frida or xposed');
+      throw ArgumentError(
+        'scriptType 仅支持 frida/xposed / scriptType must be frida or xposed',
+      );
     }
     if (fileName.isEmpty) throw ArgumentError('fileName 不能为空');
     if (!confirm) {
       throw ArgumentError(
-        _isZh
-            ? '删除操作需 confirm=true 确认'
-            : 'Delete requires confirm=true',
+        _isZh ? '删除操作需 confirm=true 确认' : 'Delete requires confirm=true',
       );
     }
 
@@ -1013,8 +1260,6 @@ class DeleteScriptHandler extends ScriptLifecycleToolHandler {
       await _piniaNative.remove(key: contextKey);
     }
 
-    return _isZh
-        ? '脚本 $fileName 已删除'
-        : 'Script $fileName deleted';
+    return _isZh ? '脚本 $fileName 已删除' : 'Script $fileName deleted';
   }
 }

@@ -293,6 +293,9 @@ class AIConfigSheet extends HookConsumerWidget {
           toolPolicy?.approvalMode.name ?? AiToolApprovalMode.riskyOnly.name,
       'assistant_tool_rounds': (toolPolicy?.maxRounds ?? kDefaultMaxToolRounds)
           .toString(),
+      'assistant_fallback_context': (contextPolicy?.fallbackContextTokens ??
+              kDefaultFallbackContextTokens)
+          .toString(),
     };
   }
 
@@ -1258,6 +1261,17 @@ class AIConfigSheet extends HookConsumerWidget {
                               ),
                             ],
                           ),
+                          SizedBox(height: 12.h),
+                          CustomTextField.formBuilder(
+                            name: 'assistant_fallback_context',
+                            labelText: context.isZh
+                                ? '兜底上下文长度（模型未上报时生效）'
+                                : 'Fallback context length (used when the model does not report one)',
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -1411,6 +1425,17 @@ class AIConfigSheet extends HookConsumerWidget {
                                             '',
                                       ) ??
                                       kDefaultMaxToolRounds;
+                                  // 空值回落默认值；非法区间（0、超上限）
+                                  // 在保存链路统一收敛。
+                                  final fallbackContextTokens =
+                                      resolveFallbackContextTokens(
+                                        int.tryParse(
+                                              values['assistant_fallback_context']
+                                                      ?.toString() ??
+                                                  '',
+                                            ) ??
+                                            kDefaultFallbackContextTokens,
+                                      );
                                   final existsInList = configList.any(
                                     (item) => item.id == resolvedConfig.id,
                                   );
@@ -1424,6 +1449,8 @@ class AIConfigSheet extends HookConsumerWidget {
                                         recentMessageLimit: recentMessageLimit,
                                         approvalMode: approvalMode,
                                         maxToolRounds: maxToolRounds,
+                                        fallbackContextTokens:
+                                            fallbackContextTokens,
                                         addToList:
                                             isNewMode.value || !existsInList,
                                       );

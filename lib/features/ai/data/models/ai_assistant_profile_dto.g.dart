@@ -39,6 +39,9 @@ _AiContextPolicyDto _$AiContextPolicyDtoFromJson(
   recentMessageLimit: (json['recentMessageLimit'] as num?)?.toInt(),
   includeToolResults: json['includeToolResults'] as bool? ?? true,
   enableSummarization: json['enableSummarization'] as bool? ?? false,
+  fallbackContextTokens:
+      (json['fallbackContextTokens'] as num?)?.toInt() ??
+      kDefaultFallbackContextTokens,
 );
 
 Map<String, dynamic> _$AiContextPolicyDtoToJson(_AiContextPolicyDto instance) =>
@@ -49,6 +52,7 @@ Map<String, dynamic> _$AiContextPolicyDtoToJson(_AiContextPolicyDto instance) =>
       'recentMessageLimit': instance.recentMessageLimit,
       'includeToolResults': instance.includeToolResults,
       'enableSummarization': instance.enableSummarization,
+      'fallbackContextTokens': instance.fallbackContextTokens,
     };
 
 _AiToolPolicyDto _$AiToolPolicyDtoFromJson(Map<String, dynamic> json) =>

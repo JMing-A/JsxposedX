@@ -647,6 +647,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiContextBudget => '上下文预算';
 
   @override
+  String get aiContextUsage => '占用率';
+
+  @override
+  String get aiContextMemoryEntries => '记忆条目';
+
+  @override
+  String get aiContextHighWatermark => '高水位';
+
+  @override
+  String get aiContextHighWatermarkReached => '已触发';
+
+  @override
+  String get aiContextHighWatermarkNotReached => '未触发';
+
+  @override
+  String get aiContextHighWatermarkAlert => '上下文接近容量上限，已自动压缩历史摘要';
+
+  @override
   String get aiContextRemaining => '剩余预算';
 
   @override
@@ -1596,6 +1614,69 @@ class AppLocalizationsZh extends AppLocalizations {
   String aiScriptSavedTo(String target, String name) {
     return '已保存到 $target: $name';
   }
+
+  @override
+  String get runScript => '运行';
+
+  @override
+  String aiScriptRunning(String target, String name) {
+    return '已启用 $target 脚本: $name';
+  }
+
+  @override
+  String get exportConversation => '导出会话';
+
+  @override
+  String get exportingConversation => '正在导出会话...';
+
+  @override
+  String conversationExported(String path) {
+    return '会话已导出到 $path';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '导出失败: $error';
+  }
+
+  @override
+  String get exportFormat => '导出格式';
+
+  @override
+  String get exportOptions => '导出选项';
+
+  @override
+  String get includeToolCalls => '包含工具调用';
+
+  @override
+  String get includeToolCallsDesc => '导出 AI 调用的工具和参数';
+
+  @override
+  String get includeThinking => '包含思考过程';
+
+  @override
+  String get includeThinkingDesc => '导出 AI 的推理和思考内容';
+
+  @override
+  String get preview => '预览';
+
+  @override
+  String get previewTruncated => '预览内容已截断';
+
+  @override
+  String get copyToClipboard => '复制';
+
+  @override
+  String get copiedToClipboard => '已复制到剪贴板';
+
+  @override
+  String get share => '分享';
+
+  @override
+  String get conversationExport => '会话导出';
+
+  @override
+  String get exportToFile => '保存文件';
 
   @override
   String aiScriptSaveFailed(String error) {

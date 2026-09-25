@@ -11,12 +11,27 @@ abstract interface class ScriptLogRepository {
     required DateTime startedAt,
   });
 
-  Future<void> finishRun(String runId, {required String status, required DateTime finishedAt});
+  Future<void> finishRun(
+    String runId, {
+    required String status,
+    required DateTime finishedAt,
+  });
 
   Future<void> appendLogs(List<ScriptLogRecord> logs);
 
   Future<List<ScriptLogRecord>> getLogs({
     required String conversationId,
+    String? runId,
+    String? scriptName,
+    String? source,
+    String? level,
+    DateTime? before,
+    int? beforeId,
+    int limit = 100,
+  });
+
+  Future<List<ScriptLogRecord>> getStandaloneLogs({
+    required String packageName,
     String? runId,
     String? scriptName,
     String? source,

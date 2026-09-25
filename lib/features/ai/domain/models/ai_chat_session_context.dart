@@ -236,6 +236,7 @@ class AiChatSessionMemory {
     this.openHypotheses = const [],
     this.toolFindings = const [],
     this.blockers = const [],
+    this.memoryEntries = const [],
   });
 
   final List<String> userGoals;
@@ -244,12 +245,18 @@ class AiChatSessionMemory {
   final List<String> toolFindings;
   final List<String> blockers;
 
+  /// 上下文记忆压缩器输出的持久化记忆条目：被裁出请求窗口的历史
+  /// 摘要（含已完成的类分析工具调用记录）。重启/分页后作为
+  /// persistedMemory 回流到下一次组装，防止重复分析已处理过的类。
+  final List<String> memoryEntries;
+
   bool get hasContent =>
       userGoals.isNotEmpty ||
       confirmedFacts.isNotEmpty ||
       openHypotheses.isNotEmpty ||
       toolFindings.isNotEmpty ||
-      blockers.isNotEmpty;
+      blockers.isNotEmpty ||
+      memoryEntries.isNotEmpty;
 
   AiChatSessionMemory copyWith({
     List<String>? userGoals,
@@ -257,6 +264,7 @@ class AiChatSessionMemory {
     List<String>? openHypotheses,
     List<String>? toolFindings,
     List<String>? blockers,
+    List<String>? memoryEntries,
   }) {
     return AiChatSessionMemory(
       userGoals: userGoals ?? this.userGoals,
@@ -264,6 +272,7 @@ class AiChatSessionMemory {
       openHypotheses: openHypotheses ?? this.openHypotheses,
       toolFindings: toolFindings ?? this.toolFindings,
       blockers: blockers ?? this.blockers,
+      memoryEntries: memoryEntries ?? this.memoryEntries,
     );
   }
 
@@ -274,6 +283,7 @@ class AiChatSessionMemory {
       'open_hypotheses': openHypotheses,
       'tool_findings': toolFindings,
       'blockers': blockers,
+      if (memoryEntries.isNotEmpty) 'memory_entries': memoryEntries,
     };
   }
 
@@ -284,6 +294,7 @@ class AiChatSessionMemory {
       openHypotheses: _readStringList(json['open_hypotheses']),
       toolFindings: _readStringList(json['tool_findings']),
       blockers: _readStringList(json['blockers']),
+      memoryEntries: _readStringList(json['memory_entries']),
     );
   }
 }
@@ -535,11 +546,14 @@ class AiChatContextStats {
     this.tokenBudget = 0,
     this.estimatedTokens = 0,
     this.remainingTokens = 0,
+    this.usageRatio = 0,
+    this.highWatermarkReached = false,
     this.didCompact = false,
     this.compactReason,
     this.repairedToolContext = false,
     this.migratedLegacySummary = false,
     this.recentRoundsKept = 0,
+    this.memoryEntryCount = 0,
     this.pinnedCount = 0,
     this.retrievedSnippetCount = 0,
     this.retrievedBundlesCount = 0,
@@ -549,11 +563,21 @@ class AiChatContextStats {
   final int tokenBudget;
   final int estimatedTokens;
   final int remainingTokens;
+
+  /// 上下文占用率：estimatedTokens / tokenBudget，范围 [0, 1]。
+  /// 供监控告警实时统计，超过阈值（默认 0.75）即触发摘要压缩。
+  final double usageRatio;
+
+  /// 本次组装是否触达高水位线（触发了预防性摘要压缩）。
+  final bool highWatermarkReached;
   final bool didCompact;
   final String? compactReason;
   final bool repairedToolContext;
   final bool migratedLegacySummary;
   final int recentRoundsKept;
+
+  /// 注入的 [context_memory] 记忆条目数（防重复分析的压缩记录）。
+  final int memoryEntryCount;
   final int pinnedCount;
   final int retrievedSnippetCount;
   final int retrievedBundlesCount;
@@ -563,11 +587,14 @@ class AiChatContextStats {
     int? tokenBudget,
     int? estimatedTokens,
     int? remainingTokens,
+    double? usageRatio,
+    bool? highWatermarkReached,
     bool? didCompact,
     Object? compactReason = _sentinel,
     bool? repairedToolContext,
     bool? migratedLegacySummary,
     int? recentRoundsKept,
+    int? memoryEntryCount,
     int? pinnedCount,
     int? retrievedSnippetCount,
     int? retrievedBundlesCount,
@@ -577,6 +604,8 @@ class AiChatContextStats {
       tokenBudget: tokenBudget ?? this.tokenBudget,
       estimatedTokens: estimatedTokens ?? this.estimatedTokens,
       remainingTokens: remainingTokens ?? this.remainingTokens,
+      usageRatio: usageRatio ?? this.usageRatio,
+      highWatermarkReached: highWatermarkReached ?? this.highWatermarkReached,
       didCompact: didCompact ?? this.didCompact,
       compactReason: identical(compactReason, _sentinel)
           ? this.compactReason
@@ -585,6 +614,7 @@ class AiChatContextStats {
       migratedLegacySummary:
           migratedLegacySummary ?? this.migratedLegacySummary,
       recentRoundsKept: recentRoundsKept ?? this.recentRoundsKept,
+      memoryEntryCount: memoryEntryCount ?? this.memoryEntryCount,
       pinnedCount: pinnedCount ?? this.pinnedCount,
       retrievedSnippetCount:
           retrievedSnippetCount ?? this.retrievedSnippetCount,
@@ -599,11 +629,14 @@ class AiChatContextStats {
       'token_budget': tokenBudget,
       'estimated_tokens': estimatedTokens,
       'remaining_tokens': remainingTokens,
+      'usage_ratio': usageRatio,
+      'high_watermark_reached': highWatermarkReached,
       'did_compact': didCompact,
       if (compactReason != null) 'compact_reason': compactReason,
       'repaired_tool_context': repairedToolContext,
       'migrated_legacy_summary': migratedLegacySummary,
       'recent_rounds_kept': recentRoundsKept,
+      'memory_entry_count': memoryEntryCount,
       'pinned_count': pinnedCount,
       'retrieved_snippet_count': retrievedSnippetCount,
       'retrieved_bundles_count': retrievedBundlesCount,
@@ -616,11 +649,14 @@ class AiChatContextStats {
       tokenBudget: json['token_budget'] as int? ?? 0,
       estimatedTokens: json['estimated_tokens'] as int? ?? 0,
       remainingTokens: json['remaining_tokens'] as int? ?? 0,
+      usageRatio: (json['usage_ratio'] as num?)?.toDouble() ?? 0,
+      highWatermarkReached: json['high_watermark_reached'] == true,
       didCompact: json['did_compact'] == true,
       compactReason: json['compact_reason']?.toString(),
       repairedToolContext: json['repaired_tool_context'] == true,
       migratedLegacySummary: json['migrated_legacy_summary'] == true,
       recentRoundsKept: json['recent_rounds_kept'] as int? ?? 0,
+      memoryEntryCount: json['memory_entry_count'] as int? ?? 0,
       pinnedCount: json['pinned_count'] as int? ?? 0,
       retrievedSnippetCount: json['retrieved_snippet_count'] as int? ?? 0,
       retrievedBundlesCount: json['retrieved_bundles_count'] as int? ?? 0,

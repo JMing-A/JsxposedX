@@ -106,6 +106,7 @@ class AiConfigAction extends _$AiConfigAction {
     required int? recentMessageLimit,
     required AiToolApprovalMode approvalMode,
     required int maxToolRounds,
+    int? fallbackContextTokens,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -124,10 +125,13 @@ class AiConfigAction extends _$AiConfigAction {
           contextPolicy: assistant.contextPolicy.copyWith(
             mode: contextMode,
             recentMessageLimit: recentMessageLimit,
+            fallbackContextTokens: fallbackContextTokens == null
+                ? assistant.contextPolicy.fallbackContextTokens
+                : resolveFallbackContextTokens(fallbackContextTokens),
           ),
           toolPolicy: assistant.toolPolicy.copyWith(
             approvalMode: approvalMode,
-            maxRounds: maxToolRounds.clamp(0, 32).toInt(),
+            maxRounds: resolveMaxToolRounds(maxToolRounds),
           ),
           updatedAt: DateTime.now().toUtc(),
         ),
@@ -196,6 +200,7 @@ class AiConfigAction extends _$AiConfigAction {
     required int? recentMessageLimit,
     required AiToolApprovalMode approvalMode,
     required int maxToolRounds,
+    int? fallbackContextTokens,
     required bool addToList,
   }) async {
     state = const AsyncValue.loading();
@@ -245,6 +250,7 @@ class AiConfigAction extends _$AiConfigAction {
         recentMessageLimit: recentMessageLimit,
         approvalMode: approvalMode,
         maxToolRounds: maxToolRounds,
+        fallbackContextTokens: fallbackContextTokens,
       );
 
       // Keep only the active-selection/list projection in legacy storage while

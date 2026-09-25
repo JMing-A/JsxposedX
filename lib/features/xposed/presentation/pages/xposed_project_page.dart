@@ -9,10 +9,8 @@ import 'package:JsxposedX/core/routes/routes/home_route.dart';
 import 'package:JsxposedX/core/utils/file_picker_util.dart';
 import 'package:JsxposedX/core/utils/path_utils.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_action_provider.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/core/providers/pinia_provider.dart';
-import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
 import 'package:uuid/uuid.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_query_provider.dart';
 import 'package:JsxposedX/features/xposed/presentation/widgets/create_xposed_project_dialog.dart';
@@ -273,56 +271,9 @@ class _XposedScriptRow extends ConsumerWidget {
               'jx_script_run_context_${packageName}_xposed_$name';
           var runId = '';
           if (enabled) {
-            final sessions = await ref
-                .read(aiChatRuntimeProvider(packageName: packageName).notifier)
-                .getSessionsAsync();
-            if (!context.mounted) return;
-            if (sessions.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    context.isZh
-                        ? '该应用暂无 AI 会话，无法关联脚本日志'
-                        : 'No AI conversation exists for this app to link script logs.',
-                  ),
-                ),
-              );
-              return;
-            }
-            final conversationId = await showDialog<String>(
-              context: context,
-              builder: (dialogContext) => SimpleDialog(
-                title: Text(
-                  context.isZh ? '关联日志会话' : 'Link logs to a conversation',
-                ),
-                children: [
-                  for (final session in sessions)
-                    SimpleDialogOption(
-                      onPressed: () => Navigator.pop(dialogContext, session.id),
-                      child: Text(session.name),
-                    ),
-                ],
-              ),
-            );
-            if (!context.mounted || conversationId == null) return;
-            final key = contextKey;
-            final existing = await pinia.getString(key: key, defaultValue: '');
-            if (existing.isNotEmpty) {
-              final value = jsonDecode(existing) as Map<String, dynamic>;
-              final existingRunId = value['runId'] as String?;
-              final existingRun = existingRunId == null
-                  ? null
-                  : await logs.getRun(existingRunId);
-              if (existingRun == null || existingRun.status != 'running') {
-                await pinia.remove(key: key);
-              } else {
-                throw StateError(
-                  context.isZh
-                      ? '脚本已运行，请先关闭再关联新会话'
-                      : 'The script is already running. Stop it before relinking.',
-                );
-              }
-            }
+            // 与 Frida 脚本日志保持一致：使用合成的会话 ID 关联运行记录，
+            // 不依赖该应用是否已存在 AI 会话，因此无需弹窗选择会话。
+            final conversationId = 'standalone:$packageName:xposed:$name';
             runId = const Uuid().v4();
             final now = DateTime.now().toUtc();
             await logs.startRun(
@@ -334,7 +285,7 @@ class _XposedScriptRow extends ConsumerWidget {
             );
             try {
               await pinia.setString(
-                key: key,
+                key: contextKey,
                 value: jsonEncode({
                   'runId': runId,
                   'conversationId': conversationId,
@@ -345,7 +296,7 @@ class _XposedScriptRow extends ConsumerWidget {
               );
             } catch (_) {
               try {
-                await pinia.remove(key: key);
+                await pinia.remove(key: contextKey);
               } finally {
                 await logs.finishRun(
                   runId,

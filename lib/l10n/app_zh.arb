@@ -475,6 +475,12 @@
   "aiContext": "上下文",
   "aiContextTitle": "上下文",
   "aiContextBudget": "上下文预算",
+  "aiContextUsage": "占用率",
+  "aiContextMemoryEntries": "记忆条目",
+  "aiContextHighWatermark": "高水位",
+  "aiContextHighWatermarkReached": "已触发",
+  "aiContextHighWatermarkNotReached": "未触发",
+  "aiContextHighWatermarkAlert": "上下文接近容量上限，已自动压缩历史摘要",
   "aiContextRemaining": "剩余预算",
   "aiContextLayers": "装配层",
   "aiContextRecentRounds": "最近原始轮次",
@@ -815,6 +821,100 @@
         "type": "String"
       }
     }
+  },
+  "runScript": "运行",
+  "@runScript": {
+    "description": "运行脚本按钮"
+  },
+  "aiScriptRunning": "已启用 {target} 脚本: {name}",
+  "@aiScriptRunning": {
+    "description": "AI 脚本运行成功提示",
+    "placeholders": {
+      "target": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "exportConversation": "导出会话",
+  "@exportConversation": {
+    "description": "导出会话按钮"
+  },
+  "exportingConversation": "正在导出会话...",
+  "@exportingConversation": {
+    "description": "导出会话中的提示"
+  },
+  "conversationExported": "会话已导出到 {path}",
+  "@conversationExported": {
+    "description": "会话导出成功提示",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFailed": "导出失败: {error}",
+  "@exportFailed": {
+    "description": "导出失败提示",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFormat": "导出格式",
+  "@exportFormat": {
+    "description": "导出格式标签"
+  },
+  "exportOptions": "导出选项",
+  "@exportOptions": {
+    "description": "导出选项标签"
+  },
+  "includeToolCalls": "包含工具调用",
+  "@includeToolCalls": {
+    "description": "包含工具调用选项"
+  },
+  "includeToolCallsDesc": "导出 AI 调用的工具和参数",
+  "@includeToolCallsDesc": {
+    "description": "包含工具调用描述"
+  },
+  "includeThinking": "包含思考过程",
+  "@includeThinking": {
+    "description": "包含思考过程选项"
+  },
+  "includeThinkingDesc": "导出 AI 的推理和思考内容",
+  "@includeThinkingDesc": {
+    "description": "包含思考过程描述"
+  },
+  "preview": "预览",
+  "@preview": {
+    "description": "预览按钮"
+  },
+  "previewTruncated": "预览内容已截断",
+  "@previewTruncated": {
+    "description": "预览截断提示"
+  },
+  "copyToClipboard": "复制",
+  "@copyToClipboard": {
+    "description": "复制到剪贴板按钮"
+  },
+  "copiedToClipboard": "已复制到剪贴板",
+  "@copiedToClipboard": {
+    "description": "复制成功提示"
+  },
+  "share": "分享",
+  "@share": {
+    "description": "分享按钮"
+  },
+  "conversationExport": "会话导出",
+  "@conversationExport": {
+    "description": "会话导出标题"
+  },
+  "exportToFile": "保存文件",
+  "@exportToFile": {
+    "description": "导出到文件按钮"
   },
   "aiScriptSaveFailed": "保存失败: {error}",
   "@aiScriptSaveFailed": {

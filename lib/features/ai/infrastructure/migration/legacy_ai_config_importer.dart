@@ -82,6 +82,7 @@ class LegacyAiConfigImporter {
     int? recentMessageLimit,
     AiToolApprovalMode? approvalMode,
     int? maxToolRounds,
+    int? fallbackContextTokens,
   }) {
     return _importOne(
       config,
@@ -91,6 +92,7 @@ class LegacyAiConfigImporter {
       recentMessageLimit: recentMessageLimit,
       approvalMode: approvalMode,
       maxToolRounds: maxToolRounds,
+      fallbackContextTokens: fallbackContextTokens,
     );
   }
 
@@ -102,6 +104,7 @@ class LegacyAiConfigImporter {
     int? recentMessageLimit,
     AiToolApprovalMode? approvalMode,
     int? maxToolRounds,
+    int? fallbackContextTokens,
   }) async {
     final endpoint = _parseEndpoint(legacy.apiUrl, legacy.apiType);
     final connectionId = 'legacy-connection-${legacy.id}';
@@ -223,6 +226,15 @@ class LegacyAiConfigImporter {
                                       ? legacy.memoryRounds.toInt()
                                       : null)
                             : null,
+                        // 兜底上下文长度：未显式传入时保留既有配置，
+                        // 首次导入回落到默认值。
+                        fallbackContextTokens: resolveFallbackContextTokens(
+                          fallbackContextTokens ??
+                              existingAssistant
+                                      ?.contextPolicy
+                                      .fallbackContextTokens ??
+                              kDefaultFallbackContextTokens,
+                        ),
                       ),
               toolPolicy:
                   (existingAssistant?.toolPolicy ?? const AiToolPolicy())

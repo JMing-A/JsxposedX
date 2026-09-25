@@ -260,10 +260,10 @@ class AiChatAction extends _$AiChatAction {
   Future<void> _initializeSessions() async {
     try {
       final config = await ref.read(aiConfigProvider.future);
+      if (_disposed || !ref.mounted) return;
       await _migrateLegacySessions(config);
       final sessions = await getSessionsAsync();
-      if (_disposed || sessions.isEmpty) return;
-      if (_disposed) return;
+      if (_disposed || !ref.mounted || sessions.isEmpty) return;
       state = state.copyWith(
         currentSessionId: null,
         standardMessages: const [],
@@ -277,15 +277,20 @@ class AiChatAction extends _$AiChatAction {
         contextVersion: AiChatSessionContext.currentVersion,
       );
     } catch (error) {
-      if (_disposed) return;
+      if (_disposed || !ref.mounted) return;
       state = state.copyWith(error: 'AI 会话加载失败：$error', isStreaming: false);
     }
   }
 
   Future<List<AiChatSessionView>> getSessionsAsync() async {
+    // 在任何异步 gap 之前捕获依赖。调用方通常是 ref.read(...notifier)，
+    // 不会建立订阅，autoDispose 会在下一帧回收 provider；此后访问 ref 或
+    // state 都会抛 "Cannot use the Ref ... after it has been disposed"。
+    // 仓库实例已在销毁前取出，继续查询本身是安全的，因此这里不中途返回，
+    // 否则会把“provider 被回收”误判成“该应用暂无 AI 会话”。
     final config = ref.read(aiConfigProvider).value;
-    if (config != null) await _migrateLegacySessions(config);
     final repository = ref.read(aiConversationRepositoryV2Provider);
+    if (config != null) await _migrateLegacySessions(config);
     final conversations = <standard.AiConversation>[];
     AiConversationCursor? cursor;
     while (true) {
@@ -872,12 +877,16 @@ class AiChatAction extends _$AiChatAction {
 
   Future<void> _migrateLegacySessions(AiConfig config) async {
     if (_migratedPackages.contains(packageName)) return;
-    await ref.read(aiSystemMigrationProvider.future);
-    await LegacyAiConversationMigrator(
+    // 同样在任何异步 gap 之前取齐依赖，迁移过程本身可能跨越 provider 的
+    // 销毁时机（用户离开页面），之后再碰 ref 就会抛异常。
+    final migration = ref.read(aiSystemMigrationProvider.future);
+    final migrator = LegacyAiConversationMigrator(
       queryRepository: ref.read(aiChatQueryRepositoryProvider),
       catalogRepository: ref.read(aiCatalogRepositoryProvider),
       conversationRepository: ref.read(aiConversationRepositoryV2Provider),
-    ).migratePackage(packageName: packageName, config: config);
+    );
+    await migration;
+    await migrator.migratePackage(packageName: packageName, config: config);
     _migratedPackages.add(packageName);
   }
 

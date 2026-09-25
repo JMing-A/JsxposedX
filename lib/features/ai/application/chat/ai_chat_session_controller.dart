@@ -64,6 +64,11 @@ class AiChatSessionController {
   /// 上次持久化的对话级上下文快照，初始化时读回，用于恢复无法从消息
   /// 历史重建的状态（固定约束、恢复点、迁移标记）。
   AiChatSessionContext? _restoredContext;
+  /// 跨请求/跨重启的上下文记忆条目：被裁出请求窗口的历史摘要（含已
+  /// 完成的类分析工具调用记录）。每次组装后由压缩器输出去重合并的
+  /// 完整集合，持久化在上下文快照中，重启/分页后回流注入请求，
+  /// 防止模型重复分析已处理过的类。
+  List<String> _memoryEntries = const [];
   /// 上下文快照落盘串行链，避免并发写覆盖并保证关闭前写完。
   Future<void> _contextTail = Future.value();
   Future<void>? _initialization;
@@ -125,6 +130,10 @@ class AiChatSessionController {
     _restoredContext = await _conversationRepository.getConversationContext(
       conversationId,
     );
+    // 分页加载窗口外的历史（更早的类分析记录）无法从消息列表恢复，
+    // 从上下文快照读回持久化记忆条目，注入后续每次请求组装。
+    _memoryEntries =
+        _restoredContext?.sessionMemory.memoryEntries ?? const [];
     _publishContext(
       _contextBuilder.buildWithStats(
         assistant: assistant,
@@ -133,6 +142,7 @@ class AiChatSessionController {
         idFactory: _idFactory,
         now: _now().toUtc(),
         environmentSystemPrompt: environment?.systemPrompt,
+        persistedMemory: _memoryEntries,
       ),
       repaired,
     );
@@ -531,6 +541,7 @@ class AiChatSessionController {
             idFactory: _idFactory,
             now: currentTime,
             environmentSystemPrompt: environment?.systemPrompt,
+            persistedMemory: _memoryEntries,
           );
       _publishContext(requestMessages, workingHistory);
       final request = AiRequest(
@@ -1160,12 +1171,16 @@ class AiChatSessionController {
     List<AiMessage> history,
   ) {
     if (_closed) return;
+    // 记忆条目是压缩器输出去重合并后的完整集合（本轮被裁摘要 +
+    // 历史持久化条目），直接整体替换，供下一轮请求与重启后回流。
+    _memoryEntries = assembled.memoryEntries;
     final restored = _restoredContext;
     final context = _contextDeriver
         .derive(
           history: history,
           stats: assembled.stats,
           sessionRules: assembled.systemPrompt,
+          memoryEntries: assembled.memoryEntries,
         )
         .copyWith(
           // 恢复点与固定约束无法从消息历史重建，保留上次持久化的取值。

@@ -67,7 +67,9 @@ class ApkReverseAiEnvironment {
         .toList(growable: false);
 
     final apkContext = AiApkContext.fromManifest(manifest, soFiles: soFiles);
-    final manualBundle = await ApkReversePromptBuilder.exportManualBundle();
+    final manualBundle = await ApkReversePromptBuilder.exportManualBundle(
+      isZh: isZh,
+    );
     final prompt = ApkReversePromptBuilder(isZh: isZh)
         .withApkContext(apkContext)
         .withManualBundle(manualBundle)

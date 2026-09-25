@@ -429,10 +429,14 @@ class AiToolRegistry {
                 '脚本文件名 / Script file name (auto-appends .js)',
                 required: true,
               )
-              ..addString('code', '脚本完整代码 / Full script code', required: true)
+              ..addString(
+                'code',
+                '完整可运行的纯 JavaScript；禁止 Markdown 围栏、解释、TODO 和 [tradition] 前缀 / Complete runnable plain JavaScript; no Markdown fences, explanations, TODOs, or [tradition] prefix',
+                required: true,
+              )
               ..addBoolean(
                 'overwrite',
-                '是否覆盖同名文件 / Whether to overwrite existing file',
+                '完整覆盖同名文件（不会追加）/ Fully replace an existing file (never append)',
                 required: false,
               ))
             .build(),

@@ -4,6 +4,108 @@ JsXposed lets you write Xposed Hook scripts in JavaScript. All APIs are mounted 
 
 ---
 
+# 0. Script Authoring Rules (Read Before Generating Scripts)
+
+The following are hard requirements. Violating any of them will make the script fail to run or be rejected by validation.
+
+## 0.1 Use Only the `Jx.*` APIs Listed Here
+
+Native Xposed APIs are forbidden. Never guess method names or parameter orders:
+
+| Forbidden | Correct |
+|---|---|
+| `XposedHelpers.findAndHookMethod(...)` | `Jx.use(cls).hook(name, types, {...})` |
+| `XposedBridge.hookAllMethods(...)` | `Jx.use(cls).hookAllMethods(name, {...})` |
+| `XposedBridge.log(...)` | `Jx.log(...)` |
+| `XposedHelpers.getObjectField(obj, name)` | `Jx.wrap(obj).getField(name)` |
+| `XposedHelpers.setIntField(...)` | `Jx.setIntField(obj, name, v)` |
+
+Any API not found in this document must be treated as non-existent.
+
+## 0.2 Hook Callbacks Take a Single `param` Argument
+
+Do not write `function(self, ...args)` or any other form:
+
+```javascript
+Jx.use("com.example.Target").hook("checkVip", [], {
+  before: function(param) { /* before the method runs */ },
+  after:  function(param) { /* after the method runs */ }
+});
+```
+
+Members available on `param`:
+
+| Member | Description |
+|---|---|
+| `param.thisObject` | Current instance (`null` for static methods) |
+| `param.method` | The hooked method object |
+| `param.argsLength` | Number of arguments |
+| `param.getArg(i)` / `param.setArg(i, v)` | Read / write argument i |
+| `param.getResult()` / `param.setResult(v)` | Read / write the return value. Setting a result in `before` skips the original method; in `after` it overrides the return value |
+| `param.hasThrowable()` / `param.getThrowable()` / `param.setThrowable(t)` | Read / write the thrown exception |
+
+## 0.3 The Parameter Type Array Is Mandatory
+
+The second argument is the Java parameter type array. Pass `[]` for no-arg methods; it cannot be omitted:
+
+```javascript
+Jx.use(cls).hook("isVip", [], { ... });                               // no args
+Jx.use(cls).hook("setFlag", ["int", "java.lang.String"], { ... });    // (int, String)
+```
+
+Use Java type names: `"int"`, `"boolean"`, `"long"`, `"java.lang.String"`, `"java.util.List"`.
+
+## 0.4 Wrap Every Callback in try-catch
+
+An exception in one callback aborts that hook. Always record it with `Jx.logException`:
+
+```javascript
+Jx.use("com.example.Target").hook("checkVip", [], {
+  after: function(param) {
+    try {
+      param.setResult(true);
+    } catch (e) {
+      Jx.logException(e);
+    }
+  }
+});
+```
+
+## 0.5 Log with `Jx.log` / `Jx.logException`
+
+The log tag is `JsxposedX-JS` and output is visible in the script log panel. Log key branches, inputs and return values.
+
+## 0.6 Do Not Put `[tradition]` Inside the Script
+
+`[tradition]` is a **filename prefix** for Xposed scripts and is added automatically on save. Including it in the code body causes errors.
+
+## 0.7 Minimal Working Skeleton
+
+```javascript
+// Goal: make com.example.Target#checkVip() always return true
+Jx.use("com.example.Target").hook("checkVip", [], {
+  before: function(param) {
+    Jx.log("[Hook] checkVip called");
+  },
+  after: function(param) {
+    try {
+      Jx.log("[Hook] original result: " + param.getResult());
+      param.setResult(true);
+    } catch (e) {
+      Jx.logException(e);
+    }
+  }
+});
+```
+
+To pin a return value in one line:
+
+```javascript
+Jx.use("com.example.Target").returnConst("checkVip", [], true);
+```
+
+---
+
 # 1. Core API (Native Bridge Layer)
 
 These are low-level APIs directly exposed by the Kotlin Bridge, offering full functionality for scenarios requiring precise control.

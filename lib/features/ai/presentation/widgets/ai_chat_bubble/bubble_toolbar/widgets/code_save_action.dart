@@ -20,12 +20,16 @@ class CodeSaveAction extends ConsumerWidget {
   final String code;
   final String? packageName;
   final String language;
+  final String? scriptType;
+  final String? suggestedFileName;
 
   const CodeSaveAction({
     super.key,
     required this.code,
     required this.packageName,
     required this.language,
+    this.scriptType,
+    this.suggestedFileName,
   });
 
   bool get _isJavaScriptFile {
@@ -129,10 +133,15 @@ class CodeSaveAction extends ConsumerWidget {
       return;
     }
 
-    final nameController = TextEditingController(
-      text: 'ai_hook_${DateTime.now().millisecondsSinceEpoch}.js',
-    );
-    String? scriptType;
+    // 使用 AI 建议的文件名或生成默认文件名
+    final defaultFileName = suggestedFileName?.isNotEmpty == true
+        ? suggestedFileName!
+        : 'ai_hook_${DateTime.now().millisecondsSinceEpoch}.js';
+    
+    final nameController = TextEditingController(text: defaultFileName);
+    
+    // 使用 AI 标记的脚本类型（如果有）
+    String? selectedScriptType = scriptType;
 
     await CustomDialog.show(
       title: Text(context.l10n.saveScript, style: TextStyle(fontSize: 16.sp)),
@@ -168,8 +177,8 @@ class CodeSaveAction extends ConsumerWidget {
                     label: 'Frida',
                     icon: Icons.bolt,
                     color: const Color(0xFFFF6D00),
-                    selected: scriptType == 'frida',
-                    onTap: () => setState(() => scriptType = 'frida'),
+                    selected: selectedScriptType == 'frida',
+                    onTap: () => setState(() => selectedScriptType = 'frida'),
                   ),
                 ),
                 SizedBox(width: 10.w),
@@ -178,8 +187,8 @@ class CodeSaveAction extends ConsumerWidget {
                     label: 'Xposed',
                     icon: Icons.extension,
                     color: const Color(0xFF7C4DFF),
-                    selected: scriptType == 'xposed',
-                    onTap: () => setState(() => scriptType = 'xposed'),
+                    selected: selectedScriptType == 'xposed',
+                    onTap: () => setState(() => selectedScriptType = 'xposed'),
                   ),
                 ),
               ],
@@ -194,7 +203,7 @@ class CodeSaveAction extends ConsumerWidget {
                 ),
                 SizedBox(width: 8.w),
                 FilledButton(
-                  onPressed: scriptType == null
+                  onPressed: selectedScriptType == null
                       ? null
                       : () async {
                           final name = nameController.text.trim();
@@ -202,13 +211,13 @@ class CodeSaveAction extends ConsumerWidget {
                             return;
                           }
 
-                          final fileName = scriptType == 'xposed'
+                          final fileName = selectedScriptType == 'xposed'
                               ? _normalizeXposedTraditionFileName(name)
                               : _normalizeScriptFileName(name);
 
                           SmartDialog.dismiss();
                           try {
-                            if (scriptType == 'frida') {
+                            if (selectedScriptType == 'frida') {
                               await ref.read(
                                 createFridaScriptProvider(
                                   packageName: pkg,
@@ -240,7 +249,7 @@ class CodeSaveAction extends ConsumerWidget {
                             if (context.mounted) {
                               ToastMessage.show(
                                 context.l10n.aiScriptSavedTo(
-                                  scriptType == 'frida'
+                                  selectedScriptType == 'frida'
                                       ? context.l10n.fridaProject
                                       : context.l10n.xposedProject,
                                   fileName,

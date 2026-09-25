@@ -476,6 +476,12 @@
   "aiContext": "Context",
   "aiContextTitle": "Context",
   "aiContextBudget": "Context budget",
+  "aiContextUsage": "Usage",
+  "aiContextMemoryEntries": "Memory entries",
+  "aiContextHighWatermark": "High watermark",
+  "aiContextHighWatermarkReached": "Reached",
+  "aiContextHighWatermarkNotReached": "Not reached",
+  "aiContextHighWatermarkAlert": "Context is near its capacity limit; history was compacted automatically",
   "aiContextRemaining": "Remaining budget",
   "aiContextLayers": "Assembled layers",
   "aiContextRecentRounds": "Recent raw rounds",
@@ -812,6 +818,100 @@
       "target": { "type": "String" },
       "name": { "type": "String" }
     }
+  },
+  "runScript": "Run",
+  "@runScript": {
+    "description": "Run script button"
+  },
+  "aiScriptRunning": "{target} script enabled: {name}",
+  "@aiScriptRunning": {
+    "description": "AI script running success message",
+    "placeholders": {
+      "target": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "exportConversation": "Export",
+  "@exportConversation": {
+    "description": "Export conversation button"
+  },
+  "exportingConversation": "Exporting conversation...",
+  "@exportingConversation": {
+    "description": "Exporting conversation message"
+  },
+  "conversationExported": "Conversation exported to {path}",
+  "@conversationExported": {
+    "description": "Conversation export success message",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "description": "Export failed message",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFormat": "Export Format",
+  "@exportFormat": {
+    "description": "Export format label"
+  },
+  "exportOptions": "Export Options",
+  "@exportOptions": {
+    "description": "Export options label"
+  },
+  "includeToolCalls": "Include Tool Calls",
+  "@includeToolCalls": {
+    "description": "Include tool calls option"
+  },
+  "includeToolCallsDesc": "Export AI tool invocations and parameters",
+  "@includeToolCallsDesc": {
+    "description": "Include tool calls description"
+  },
+  "includeThinking": "Include Thinking Process",
+  "@includeThinking": {
+    "description": "Include thinking process option"
+  },
+  "includeThinkingDesc": "Export AI reasoning and thought content",
+  "@includeThinkingDesc": {
+    "description": "Include thinking process description"
+  },
+  "preview": "Preview",
+  "@preview": {
+    "description": "Preview button"
+  },
+  "previewTruncated": "Preview content truncated",
+  "@previewTruncated": {
+    "description": "Preview truncated message"
+  },
+  "copyToClipboard": "Copy",
+  "@copyToClipboard": {
+    "description": "Copy to clipboard button"
+  },
+  "copiedToClipboard": "Copied to clipboard",
+  "@copiedToClipboard": {
+    "description": "Copy success message"
+  },
+  "share": "Share",
+  "@share": {
+    "description": "Share button"
+  },
+  "conversationExport": "Conversation Export",
+  "@conversationExport": {
+    "description": "Conversation export title"
+  },
+  "exportToFile": "Save File",
+  "@exportToFile": {
+    "description": "Export to file button"
   },
   "aiScriptSaveFailed": "Save failed: {error}",
   "@aiScriptSaveFailed": {

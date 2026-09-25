@@ -1,3 +1,14 @@
+# Jx / Fx Hook API 速查
+
+> **硬性规则（速记）**
+> 1. 只用本文件列出的 API，禁止原生 `XposedHelpers` / `XposedBridge` / `Java.use(` / `Java.perform(`。
+> 2. Xposed 回调只有 `param`：`function(param)`；Frida 是 `function(args, thisObj)`。**两者不通用**。
+> 3. 参数类型数组必传，无参写 `[]`。
+> 4. 每个回调都包 try-catch；出错用 `Jx.logException(e)` 或 `console.log(e)`。
+> 5. Frida 的 `after` 只有返回 **truthy** 才会替换返回值；要返回 `false` 用 `returnConst` 或 `replace`。
+> 6. Frida 脚本不要手写 `Java.perform`，加载器已自动包裹。
+> 7. `[tradition]` 是文件名前缀，由保存时自动添加，**不要写进代码**。
+
 # Xposed Hook API (Jx)
 
 ## 基础 API
@@ -67,7 +78,7 @@ Jx.getInterfaces(className) → string[] / Jx.instanceOf(obj, className) → boo
 # Frida Hook API (Fx)
 
 ## Frida 原生 API
-Java.perform(fn) — 进入 Java VM 上下文（必须）
+Java.perform(fn) — 进入 Java VM 上下文（脚本中**无需手写**，加载器已自动包裹）
 Java.use(className) → wrapper / Java.choose(className, {onMatch, onComplete}) — 枚举堆实例
 Java.cast(obj, klass) / Java.enumerateLoadedClasses({onMatch, onComplete})
 Java.enumerateClassLoaders({onMatch, onComplete}) / Java.scheduleOnMainThread(fn)
