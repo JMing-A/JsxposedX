@@ -10,6 +10,7 @@ import 'package:JsxposedX/features/ai/presentation/providers/environments/apk_re
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
+import 'package:JsxposedX/features/ai/presentation/states/ai_chat_view_message.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_conversation_drawer.dart';
@@ -79,6 +80,7 @@ class AiReversePage extends HookConsumerWidget {
     final currentPage = useState(0);
     final showScriptConsole = useState(false);
     final selectedScriptEvent = useState<({String title, String details})?>(null);
+    final quotedMessage = useState<AiChatViewMessage?>(null);
     final scaffoldKey = useMemoized(() => GlobalKey<ScaffoldState>());
     final conversationBinding = ref.read(scriptConversationBindingProvider);
     ref.watch(logcatProvider);
@@ -258,6 +260,7 @@ class AiReversePage extends HookConsumerWidget {
                                         ? '点击左上角的对话图标打开聊天列表'
                                         : 'Tap the conversation icon to open your chats')
                                   : null,
+                              onQuote: (message) => quotedMessage.value = message,
                             ),
                             ApkAnalysisPage(
                               packageName: packageName,
@@ -269,13 +272,44 @@ class AiReversePage extends HookConsumerWidget {
                       if (currentPage.value == 0)
                         AiChatInput(
                           packageName: packageName,
-                          inputTopContent: selectedScriptEvent.value == null
+                          inputTopContent:
+                              selectedScriptEvent.value == null &&
+                                  quotedMessage.value == null
                               ? null
-                              : _SelectedScriptRecordBar(
-                                  title: selectedScriptEvent.value!.title,
-                                  details: selectedScriptEvent.value!.details,
-                                  onDismiss: () => selectedScriptEvent.value = null,
+                              : Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (quotedMessage.value != null)
+                                      _QuoteReplyBar(
+                                        excerpt: _quoteExcerpt(
+                                          quotedMessage.value!.content,
+                                        ),
+                                        onDismiss: () =>
+                                            quotedMessage.value = null,
+                                      ),
+                                    if (selectedScriptEvent.value != null)
+                                      _SelectedScriptRecordBar(
+                                        title: selectedScriptEvent.value!.title,
+                                        details: selectedScriptEvent.value!.details,
+                                        onDismiss: () =>
+                                            selectedScriptEvent.value = null,
+                                      ),
+                                  ],
                                 ),
+                          composeOutgoingText: (rawText) {
+                            final quoted = quotedMessage.value;
+                            if (quoted == null) return rawText;
+                            final excerpt = _quoteExcerpt(quoted.content);
+                            final prefix = '> ${excerpt.replaceAll('\n', '\n> ')}';
+                            if (rawText.isEmpty) {
+                              return '$prefix\n\n';
+                            }
+                            return '$prefix\n\n$rawText';
+                          },
+                          hasComposedContent: quotedMessage.value != null,
+                          onSendCommitted: () {
+                            quotedMessage.value = null;
+                          },
                           onRetryInitialization: initializeReverseSession,
                           onOpenAnalysis: () {
                             currentPage.value = 1;
@@ -311,6 +345,74 @@ class AiReversePage extends HookConsumerWidget {
     );
   }
 
+}
+
+/// 截取引用摘录：折叠空白、限制长度，避免超长消息撑爆输入框上方的卡片。
+String _quoteExcerpt(String content, {int maxLength = 140}) {
+  final normalized = content.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return '${normalized.substring(0, maxLength)}…';
+}
+
+class _QuoteReplyBar extends StatelessWidget {
+  const _QuoteReplyBar({required this.excerpt, required this.onDismiss});
+
+  final String excerpt;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: context.colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.format_quote_rounded,
+            size: 18,
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.isZh ? '引用回复' : 'Quoting',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: context.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  excerpt,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: context.isZh ? '取消引用' : 'Cancel quote',
+            onPressed: onDismiss,
+            icon: const Icon(Icons.close, size: 18),
+            color: context.colorScheme.onSurfaceVariant,
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SelectedScriptRecordBar extends StatelessWidget {

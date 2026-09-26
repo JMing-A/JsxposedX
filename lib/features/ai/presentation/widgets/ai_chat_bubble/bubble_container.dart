@@ -1,4 +1,4 @@
-﻿import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 
@@ -64,16 +64,25 @@ abstract class BaseBubbleContainerPart {
 
   @protected
   MainAxisAlignment resolveMainAxisAlignment(BubbleState state) {
+    if (state.isSystem) {
+      return MainAxisAlignment.center;
+    }
     return state.isUser ? MainAxisAlignment.end : MainAxisAlignment.start;
   }
 
   @protected
   CrossAxisAlignment resolveCrossAxisAlignment(BubbleState state) {
+    if (state.isSystem) {
+      return CrossAxisAlignment.center;
+    }
     return CrossAxisAlignment.end;
   }
 
   @protected
   Alignment resolveBubbleAlignment(BubbleState state) {
+    if (state.isSystem) {
+      return Alignment.center;
+    }
     return state.isUser ? Alignment.centerRight : Alignment.centerLeft;
   }
 
@@ -83,6 +92,12 @@ abstract class BaseBubbleContainerPart {
     required bool isCompact,
     required double scale,
   }) {
+    if (state.isSystem) {
+      return EdgeInsets.symmetric(
+        vertical: (isCompact ? 6 : 8) * scale,
+        horizontal: (isCompact ? 12 : 16) * scale,
+      );
+    }
     return EdgeInsets.only(bottom: (isCompact ? 12 : 20) * scale);
   }
 
@@ -92,6 +107,12 @@ abstract class BaseBubbleContainerPart {
     required bool isCompact,
     required double scale,
   }) {
+    if (state.isSystem) {
+      return EdgeInsets.symmetric(
+        horizontal: (isCompact ? 10 : 12) * scale,
+        vertical: (isCompact ? 4 : 5) * scale,
+      );
+    }
     return EdgeInsets.symmetric(
       horizontal: state.isToolResult
           ? 0
@@ -124,6 +145,17 @@ abstract class BaseBubbleContainerPart {
   }) {
     if (state.isToolResult) {
       return null;
+    }
+
+    // 系统提示（如上下文压缩、角色设定回执）：居中胶囊样式，
+    // 弱化背景与字体，与用户/AI 对话气泡明确区分。
+    if (state.isSystem) {
+      return BoxDecoration(
+        color: context.isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(999 * scale),
+      );
     }
 
     return BoxDecoration(

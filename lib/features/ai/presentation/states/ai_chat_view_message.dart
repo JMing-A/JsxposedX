@@ -18,6 +18,7 @@ class AiChatViewMessage {
     this.sourceMessageId,
     this.toolInvocations = const <AiToolInvocationView>[],
     this.errorHint,
+    this.imageSources = const <String>[],
   });
 
   final String id;
@@ -34,4 +35,8 @@ class AiChatViewMessage {
   /// 此时气泡保持正常样式与已有内容（isError 为 false），错误信息以附加
   /// 提示条的形式补充展示，而不是把整个气泡标记为异常。
   final String? errorHint;
+
+  /// AI 回复中携带的图片源（http(s) 链接、data URI 或本地绝对路径）。
+  /// 对应领域层的 [AiContentPart.image]，用于图文混排展示。
+  final List<String> imageSources;
 }

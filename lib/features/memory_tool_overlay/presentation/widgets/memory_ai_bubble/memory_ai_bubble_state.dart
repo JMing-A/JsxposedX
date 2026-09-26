@@ -20,6 +20,4 @@ class MemoryAiBubbleState extends BubbleState {
 
   @override
   bool get isToolResult => isToolResultBubble || super.isToolResult;
-
-  bool get isSystem => role == 'system';
 }

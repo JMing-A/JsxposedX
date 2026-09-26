@@ -45,6 +45,7 @@ class AiChatList extends HookConsumerWidget {
     this.customSubtitle,
     this.bubbleBuilder,
     this.streamingBubbleBuilder,
+    this.onQuote,
   });
 
   final List<AiChatViewMessage> messages;
@@ -56,6 +57,10 @@ class AiChatList extends HookConsumerWidget {
   final String? customSubtitle;
   final AiChatBubbleBuilder? bubbleBuilder;
   final AiChatStreamingBubbleBuilder? streamingBubbleBuilder;
+
+  /// 引用回复回调：用户选择「引用回复」时把消息回传给页面，
+  /// 由页面负责在输入框上方展示引用卡片。
+  final ValueChanged<AiChatViewMessage>? onQuote;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -73,6 +78,8 @@ class AiChatList extends HookConsumerWidget {
     final wasNearLatest = useRef(true);
     final previousMessageIds = useRef<List<String>>(<String>[]);
     final previousSessionId = useRef(chatState.currentSessionId);
+    // 记录需要播放入场动画的消息（仅新追加的消息，历史加载不播放）。
+    final enteringMessageIds = useRef<Set<String>>(<String>{});
 
     useEffect(() {
       void updateJumpButton() {
@@ -103,6 +110,7 @@ class AiChatList extends HookConsumerWidget {
       final previousIds = previousMessageIds.value;
       previousMessageIds.value = messageIds;
       if (sessionChanged) {
+        enteringMessageIds.value = <String>{};
         unreadMessageCount.value = 0;
         wasNearLatest.value = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -113,6 +121,9 @@ class AiChatList extends HookConsumerWidget {
 
       final addedCount = appendedMessageCount(previousIds, messageIds);
       if (addedCount == 0) return null;
+      enteringMessageIds.value.addAll(
+        messageIds.sublist(messageIds.length - addedCount),
+      );
       if (wasNearLatest.value) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (scrollController.hasClients && wasNearLatest.value) {
@@ -170,6 +181,18 @@ class AiChatList extends HookConsumerWidget {
         (totalVisibleCount - messages.length).clamp(0, totalVisibleCount) +
         (chatState.hasOlderMessages ? 1 : 0);
     final reversedMessages = messages.reversed.toList(growable: false);
+
+    /// 仅对新追加的消息播放入场动画；已渲染过的消息直接返回原 child。
+    Widget wrapEntryAnimation(String messageId, Widget child) {
+      if (!enteringMessageIds.value.contains(messageId)) {
+        return child;
+      }
+      return _BubbleEnterTransition(
+        onCompleted: () => enteringMessageIds.value.remove(messageId),
+        child: child,
+      );
+    }
+
     final retryLabel =
         chatState.lastResponseIssue == AiResponseIssue.partialResponse
         ? (chatState.sessionContext.hasPendingToolPhase
@@ -252,26 +275,33 @@ class AiChatList extends HookConsumerWidget {
                               inv.status ==
                               AiToolInvocationViewStatus.awaitingApproval,
                         );
-                    return _StreamingAiChatBubble(
-                      key: ValueKey(message.id),
-                      initialContent: message.content,
-                      role: message.role,
-                      isError: message.isError,
-                      errorHint: message.errorHint,
-                      retryLabel: retryLabel,
-                      streamingContentStream:
-                          chatNotifier.streamingContentStream,
-                      streamingThinkingStream:
-                          chatNotifier.streamingThinkingStream,
-                      toolInvocations: message.toolInvocations,
-                      onRetry: () => chatNotifier.retryByMessageId(message.id),
-                      packageName: packageName,
-                      onToolApprove: streamingHasApproval
-                          ? () => chatNotifier.approvePendingTools()
-                          : null,
-                      onToolReject: streamingHasApproval
-                          ? () => chatNotifier.rejectPendingTools()
-                          : null,
+                    return wrapEntryAnimation(
+                      message.id,
+                      _StreamingAiChatBubble(
+                        key: ValueKey(message.id),
+                        initialContent: message.content,
+                        role: message.role,
+                        isError: message.isError,
+                        errorHint: message.errorHint,
+                        retryLabel: retryLabel,
+                        streamingContentStream:
+                            chatNotifier.streamingContentStream,
+                        streamingThinkingStream:
+                            chatNotifier.streamingThinkingStream,
+                        toolInvocations: message.toolInvocations,
+                        onRetry: () =>
+                            chatNotifier.retryByMessageId(message.id),
+                        packageName: packageName,
+                        onToolApprove: streamingHasApproval
+                            ? () => chatNotifier.approvePendingTools()
+                            : null,
+                        onToolReject: streamingHasApproval
+                            ? () => chatNotifier.rejectPendingTools()
+                            : null,
+                        onQuote: onQuote == null
+                            ? null
+                            : () => onQuote!(message),
+                      ),
                     );
                   }
 
@@ -283,8 +313,10 @@ class AiChatList extends HookConsumerWidget {
                             AiToolInvocationViewStatus.awaitingApproval,
                       );
 
-                  return RepaintBoundary(
-                    child: bubbleBuilder != null
+                  return wrapEntryAnimation(
+                    message.id,
+                    RepaintBoundary(
+                      child: bubbleBuilder != null
                         ? bubbleBuilder!(
                             message: message,
                             retryLabel: retryLabel,
@@ -349,13 +381,18 @@ class AiChatList extends HookConsumerWidget {
                                 : null,
                             rawDetails: message.rawDetails,
                             toolInvocations: message.toolInvocations,
+                            imageSources: message.imageSources,
                             onToolApprove: hasApprovalActions
                                 ? () => chatNotifier.approvePendingTools()
                                 : null,
                             onToolReject: hasApprovalActions
                                 ? () => chatNotifier.rejectPendingTools()
                                 : null,
+                            onQuote: onQuote == null
+                                ? null
+                                : () => onQuote!(message),
                           ),
+                    ),
                   );
                 },
               ),
@@ -754,6 +791,7 @@ class _StreamingAiChatBubble extends HookWidget {
     this.packageName,
     this.onToolApprove,
     this.onToolReject,
+    this.onQuote,
   });
 
   final String initialContent;
@@ -768,6 +806,7 @@ class _StreamingAiChatBubble extends HookWidget {
   final String? packageName;
   final VoidCallback? onToolApprove;
   final VoidCallback? onToolReject;
+  final VoidCallback? onQuote;
 
   @override
   Widget build(BuildContext context) {
@@ -842,6 +881,41 @@ class _StreamingAiChatBubble extends HookWidget {
         toolInvocations: toolInvocations,
         onToolApprove: onToolApprove,
         onToolReject: onToolReject,
+        onQuote: onQuote,
+      ),
+    );
+  }
+}
+
+/// 气泡入场动画：淡入 + 轻微上移，仅播放一次。
+class _BubbleEnterTransition extends HookWidget {
+  const _BubbleEnterTransition({required this.child, this.onCompleted});
+
+  final Widget child;
+  final VoidCallback? onCompleted;
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = useAnimationController(
+      duration: const Duration(milliseconds: 260),
+    );
+    useEffect(() {
+      controller.forward().whenComplete(() => onCompleted?.call());
+      // useAnimationController 会自行 dispose，这里不能再手动 dispose。
+      return null;
+    }, const <Object>[]);
+    final curved = CurvedAnimation(
+      parent: controller,
+      curve: Curves.easeOutCubic,
+    );
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.12),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
       ),
     );
   }

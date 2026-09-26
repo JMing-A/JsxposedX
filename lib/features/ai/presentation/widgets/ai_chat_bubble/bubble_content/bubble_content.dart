@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_states/bubble_state.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_toolbar/bubble_toolbar.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/widgets/ai_code_element_builder.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/widgets/ai_math_element_builder.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/widgets/dot_loading_indicator.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/widgets/tool_result_card.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/clickable_path_text.dart';
@@ -33,6 +34,8 @@ abstract class BaseBubbleContentPart {
     Widget body;
     if (state.isUser && AiMultimodalMessageCodec.isEncoded(state.content)) {
       body = buildUserAttachments(context, state, toolbarPart: toolbarPart);
+    } else if (state.isSystem) {
+      body = buildSystemHint(context, state);
     } else if (state.isLoading) {
       body = buildLoading(context, state);
     } else if (state.toolInvocations.isNotEmpty) {
@@ -63,6 +66,22 @@ abstract class BaseBubbleContentPart {
   @protected
   Widget buildLoading(BuildContext context, BubbleState state) {
     return DotLoadingIndicator(statusText: state.loadingHint);
+  }
+
+  /// 系统提示：居中、小字、弱化的纯文本展示（如上下文压缩回执）。
+  @protected
+  Widget buildSystemHint(BuildContext context, BubbleState state) {
+    final isCompact = AiChatCompactScope.of(context);
+    final scale = AiChatCompactScope.scaleOf(context);
+    return Text(
+      state.content,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontSize: (isCompact ? 11 : 12) * scale,
+        height: 1.4,
+        color: context.colorScheme.onSurface.withValues(alpha: 0.62),
+      ),
+    );
   }
 
   @protected
@@ -136,7 +155,7 @@ abstract class BaseBubbleContentPart {
   }) {
     final parts = AiThinkingMarkup.split(resolveMarkdownData(context, state));
     if (parts.hasThinking) {
-      return _ThinkingMarkdownContent(
+      final thinking = _ThinkingMarkdownContent(
         state: state,
         toolbarPart: toolbarPart,
         thinkingContent: parts.thinking,
@@ -144,9 +163,22 @@ abstract class BaseBubbleContentPart {
         duration: parts.duration,
         theme: buildMarkdownTheme(context, state),
       );
+      if (state.imageSources.isEmpty) {
+        return thinking;
+      }
+      final scale = AiChatCompactScope.scaleOf(context);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          thinking,
+          SizedBox(height: 8 * scale),
+          _buildAssistantImages(context, state),
+        ],
+      );
     }
 
-    return _buildMarkdownBody(
+    final body = _buildMarkdownBody(
       context,
       state,
       toolbarPart: toolbarPart,
@@ -155,6 +187,33 @@ abstract class BaseBubbleContentPart {
           ? context.l10n.aiBubbleUserTextTitle
           : context.l10n.aiBubbleAssistantTextTitle,
       showStreamingCursor: state.streaming && !state.isUser,
+    );
+    if (state.imageSources.isEmpty) {
+      return body;
+    }
+    final scale = AiChatCompactScope.scaleOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        body,
+        SizedBox(height: 8 * scale),
+        _buildAssistantImages(context, state),
+      ],
+    );
+  }
+
+  /// 渲染 AI 回复携带的图片。复用 [_MarkdownImage] 的三态能力
+  /// （网络链接 / data URI / 本地绝对路径）。
+  Widget _buildAssistantImages(BuildContext context, BubbleState state) {
+    final scale = AiChatCompactScope.scaleOf(context);
+    return Wrap(
+      spacing: 8 * scale,
+      runSpacing: 8 * scale,
+      children: [
+        for (final source in state.imageSources)
+          _MarkdownImage(src: source, uiScale: scale),
+      ],
     );
   }
 
@@ -196,9 +255,24 @@ abstract class BaseBubbleContentPart {
                   : Colors.deepOrange),
       ),
       codeblockDecoration: const BoxDecoration(),
+      blockquote: TextStyle(
+        color: state.isUser
+            ? Colors.white.withValues(alpha: 0.92)
+            : (context.isDark
+                  ? Colors.white.withValues(alpha: 0.85)
+                  : Colors.black.withValues(alpha: 0.75)),
+        fontSize: (isCompact ? 13 : 15) * scale,
+        height: 1.5,
+      ),
       blockquoteDecoration: BoxDecoration(
-        color: context.isDark ? Colors.white10 : Colors.grey[200],
+        color: state.isUser
+            ? Colors.white.withValues(alpha: 0.16)
+            : (context.isDark ? Colors.white10 : Colors.grey[200]),
         borderRadius: BorderRadius.circular(4),
+      ),
+      blockquotePadding: EdgeInsets.symmetric(
+        horizontal: 10 * scale,
+        vertical: 8 * scale,
       ),
       listBullet: TextStyle(
         color: state.isUser ? Colors.white : context.colorScheme.primary,
@@ -230,7 +304,7 @@ abstract class BaseBubbleContentPart {
   }) {
     final theme = buildMarkdownTheme(context, state);
     final cursorEnabled = showStreamingCursor && markdown.trim().isNotEmpty;
-    return GestureDetector(
+    final body = GestureDetector(
       onLongPress: () => toolbarPart.showTextActionsSheet(
         context,
         title: actionTitle ?? context.l10n.aiBubbleAssistantTextTitle,
@@ -239,6 +313,7 @@ abstract class BaseBubbleContentPart {
         onEdit: state.isUser ? state.onEdit : null,
         onDelete: state.onDelete,
         onRegenerate: state.isUser ? state.onRegenerate : null,
+        onQuote: state.onQuote,
         rawDetails: state.rawDetails,
       ),
       child: MarkdownBody(
@@ -246,9 +321,11 @@ abstract class BaseBubbleContentPart {
         styleSheet: theme,
         selectable: false,
         onTapLink: (text, href, title) => _handleMarkdownLink(context, href),
-        inlineSyntaxes: cursorEnabled
-            ? <md.InlineSyntax>[_StreamingCursorSyntax()]
-            : null,
+        inlineSyntaxes: <md.InlineSyntax>[
+          ...buildMathInlineSyntaxes(),
+          if (cursorEnabled) _StreamingCursorSyntax(),
+        ],
+        blockSyntaxes: buildMathBlockSyntaxes(),
         builders: {
           ...buildMarkdownBuilders(
             context,
@@ -261,6 +338,7 @@ abstract class BaseBubbleContentPart {
         fitContent: true,
       ),
     );
+    return body;
   }
 
 }
@@ -280,8 +358,19 @@ Map<String, MarkdownElementBuilder> buildMarkdownBuilders(
     ),
     'table': _TableElementBuilder(uiScale: scale),
     'img': _MarkdownImageElementBuilder(uiScale: scale),
+    kAiMathInlineTag: AiMathElementBuilder(uiScale: scale),
+    kAiMathBlockTag: AiMathElementBuilder(uiScale: scale),
   };
 }
+
+/// 注册 LaTeX 公式语法（行内 `$...$` / 块级 `$$...$$`）。
+List<md.InlineSyntax> buildMathInlineSyntaxes() => <md.InlineSyntax>[
+  AiMathInlineSyntax(),
+];
+
+List<md.BlockSyntax> buildMathBlockSyntaxes() => <md.BlockSyntax>[
+  AiMathBlockSyntax(),
+];
 
 /// 处理 Markdown 链接点击：绝对文件路径跳转文件查看器，其余走外部浏览器。
 void _handleMarkdownLink(BuildContext context, String? href) {
@@ -384,19 +473,37 @@ class _StreamingCursorBuilder extends MarkdownElementBuilder {
   }
 }
 
-class _MarkdownStreamingCursor extends StatelessWidget {
+/// 流式输出光标：以闪烁动画提示「仍在持续生成」。
+class _MarkdownStreamingCursor extends HookWidget {
   const _MarkdownStreamingCursor({required this.style});
 
   final TextStyle style;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      '▌',
-      style: style.copyWith(
-        color: Theme.of(context).colorScheme.primary,
-        fontSize: (style.fontSize ?? 15) * 1.08,
-        fontWeight: FontWeight.w800,
+    final controller = useAnimationController(
+      duration: const Duration(milliseconds: 900),
+    );
+    useEffect(() {
+      controller.repeat(reverse: true);
+      // useAnimationController 会自行 dispose，这里不能再手动 dispose。
+      return null;
+    }, const <Object>[]);
+    final animation = useMemoized(
+      () => Tween<double>(begin: 0.25, end: 1).animate(
+        CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+      ),
+      <Object>[controller],
+    );
+    return FadeTransition(
+      opacity: animation,
+      child: Text(
+        '▌',
+        style: style.copyWith(
+          color: Theme.of(context).colorScheme.primary,
+          fontSize: (style.fontSize ?? 15) * 1.08,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -505,6 +612,7 @@ class _ThinkingMarkdownContent extends HookWidget {
                         onEdit: null,
                         onDelete: state.onDelete,
                         onRegenerate: null,
+                        onQuote: state.onQuote,
                         rawDetails: state.rawDetails,
                       ),
                       child: MarkdownBody(
@@ -538,6 +646,7 @@ class _ThinkingMarkdownContent extends HookWidget {
               onEdit: null,
               onDelete: state.onDelete,
               onRegenerate: null,
+              onQuote: state.onQuote,
               rawDetails: state.rawDetails,
             ),
             child: MarkdownBody(
@@ -548,9 +657,11 @@ class _ThinkingMarkdownContent extends HookWidget {
               selectable: false,
               onTapLink: (text, href, title) =>
                   _handleMarkdownLink(context, href),
-              inlineSyntaxes: showAnswerCursor
-                  ? <md.InlineSyntax>[_StreamingCursorSyntax()]
-                  : null,
+              inlineSyntaxes: <md.InlineSyntax>[
+                ...buildMathInlineSyntaxes(),
+                if (showAnswerCursor) _StreamingCursorSyntax(),
+              ],
+              blockSyntaxes: buildMathBlockSyntaxes(),
               builders: {
                 ...buildMarkdownBuilders(
                   context,

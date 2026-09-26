@@ -26,6 +26,7 @@ abstract class BaseBubbleToolbarPart {
     VoidCallback? onEdit,
     VoidCallback? onDelete,
     VoidCallback? onRegenerate,
+    VoidCallback? onQuote,
     String? rawDetails,
   }) async {
     final normalized = text.trim();
@@ -71,6 +72,15 @@ abstract class BaseBubbleToolbarPart {
               onTap: () {
                 Navigator.of(context).pop();
                 onEdit();
+              },
+            ),
+          if (onQuote != null)
+            _BubbleActionTile(
+              icon: Icons.format_quote_rounded,
+              title: context.isZh ? '引用回复' : 'Quote reply',
+              onTap: () {
+                Navigator.of(context).pop();
+                onQuote();
               },
             ),
           if (onRegenerate != null)

@@ -15,6 +15,9 @@ class BubbleState {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onRegenerate;
+
+  /// 引用回复：把当前消息作为引用块带入输入框。
+  final VoidCallback? onQuote;
   final String? rawDetails;
   final List<AiToolInvocationView> toolInvocations;
   final VoidCallback? onToolApprove;
@@ -23,6 +26,10 @@ class BubbleState {
   /// 非侵入式错误提示：气泡内容正常展示时，流式中断/失败的补充说明。
   /// 非空时不影响 isError（红边框、重试按钮）等既有样式。
   final String? errorHint;
+
+  /// AI 回复携带的图片源（http(s) 链接、data URI 或本地绝对路径），
+  /// 与正文一起图文混排展示。
+  final List<String> imageSources;
 
   const BubbleState({
     required this.content,
@@ -36,18 +43,23 @@ class BubbleState {
     this.onEdit,
     this.onDelete,
     this.onRegenerate,
+    this.onQuote,
     this.rawDetails,
     this.toolInvocations = const <AiToolInvocationView>[],
     this.onToolApprove,
     this.onToolReject,
     this.errorHint,
+    this.imageSources = const <String>[],
   });
 
   bool get isUser => role == 'user';
 
+  bool get isSystem => role == 'system';
+
   bool get isLoading =>
       !isUser &&
       content.isEmpty &&
+      imageSources.isEmpty &&
       !isError &&
       toolInvocations.isEmpty;
 

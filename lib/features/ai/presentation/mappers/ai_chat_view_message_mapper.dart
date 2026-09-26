@@ -67,7 +67,24 @@ class AiChatViewMessageMapper {
     }
 
     for (final message in messages) {
-      if (message.role == AiMessageRole.system) continue;
+      if (message.role == AiMessageRole.system) {
+        final text = message.parts
+            .whereType<AiTextPart>()
+            .map((part) => part.text)
+            .join()
+            .trim();
+        if (text.isEmpty) continue;
+        flushPending();
+        display.add(
+          AiChatViewMessage(
+            id: message.id,
+            sourceMessageId: message.id,
+            role: message.role.name,
+            content: text,
+          ),
+        );
+        continue;
+      }
       final calls = message.parts.whereType<AiToolCallPart>();
       if (message.role == AiMessageRole.assistant && calls.isNotEmpty) {
         flushPending();
@@ -175,7 +192,10 @@ class AiChatViewMessageMapper {
               ),
             )
           : text;
-      if (content.isEmpty && message.status != AiMessageStatus.failed) {
+      final imageSources = _imageSourcesOf(message);
+      if (content.isEmpty &&
+          imageSources.isEmpty &&
+          message.status != AiMessageStatus.failed) {
         continue;
       }
       // 与 mapStreaming 相同的分流：已输出部分内容后失败的持久化消息保持
@@ -198,6 +218,7 @@ class AiChatViewMessageMapper {
               : null,
           rawDetails: _historyDetails(message),
           transportTrace: message.transportTrace,
+          imageSources: imageSources,
         ),
       );
     }
@@ -251,6 +272,17 @@ class AiChatViewMessageMapper {
           )
           .toList(growable: false),
     );
+  }
+
+  /// 提取消息中携带的图片源。
+  /// 约定 [AiImagePart.attachmentId] 存储图片源字符串
+  /// （http(s) 链接、data URI 或本地绝对路径）。
+  static List<String> _imageSourcesOf(AiMessage message) {
+    return message.parts
+        .whereType<AiImagePart>()
+        .map((part) => part.attachmentId.trim())
+        .where((source) => source.isNotEmpty)
+        .toList(growable: false);
   }
 
   static String _snapshotDetails(AiStreamSnapshot snapshot) {
