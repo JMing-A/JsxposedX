@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
-import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/environments/apk_reverse_chat_environment_provider.dart';
@@ -15,13 +14,11 @@ import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_conversation_drawer.dart';
 
-import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/logcat_provider.dart';
 
 import 'package:JsxposedX/features/apk_analysis/presentation/pages/apk_analysis_page.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -78,8 +75,6 @@ class AiReversePage extends HookConsumerWidget {
     final pageController = usePageController();
     final sessionId = useState<String>('');
     final currentPage = useState(0);
-    final showScriptConsole = useState(false);
-    final selectedScriptEvent = useState<({String title, String details})?>(null);
     final quotedMessage = useState<AiChatViewMessage?>(null);
     final scaffoldKey = useMemoized(() => GlobalKey<ScaffoldState>());
     final conversationBinding = ref.read(scriptConversationBindingProvider);
@@ -191,20 +186,6 @@ class AiReversePage extends HookConsumerWidget {
             sessionCount: sessions.length,
             onTap: () => scaffoldKey.currentState?.openDrawer(),
           ),
-          actions: [
-          IconButton(
-            tooltip: showScriptConsole.value
-                ? (isZh ? '隐藏脚本控制台' : 'Hide script console')
-                : (isZh ? '脚本控制台' : 'Script console'),
-            onPressed: () =>
-                showScriptConsole.value = !showScriptConsole.value,
-            icon: Icon(
-              showScriptConsole.value
-                  ? Icons.terminal
-                  : Icons.terminal_outlined,
-            ),
-          ),
-        ],
           title: Text(
             chatState.currentSessionId != null && sessions.isNotEmpty
                 ? sessions
@@ -232,9 +213,6 @@ class AiReversePage extends HookConsumerWidget {
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final panelHeight = constraints.maxHeight < 260
-                  ? constraints.maxHeight
-                  : 260.0;
               return Stack(
                 children: [
                   Column(
@@ -272,29 +250,13 @@ class AiReversePage extends HookConsumerWidget {
                       if (currentPage.value == 0)
                         AiChatInput(
                           packageName: packageName,
-                          inputTopContent:
-                              selectedScriptEvent.value == null &&
-                                  quotedMessage.value == null
+                          inputTopContent: quotedMessage.value == null
                               ? null
-                              : Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (quotedMessage.value != null)
-                                      _QuoteReplyBar(
-                                        excerpt: _quoteExcerpt(
-                                          quotedMessage.value!.content,
-                                        ),
-                                        onDismiss: () =>
-                                            quotedMessage.value = null,
-                                      ),
-                                    if (selectedScriptEvent.value != null)
-                                      _SelectedScriptRecordBar(
-                                        title: selectedScriptEvent.value!.title,
-                                        details: selectedScriptEvent.value!.details,
-                                        onDismiss: () =>
-                                            selectedScriptEvent.value = null,
-                                      ),
-                                  ],
+                              : _QuoteReplyBar(
+                                  excerpt: _quoteExcerpt(
+                                    quotedMessage.value!.content,
+                                  ),
+                                  onDismiss: () => quotedMessage.value = null,
                                 ),
                           composeOutgoingText: (rawText) {
                             final quoted = quotedMessage.value;
@@ -322,20 +284,6 @@ class AiReversePage extends HookConsumerWidget {
                         ),
                     ],
                   ),
-                  if (currentPage.value == 0 && showScriptConsole.value)
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: panelHeight,
-                      child: ScriptEventPanel(
-                        packageName: packageName,
-                        onEventSelected: (title, details) {
-                          selectedScriptEvent.value = (title: title, details: details);
-                        },
-                        onClose: () => showScriptConsole.value = false,
-                      ),
-                    ),
                 ],
               );
             },
@@ -413,288 +361,6 @@ class _QuoteReplyBar extends StatelessWidget {
       ),
     );
   }
-}
-
-class _SelectedScriptRecordBar extends StatelessWidget {
-  const _SelectedScriptRecordBar({
-    required this.title,
-    required this.details,
-    required this.onDismiss,
-  });
-
-  final String title;
-  final String details;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-      decoration: BoxDecoration(
-        color: context.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.content_copy_rounded,
-            size: 18,
-            color: context.colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.isZh ? '已选中记录' : 'Record selected',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: context.colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  '$title · $details',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: context.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: context.isZh ? '关闭提示' : 'Dismiss',
-            onPressed: onDismiss,
-            icon: const Icon(Icons.close, size: 18),
-            color: context.colorScheme.onSurfaceVariant,
-            visualDensity: VisualDensity.compact,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ScriptEventPanel extends HookConsumerWidget {
-  const ScriptEventPanel({
-    super.key,
-    required this.packageName,
-    this.onEventSelected,
-    this.onClose,
-  });
-
-  final String packageName;
-  final void Function(String title, String details)? onEventSelected;
-  final VoidCallback? onClose;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(aiChatRuntimeProvider(packageName: packageName));
-    final isZh = context.isZh;
-    final query = useState('');
-    final scrollController = useScrollController();
-    final calls = <AiToolCallPart>[
-      for (final message in state.standardMessages)
-        if (message.role == AiMessageRole.assistant)
-          ...message.parts.whereType<AiToolCallPart>(),
-    ].where((part) => _isScriptTool(part.toolCall.name)).toList();
-    final results = <String, AiToolResult>{
-      for (final message in state.standardMessages)
-        for (final part in message.parts.whereType<AiToolResultPart>())
-          part.toolResult.toolCallId: part.toolResult,
-    };
-    final filteredCalls = calls
-        .where((part) {
-          final result = results[part.toolCall.id];
-          final text = [
-            part.toolCall.name,
-            part.toolCall.arguments.toString(),
-            result?.content ?? '',
-          ].join(' ').toLowerCase();
-          return text.contains(query.value.trim().toLowerCase());
-        })
-        .toList(growable: false);
-
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 260),
-      decoration: BoxDecoration(
-        color: context.colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(color: context.colorScheme.outlineVariant),
-        ),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.terminal,
-                  size: 18,
-                  color: context.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    isZh
-                        ? '当前对话 · 脚本工具记录'
-                        : 'This conversation · Script tool records',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: context.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '${calls.length}',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: context.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                if (onClose != null) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    tooltip: isZh ? '关闭脚本工具记录' : 'Close script tool records',
-                    onPressed: onClose,
-                    icon: const Icon(Icons.close_rounded, size: 18),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: SizedBox(
-              height: 36,
-              child: TextField(
-                onChanged: (value) => query.value = value,
-                decoration: InputDecoration(
-                  isDense: true,
-                  prefixIcon: const Icon(Icons.search, size: 18),
-                  hintText: isZh
-                      ? '搜索工具、脚本名或结果'
-                      : 'Search tools, scripts, or results',
-                  border: const OutlineInputBorder(),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 7),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: filteredCalls.isEmpty
-                ? Center(
-                    child: Text(
-                      state.currentSessionId == null
-                          ? (isZh ? '先选择一个对话' : 'Select a conversation first')
-                          : (isZh
-                                ? '此对话暂无脚本工作流事件'
-                                : 'No script workflow events in this conversation'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  )
-                : ListView.builder(
-                    controller: scrollController,
-                    itemCount: filteredCalls.length,
-                    itemBuilder: (context, index) {
-                      final call = filteredCalls[index].toolCall;
-                      final result = results[call.id];
-                      final succeeded = result?.success;
-                      final color = succeeded == null
-                          ? context.colorScheme.tertiary
-                          : succeeded
-                          ? context.colorScheme.primary
-                          : context.colorScheme.error;
-                      final eventText =
-                          '${call.name} ${call.arguments}\n${result?.content ?? (isZh ? '执行中或结果尚未落库' : 'Running or result not yet persisted')}';
-                      return ListTile(
-                        dense: true,
-                        visualDensity: VisualDensity.compact,
-                        tileColor: context.colorScheme.primaryContainer.withValues(
-                          alpha: succeeded == null ? 0.42 : 0.28,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          side: BorderSide(
-                            color: color.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 2,
-                        ),
-                        leading: Icon(
-                          succeeded == null
-                              ? Icons.pending_outlined
-                              : succeeded
-                              ? Icons.check_circle_outline
-                              : Icons.error_outline,
-                          color: color,
-                          size: 19,
-                        ),
-                        title: Text(
-                          call.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          result?.content ??
-                              (isZh
-                                  ? '执行中或结果尚未落库'
-                                  : 'Running or result not yet persisted'),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        onTap: () {
-                          onEventSelected?.call(
-                            call.name,
-                            result?.content ??
-                                (isZh
-                                    ? '执行中或结果尚未落库'
-                                    : 'Running or result not yet persisted'),
-                          );
-                        },
-                        trailing: IconButton(
-                          tooltip: isZh ? '复制到剪贴板' : 'Copy to clipboard',
-                          padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.content_copy_rounded, size: 19),
-                          onPressed: () async {
-                            await Clipboard.setData(ClipboardData(text: eventText));
-                            ToastMessage.show(
-                              isZh ? '复制成功' : 'Copied successfully',
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static bool _isScriptTool(String name) => const {
-    'generate_frida_hook',
-    'generate_xposed_hook',
-    'save_script',
-    'list_scripts',
-    'toggle_script',
-    'read_script',
-    'delete_script',
-    'read_target_logs',
-    'get_script_logs',
-  }.contains(name);
 }
 
 class _ReverseInitBanner extends StatelessWidget {
