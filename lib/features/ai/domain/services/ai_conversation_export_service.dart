@@ -99,7 +99,7 @@ class AiConversationExportService {
   }
 
   /// 保存导出内容到文件（旧方法，保留用于工具调用）
-  @deprecated
+  @Deprecated('请改用 saveExportWithPicker，让用户选择保存位置。')
   Future<File> saveExport({
     required String content,
     required String fileName,
@@ -135,8 +135,6 @@ class AiConversationExportService {
       case AiMessageRole.tool:
         roleTitle = '🔧 工具';
         break;
-      default:
-        roleTitle = message.role.name;
     }
 
     buffer.writeln('## $roleTitle');

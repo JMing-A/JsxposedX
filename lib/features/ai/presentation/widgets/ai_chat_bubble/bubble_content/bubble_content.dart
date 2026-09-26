@@ -1,16 +1,23 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/core/routes/routes/home_route.dart';
+import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_thinking_markup.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_multimodal_message_codec.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_states/bubble_state.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_toolbar/bubble_toolbar.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/widgets/ai_code_element_builder.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/widgets/dot_loading_indicator.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/widgets/tool_result_card.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/clickable_path_text.dart';
 import 'package:markdown/markdown.dart' as md;
 
 const String _streamingCursorMarker = '\uE000streaming_cursor\uE000';
@@ -238,23 +245,55 @@ abstract class BaseBubbleContentPart {
         data: cursorEnabled ? _withStreamingCursor(markdown) : markdown,
         styleSheet: theme,
         selectable: false,
+        onTapLink: (text, href, title) => _handleMarkdownLink(context, href),
         inlineSyntaxes: cursorEnabled
             ? <md.InlineSyntax>[_StreamingCursorSyntax()]
             : null,
         builders: {
+          ...buildMarkdownBuilders(
+            context,
+            state,
+            toolbarPart: toolbarPart,
+          ),
           if (cursorEnabled) 'streaming-cursor': _StreamingCursorBuilder(),
-          'code': AiCodeElementBuilder(
-          state: state,
-          toolbarPart: toolbarPart,
-          uiScale: AiChatCompactScope.scaleOf(context),
-        ),
-        'table': _TableElementBuilder(uiScale: AiChatCompactScope.scaleOf(context)),
-      },
-      shrinkWrap: true,
-      fitContent: true,
-    ),
-  );
+        },
+        shrinkWrap: true,
+        fitContent: true,
+      ),
+    );
+  }
+
 }
+
+/// 注册可在多处复用的 Markdown 元素构造器（代码块 / 表格 / 图片）。
+Map<String, MarkdownElementBuilder> buildMarkdownBuilders(
+  BuildContext context,
+  BubbleState state, {
+  required BaseBubbleToolbarPart toolbarPart,
+}) {
+  final scale = AiChatCompactScope.scaleOf(context);
+  return {
+    'code': AiCodeElementBuilder(
+      state: state,
+      toolbarPart: toolbarPart,
+      uiScale: scale,
+    ),
+    'table': _TableElementBuilder(uiScale: scale),
+    'img': _MarkdownImageElementBuilder(uiScale: scale),
+  };
+}
+
+/// 处理 Markdown 链接点击：绝对文件路径跳转文件查看器，其余走外部浏览器。
+void _handleMarkdownLink(BuildContext context, String? href) {
+  final target = href?.trim() ?? '';
+  if (target.isEmpty) {
+    return;
+  }
+  if (target.startsWith('/') && containsClickablePath(target)) {
+    context.push(HomeRoute.toFileViewer(path: target));
+    return;
+  }
+  UrlHelper.openUrlInBrowser(url: target);
 }
 
 class DefaultBubbleContentPart extends BaseBubbleContentPart {
@@ -472,15 +511,14 @@ class _ThinkingMarkdownContent extends HookWidget {
                         data: thinkingContent,
                         styleSheet: theme,
                         selectable: false,
-                        builders: {
-                          'code': AiCodeElementBuilder(
-                          state: state,
+                        onTapLink: (text, href, title) =>
+                            _handleMarkdownLink(context, href),
+                        builders: buildMarkdownBuilders(
+                          context,
+                          state,
                           toolbarPart: toolbarPart,
-                          uiScale: scale,
                         ),
-                        'table': _TableElementBuilder(uiScale: scale),
-                      },
-                      shrinkWrap: true,
+                        shrinkWrap: true,
                         fitContent: true,
                       ),
                     ),
@@ -508,18 +546,19 @@ class _ThinkingMarkdownContent extends HookWidget {
                   : answerContent,
               styleSheet: theme,
               selectable: false,
+              onTapLink: (text, href, title) =>
+                  _handleMarkdownLink(context, href),
               inlineSyntaxes: showAnswerCursor
                   ? <md.InlineSyntax>[_StreamingCursorSyntax()]
                   : null,
               builders: {
+                ...buildMarkdownBuilders(
+                  context,
+                  state,
+                  toolbarPart: toolbarPart,
+                ),
                 if (showAnswerCursor)
                   'streaming-cursor': _StreamingCursorBuilder(),
-                'code': AiCodeElementBuilder(
-                  state: state,
-                  toolbarPart: toolbarPart,
-                  uiScale: scale,
-                ),
-                'table': _TableElementBuilder(uiScale: scale),
               },
               shrinkWrap: true,
               fitContent: true,
@@ -535,6 +574,145 @@ class _ThinkingMarkdownContent extends HookWidget {
         ],
       ],
     );
+  }
+}
+
+class _MarkdownImageElementBuilder extends MarkdownElementBuilder {
+  _MarkdownImageElementBuilder({required this.uiScale});
+
+  final double uiScale;
+
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    final src = element.attributes['src']?.trim() ?? '';
+    if (src.isEmpty) {
+      return null;
+    }
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6 * uiScale),
+      child: _MarkdownImage(src: src, uiScale: uiScale),
+    );
+  }
+}
+
+/// Markdown 内嵌图片：支持网络图片与本地绝对路径（经文件查看器兜底）。
+class _MarkdownImage extends StatelessWidget {
+  const _MarkdownImage({required this.src, required this.uiScale});
+
+  final String src;
+  final double uiScale;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(10 * uiScale);
+    final placeholder = _fallback(context);
+    return ClipRRect(
+      borderRadius: radius,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 320 * uiScale,
+          maxHeight: 320 * uiScale,
+        ),
+        child: src.startsWith('http://') || src.startsWith('https://')
+            ? Image.network(
+                src,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => placeholder,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) {
+                    return child;
+                  }
+                  return SizedBox(
+                    width: 160 * uiScale,
+                    height: 120 * uiScale,
+                    child: const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                },
+              )
+            : src.startsWith('data:image/')
+            ? Image.memory(
+                _decodeDataUrl(src) ?? Uint8List(0),
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => placeholder,
+              )
+            : _localImage(context),
+      ),
+    );
+  }
+
+  Widget _localImage(BuildContext context) {
+    if (!src.startsWith('/')) {
+      return _fallback(context);
+    }
+    return InkWell(
+      onTap: () => context.push(HomeRoute.toFileViewer(path: src)),
+      child: Padding(
+        padding: EdgeInsets.all(10 * uiScale),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.image_outlined,
+              size: 16 * uiScale,
+              color: context.colorScheme.primary,
+            ),
+            SizedBox(width: 6 * uiScale),
+            Flexible(
+              child: Text(
+                src,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.5 * uiScale,
+                  color: context.colorScheme.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: context.colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fallback(BuildContext context) {
+    return Container(
+      width: 160 * uiScale,
+      height: 100 * uiScale,
+      alignment: Alignment.center,
+      color: context.isDark
+          ? Colors.white.withValues(alpha: 0.06)
+          : Colors.black.withValues(alpha: 0.05),
+      child: Icon(
+        Icons.broken_image_outlined,
+        size: 24 * uiScale,
+        color: context.colorScheme.onSurface.withValues(alpha: 0.5),
+      ),
+    );
+  }
+
+  static Uint8List? _decodeDataUrl(String dataUrl) {
+    final commaIndex = dataUrl.indexOf(',');
+    if (commaIndex == -1) {
+      return null;
+    }
+    try {
+      return base64Decode(dataUrl.substring(commaIndex + 1));
+    } catch (_) {
+      return null;
+    }
   }
 }
 

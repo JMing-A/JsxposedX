@@ -138,6 +138,13 @@ class AIConfigSheet extends HookConsumerWidget {
     );
   }
 
+  /// 凭据来源标识：同一来源（地址 + Key + API 类型）下模型列表才具有可比性。
+  static String _modelSourceKeyOf(
+    String apiUrl,
+    String apiKey,
+    AiApiType apiType,
+  ) => '${apiUrl.trim()}|${apiKey.trim()}|${apiType.name}';
+
   static String _apiTypeLabel(BuildContext context, AiApiType type) {
     switch (type) {
       case AiApiType.openai:
@@ -454,6 +461,9 @@ class AIConfigSheet extends HookConsumerWidget {
     final sheetFeedback = useValueListenable(ref.watch(_sheetFeedbackProvider));
     final availableModels = useState<List<AiModel>>([]);
     final modelsLoading = useState(false);
+    // 记录当前 availableModels 的实际来源（apiUrl|apiKey|apiType）。用于区分配置
+    // 列表是来自「已保存配置」还是来自用户在表单里临时填写的新凭据。
+    final availableModelsSourceKey = useRef<String?>(null);
     final modelsSourceKey = useRef<String?>(null);
     final selectedContextMode = useState(AiContextMode.tokenBudget);
     final contextSourceKey = useRef<String?>(null);
@@ -558,6 +568,33 @@ class AIConfigSheet extends HookConsumerWidget {
                     .getModels(config: config, forceRefresh: true);
                 if (!context.mounted) return;
                 availableModels.value = models;
+                // 标记列表来源为「表单当前填写的凭据」，便于判断它与已保存的
+                // 配置是否属于同一来源。
+                availableModelsSourceKey.value = _modelSourceKeyOf(
+                  config.apiUrl,
+                  config.apiKey,
+                  config.apiType,
+                );
+                // 凭据已变更（例如换了新的 API Key）时，旧的模型名属于上一个
+                // 来源，不能继续作为选中值，否则下拉会悬挂一个不属于当前列表
+                // 的模型名。此时回落到新列表的首项，让用户重新选择。
+                final savedSourceKey = _modelSourceKeyOf(
+                  formConfig.apiUrl,
+                  formConfig.apiKey,
+                  formConfig.apiType,
+                );
+                if (availableModelsSourceKey.value != savedSourceKey) {
+                  final currentModelId =
+                      (formState.value['module_name'] ?? '')
+                          .toString()
+                          .trim();
+                  if (currentModelId.isNotEmpty &&
+                      !models.any((model) => model.id == currentModelId)) {
+                    formState.patchValue({
+                      'module_name': models.isNotEmpty ? models.first.id : '',
+                    });
+                  }
+                }
                 if (models.isEmpty) {
                   _showSheetFeedback(
                     ref,
@@ -587,6 +624,19 @@ class AIConfigSheet extends HookConsumerWidget {
 
             final modelItems = availableModels.value;
             final savedModelId = formConfig.moduleName.trim();
+            // 仅当当前列表与「已保存的配置」来自同一凭据时，旧模型名才与列表
+            // 具有可比性；若用户在表单里改了地址/Key 后刷新，列表已属于另一个
+            // 来源，此时把旧模型名混进来并标注「已保存」会严重误导用户。
+            final listFromSavedConfig =
+                availableModelsSourceKey.value ==
+                _modelSourceKeyOf(
+                  formConfig.apiUrl,
+                  formConfig.apiKey,
+                  formConfig.apiType,
+                );
+            final savedModelMissing =
+                savedModelId.isNotEmpty &&
+                !modelItems.any((model) => model.id == savedModelId);
             final modelDropdownItems = <DropdownMenuItem<String>>[
               ...modelItems.map(
                 (model) => DropdownMenuItem<String>(
@@ -597,8 +647,7 @@ class AIConfigSheet extends HookConsumerWidget {
             ];
             // Keep a persisted model selectable while a provider refresh is
             // pending or when the provider no longer advertises that model.
-            if (savedModelId.isNotEmpty &&
-                !modelItems.any((model) => model.id == savedModelId)) {
+            if (listFromSavedConfig && savedModelMissing) {
               modelDropdownItems.insert(
                 0,
                 DropdownMenuItem<String>(
@@ -698,6 +747,13 @@ class AIConfigSheet extends HookConsumerWidget {
                   availableModels.value = definitions
                       .map(_modelFromDefinition)
                       .toList(growable: false);
+                  // 目录来自已保存配置的 connection，视为「同一来源」，这样
+                  // provider 离线时旧模型仍作为「已保存」项保持可选中。
+                  availableModelsSourceKey.value = _modelSourceKeyOf(
+                    formConfig.apiUrl,
+                    formConfig.apiKey,
+                    formConfig.apiType,
+                  );
                 } catch (_) {
                   // A missing catalog is expected for a brand-new config.
                 }
