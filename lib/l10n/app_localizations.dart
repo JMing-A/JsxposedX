@@ -1724,30 +1724,6 @@ abstract class AppLocalizations {
   /// **'回答内容'**
   String get aiBubbleAnswerTitle;
 
-  /// No description provided for @aiAnalyzeManifest.
-  ///
-  /// In zh, this message translates to:
-  /// **'分析 Manifest'**
-  String get aiAnalyzeManifest;
-
-  /// No description provided for @aiHardeningDetection.
-  ///
-  /// In zh, this message translates to:
-  /// **'加固检测'**
-  String get aiHardeningDetection;
-
-  /// No description provided for @aiExportInterfaces.
-  ///
-  /// In zh, this message translates to:
-  /// **'导出接口'**
-  String get aiExportInterfaces;
-
-  /// No description provided for @aiFindHookPoints.
-  ///
-  /// In zh, this message translates to:
-  /// **'寻找 Hook 点'**
-  String get aiFindHookPoints;
-
   /// No description provided for @aiTestConnecting.
   ///
   /// In zh, this message translates to:
@@ -1783,6 +1759,60 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'显示更早的消息 ({count})'**
   String aiShowMoreMessages(Object count);
+
+  /// No description provided for @aiSearchInConversation.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索当前会话'**
+  String get aiSearchInConversation;
+
+  /// No description provided for @aiSearchMessagesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索消息内容...'**
+  String get aiSearchMessagesHint;
+
+  /// No description provided for @aiSearchNoResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有找到匹配的消息'**
+  String get aiSearchNoResults;
+
+  /// No description provided for @aiSearchResultCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条匹配'**
+  String aiSearchResultCount(int count);
+
+  /// No description provided for @aiSearchRoleUser.
+  ///
+  /// In zh, this message translates to:
+  /// **'我'**
+  String get aiSearchRoleUser;
+
+  /// No description provided for @aiSearchRoleAssistant.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI'**
+  String get aiSearchRoleAssistant;
+
+  /// No description provided for @aiSearchRoleSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统'**
+  String get aiSearchRoleSystem;
+
+  /// No description provided for @aiSearchRoleTool.
+  ///
+  /// In zh, this message translates to:
+  /// **'工具'**
+  String get aiSearchRoleTool;
+
+  /// No description provided for @aiSearchMessageNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'该消息不在当前已加载的会话中'**
+  String get aiSearchMessageNotFound;
 
   /// No description provided for @aiToolUnknown.
   ///

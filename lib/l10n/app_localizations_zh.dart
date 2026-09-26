@@ -836,18 +836,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiBubbleAnswerTitle => '回答内容';
 
   @override
-  String get aiAnalyzeManifest => '分析 Manifest';
-
-  @override
-  String get aiHardeningDetection => '加固检测';
-
-  @override
-  String get aiExportInterfaces => '导出接口';
-
-  @override
-  String get aiFindHookPoints => '寻找 Hook 点';
-
-  @override
   String get aiTestConnecting => '正在测试连接...';
 
   @override
@@ -872,6 +860,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String aiShowMoreMessages(Object count) {
     return '显示更早的消息 ($count)';
   }
+
+  @override
+  String get aiSearchInConversation => '搜索当前会话';
+
+  @override
+  String get aiSearchMessagesHint => '搜索消息内容...';
+
+  @override
+  String get aiSearchNoResults => '没有找到匹配的消息';
+
+  @override
+  String aiSearchResultCount(int count) {
+    return '$count 条匹配';
+  }
+
+  @override
+  String get aiSearchRoleUser => '我';
+
+  @override
+  String get aiSearchRoleAssistant => 'AI';
+
+  @override
+  String get aiSearchRoleSystem => '系统';
+
+  @override
+  String get aiSearchRoleTool => '工具';
+
+  @override
+  String get aiSearchMessageNotFound => '该消息不在当前已加载的会话中';
 
   @override
   String aiToolUnknown(String toolName) {

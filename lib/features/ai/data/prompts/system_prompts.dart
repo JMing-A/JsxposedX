@@ -483,48 +483,4 @@ name: android.permission.CAMERA | level: dangerous | desc: camera access
 name: android.permission.INTERNET | level: normal | desc: network access
 \`\`\`
 level: normal / dangerous / signature''';
-
-  // ==================== 快捷操作 prompt 模板 ====================
-
-  static String quickAnalyzeManifest({required bool isZh}) => isZh
-      ? '请分析这个应用的 Manifest 信息，重点关注：\n'
-            '1. 导出的组件（可能的攻击面）\n'
-            '2. 敏感权限及其用途推测\n'
-            '3. debuggable / allowBackup 等安全配置\n'
-            '4. 可能的安全风险和建议'
-      : 'Analyze this app\'s Manifest, focusing on:\n'
-            '1. Exported components (potential attack surface)\n'
-            '2. Sensitive permissions and their likely usage\n'
-            '3. Security configs (debuggable / allowBackup)\n'
-            '4. Potential security risks and recommendations';
-
-  static String quickHardeningDetection({required bool isZh}) => isZh
-      ? '请分析这个应用是否使用了加固/混淆方案，检查以下方面：\n'
-            '1. 是否有壳（360加固、腾讯乐固、梆梆、爱加密等）\n'
-            '2. 代码混淆程度（ProGuard/R8/DexGuard）\n'
-            '3. 是否有反调试、反 Hook 检测\n'
-            '4. 建议的绕过方案'
-      : 'Analyze if this app uses hardening/obfuscation:\n'
-            '1. Packer detection (360, Tencent, Bangbang, iJiami, etc.)\n'
-            '2. Code obfuscation level (ProGuard/R8/DexGuard)\n'
-            '3. Anti-debug / anti-Hook detection\n'
-            '4. Suggested bypass approaches';
-
-  static String quickExportInterfaces({required bool isZh}) => isZh
-      ? '请列出这个应用中值得关注的接口和关键类：\n'
-            '1. 网络请求相关的类（HTTP Client、API 接口）\n'
-            '2. 用户认证/登录相关的类\n'
-            '3. 支付/会员相关的类\n'
-            '4. 数据加密/签名相关的类\n'
-            '请给出每个类的简要说明和可能的 Hook 点'
-      : 'List notable interfaces and key classes:\n'
-            '1. Network-related classes (HTTP Client, API interfaces)\n'
-            '2. Authentication/login classes\n'
-            '3. Payment/membership classes\n'
-            '4. Encryption/signature classes\n'
-            'Provide brief description and potential Hook points for each';
-
-  static String quickFindHookPoints({required bool isZh}) => isZh
-      ? '找到这个应用中最有价值的 Hook 点。先用 search_classes 搜索用户明确提到的关键词，找到类后反编译分析，然后直接输出完整可执行的 Hook 脚本。'
-      : 'Find the most valuable Hook points. Search only keywords explicitly mentioned by the user, then decompile matching classes and output complete executable Hook scripts directly.';
 }

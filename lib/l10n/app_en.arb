@@ -539,16 +539,24 @@
   "aiBubbleAssistantTextTitle": "AI Reply",
   "aiBubbleThinkingTitle": "Thinking",
   "aiBubbleAnswerTitle": "Answer",
-  "aiAnalyzeManifest": "Analyze Manifest",
-  "aiHardeningDetection": "Hardening Detection",
-  "aiExportInterfaces": "Export Interfaces",
-  "aiFindHookPoints": "Find Hook Points",
   "aiTestConnecting": "Testing connection...",
   "aiTestSuccess": "Test successful! Received reply: \n{result}",
   "aiTestFailed": "Test failed: {error}",
   "aiSavingAndTesting": "Saving and testing connectivity...",
   "aiSaveFailed": "Save failed (Connection test failed): \n{error}",
   "aiShowMoreMessages": "Show earlier messages ({count})",
+  "aiSearchInConversation": "Search in conversation",
+  "aiSearchMessagesHint": "Search message content...",
+  "aiSearchNoResults": "No matching messages",
+  "aiSearchResultCount": "{count} matches",
+  "@aiSearchResultCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "aiSearchRoleUser": "Me",
+  "aiSearchRoleAssistant": "AI",
+  "aiSearchRoleSystem": "System",
+  "aiSearchRoleTool": "Tool",
+  "aiSearchMessageNotFound": "This message is not in the loaded conversation",
   "aiToolUnknown": "Unknown tool: {toolName}",
   "@aiToolUnknown": {
     "placeholders": { "toolName": { "type": "String" } }

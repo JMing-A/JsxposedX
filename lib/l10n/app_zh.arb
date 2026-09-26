@@ -538,16 +538,24 @@
   "aiBubbleAssistantTextTitle": "AI 回复",
   "aiBubbleThinkingTitle": "思考过程",
   "aiBubbleAnswerTitle": "回答内容",
-  "aiAnalyzeManifest": "分析 Manifest",
-  "aiHardeningDetection": "加固检测",
-  "aiExportInterfaces": "导出接口",
-  "aiFindHookPoints": "寻找 Hook 点",
   "aiTestConnecting": "正在测试连接...",
   "aiTestSuccess": "测试成功！收到回复: \n{result}",
   "aiTestFailed": "测试失败: {error}",
   "aiSavingAndTesting": "正在保存并测试连通性...",
   "aiSaveFailed": "配置保存失败（连接测试未通过）: \n{error}",
   "aiShowMoreMessages": "显示更早的消息 ({count})",
+  "aiSearchInConversation": "搜索当前会话",
+  "aiSearchMessagesHint": "搜索消息内容...",
+  "aiSearchNoResults": "没有找到匹配的消息",
+  "aiSearchResultCount": "{count} 条匹配",
+  "@aiSearchResultCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "aiSearchRoleUser": "我",
+  "aiSearchRoleAssistant": "AI",
+  "aiSearchRoleSystem": "系统",
+  "aiSearchRoleTool": "工具",
+  "aiSearchMessageNotFound": "该消息不在当前已加载的会话中",
   "aiToolUnknown": "未知工具: {toolName}",
   "@aiToolUnknown": {
     "placeholders": { "toolName": { "type": "String" } }

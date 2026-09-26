@@ -46,6 +46,7 @@ class AiChatList extends HookConsumerWidget {
     this.bubbleBuilder,
     this.streamingBubbleBuilder,
     this.onQuote,
+    this.highlightedMessageId,
   });
 
   final List<AiChatViewMessage> messages;
@@ -61,6 +62,9 @@ class AiChatList extends HookConsumerWidget {
   /// 引用回复回调：用户选择「引用回复」时把消息回传给页面，
   /// 由页面负责在输入框上方展示引用卡片。
   final ValueChanged<AiChatViewMessage>? onQuote;
+
+  /// 需要高亮标出的消息 ID（用于搜索结果定位），为空时不产生任何视觉差异。
+  final String? highlightedMessageId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -80,6 +84,43 @@ class AiChatList extends HookConsumerWidget {
     final previousSessionId = useRef(chatState.currentSessionId);
     // 记录需要播放入场动画的消息（仅新追加的消息，历史加载不播放）。
     final enteringMessageIds = useRef<Set<String>>(<String>{});
+    // 搜索结果定位用的锚点 key，挂在目标消息上以便滚动到它。
+    final focusMessageKey = useMemoized(() => GlobalKey(), const []);
+
+    // 搜索结果被选中后，把目标消息滚动到视口中央。
+    //
+    // revealMessage 会把目标放到可见窗口的最前端，在 reverse 列表里它位于
+    // 列表末端（maxScrollExtent 一侧）。因此这里直接朝列表末端收敛：每帧
+    // jumpTo(maxScrollExtent) 推进，直到目标被构建后交给 ensureVisible 居中。
+    // 相比按屏试探，方向是确定的，且 maxScrollExtent 随构建增长时会自动继续推进。
+    useEffect(() {
+      final targetId = highlightedMessageId;
+      if (targetId == null) return null;
+      var remainingFrames = 40;
+
+      void reveal() {
+        if (remainingFrames-- <= 0) return;
+        final targetContext = focusMessageKey.currentContext;
+        if (targetContext != null && targetContext.mounted) {
+          Scrollable.ensureVisible(
+            targetContext,
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            alignment: 0.5,
+          );
+          return;
+        }
+        if (!scrollController.hasClients) return;
+        final position = scrollController.position;
+        if (scrollController.offset < position.maxScrollExtent - 0.5) {
+          scrollController.jumpTo(position.maxScrollExtent);
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) => reveal());
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) => reveal());
+      return null;
+    }, [highlightedMessageId, focusMessageKey, scrollController]);
 
     useEffect(() {
       void updateJumpButton() {
@@ -313,19 +354,24 @@ class AiChatList extends HookConsumerWidget {
                             AiToolInvocationViewStatus.awaitingApproval,
                       );
 
+                  final isHighlighted = message.id == highlightedMessageId;
                   return wrapEntryAnimation(
                     message.id,
                     RepaintBoundary(
-                      child: bubbleBuilder != null
-                        ? bubbleBuilder!(
-                            message: message,
-                            retryLabel: retryLabel,
-                            onRetry: () => chatNotifier.retryByMessageId(
-                              message.sourceMessageId ?? message.id,
-                            ),
-                            packageName: packageName,
-                          )
-                        : AiChatBubble(
+                      child: _MessageHighlight(
+                        key: ValueKey('highlight-${message.id}'),
+                        active: isHighlighted,
+                        anchorKey: isHighlighted ? focusMessageKey : null,
+                        child: bubbleBuilder != null
+                            ? bubbleBuilder!(
+                                message: message,
+                                retryLabel: retryLabel,
+                                onRetry: () => chatNotifier.retryByMessageId(
+                                  message.sourceMessageId ?? message.id,
+                                ),
+                                packageName: packageName,
+                              )
+                            : AiChatBubble(
                             key: ValueKey(message.id),
                             content: message.content,
                             role: message.role,
@@ -391,7 +437,8 @@ class AiChatList extends HookConsumerWidget {
                             onQuote: onQuote == null
                                 ? null
                                 : () => onQuote!(message),
-                          ),
+                              ),
+                      ),
                     ),
                   );
                 },
@@ -440,6 +487,49 @@ int appendedMessageCount(List<String> previousIds, List<String> currentIds) {
     }
   }
   return 0;
+}
+
+class _MessageHighlight extends StatelessWidget {
+  const _MessageHighlight({
+    super.key,
+    required this.active,
+    required this.child,
+    this.anchorKey,
+  });
+
+  final bool active;
+  final Widget child;
+
+  /// 定位锚点。仅目标消息持有，用于把该条滚动到视口中央。
+  final GlobalKey? anchorKey;
+
+  @override
+  Widget build(BuildContext context) {
+    if (anchorKey != null) {
+      return KeyedSubtree(key: anchorKey, child: _buildHighlighted(context));
+    }
+    return _buildHighlighted(context);
+  }
+
+  Widget _buildHighlighted(BuildContext context) {
+    if (!active) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 1, end: 0),
+      duration: const Duration(milliseconds: 1400),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        if (value <= 0) return child!;
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            color: context.colorScheme.primary.withValues(alpha: 0.16 * value),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: child,
+        );
+      },
+      child: child,
+    );
+  }
 }
 
 class _UnreadMessageBadge extends StatelessWidget {

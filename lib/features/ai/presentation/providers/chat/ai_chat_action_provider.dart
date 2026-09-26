@@ -848,15 +848,19 @@ class AiChatAction extends _$AiChatAction {
     await createSession('新对话 ${DateTime.now().hour}:${DateTime.now().minute}');
   }
 
-  void revealMessage(String messageId) {
+  /// 把历史消息纳入可见窗口，使 [messageId] 所在的消息能够被渲染。
+  ///
+  /// 返回是否成功命中（未命中表示该消息不在当前已加载的会话消息中）。
+  bool revealMessage(String messageId) {
     final index = state.viewMessages.indexWhere(
       (message) => message.id == messageId,
     );
-    if (index < 0) return;
+    if (index < 0) return false;
     final required = state.viewMessages.length - index;
     if (required > state.visibleMessageCount) {
       state = state.copyWith(visibleMessageCount: required);
     }
+    return true;
   }
 
   Future<String> testConnection(AiConfig config) {

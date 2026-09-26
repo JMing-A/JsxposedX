@@ -12,6 +12,7 @@ import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_view_message.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_search_sheet.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_conversation_drawer.dart';
 
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
@@ -76,6 +77,7 @@ class AiReversePage extends HookConsumerWidget {
     final sessionId = useState<String>('');
     final currentPage = useState(0);
     final quotedMessage = useState<AiChatViewMessage?>(null);
+    final highlightedMessageId = useState<String?>(null);
     final scaffoldKey = useMemoized(() => GlobalKey<ScaffoldState>());
     final conversationBinding = ref.read(scriptConversationBindingProvider);
     ref.watch(logcatProvider);
@@ -155,6 +157,48 @@ class AiReversePage extends HookConsumerWidget {
       return () => unawaited(environment.dispose());
     }, [environment]);
 
+    // 搜索定位的高亮短暂显示后自动清除。
+    useEffect(() {
+      final messageId = highlightedMessageId.value;
+      if (messageId == null) return null;
+      final timer = Timer(const Duration(milliseconds: 1600), () {
+        if (highlightedMessageId.value == messageId) {
+          highlightedMessageId.value = null;
+        }
+      });
+      return timer.cancel;
+    }, [highlightedMessageId.value]);
+
+    Future<void> openConversationSearch() async {
+      final sheetBackground =
+          context.theme.bottomSheetTheme.backgroundColor ??
+          context.colorScheme.surface;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        showDragHandle: true,
+        backgroundColor: sheetBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+        ),
+        builder: (sheetContext) => AiChatSearchSheet(
+          messages: chatState.viewMessages,
+          onSelect: (messageId) {
+            Navigator.of(sheetContext).pop();
+            final revealed = chatNotifier.revealMessage(messageId);
+            if (!revealed) {
+              ToastMessage.show(context.l10n.aiSearchMessageNotFound);
+              return;
+            }
+            highlightedMessageId.value = messageId;
+          },
+        ),
+      );
+    }
+
     final lastBackPressTime = useRef<DateTime?>(null);
     return PopScope(
       canPop: false,
@@ -203,6 +247,18 @@ class AiReversePage extends HookConsumerWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          actions: [
+            if (currentPage.value == 0)
+              IconButton(
+                tooltip: context.l10n.aiSearchInConversation,
+                onPressed: openConversationSearch,
+                icon: Icon(
+                  Icons.search_rounded,
+                  size: 22.sp,
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
         ),
         key: scaffoldKey,
         drawer: AiConversationDrawer(
@@ -239,6 +295,7 @@ class AiReversePage extends HookConsumerWidget {
                                         : 'Tap the conversation icon to open your chats')
                                   : null,
                               onQuote: (message) => quotedMessage.value = message,
+                              highlightedMessageId: highlightedMessageId.value,
                             ),
                             ApkAnalysisPage(
                               packageName: packageName,

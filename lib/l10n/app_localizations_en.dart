@@ -853,18 +853,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiBubbleAnswerTitle => 'Answer';
 
   @override
-  String get aiAnalyzeManifest => 'Analyze Manifest';
-
-  @override
-  String get aiHardeningDetection => 'Hardening Detection';
-
-  @override
-  String get aiExportInterfaces => 'Export Interfaces';
-
-  @override
-  String get aiFindHookPoints => 'Find Hook Points';
-
-  @override
   String get aiTestConnecting => 'Testing connection...';
 
   @override
@@ -889,6 +877,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String aiShowMoreMessages(Object count) {
     return 'Show earlier messages ($count)';
   }
+
+  @override
+  String get aiSearchInConversation => 'Search in conversation';
+
+  @override
+  String get aiSearchMessagesHint => 'Search message content...';
+
+  @override
+  String get aiSearchNoResults => 'No matching messages';
+
+  @override
+  String aiSearchResultCount(int count) {
+    return '$count matches';
+  }
+
+  @override
+  String get aiSearchRoleUser => 'Me';
+
+  @override
+  String get aiSearchRoleAssistant => 'AI';
+
+  @override
+  String get aiSearchRoleSystem => 'System';
+
+  @override
+  String get aiSearchRoleTool => 'Tool';
+
+  @override
+  String get aiSearchMessageNotFound =>
+      'This message is not in the loaded conversation';
 
   @override
   String aiToolUnknown(String toolName) {

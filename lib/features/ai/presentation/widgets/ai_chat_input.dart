@@ -263,11 +263,7 @@ class AiChatInput extends HookConsumerWidget {
         _ContextUsageIndicator(stats: contextStats, usageRatio: usageRatio),
         if (inputTopContent != null) inputTopContent!,
         if (showQuickActions)
-          AiQuickActions(
-            packageName: packageName,
-            systemPrompt: systemPrompt,
-            onOpenAnalysis: onOpenAnalysis,
-          ),
+          AiQuickActions(onOpenAnalysis: onOpenAnalysis),
         Container(
           padding: isEmbedded
               ? EdgeInsets.zero
