@@ -2,6 +2,7 @@ import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_tool_invocation_view.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/clickable_path_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -134,8 +135,8 @@ class _LegacyToolResultCard extends HookWidget {
                   top: BorderSide(color: color.withValues(alpha: 0.15)),
                 ),
               ),
-              child: Text(
-                detail,
+              child: ClickablePathText(
+                text: detail,
                 style: TextStyle(
                   fontSize: 11.5 * scale,
                   color: context.isDark
@@ -478,8 +479,8 @@ class _ExpandableToolSection extends StatelessWidget {
                 10 * scale,
                 9 * scale,
               ),
-              child: SelectableText(
-                text,
+              child: ClickablePathText(
+                text: text,
                 style: TextStyle(
                   fontSize: 11.5 * scale,
                   height: 1.45,

@@ -9,6 +9,7 @@ import 'package:JsxposedX/features/ai/domain/constants/builtin_ai_config.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_model.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/config/ai_config_action_repository.dart';
+import 'package:JsxposedX/features/ai/domain/repositories/ai_conversation_repository.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_chat_session_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
@@ -288,17 +289,51 @@ class AiConfigAction extends _$AiConfigAction {
         report.failures.map((failure) => failure.reason).join('; '),
       );
     }
-    
-    // 关键修复：invalidate 会话控制器，强制重新初始化
-    // 会话控制器在初始化时会从数据库读取 assistant 和 model，
-    // 并缓存在 _state 中。切换模型后，虽然数据库中的 assistant 已更新，
-    // 但已初始化的控制器还在使用旧的缓存，导致实际请求仍用旧模型。
-    // invalidate 后，下次访问会话时会重新创建控制器并读取新的配置。
+
+    // 关键修复：把会话重新绑定到当前激活 config 的 assistant。
+    // 会话（conversation）持有固定的 assistantId，而请求实际使用的
+    // provider/model 来自该 assistant。用户在 AI 配置里新增提供商或在
+    // 快捷设置里切换模型后，如果会话仍指向旧 assistant，实际请求就会
+    // 继续使用旧的提供商和模型。这里在配置同步后将所有会话重绑到新的
+    // assistant，并让会话控制器失效以强制重新初始化。
+    await _rebindConversationsToAssistant(config);
     ref.invalidate(aiChatSessionV2Provider);
-    
+
     ref.invalidate(aiConnectionsV2Provider);
     ref.invalidate(aiAssistantsV2Provider);
     ref.invalidate(aiSystemMigrationProvider);
+  }
+
+  /// 将所有会话重新绑定到 [config] 对应的 assistant。
+  ///
+  /// assistantId 的生成规则固定为 `legacy-assistant-{configId}`，切换模型
+  /// 不会改变它，但切换/新增 config 会改变。这里统一收敛到当前 config 的
+  /// assistant，确保会话请求使用最新选择的提供商与模型。
+  Future<void> _rebindConversationsToAssistant(AiConfig config) async {
+    final assistantId = 'legacy-assistant-${config.id}';
+    final catalog = ref.read(aiCatalogRepositoryProvider);
+    if (await catalog.getAssistant(assistantId) == null) return;
+
+    final conversationRepo = ref.read(aiConversationRepositoryV2Provider);
+    final conversations = <AiConversation>[];
+    AiConversationCursor? cursor;
+    while (true) {
+      final page = await conversationRepo.getConversations(
+        before: cursor,
+        limit: 100,
+      );
+      conversations.addAll(page);
+      if (page.length < 100) break;
+      final last = page.last;
+      cursor = AiConversationCursor(updatedAt: last.updatedAt, id: last.id);
+    }
+
+    for (final conversation in conversations) {
+      if (conversation.assistantId == assistantId) continue;
+      await conversationRepo.saveConversation(
+        conversation.copyWith(assistantId: assistantId),
+      );
+    }
   }
 
   Future<void> _removeStandardCatalog(String configId) async {

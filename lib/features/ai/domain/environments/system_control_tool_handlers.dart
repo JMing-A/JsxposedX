@@ -31,7 +31,80 @@ abstract class SystemControlHandler implements AiChatToolHandler {
   bool get _isZh => context.isZh;
 }
 
-// ═══ D1. get_device_info（P1） ═══
+// ═══ D1. read_file ═══
+
+class ReadFileToolHandler extends SystemControlHandler {
+  const ReadFileToolHandler(super.context);
+
+  @override
+  String get toolName => 'read_file';
+
+  static const _imageExts = {
+    '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp',
+  };
+
+  @override
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
+    final path = call.getString('path').trim();
+    if (path.isEmpty) {
+      throw ArgumentError(_isZh ? 'path 不能为空' : 'path is required');
+    }
+    final maxBytes = call.getInt('maxBytes', 65536).clamp(1024, 2 * 1024 * 1024);
+
+    final lower = path.toLowerCase();
+    final isImage = _imageExts.any(lower.endsWith);
+
+    // 先探测文件是否存在与大小
+    final stat = await _executeRootShell(
+      'if [ -f "$path" ]; then stat -c "%s" "$path"; elif [ -d "$path" ]; then echo DIR; else echo MISSING; fi',
+    );
+    if (stat.exitCode != 0) {
+      return _formatShellFailure(stat, isZh: _isZh);
+    }
+    final statOut = stat.stdout.trim();
+    if (statOut == 'MISSING') {
+      return _isZh ? '文件不存在: $path' : 'File not found: $path';
+    }
+    if (statOut == 'DIR') {
+      final ls = await _executeRootShell('ls -la "$path"');
+      return _isZh
+          ? '这是一目录，其内容如下：\n\n${ls.stdout.trim()}'
+          : 'This is a directory. Contents:\n\n${ls.stdout.trim()}';
+    }
+
+    if (isImage) {
+      return _isZh
+          ? '这是一个图片文件: $path\n大小: ${_humanSize(int.tryParse(statOut) ?? 0)}\n提示：图片无法以文本返回，可在对话中点击该路径查看。'
+          : 'This is an image file: $path\nSize: ${_humanSize(int.tryParse(statOut) ?? 0)}\nTip: images cannot be returned as text; tap the path in chat to view.';
+    }
+
+    // 文本类：截断到 maxBytes，避免超大文件撑爆上下文
+    final total = int.tryParse(statOut) ?? 0;
+    final result = await _executeRootShell(
+      'head -c $maxBytes "$path"',
+      timeoutSeconds: 20,
+    );
+    if (result.exitCode != 0) {
+      return _formatShellFailure(result, isZh: _isZh);
+    }
+    final truncated = total > maxBytes;
+    final header = _isZh
+        ? '文件: $path\n大小: ${_humanSize(total)}${truncated ? "（已截断至 ${_humanSize(maxBytes)}）" : ""}\n\n'
+        : 'File: $path\nSize: ${_humanSize(total)}${truncated ? " (truncated to ${_humanSize(maxBytes)})" : ""}\n\n';
+    return '$header${result.stdout}';
+  }
+
+  String _humanSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+  }
+}
+
+// ═══ D2. get_device_info（P1） ═══
 
 class GetDeviceInfoHandler extends SystemControlHandler {
   const GetDeviceInfoHandler(super.context);

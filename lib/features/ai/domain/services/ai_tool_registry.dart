@@ -668,9 +668,9 @@ class AiToolRegistry {
 
   static final _generateReport = AiToolDefinition(
     name: 'generate_analysis_report',
-    description: '汇总会话中的分析成果生成结构化逆向分析报告。',
+    description: '汇总会话中的分析成果生成结构化逆向分析报告；preview 直接返回内容，save 落盘为 Markdown 文件。',
     descriptionEn:
-        'Summarize analysis findings from the session into a structured reverse engineering report.',
+        'Summarize analysis findings from the session into a structured reverse engineering report; preview returns content, save writes a Markdown file.',
     parameters:
         (ToolParametersBuilder()
               ..addStringArray('sections', '所需章节 / Sections', required: false)
@@ -685,9 +685,9 @@ class AiToolRegistry {
 
   static final _saveNote = AiToolDefinition(
     name: 'save_note',
-    description: '将分析笔记保存到包项目的 notes 目录。',
+    description: '将分析笔记保存为 Markdown 文件（存于本地 notes 目录）。',
     descriptionEn:
-        'Save an analysis note to the package project notes directory.',
+        'Save an analysis note as a Markdown file in the local notes directory.',
     parameters:
         (ToolParametersBuilder()
               ..addString('title', '笔记标题 / Note title', required: true)
@@ -754,6 +754,26 @@ class AiToolRegistry {
   );
 
   // ---- 系统管控工具定义 ----
+
+  static final _readFile = AiToolDefinition(
+    name: 'read_file',
+    description: '读取设备上任意路径的文件内容（文本返回正文，图片/二进制返回信息与保存路径）。',
+    descriptionEn:
+        'Read a file at any path on the device (text returns content; image/binary returns info and saved path).',
+    parameters:
+        (ToolParametersBuilder()
+              ..addString(
+                'path',
+                '文件绝对路径 / Absolute file path',
+                required: true,
+              )
+              ..addInteger(
+                'maxBytes',
+                '文本最大读取字节数 / Max bytes for text',
+                required: false,
+              ))
+            .build(),
+  );
 
   static final _getDeviceInfo = AiToolDefinition(
     name: 'get_device_info',
@@ -843,9 +863,9 @@ class AiToolRegistry {
 
   static final _captureScreenshot = AiToolDefinition(
     name: 'capture_screenshot',
-    description: '截取当前屏幕，返回图像供 AI 视觉分析。',
+    description: '截取当前屏幕并保存为 PNG 文件，返回文件路径（需 root）。',
     descriptionEn:
-        'Capture the current screen and return an image for AI visual analysis.',
+        'Capture the current screen and save it as a PNG file, returning the file path (requires root).',
     parameters: ToolParametersBuilder.empty(),
   );
 
@@ -867,13 +887,13 @@ class AiToolRegistry {
 
   static final _extractApkResource = AiToolDefinition(
     name: 'extract_apk_resource',
-    description: '从 APK 提取指定图片资源并展示。',
+    description: '从目标应用 APK 中提取指定路径的资源文件到本地。',
     descriptionEn:
-        'Extract and display a specified image resource from the APK.',
+        'Extract a resource file at the given path from the target app APK to local storage.',
     parameters:
         (ToolParametersBuilder()..addString(
               'resourcePath',
-              'APK 内资源路径 / Resource path inside APK',
+              'APK 内资源路径（如 res/drawable/icon.png）/ Resource path inside APK',
               required: true,
             ))
             .build(),
@@ -965,6 +985,12 @@ class AiToolRegistry {
   // ---- 系统管控工具注册 ----
 
   static List<AiToolRegistration> systemControl() => [
+    AiToolRegistration(
+      definition: _readFile,
+      category: AiToolCategory.systemControl,
+      danger: AiToolDangerLevel.read,
+      handlerFactory: ReadFileToolHandler.new,
+    ),
     AiToolRegistration(
       definition: _getDeviceInfo,
       category: AiToolCategory.systemControl,

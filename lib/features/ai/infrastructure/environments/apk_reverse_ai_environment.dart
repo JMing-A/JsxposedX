@@ -9,6 +9,7 @@ import 'package:JsxposedX/features/ai/domain/models/ai_tool_call.dart'
     as legacy;
 import 'package:JsxposedX/features/ai/domain/ports/ai_tool_executor.dart';
 import 'package:JsxposedX/features/ai/domain/services/tool_executor.dart';
+import 'package:JsxposedX/features/ai/domain/services/ai_conversation_export_service.dart';
 import 'package:JsxposedX/features/apk_analysis/domain/repositories/apk_analysis_action_repository.dart';
 import 'package:JsxposedX/features/apk_analysis/domain/repositories/apk_analysis_query_repository.dart';
 import 'package:JsxposedX/features/so_analysis/data/datasources/so_analysis_datasource.dart';
@@ -21,10 +22,12 @@ class ApkReverseAiEnvironment {
     required ApkAnalysisQueryRepository apkQueryRepository,
     required SoAnalysisDatasource soDataSource,
     required ScriptConversationBinding conversationBinding,
+    AiConversationExportService? exportService,
   }) : _apkActionRepository = apkActionRepository,
        _apkQueryRepository = apkQueryRepository,
        _soDataSource = soDataSource,
-       _conversationBinding = conversationBinding;
+       _conversationBinding = conversationBinding,
+       _exportService = exportService;
 
   final String packageName;
   final bool isZh;
@@ -32,6 +35,7 @@ class ApkReverseAiEnvironment {
   final ApkAnalysisQueryRepository _apkQueryRepository;
   final SoAnalysisDatasource _soDataSource;
   final ScriptConversationBinding _conversationBinding;
+  final AiConversationExportService? _exportService;
 
   String? _sessionId;
   List<String> _dexPaths = const [];
@@ -92,6 +96,7 @@ class ApkReverseAiEnvironment {
       conversationBinding: _conversationBinding,
       packageName: packageName,
       isZh: isZh,
+      exportService: _exportService,
     );
     final definitions = allRegs
         .map((r) => r.definition)

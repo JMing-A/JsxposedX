@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tool_handler.dart';
+import 'package:JsxposedX/features/ai/domain/environments/ai_tool_file_store.dart';
 import 'package:JsxposedX/features/ai/domain/environments/ai_tool_runtime_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_tool_call.dart';
 
@@ -99,10 +98,64 @@ class GenerateAnalysisReportHandler extends ContentProductionHandler {
     AiToolCall call, {
     AiToolProgressCallback? onProgress,
   }) async {
-    // 需要会话结果缓存层支持。当前返回引导提示，由 LLM 自行汇总。
-    return _isZh
-        ? '分析报告生成功能正在开发中。当前请根据已有工具结果自行汇总。'
-        : 'Analysis report generation is under development. Please summarize from existing tool results manually.';
+    final exportService = context.exportService;
+    if (exportService == null) {
+      return _isZh
+          ? '报告生成失败：导出服务未初始化'
+          : 'Report generation failed: export service not initialized';
+    }
+
+    final conversationId = context.conversationBinding.conversationId;
+    if (conversationId == null || conversationId.isEmpty) {
+      return _isZh ? '报告生成失败：未找到当前会话 ID' : 'Report generation failed: no session ID';
+    }
+
+    final format = call.getString('format', 'preview');
+    final sections = call.getStringList('sections');
+    if (sections.isNotEmpty) {
+      onProgress?.call(
+        _isZh
+            ? '提示：sections 过滤暂未生效，将导出完整会话内容'
+            : 'Note: sections filter not applied yet; exporting full conversation',
+      );
+    }
+
+    try {
+      final markdown = await exportService.exportToMarkdown(
+        conversationId: conversationId,
+        includeToolCalls: true,
+      );
+      final header = StringBuffer()
+        ..writeln('# 逆向分析报告')
+        ..writeln()
+        ..writeln('- **目标应用**: ${_pkg.isEmpty ? "未知" : _pkg}')
+        ..writeln('- **生成时间**: ${DateTime.now().toIso8601String()}')
+        ..writeln()
+        ..writeln('---')
+        ..writeln();
+      final content = '$header$markdown';
+
+      if (format == 'save') {
+        final fileName = AiToolFileStore.timestamped(
+          'report_${_pkg.isEmpty ? "app" : _pkg}',
+          'md',
+        );
+        final file = await AiToolFileStore.writeText(
+          category: 'reports',
+          fileName: fileName,
+          content: content,
+        );
+        return _isZh
+            ? '分析报告已保存到: ${file.path}\n文件大小: ${(content.length / 1024).toStringAsFixed(2)} KB'
+            : 'Report saved to: ${file.path}\nFile size: ${(content.length / 1024).toStringAsFixed(2)} KB';
+      }
+
+      return _isZh
+          ? '以下是会话汇总的分析报告内容（可用 format=save 落盘）：\n\n$content'
+          : 'Analysis report content (use format=save to persist):\n\n$content';
+    } catch (e) {
+      return _isZh ? '报告生成失败: $e' : 'Report generation failed: $e';
+    }
   }
 }
 
@@ -119,28 +172,39 @@ class SaveNoteHandler extends ContentProductionHandler {
     AiToolCall call, {
     AiToolProgressCallback? onProgress,
   }) async {
-    if (_pkg.isEmpty) {
-      throw ArgumentError(
-        _isZh ? '当前无目标应用' : 'No target app',
-      );
-    }
-
-    final title = call.getString('title');
+    final title = call.getString('title').trim();
     final content = call.getString('content');
 
     if (title.isEmpty) throw ArgumentError('title 不能为空');
     if (content.isEmpty) throw ArgumentError('content 不能为空');
 
-    // 检查标题非法字符
+    // 标题非法字符校验（sanitize 会兜底，这里显式提示用户）
     if (RegExp(r'[/\\:*?"<>|]').hasMatch(title)) {
       throw ArgumentError(
         _isZh ? '标题含非法字符 / Title contains invalid characters' : 'Title contains invalid characters',
       );
     }
 
-    // 笔记功能需 Pigeon 文件写接口。当前返回确认消息。
+    final pkg = _pkg.isEmpty ? 'unknown' : _pkg;
+    final fileName = AiToolFileStore.sanitizeFileName('${pkg}_$title.md');
+    final body = StringBuffer()
+      ..writeln('# $title')
+      ..writeln()
+      ..writeln('- **目标应用**: $pkg')
+      ..writeln('- **记录时间**: ${DateTime.now().toIso8601String()}')
+      ..writeln()
+      ..writeln('---')
+      ..writeln()
+      ..writeln(content);
+
+    final file = await AiToolFileStore.writeText(
+      category: 'notes',
+      fileName: fileName,
+      content: body.toString(),
+    );
+
     return _isZh
-        ? '笔记 "$title" 已记录（本地存储功能开发中）'
-        : 'Note "$title" recorded (local storage under development)';
+        ? '笔记已保存到: ${file.path}'
+        : 'Note saved to: ${file.path}';
   }
 }

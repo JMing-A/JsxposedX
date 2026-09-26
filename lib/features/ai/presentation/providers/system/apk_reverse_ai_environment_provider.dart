@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/legacy.dart';
 import 'package:JsxposedX/features/ai/infrastructure/environments/apk_reverse_ai_environment.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/ai_conversation_export_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_action_provider.dart';
 import 'package:JsxposedX/features/apk_analysis/presentation/providers/apk_analysis_query_provider.dart';
@@ -39,6 +40,7 @@ final apkReverseAiEnvironmentV2Provider = FutureProvider.autoDispose
         apkQueryRepository: ref.watch(apkAnalysisQueryRepositoryProvider),
         soDataSource: ref.watch(soAnalysisDatasourceProvider),
         conversationBinding: ref.watch(scriptConversationBindingProvider),
+        exportService: ref.watch(aiConversationExportServiceProvider),
       );
       ref.onDispose(() => unawaited(environment.dispose()));
       await environment.initialize();
