@@ -667,7 +667,7 @@ class _PendingAttachmentChip extends StatelessWidget {
   }
 }
 
-class _ContextUsageIndicator extends StatelessWidget {
+class _ContextUsageIndicator extends HookWidget {
   const _ContextUsageIndicator({required this.stats, required this.usageRatio});
 
   final AiChatContextStats stats;
@@ -675,6 +675,8 @@ class _ContextUsageIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final expanded = useState(false);
+
     if (stats.tokenBudget <= 0 && stats.memoryEntryCount == 0) {
       return const SizedBox.shrink();
     }
@@ -682,82 +684,125 @@ class _ContextUsageIndicator extends StatelessWidget {
     final scopeScale = AiChatCompactScope.scaleOf(context);
     final isWarning = stats.highWatermarkReached;
     final color = isWarning ? AppColors.warning : context.colorScheme.primary;
-    final background = isWarning
-        ? AppColors.warning.withValues(alpha: 0.10)
-        : context.colorScheme.surfaceContainerLow;
+    final radius = BorderRadius.circular(8 * scopeScale);
+    // 不再给整块铺实心底色，只用一条淡描边界定区域，
+    // 避免在输入框上方形成突兀的色块。仅在告警时使用淡橙底强调。
+    final surfaceDecoration = BoxDecoration(
+      color: isWarning ? AppColors.warning.withValues(alpha: 0.10) : null,
+      borderRadius: radius,
+      border: Border.all(
+        color: isWarning
+            ? AppColors.warning.withValues(alpha: 0.35)
+            : context.colorScheme.outlineVariant.withValues(alpha: 0.45),
+      ),
+    );
+
+    final progressBar = ClipRRect(
+      borderRadius: BorderRadius.circular(2 * scopeScale),
+      child: LinearProgressIndicator(
+        value: usageRatio,
+        minHeight: 3 * scopeScale,
+        backgroundColor: color.withValues(alpha: 0.16),
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+      ),
+    );
+
+    final padding = EdgeInsets.fromLTRB(
+      16 * scopeScale,
+      4 * scopeScale,
+      16 * scopeScale,
+      2 * scopeScale,
+    );
+
+    // 折叠态：只保留进度条，点击卡片展开完整占用信息。
+    if (!expanded.value) {
+      return Padding(
+        padding: padding,
+        child: Tooltip(
+          message:
+              '${context.l10n.aiContextUsage}: ${(usageRatio * 100).round()}%',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => expanded.value = true,
+            child: Container(
+              decoration: surfaceDecoration,
+              padding: EdgeInsets.symmetric(
+                horizontal: 10 * scopeScale,
+                vertical: 7 * scopeScale,
+              ),
+              child: progressBar,
+            ),
+          ),
+        ),
+      );
+    }
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16 * scopeScale,
-        4 * scopeScale,
-        16 * scopeScale,
-        2 * scopeScale,
-      ),
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(
-          horizontal: 10 * scopeScale,
-          vertical: 6 * scopeScale,
-        ),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(8 * scopeScale),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  isWarning
-                      ? Icons.warning_amber_rounded
-                      : Icons.data_usage_rounded,
-                  size: 15 * scopeScale,
-                  color: color,
-                ),
-                SizedBox(width: 6 * scopeScale),
-                Expanded(
-                  child: Text(
-                    '${context.l10n.aiContextUsage}: ${(usageRatio * 100).round()}%  '
-                    '${stats.estimatedTokens}/${stats.tokenBudget}  '
-                    '${context.l10n.aiContextMemoryEntries}: ${stats.memoryEntryCount}',
-                    style: TextStyle(
-                      color: isWarning
-                          ? AppColors.warning
-                          : context.colorScheme.onSurfaceVariant,
-                      fontSize: 11 * scopeScale,
-                      fontWeight: isWarning ? FontWeight.w700 : FontWeight.w500,
+      padding: padding,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => expanded.value = false,
+        child: Container(
+          decoration: surfaceDecoration,
+          padding: EdgeInsets.symmetric(
+            horizontal: 10 * scopeScale,
+            vertical: 6 * scopeScale,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                Row(
+                  children: [
+                    Icon(
+                      isWarning
+                          ? Icons.warning_amber_rounded
+                          : Icons.data_usage_rounded,
+                      size: 15 * scopeScale,
+                      color: color,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    SizedBox(width: 6 * scopeScale),
+                    Expanded(
+                      child: Text(
+                        '${context.l10n.aiContextUsage}: ${(usageRatio * 100).round()}%  '
+                        '${stats.estimatedTokens}/${stats.tokenBudget}  '
+                        '${context.l10n.aiContextMemoryEntries}: ${stats.memoryEntryCount}',
+                        style: TextStyle(
+                          color: isWarning
+                              ? AppColors.warning
+                              : context.colorScheme.onSurfaceVariant,
+                          fontSize: 11 * scopeScale,
+                          fontWeight: isWarning
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(
+                      Icons.expand_less_rounded,
+                      size: 15 * scopeScale,
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ],
                 ),
+                SizedBox(height: 4 * scopeScale),
+                progressBar,
+                if (isWarning)
+                  Padding(
+                    padding: EdgeInsets.only(top: 3 * scopeScale),
+                    child: Text(
+                      context.l10n.aiContextHighWatermarkAlert,
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 10 * scopeScale,
+                      ),
+                    ),
+                  ),
               ],
             ),
-            SizedBox(height: 4 * scopeScale),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2 * scopeScale),
-              child: LinearProgressIndicator(
-                value: usageRatio,
-                minHeight: 3 * scopeScale,
-                backgroundColor: color.withValues(alpha: 0.16),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            ),
-            if (isWarning)
-              Padding(
-                padding: EdgeInsets.only(top: 3 * scopeScale),
-                child: Text(
-                  context.l10n.aiContextHighWatermarkAlert,
-                  style: TextStyle(
-                    color: AppColors.warning,
-                    fontSize: 10 * scopeScale,
-                  ),
-                ),
-              ),
-          ],
+          ),
         ),
-      ),
     );
   }
 }
