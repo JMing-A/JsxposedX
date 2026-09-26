@@ -12,6 +12,23 @@ import 'package:JsxposedX/features/ai/presentation/states/ai_tool_invocation_vie
 class AiChatViewMessageMapper {
   const AiChatViewMessageMapper();
 
+  /// 清理 DeepSeek 等模型输出的原始工具调用标签
+  static String _cleanRawToolCallMarkers(String content) {
+    // DeepSeek 模型的 DSML 工具调用标签
+    var cleaned = content.replaceAll(RegExp(r'<｜DSML｜[^>]*>'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'</｜DSML｜[^>]*>'), '');
+    
+    // 其他可能的工具调用标记格式
+    cleaned = cleaned.replaceAll(RegExp(r'<\|function_calls\|>'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'</\|function_calls\|>'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|invoke[^>]*\|>'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'</\|invoke[^>]*\|>'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|parameter[^>]*\|>'), '');
+    cleaned = cleaned.replaceAll(RegExp(r'</\|parameter[^>]*\|>'), '');
+    
+    return cleaned.trim();
+  }
+
   List<AiChatViewMessage> mapHistory(
     List<AiMessage> messages, {
     AiChatSessionPhase phase = AiChatSessionPhase.ready,
@@ -64,10 +81,12 @@ class AiChatViewMessageMapper {
             .whereType<AiReasoningPart>()
             .map((part) => part.text)
             .join();
-        final assistantContent = AiThinkingMarkup.compose(
-          thinking: reasoning,
-          answer: text,
-          duration: null,
+        final assistantContent = _cleanRawToolCallMarkers(
+          AiThinkingMarkup.compose(
+            thinking: reasoning,
+            answer: text,
+            duration: null,
+          ),
         );
         if (assistantContent.isNotEmpty) {
           display.add(
@@ -148,10 +167,12 @@ class AiChatViewMessageMapper {
           .map((part) => part.text)
           .join();
       final content = message.role == AiMessageRole.assistant
-          ? AiThinkingMarkup.compose(
-              thinking: reasoning,
-              answer: text,
-              duration: null, // Note: persisted messages don't yet store duration directly
+          ? _cleanRawToolCallMarkers(
+              AiThinkingMarkup.compose(
+                thinking: reasoning,
+                answer: text,
+                duration: null, // Note: persisted messages don't yet store duration directly
+              ),
             )
           : text;
       if (content.isEmpty && message.status != AiMessageStatus.failed) {
@@ -198,10 +219,12 @@ class AiChatViewMessageMapper {
       id: messageId,
       sourceMessageId: messageId,
       role: AiMessageRole.assistant.name,
-      content: AiThinkingMarkup.compose(
-        thinking: snapshot.reasoning,
-        answer: snapshot.text,
-        duration: snapshot.reasoningDuration,
+      content: _cleanRawToolCallMarkers(
+        AiThinkingMarkup.compose(
+          thinking: snapshot.reasoning,
+          answer: snapshot.text,
+          duration: snapshot.reasoningDuration,
+        ),
       ),
       isError: failed && !hasContent,
       errorHint: failed && hasContent

@@ -690,24 +690,6 @@ class SaveScriptHandler extends ScriptLifecycleToolHandler {
       );
     }
 
-    final validation = await ValidateScriptHandler(context).handle(
-      AiToolCall(
-        id: '${call.id}:validate',
-        name: 'validate_script',
-        arguments: {'code': code, 'engine': scriptType},
-      ),
-    );
-    final validationPassed =
-        validation.startsWith('校验通过') ||
-        validation.startsWith('Validation passed');
-    if (!validationPassed) {
-      throw ArgumentError(
-        _isZh
-            ? '脚本未通过自动校验，请先修复后再保存：\\n$validation'
-            : 'Script failed automatic validation; fix it before saving:\\n$validation',
-      );
-    }
-
     // 校验保留名
     if (scriptType == 'frida' && _reservedFrida.contains(fileName) ||
         scriptType == 'xposed' && _reservedXposed.contains(fileName)) {

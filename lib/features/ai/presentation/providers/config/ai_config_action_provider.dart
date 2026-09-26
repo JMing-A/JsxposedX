@@ -10,6 +10,7 @@ import 'package:JsxposedX/features/ai/domain/models/ai_model.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/config/ai_config_action_repository.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_chat_session_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -287,6 +288,14 @@ class AiConfigAction extends _$AiConfigAction {
         report.failures.map((failure) => failure.reason).join('; '),
       );
     }
+    
+    // 关键修复：invalidate 会话控制器，强制重新初始化
+    // 会话控制器在初始化时会从数据库读取 assistant 和 model，
+    // 并缓存在 _state 中。切换模型后，虽然数据库中的 assistant 已更新，
+    // 但已初始化的控制器还在使用旧的缓存，导致实际请求仍用旧模型。
+    // invalidate 后，下次访问会话时会重新创建控制器并读取新的配置。
+    ref.invalidate(aiChatSessionV2Provider);
+    
     ref.invalidate(aiConnectionsV2Provider);
     ref.invalidate(aiAssistantsV2Provider);
     ref.invalidate(aiSystemMigrationProvider);

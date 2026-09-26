@@ -93,7 +93,7 @@ final class AiConfigActionProvider
   }
 }
 
-String _$aiConfigActionHash() => r'509313a30c18014b2627fc7b4327d371528c7bd1';
+String _$aiConfigActionHash() => r'444247414c2f550f70cc102f240013c5a19e4f1a';
 
 /// 保存 AI 配置 Action Provider
 

@@ -413,30 +413,35 @@ class AiToolRegistry {
 
   static final _saveScript = AiToolDefinition(
     name: 'save_script',
-    description: '将脚本保存部署到目标包。Xposed 脚本自动加 [tradition] 前缀。同名不覆盖时返回冲突。',
+    description: '将脚本保存部署到目标包。优先使用 use_last_generated=true 引用缓存脚本，避免重复传输代码。',
     descriptionEn:
-        'Save and deploy a script to the target package. Xposed scripts get [tradition] prefix automatically. Returns conflict if same name exists without overwrite flag.',
+        'Save and deploy a script to the target package. Prefer use_last_generated=true to reference cached script, avoiding code duplication.',
     parameters:
         (ToolParametersBuilder()
+              ..addBoolean(
+                'use_last_generated',
+                '使用最近生成的脚本（推荐） / Use recently generated script (recommended)',
+                required: false,
+              )
               ..addString(
                 'scriptType',
-                '脚本类型 / Script type',
+                '脚本类型（use_last_generated=true 时可省略） / Script type (optional when use_last_generated=true)',
                 enumValues: ['frida', 'xposed'],
-                required: true,
+                required: false,
               )
               ..addString(
                 'fileName',
-                '脚本文件名 / Script file name (auto-appends .js)',
-                required: true,
+                '脚本文件名（use_last_generated=true 时可省略） / Script file name (optional when use_last_generated=true)',
+                required: false,
               )
               ..addString(
                 'code',
-                '完整可运行的纯 JavaScript；禁止 Markdown 围栏、解释、TODO 和 [tradition] 前缀 / Complete runnable plain JavaScript; no Markdown fences, explanations, TODOs, or [tradition] prefix',
-                required: true,
+                '完整脚本代码（仅当 use_last_generated=false 时需要） / Full script code (only when use_last_generated=false)',
+                required: false,
               )
               ..addBoolean(
                 'overwrite',
-                '完整覆盖同名文件（不会追加）/ Fully replace an existing file (never append)',
+                '完整覆盖同名文件 / Fully replace an existing file',
                 required: false,
               ))
             .build(),
@@ -485,19 +490,24 @@ class AiToolRegistry {
 
   static final _validateScript = AiToolDefinition(
     name: 'validate_script',
-    description: '校验脚本文本语法合法性（括号配对/引号闭合等基础检查），部署前把关。',
+    description: '校验脚本语法。优先使用 use_last_generated=true 引用缓存脚本，避免重复传输代码。',
     descriptionEn:
-        'Validate script text syntax (brackets/quotes balancing, basic checks) before deployment.',
+        'Validate script syntax. Prefer use_last_generated=true to reference cached script, avoiding code duplication.',
     parameters:
         (ToolParametersBuilder()
+              ..addBoolean(
+                'use_last_generated',
+                '使用最近生成的脚本（推荐） / Use recently generated script (recommended)',
+                required: false,
+              )
               ..addString(
                 'code',
-                '待校验的脚本全文 / Full script code to validate',
-                required: true,
+                '待校验的脚本代码（仅当 use_last_generated=false 时需要） / Script code to validate (only when use_last_generated=false)',
+                required: false,
               )
               ..addString(
                 'engine',
-                '脚本引擎 / Script engine',
+                '脚本引擎（use_last_generated=true 时可省略） / Script engine (optional when use_last_generated=true)',
                 enumValues: ['frida', 'xposed'],
                 required: false,
               ))
@@ -797,7 +807,35 @@ class AiToolRegistry {
                 enumValues: ['V', 'D', 'I', 'W', 'E'],
                 required: false,
               )
-              ..addInteger('limit', '最大行数 / Max lines', required: false))
+              ..addInteger('limit', '最大行数 / Max lines', required: false)
+              ..addBoolean(
+                'includeFramework',
+                '是否包含框架日志 / Include framework logs',
+                required: false,
+              ))
+            .build(),
+  );
+
+  static final _readFrameworkLogs = AiToolDefinition(
+    name: 'read_framework_logs',
+    description: '读取 Xposed/Frida 框架的日志输出（包含 Jx.log 和 Fx.log）。',
+    descriptionEn: 'Read Xposed/Frida framework logs (including Jx.log and Fx.log).',
+    parameters:
+        (ToolParametersBuilder()
+              ..addString('keyword', '过滤关键词 / Filter keyword', required: false)
+              ..addString(
+                'level',
+                '日志级别 / Log level',
+                enumValues: ['V', 'D', 'I', 'W', 'E'],
+                required: false,
+              )
+              ..addInteger('limit', '最大行数 / Max lines', required: false)
+              ..addString(
+                'scriptType',
+                '脚本类型 / Script type',
+                enumValues: ['xposed', 'frida'],
+                required: false,
+              ))
             .build(),
   );
 
@@ -950,6 +988,12 @@ class AiToolRegistry {
       category: AiToolCategory.systemControl,
       danger: AiToolDangerLevel.read,
       handlerFactory: ReadTargetLogsHandler.new,
+    ),
+    AiToolRegistration(
+      definition: _readFrameworkLogs,
+      category: AiToolCategory.systemControl,
+      danger: AiToolDangerLevel.read,
+      handlerFactory: ReadFrameworkLogsHandler.new,
     ),
     AiToolRegistration(
       definition: _shellExec,

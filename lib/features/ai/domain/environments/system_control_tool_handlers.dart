@@ -169,6 +169,8 @@ class ReadTargetLogsHandler extends SystemControlHandler {
     final keyword = call.getString('keyword').trim();
     final level = call.getString('level').trim().toUpperCase();
     final limit = call.getInt('limit', 200).clamp(1, 1000);
+    final includeFramework = call.getBool('includeFramework');
+
     final pidResult = await _executeRootShell('pidof $_pkg');
     if (pidResult.exitCode != 0 || pidResult.stdout.trim().isEmpty) {
       return _isZh
@@ -189,8 +191,21 @@ class ReadTargetLogsHandler extends SystemControlHandler {
         .split('\n')
         .where((line) => line.trim().isNotEmpty)
         .where((line) {
-          final columns = line.trim().split(RegExp(r'\s+'));
-          return columns.length >= 4 && pids.contains(columns[2]);
+          if (includeFramework) {
+            // 包含框架日志：匹配目标应用 PID 或框架相关 tag
+            final columns = line.trim().split(RegExp(r'\s+'));
+            final hasPid = columns.length >= 4 && pids.contains(columns[2]);
+            final hasFrameworkTag = line.contains('JsxposedX') ||
+                line.contains('Jsxposed') ||
+                line.contains('Xposed') ||
+                line.contains('EdXposed') ||
+                line.contains('LSPosed');
+            return hasPid || hasFrameworkTag;
+          } else {
+            // 仅目标应用进程日志
+            final columns = line.trim().split(RegExp(r'\s+'));
+            return columns.length >= 4 && pids.contains(columns[2]);
+          }
         })
         .where(
           (line) =>
@@ -204,7 +219,80 @@ class ReadTargetLogsHandler extends SystemControlHandler {
         )
         .toList();
     if (lines.isEmpty) {
-      return _isZh ? '未找到匹配的目标应用日志' : 'No matching target app logs found';
+      return _isZh ? '未找到匹配的日志' : 'No matching logs found';
+    }
+    final start = lines.length > limit ? lines.length - limit : 0;
+    return lines.sublist(start).join('\n');
+  }
+}
+
+// ═══ D5. read_framework_logs（P2） ═══
+
+class ReadFrameworkLogsHandler extends SystemControlHandler {
+  const ReadFrameworkLogsHandler(super.context);
+
+  @override
+  String get toolName => 'read_framework_logs';
+
+  @override
+  Future<String> handle(
+    AiToolCall call, {
+    AiToolProgressCallback? onProgress,
+  }) async {
+    final keyword = call.getString('keyword').trim();
+    final level = call.getString('level').trim().toUpperCase();
+    final limit = call.getInt('limit', 200).clamp(1, 1000);
+    final scriptType = call.getString('scriptType').trim().toLowerCase();
+
+    final captureLimit = (limit * 10).clamp(200, 5000);
+    final result = await _executeRootShell(
+      'logcat -d -v threadtime -t $captureLimit',
+      timeoutSeconds: 20,
+    );
+    if (result.exitCode != 0) {
+      return _formatShellFailure(result, isZh: _isZh);
+    }
+
+    final lines = result.stdout
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .where((line) {
+          // 匹配框架相关的 tag 或内容
+          if (scriptType == 'xposed') {
+            return line.contains('JsxposedX') ||
+                line.contains('Jsxposed') ||
+                line.contains('Xposed') ||
+                line.contains('EdXposed') ||
+                line.contains('LSPosed');
+          } else if (scriptType == 'frida') {
+            return line.contains('Frida') || line.contains('frida');
+          } else {
+            // 两者都包含
+            return line.contains('JsxposedX') ||
+                line.contains('Jsxposed') ||
+                line.contains('Xposed') ||
+                line.contains('EdXposed') ||
+                line.contains('LSPosed') ||
+                line.contains('Frida') ||
+                line.contains('frida');
+          }
+        })
+        .where(
+          (line) =>
+              level.isEmpty ||
+              RegExp('\\s${RegExp.escape(level)}\\s').hasMatch(line),
+        )
+        .where(
+          (line) =>
+              keyword.isEmpty ||
+              line.toLowerCase().contains(keyword.toLowerCase()),
+        )
+        .toList();
+
+    if (lines.isEmpty) {
+      return _isZh
+          ? '未找到匹配的框架日志\n提示：确保 Xposed/Frida 框架正在运行且脚本已启用'
+          : 'No matching framework logs found\nTip: Ensure Xposed/Frida framework is running and scripts are enabled';
     }
     final start = lines.length > limit ? lines.length - limit : 0;
     return lines.sublist(start).join('\n');
