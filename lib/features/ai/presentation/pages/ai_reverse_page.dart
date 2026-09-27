@@ -4,6 +4,7 @@ import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 
+import 'package:JsxposedX/features/ai/presentation/providers/ask/ai_ask_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/environments/apk_reverse_chat_environment_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/plan/ai_plan_provider.dart';
@@ -11,6 +12,7 @@ import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_run
 import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_view_message.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_ask_mode_switch.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_search_sheet.dart';
@@ -205,6 +207,40 @@ class AiReversePage extends HookConsumerWidget {
       syncPlan(next);
     });
 
+    // 问答模式：会话挂起等待作答时，把待答问题同步到全局状态，
+    // 保证提问卡片在任何布局下都可交互。
+    final askEnabled = ref.watch(
+      aiAskProvider(packageName).select((state) => state.enabled),
+    );
+    final pendingQuestion = ref.watch(
+      aiAskProvider(packageName).select((state) => state.pendingQuestion),
+    );
+
+    void syncAsk(AiChatRuntimeState snapshot) {
+      // 以会话真实挂起状态为准：既能在提问时点亮，也能在作答后清空，
+      // 避免提示条与卡片在回答之后残留。
+      ref
+          .read(aiAskProvider(packageName).notifier)
+          .setPendingQuestion(
+            snapshot.pendingQuestion,
+            sessionId: snapshot.currentSessionId,
+          );
+    }
+
+    useEffect(() {
+      if (!askEnabled) return null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        syncAsk(ref.read(aiChatRuntimeProvider(packageName: packageName)));
+      });
+      return null;
+    }, [askEnabled, packageName]);
+
+    ref.listen(aiChatRuntimeProvider(packageName: packageName), (_, next) {
+      if (!askEnabled) return;
+      syncAsk(next);
+    });
+
     Future<void> openConversationSearch() async {
       final sheetBackground =
           context.theme.bottomSheetTheme.backgroundColor ??
@@ -353,11 +389,26 @@ class AiReversePage extends HookConsumerWidget {
                                   ),
                                   onDismiss: () => quotedMessage.value = null,
                                 ),
+                              if (pendingQuestion != null)
+                                _PendingQuestionBar(
+                                  prompt: pendingQuestion.prompt,
+                                  onDismiss: () => ref
+                                      .read(
+                                        aiChatRuntimeProvider(
+                                          packageName: packageName,
+                                        ).notifier,
+                                      )
+                                      .submitAnswer(const <String>[]),
+                                ),
                               AiPlanMenu(packageName: packageName),
                             ],
                           ),
-                          quickActionsTrailing: AiPlanModeSwitch(
-                            packageName: packageName,
+                          quickActionsTrailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AiPlanModeSwitch(packageName: packageName),
+                              AiAskModeSwitch(packageName: packageName),
+                            ],
                           ),
                           composeOutgoingText: (rawText) => _composeQuotedText(
                             rawText: rawText,
@@ -411,6 +462,78 @@ String _composeQuotedText({
     return '$prefix\n\n';
   }
   return '$prefix\n\n$rawText';
+}
+
+/// 问答模式待作答提示条：提醒用户 AI 正在等待作答，并提供放弃作答入口。
+class _PendingQuestionBar extends StatelessWidget {
+  const _PendingQuestionBar({required this.prompt, required this.onDismiss});
+
+  final String prompt;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = context.colorScheme.primary;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: context.isDark ? 0.12 : 0.08),
+        borderRadius: BorderRadius.circular(10.r),
+        border: Border.all(color: accent.withValues(alpha: 0.2), width: 0.6),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(top: 1.h),
+            child: Icon(
+              Icons.help_outline_rounded,
+              size: 15.sp,
+              color: accent,
+            ),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.isZh ? 'AI 正在等待你的回答' : 'AI is waiting for your answer',
+                  style: TextStyle(
+                    fontSize: 11.sp,
+                    fontWeight: FontWeight.w600,
+                    color: accent,
+                  ),
+                ),
+                SizedBox(height: 2.h),
+                Text(
+                  prompt,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    height: 1.35,
+                    color: context.textTheme.bodyMedium?.color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onDismiss,
+            iconSize: 16.sp,
+            visualDensity: VisualDensity.compact,
+            tooltip: context.isZh ? '放弃作答' : 'Skip',
+            icon: Icon(
+              Icons.close_rounded,
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _QuoteReplyBar extends StatelessWidget {

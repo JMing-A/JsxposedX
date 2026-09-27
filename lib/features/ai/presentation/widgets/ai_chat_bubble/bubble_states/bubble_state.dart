@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:JsxposedX/features/ai/domain/models/ai_question.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_tool_invocation_view.dart';
 
 @immutable
@@ -22,6 +23,12 @@ class BubbleState {
   final List<AiToolInvocationView> toolInvocations;
   final VoidCallback? onToolApprove;
   final VoidCallback? onToolReject;
+
+  /// 问答模式：当前挂起等待作答的问题（用于判断选项卡片是否可交互）。
+  final AiQuestion? pendingQuestion;
+
+  /// 问答模式：用户选择选项后提交作答。
+  final ValueChanged<List<String>>? onAnswer;
 
   /// 非侵入式错误提示：气泡内容正常展示时，流式中断/失败的补充说明。
   /// 非空时不影响 isError（红边框、重试按钮）等既有样式。
@@ -48,6 +55,8 @@ class BubbleState {
     this.toolInvocations = const <AiToolInvocationView>[],
     this.onToolApprove,
     this.onToolReject,
+    this.pendingQuestion,
+    this.onAnswer,
     this.errorHint,
     this.imageSources = const <String>[],
   });

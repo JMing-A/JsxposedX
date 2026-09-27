@@ -11,6 +11,7 @@ import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tool_executor_con
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_environment_snapshot.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_tool_definition.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_question.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_response_issue.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_tool_call.dart';
@@ -23,6 +24,7 @@ import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_qu
 import 'package:JsxposedX/features/ai/presentation/providers/config/disabled_tools_store.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/user_risky_tools_store.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/plan/ai_plan_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/ask/ai_ask_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/ai/presentation/mappers/ai_chat_view_message_mapper.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
@@ -458,7 +460,8 @@ class AiChatAction extends _$AiChatAction {
         next.phase == AiChatSessionPhase.requesting ||
         next.phase == AiChatSessionPhase.streaming ||
         next.phase == AiChatSessionPhase.cancelling ||
-        next.phase == AiChatSessionPhase.awaitingToolApproval;
+        next.phase == AiChatSessionPhase.awaitingToolApproval ||
+        next.phase == AiChatSessionPhase.awaitingUserAnswer;
     if (!streaming && snapshot == null) _clearStreaming();
     state = state.copyWith(
       sessions: _updatedSessions(next.conversation),
@@ -470,6 +473,9 @@ class AiChatAction extends _$AiChatAction {
           ? null
           : LegacyAiConversationMigrator.describeAiFailure(next.failure!),
       lastResponseIssue: _issueFor(next.failure),
+      pendingQuestion: next.isAwaitingUserAnswer
+          ? _sessionController?.pendingQuestion
+          : null,
     );
   }
 
@@ -592,11 +598,15 @@ class AiChatAction extends _$AiChatAction {
     await _attachSession();
   }
 
-  /// 组合当前生效的会话系统规则：基础系统提示 + 计划模式约束。
+  /// 组合当前生效的会话系统规则：基础系统提示 + 计划模式约束 + 问答模式约束。
   String _buildSessionRules() {
-    return AiPlanPrompt.systemRules(
-      baseRules: state.systemPrompt ?? '',
-      enabled: state.planModeEnabled,
+    return AiAskPrompt.systemRules(
+      baseRules: AiPlanPrompt.systemRules(
+        baseRules: state.systemPrompt ?? '',
+        enabled: state.planModeEnabled,
+        isZh: _resolveIsZh(),
+      ),
+      enabled: state.askModeEnabled,
       isZh: _resolveIsZh(),
     );
   }
@@ -605,19 +615,25 @@ class AiChatAction extends _$AiChatAction {
   /// 计划约束只进入系统规则，不拼进用户消息，因此不会显示在对话气泡里。
   Future<void> setPlanMode(bool enabled) async {
     if (_disposed || state.planModeEnabled == enabled) return;
+    state = state.copyWith(planModeEnabled: enabled);
+    await _refreshSessionRules();
+  }
+
+  /// 切换问答模式：更新系统规则，并让当前会话在下一轮请求中生效。
+  /// 与计划模式一致，约束只走系统规则，不污染用户消息与气泡。
+  Future<void> setAskMode(bool enabled) async {
+    if (_disposed || state.askModeEnabled == enabled) return;
+    state = state.copyWith(askModeEnabled: enabled);
+    await _refreshSessionRules();
+  }
+
+  /// 重建系统规则并重挂会话；_attachSession 用的是缓存的 _environment，
+  /// 这里必须同步重建，否则新的系统规则不会进入下一轮请求。
+  Future<void> _refreshSessionRules() async {
     state = state.copyWith(
-      planModeEnabled: enabled,
-      sessionContext: AiChatSessionContext(
-        sessionRules: AiPlanPrompt.systemRules(
-          baseRules: state.systemPrompt ?? '',
-          enabled: enabled,
-          isZh: _resolveIsZh(),
-        ),
-      ),
+      sessionContext: AiChatSessionContext(sessionRules: _buildSessionRules()),
       contextVersion: AiChatSessionContext.currentVersion,
     );
-    // _attachSession 用的是缓存的 _environment，这里必须同步重建，
-    // 否则新的系统规则不会进入下一轮请求。
     final snapshot = _lastSnapshot;
     if (snapshot != null) {
       _environment = _standardEnvironment(snapshot);
@@ -626,7 +642,14 @@ class AiChatAction extends _$AiChatAction {
   }
 
   Future<void> send(String text) async {
-    if (text.trim().isEmpty || state.isStreaming) return;
+    if (text.trim().isEmpty) return;
+    // 问答模式挂起期间，输入框内容即用户对该问题的自由作答，
+    // 直接回灌给挂起的本轮，而不是开启新的一轮请求。
+    if (state.pendingQuestion != null) {
+      submitAnswer(<String>[text.trim()]);
+      return;
+    }
+    if (state.isStreaming) return;
     if (state.currentSessionId == null) {
       await createSession(
         '新对话 ${DateTime.now().hour}:${DateTime.now().minute}',
@@ -826,6 +849,15 @@ class AiChatAction extends _$AiChatAction {
   /// 是否有等待审批的工具调用
   bool get hasPendingToolApproval =>
       _sessionController?.hasPendingToolApproval ?? false;
+
+  /// 当前挂起等待用户作答的问题；为空表示没有待作答问题。
+  AiQuestion? get pendingQuestion => _sessionController?.pendingQuestion;
+
+  /// 用户提交作答，恢复本轮生成。
+  void submitAnswer(List<String> answers) {
+    final controller = _readyController(showError: false);
+    controller?.submitAnswer(answers);
+  }
 
   Future<void> deleteSession(String sessionId) async {
     if (state.currentSessionId == sessionId && state.isStreaming) {

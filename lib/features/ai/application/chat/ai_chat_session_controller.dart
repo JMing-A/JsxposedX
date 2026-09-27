@@ -8,9 +8,12 @@ import 'package:JsxposedX/features/ai/application/chat/ai_chat_orchestrator.dart
 import 'package:JsxposedX/features/ai/application/chat/ai_chat_session_state.dart';
 import 'package:JsxposedX/features/ai/application/chat/ai_stream_snapshot.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_question.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/ai_catalog_repository.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/ai_conversation_repository.dart';
+import 'package:JsxposedX/features/ai/domain/services/ai_question_parser.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/ask/ai_ask_provider.dart';
 
 class AiChatSessionController {
   AiChatSessionController({
@@ -75,6 +78,9 @@ class AiChatSessionController {
   bool _closed = false;
   Completer<bool>? _approvalCompleter;
   AiMessage? _pendingApprovalAssistantMessage;
+  /// 问答模式挂起：模型抛出提问块后阻塞在此，等待用户作答后再继续本轮。
+  Completer<List<String>>? _answerCompleter;
+  AiQuestion? _pendingQuestion;
 
   AiChatSessionState get state => _state;
 
@@ -590,6 +596,70 @@ class AiChatSessionController {
         );
       }
 
+      // 问答模式：模型以 question 块抛出疑问时挂起本轮，等用户作答后
+      // 把答复作为用户消息回灌，继续同一轮生成。
+      // 必须优先于工具调用判定：模型常「一边提问一边顺手发起工具调用」，
+      // 若先走工具分支就会跳过挂起，用户永远等不到这个问题。
+      final question = finalSnapshot.status == AiStreamStatus.completed
+          ? AiQuestionParser.parse(finalSnapshot.text)
+          : null;
+      if (question != null) {
+        // 提问轮只保留文本：同轮附带的工具调用一律丢弃，否则历史里会留下
+        // 没有 tool 结果配对的 toolCall，下一轮请求会被协议拒绝。
+        final questionMessage = _messageFromSnapshot(
+          finalSnapshot.copyWith(toolCalls: const []),
+          placeholder,
+          completedAt: _now().toUtc(),
+        );
+        await _conversationRepository.saveMessage(questionMessage);
+        final questionHistory = [
+          for (final message in _state.messages)
+            if (message.id == questionMessage.id) questionMessage else message,
+        ];
+        // 注意：_states 是 sync 广播流，_emit 会同步触发监听器读
+        // pendingQuestion，因此挂起字段必须先于 _emit 赋值，否则会
+        // 被映射成 null，导致卡片不可交互。
+        _pendingQuestion = question;
+        _answerCompleter = Completer<List<String>>();
+        _emit(
+          _state.copyWith(
+            messages: questionHistory,
+            phase: AiChatSessionPhase.awaitingUserAnswer,
+            activeRequestId: null,
+            activeAssistantMessageId: null,
+            runSnapshot: null,
+          ),
+        );
+        final answers = await _answerCompleter!.future;
+        _answerCompleter = null;
+        _pendingQuestion = null;
+        if (answers.isEmpty || _closed) return;
+        final answerMessage = AiMessage(
+          id: _idFactory(),
+          conversationId: conversationId,
+          role: AiMessageRole.user,
+          parts: [
+            AiContentPart.text(
+              AiAskPrompt.answerMessage(question.prompt, answers),
+            ),
+          ],
+          status: AiMessageStatus.completed,
+          parentId: questionMessage.id,
+          createdAt: _now().toUtc(),
+        );
+        await _conversationRepository.saveMessage(answerMessage);
+        workingHistory = [...questionHistory, answerMessage];
+        parentId = answerMessage.id;
+        _emit(
+          _state.copyWith(
+            messages: workingHistory,
+            phase: AiChatSessionPhase.requesting,
+            failure: null,
+          ),
+        );
+        continue;
+      }
+
       final hasToolCalls =
           finalSnapshot.status == AiStreamStatus.completed &&
           finalSnapshot.toolCalls.isNotEmpty;
@@ -894,11 +964,30 @@ class AiChatSessionController {
   bool get hasPendingToolApproval =>
       _approvalCompleter != null && !_approvalCompleter!.isCompleted;
 
+  /// 当前挂起等待用户作答的问题；为空表示没有待作答问题。
+  AiQuestion? get pendingQuestion => _pendingQuestion;
+
+  /// 是否有等待用户作答的问题
+  bool get hasPendingAnswer =>
+      _answerCompleter != null && !_answerCompleter!.isCompleted;
+
+  /// 用户提交作答后恢复本轮生成；[answers] 为空视为放弃作答。
+  void submitAnswer(List<String> answers) {
+    final completer = _answerCompleter;
+    if (completer == null || completer.isCompleted) return;
+    completer.complete(List<String>.from(answers));
+  }
+
   void cancel() {
     // 如果有等待审批的工具，先拒绝它们
     final completer = _approvalCompleter;
     if (completer != null && !completer.isCompleted) {
       completer.complete(false);
+    }
+    // 如果有等待作答的问题，先放弃作答
+    final answerCompleter = _answerCompleter;
+    if (answerCompleter != null && !answerCompleter.isCompleted) {
+      answerCompleter.complete(const <String>[]);
     }
     final run = _activeRun;
     if (run == null) return;
@@ -956,6 +1045,13 @@ class AiChatSessionController {
     }
     _approvalCompleter = null;
     _pendingApprovalAssistantMessage = null;
+    // 问答挂起同理：异常恢复时必须放弃作答，否则本轮会永久阻塞。
+    final answerCompleter = _answerCompleter;
+    if (answerCompleter != null && !answerCompleter.isCompleted) {
+      answerCompleter.complete(const <String>[]);
+    }
+    _answerCompleter = null;
+    _pendingQuestion = null;
     try {
       await _checkpointTail;
     } catch (_) {}
@@ -1209,6 +1305,9 @@ class AiChatSessionController {
     _approvalCompleter?.complete(false);
     _approvalCompleter = null;
     _pendingApprovalAssistantMessage = null;
+    _answerCompleter?.complete(const <String>[]);
+    _answerCompleter = null;
+    _pendingQuestion = null;
     _activeRun?.cancel();
     await _runSubscription?.cancel();
     await _checkpointTail;

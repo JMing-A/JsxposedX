@@ -4,6 +4,7 @@ import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/features/ai/domain/constants/builtin_ai_config.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_question.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_response_issue.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
@@ -359,6 +360,9 @@ class AiChatList extends HookConsumerWidget {
                           onToolReject: streamingHasApproval
                               ? () => chatNotifier.rejectPendingTools()
                               : null,
+                          pendingQuestion: chatState.pendingQuestion,
+                          onAnswer: (answers) =>
+                              chatNotifier.submitAnswer(answers),
                           onQuote: onQuote == null
                               ? null
                               : () => onQuote!(message),
@@ -471,6 +475,9 @@ class AiChatList extends HookConsumerWidget {
                                   onToolReject: hasApprovalActions
                                       ? () => chatNotifier.rejectPendingTools()
                                       : null,
+                                  pendingQuestion: chatState.pendingQuestion,
+                                  onAnswer: (answers) =>
+                                      chatNotifier.submitAnswer(answers),
                                   onQuote: onQuote == null
                                       ? null
                                       : () => onQuote!(message),
@@ -980,6 +987,8 @@ class _StreamingAiChatBubble extends HookWidget {
     this.onToolApprove,
     this.onToolReject,
     this.onQuote,
+    this.pendingQuestion,
+    this.onAnswer,
   });
 
   final String initialContent;
@@ -995,6 +1004,8 @@ class _StreamingAiChatBubble extends HookWidget {
   final VoidCallback? onToolApprove;
   final VoidCallback? onToolReject;
   final VoidCallback? onQuote;
+  final AiQuestion? pendingQuestion;
+  final ValueChanged<List<String>>? onAnswer;
 
   @override
   Widget build(BuildContext context) {
@@ -1070,6 +1081,8 @@ class _StreamingAiChatBubble extends HookWidget {
         onToolApprove: onToolApprove,
         onToolReject: onToolReject,
         onQuote: onQuote,
+        pendingQuestion: pendingQuestion,
+        onAnswer: onAnswer,
       ),
     );
   }

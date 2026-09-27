@@ -12,6 +12,7 @@ enum AiChatSessionPhase {
   cancelling,
   failed,
   awaitingToolApproval,
+  awaitingUserAnswer,
 }
 
 @freezed
@@ -46,4 +47,7 @@ abstract class AiChatSessionState with _$AiChatSessionState {
 
   bool get isAwaitingToolApproval =>
       phase == AiChatSessionPhase.awaitingToolApproval;
+
+  bool get isAwaitingUserAnswer =>
+      phase == AiChatSessionPhase.awaitingUserAnswer;
 }

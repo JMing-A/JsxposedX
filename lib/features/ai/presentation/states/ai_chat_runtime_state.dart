@@ -1,6 +1,7 @@
 import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tool_executor_contract.dart';
 import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tools_spec.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_question.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_response_issue.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
@@ -18,6 +19,8 @@ class AiChatRuntimeState {
     this.currentSessionId,
     this.systemPrompt,
     this.planModeEnabled = false,
+    this.askModeEnabled = false,
+    this.pendingQuestion,
     this.environmentVersion,
     this.visibleMessageCount = 10,
     this.hasOlderMessages = false,
@@ -41,6 +44,12 @@ class AiChatRuntimeState {
 
   /// 计划模式是否开启。开启时系统规则会追加「先拆解需求、产出执行计划」的约束。
   final bool planModeEnabled;
+
+  /// 问答模式是否开启。开启时系统规则会追加「有疑问先提问」的约束。
+  final bool askModeEnabled;
+
+  /// 当前正等待用户作答的问题。非空时气泡上的提问卡片可交互。
+  final AiQuestion? pendingQuestion;
   final String? environmentVersion;
   final int visibleMessageCount;
   final bool hasOlderMessages;
@@ -124,6 +133,8 @@ class AiChatRuntimeState {
     Object? currentSessionId = _runtimeStateSentinel,
     Object? systemPrompt = _runtimeStateSentinel,
     bool? planModeEnabled,
+    bool? askModeEnabled,
+    Object? pendingQuestion = _runtimeStateSentinel,
     Object? environmentVersion = _runtimeStateSentinel,
     int? visibleMessageCount,
     bool? hasOlderMessages,
@@ -151,6 +162,10 @@ class AiChatRuntimeState {
           ? this.systemPrompt
           : systemPrompt as String?,
       planModeEnabled: planModeEnabled ?? this.planModeEnabled,
+      askModeEnabled: askModeEnabled ?? this.askModeEnabled,
+      pendingQuestion: identical(pendingQuestion, _runtimeStateSentinel)
+          ? this.pendingQuestion
+          : pendingQuestion as AiQuestion?,
       environmentVersion: identical(environmentVersion, _runtimeStateSentinel)
           ? this.environmentVersion
           : environmentVersion as String?,

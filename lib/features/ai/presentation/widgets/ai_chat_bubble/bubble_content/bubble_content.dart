@@ -228,6 +228,8 @@ abstract class BaseBubbleContentPart {
     }
     // 计划模式下 AI 会在正文里附带「执行计划」清单，该清单已由右侧计划
     // 菜单单独呈现，这里摘掉以免同一份内容重复渲染在气泡中。
+    // 注意：提问块不能在这里摘掉——它需要保留 fenced 代码块原样交给
+    // Markdown 渲染，再由 AiCodeElementBuilder 替换成选项卡片。
     return AiPlanParser.stripPlanSection(state.content);
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:JsxposedX/features/ai/domain/models/ai_question.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_container.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_content/bubble_content.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble_states/bubble_state.dart';
@@ -25,6 +26,8 @@ abstract class BaseAiChatBubble extends StatelessWidget {
   final VoidCallback? onToolReject;
   final String? errorHint;
   final List<String> imageSources;
+  final AiQuestion? pendingQuestion;
+  final ValueChanged<List<String>>? onAnswer;
 
   const BaseAiChatBubble({
     super.key,
@@ -46,6 +49,8 @@ abstract class BaseAiChatBubble extends StatelessWidget {
     this.onToolReject,
     this.errorHint,
     this.imageSources = const <String>[],
+    this.pendingQuestion,
+    this.onAnswer,
   });
 
   @protected
@@ -69,6 +74,8 @@ abstract class BaseAiChatBubble extends StatelessWidget {
       onToolReject: onToolReject,
       errorHint: errorHint,
       imageSources: imageSources,
+      pendingQuestion: pendingQuestion,
+      onAnswer: onAnswer,
     );
   }
 
@@ -123,5 +130,7 @@ class AiChatBubble extends BaseAiChatBubble {
     super.onToolReject,
     super.errorHint,
     super.imageSources,
+    super.pendingQuestion,
+    super.onAnswer,
   });
 }
