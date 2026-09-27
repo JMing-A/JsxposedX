@@ -9,6 +9,7 @@ import 'package:JsxposedX/features/frida/presentation/providers/frida_action_pro
 import 'package:JsxposedX/features/frida/presentation/providers/frida_query_provider.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_action_provider.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_query_provider.dart';
+import 'package:JsxposedX/generated/app.g.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -145,6 +146,13 @@ class CodeRunAction extends ConsumerWidget {
               localPath: fullPath,
             ),
           );
+        }
+
+        // 脚本与开关就绪后拉起目标应用，注入才会生效
+        try {
+          await AppNative().openAppX(pkg);
+        } catch (_) {
+          // 拉起失败不阻断脚本运行状态
         }
 
         if (context.mounted) {
