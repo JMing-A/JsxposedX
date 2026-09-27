@@ -59,7 +59,11 @@ void main() {
       isTrue,
     );
     final assistant = await catalog.getAssistant('legacy-assistant-old');
-    expect(assistant?.contextPolicy.recentMessageLimit, 7);
+    // 上下文策略为系统固化行为，历史 memoryRounds 不再迁移为用户可调项。
+    expect(
+      assistant?.contextPolicy.recentMessageLimit,
+      standard.kDefaultContextPolicy.recentMessageLimit,
+    );
   });
 
   test('is idempotent and reports invalid entries independently', () async {
@@ -113,7 +117,6 @@ void main() {
         ),
       ],
       systemPrompt: 'Analyze precisely.',
-      contextMode: standard.AiContextMode.fullHistory,
       approvalMode: standard.AiToolApprovalMode.always,
       maxToolRounds: 12,
     );
@@ -126,7 +129,8 @@ void main() {
     final assistant = await catalog.getAssistant('legacy-assistant-standard');
     expect(assistant?.modelId, 'model-2');
     expect(assistant?.systemPrompt, 'Analyze precisely.');
-    expect(assistant?.contextPolicy.mode, standard.AiContextMode.fullHistory);
+    // 上下文策略为系统固化行为，导入后统一采用默认值。
+    expect(assistant?.contextPolicy.mode, standard.kDefaultContextPolicy.mode);
     expect(
       assistant?.toolPolicy.approvalMode,
       standard.AiToolApprovalMode.always,

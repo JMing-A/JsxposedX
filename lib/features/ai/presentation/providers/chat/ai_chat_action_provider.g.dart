@@ -40,7 +40,7 @@ final class AiStatusProvider
   }
 }
 
-String _$aiStatusHash() => r'f2dd4e22cc55112b51e94556df6e3e1ad9ce7cdd';
+String _$aiStatusHash() => r'3202fb17366bc6964f4dc7c4b96364438bad331e';
 
 @ProviderFor(aiConnectionTestService)
 const aiConnectionTestServiceProvider = AiConnectionTestServiceProvider._();
@@ -139,7 +139,7 @@ final class AiChatActionProvider
   }
 }
 
-String _$aiChatActionHash() => r'1ff64077d578ea1f324ead5ad58b69a29ac8b630';
+String _$aiChatActionHash() => r'f5b87be96ae6cde227f27982c6463c463490eebe';
 
 final class AiChatActionFamily extends $Family
     with

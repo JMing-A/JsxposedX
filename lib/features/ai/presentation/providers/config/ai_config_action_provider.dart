@@ -25,7 +25,7 @@ AiConfigActionRepository aiConfigActionRepository(Ref ref) {
 }
 
 /// 保存 AI 配置 Action Provider
-@riverpod
+@Riverpod(keepAlive: true)
 class AiConfigAction extends _$AiConfigAction {
   @override
   AsyncValue<void> build() => const AsyncValue.data(null);
@@ -104,11 +104,8 @@ class AiConfigAction extends _$AiConfigAction {
   Future<void> saveAssistantSettings({
     required String configId,
     required String? systemPrompt,
-    required AiContextMode contextMode,
-    required int? recentMessageLimit,
     required AiToolApprovalMode approvalMode,
     required int maxToolRounds,
-    int? fallbackContextTokens,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -124,13 +121,8 @@ class AiConfigAction extends _$AiConfigAction {
           systemPrompt: systemPrompt?.trim().isEmpty == true
               ? null
               : systemPrompt?.trim(),
-          contextPolicy: assistant.contextPolicy.copyWith(
-            mode: contextMode,
-            recentMessageLimit: recentMessageLimit,
-            fallbackContextTokens: fallbackContextTokens == null
-                ? assistant.contextPolicy.fallbackContextTokens
-                : resolveFallbackContextTokens(fallbackContextTokens),
-          ),
+          // 上下文策略为系统内置固化项，不随用户设置变化。
+          contextPolicy: kDefaultContextPolicy,
           toolPolicy: assistant.toolPolicy.copyWith(
             approvalMode: approvalMode,
             maxRounds: resolveMaxToolRounds(maxToolRounds),
@@ -198,11 +190,8 @@ class AiConfigAction extends _$AiConfigAction {
     required AiConfig config,
     required List<AiModel> models,
     required String? systemPrompt,
-    required AiContextMode contextMode,
-    required int? recentMessageLimit,
     required AiToolApprovalMode approvalMode,
     required int maxToolRounds,
-    int? fallbackContextTokens,
     required bool addToList,
   }) async {
     state = const AsyncValue.loading();
@@ -248,11 +237,8 @@ class AiConfigAction extends _$AiConfigAction {
         AiConfigDto.fromEntity(config),
         discoveredModels: definitions,
         systemPrompt: systemPrompt,
-        contextMode: contextMode,
-        recentMessageLimit: recentMessageLimit,
         approvalMode: approvalMode,
         maxToolRounds: maxToolRounds,
-        fallbackContextTokens: fallbackContextTokens,
       );
 
       // Keep only the active-selection/list projection in legacy storage while

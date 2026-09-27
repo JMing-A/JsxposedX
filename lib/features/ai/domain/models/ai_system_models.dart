@@ -205,6 +205,13 @@ abstract class AiContextPolicy with _$AiContextPolicy {
   }) = _AiContextPolicy;
 }
 
+/// 系统内置的上下文处理策略。
+///
+/// 上下文策略是全局统一行为，不再对外暴露为用户可调项；设置界面不提供
+/// 任何入口。此处集中定义默认值，后续迭代只需改动这一处即可整体切换，
+/// 既保证固化生效，也保留可维护性。
+const AiContextPolicy kDefaultContextPolicy = AiContextPolicy();
+
 /// Default fallback context window size when model metadata is unavailable.
 /// Modern default (128K) matches current mainstream models (GPT-4, Claude 3.5, Gemini 1.5).
 /// If your model has smaller context, configure explicitly in assistant settings.
@@ -222,8 +229,8 @@ int resolveFallbackContextTokens(int configured) {
 ///
 /// 逆向场景单轮任务常需要 10 次以上工具调用（检索类名 → 反编译 → 生成
 /// Hook → 校验脚本），历史默认值 8 偏小，会在任务中途触发上限终止。
-/// 因此上调默认值，同时限定上限避免配置异常导致无限调用。最大可配置为 50 轮。
-const int kDefaultMaxToolRounds = 24;
+/// 默认使用允许的最大值 50 轮，避免复杂任务中途触发上限终止。
+const int kDefaultMaxToolRounds = 50;
 
 /// 合法区间下界：至少允许一轮工具调用，否则所有工具调用都会立即被判为
 /// 超限，等于静默禁用工具调用。

@@ -87,9 +87,12 @@ Future<List<AiConfig>> _readStandardCustomConfigs(Ref ref) async {
 
       final models = await catalog.getModels(connection.id);
       if (models.isEmpty) continue;
-      final model = models.first;
       final assistant = await catalog.getAssistant(
         'legacy-assistant-$configId',
+      );
+      final model = models.firstWhere(
+        (item) => item.id == assistant?.modelId,
+        orElse: () => models.first,
       );
       final apiType = _apiTypeForProvider(connection.providerId);
       final endpoint =

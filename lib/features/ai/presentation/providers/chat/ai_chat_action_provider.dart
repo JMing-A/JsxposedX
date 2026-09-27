@@ -37,8 +37,11 @@ part 'ai_chat_action_provider.g.dart';
 
 @Riverpod(keepAlive: true)
 Future<bool> aiStatus(Ref ref) async {
-  final config = ref.watch(aiConfigProvider).value;
-  if (config == null || config.apiUrl.isEmpty) return false;
+  // 必须 await 配置加载完成：配置 provider 被 invalidate 后重建时处于
+  // AsyncLoading（此时 .value 为 null），若直接用 .value 判断会误判为
+  // “未激活”，而 keepAlive 会把这次误判缓存下来，直到下次手动刷新。
+  final config = await ref.watch(aiConfigProvider.future);
+  if (config.apiUrl.isEmpty) return false;
   try {
     await ref.read(aiConnectionTestServiceProvider).test(config);
     return true;

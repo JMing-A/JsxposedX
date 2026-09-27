@@ -3,7 +3,29 @@ import 'package:JsxposedX/core/models/ai_config.dart';
 
 const String builtinAiConfigId = 'builtin_closeai_default';
 const String builtinAiConfigName = '沐雪接口';
-const String builtinAiConfigBaseUrl = 'https://muxueai.pro';
+const String builtinAiConfigBaseUrl = 'https://v2.muxueai.pro';
+
+/// 内置服务的历史域名 → 现役域名。
+///
+/// 老版本会把 apiUrl 连同 override 一起落盘，仅改常量无法让已安装用户生效，
+/// 因此在内置配置的读取路径上按此表做一次升级。
+const Map<String, String> builtinAiConfigLegacyHosts = {
+  'muxueai.pro': 'v2.muxueai.pro',
+};
+
+/// 将内置服务的历史域名改写为现役域名；无变更时原样返回。
+///
+/// 仅替换 host，保留路径、端口与查询参数，避免误伤用户自定义的
+/// 第三方地址（只在内置配置的 id 下调用）。
+String normalizeBuiltinAiConfigUrl(String rawUrl) {
+  final trimmed = rawUrl.trim();
+  if (trimmed.isEmpty) return rawUrl;
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || !uri.hasScheme || uri.host.isEmpty) return rawUrl;
+  final upgradedHost = builtinAiConfigLegacyHosts[uri.host.toLowerCase()];
+  if (upgradedHost == null) return rawUrl;
+  return uri.replace(host: upgradedHost).toString();
+}
 
 // IDs retired from the built-in catalog. They remain recognized only during
 // migration so an old selection cannot reappear as a custom configuration.
@@ -65,8 +87,8 @@ const List<BuiltinAiConfigSpec> builtinAiConfigSpecs = [
     apiType: AiApiType.openai,
     apiKeyStorageKey: 'ai_builtin_api_key',
     statusLabel: 'GPT-MAX',
-    badgeLabels: ['Evil', 'Claude', 'ChatGPT', '国产'],
-    purchaseUrl: 'https://shop.zmfaka.cn/shop/SQGJ7S7P',
+    badgeLabels: ['Claude', 'ChatGPT', '国产'],
+    purchaseUrl: 'https://muxueai.pro',
   ),
 ];
 

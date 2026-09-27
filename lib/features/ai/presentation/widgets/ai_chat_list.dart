@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/common/pages/toast.dart';
+import 'package:JsxposedX/features/ai/domain/constants/builtin_ai_config.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_response_issue.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_brand_icon.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/ai_chat_bubble.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_view_message.dart';
@@ -74,6 +77,7 @@ class AiChatList extends HookConsumerWidget {
     final chatState = ref.watch(
       aiChatRuntimeProvider(packageName: packageName),
     );
+    final activeConfig = ref.watch(aiConfigProvider).value;
     final chatNotifier = ref.read(
       aiChatRuntimeProvider(packageName: packageName).notifier,
     );
@@ -207,7 +211,14 @@ class AiChatList extends HookConsumerWidget {
                 alignment: isCompactLayout
                     ? Alignment.topLeft
                     : Alignment.centerLeft,
-                child: _EmptyChatState(isCompact: isCompactLayout),
+                child: _EmptyChatState(
+                  isCompact: isCompactLayout,
+                  brand: AiBrand.resolve(
+                    apiUrl: activeConfig?.apiUrl,
+                    modelName: activeConfig?.moduleName,
+                    name: activeConfig?.name,
+                  ),
+                ),
               ),
             ),
           );
@@ -318,30 +329,40 @@ class AiChatList extends HookConsumerWidget {
                         );
                     return wrapEntryAnimation(
                       message.id,
-                      _StreamingAiChatBubble(
-                        key: ValueKey(message.id),
-                        initialContent: message.content,
-                        role: message.role,
-                        isError: message.isError,
-                        errorHint: message.errorHint,
-                        retryLabel: retryLabel,
-                        streamingContentStream:
-                            chatNotifier.streamingContentStream,
-                        streamingThinkingStream:
-                            chatNotifier.streamingThinkingStream,
-                        toolInvocations: message.toolInvocations,
-                        onRetry: () =>
-                            chatNotifier.retryByMessageId(message.id),
-                        packageName: packageName,
-                        onToolApprove: streamingHasApproval
-                            ? () => chatNotifier.approvePendingTools()
-                            : null,
-                        onToolReject: streamingHasApproval
-                            ? () => chatNotifier.rejectPendingTools()
-                            : null,
-                        onQuote: onQuote == null
-                            ? null
-                            : () => onQuote!(message),
+                      _AssistantMessageWithIcon(
+                        brand: AiBrand.resolve(
+                          apiUrl: activeConfig?.apiUrl,
+                          modelName: activeConfig?.moduleName,
+                          name: activeConfig?.name,
+                        ),
+                        name: activeConfig?.moduleName.trim().isNotEmpty == true
+                            ? activeConfig!.moduleName
+                            : (activeConfig?.name ?? 'AI'),
+                        child: _StreamingAiChatBubble(
+                          key: ValueKey(message.id),
+                          initialContent: message.content,
+                          role: message.role,
+                          isError: message.isError,
+                          errorHint: message.errorHint,
+                          retryLabel: retryLabel,
+                          streamingContentStream:
+                              chatNotifier.streamingContentStream,
+                          streamingThinkingStream:
+                              chatNotifier.streamingThinkingStream,
+                          toolInvocations: message.toolInvocations,
+                          onRetry: () =>
+                              chatNotifier.retryByMessageId(message.id),
+                          packageName: packageName,
+                          onToolApprove: streamingHasApproval
+                              ? () => chatNotifier.approvePendingTools()
+                              : null,
+                          onToolReject: streamingHasApproval
+                              ? () => chatNotifier.rejectPendingTools()
+                              : null,
+                          onQuote: onQuote == null
+                              ? null
+                              : () => onQuote!(message),
+                        ),
                       ),
                     );
                   }
@@ -358,86 +379,103 @@ class AiChatList extends HookConsumerWidget {
                   return wrapEntryAnimation(
                     message.id,
                     RepaintBoundary(
-                      child: _MessageHighlight(
-                        key: ValueKey('highlight-${message.id}'),
-                        active: isHighlighted,
-                        anchorKey: isHighlighted ? focusMessageKey : null,
-                        child: bubbleBuilder != null
-                            ? bubbleBuilder!(
-                                message: message,
-                                retryLabel: retryLabel,
-                                onRetry: () => chatNotifier.retryByMessageId(
-                                  message.sourceMessageId ?? message.id,
+                      child: _AssistantMessageWithIcon(
+                        visible:
+                            message.role == 'assistant' &&
+                            !message.isToolResultBubble,
+                        brand: AiBrand.resolve(
+                          apiUrl: activeConfig?.apiUrl,
+                          modelName: activeConfig?.moduleName,
+                          name: activeConfig?.name,
+                        ),
+                        name: activeConfig?.moduleName.trim().isNotEmpty == true
+                            ? activeConfig!.moduleName
+                            : (activeConfig?.name ?? 'AI'),
+                        child: _MessageHighlight(
+                          key: ValueKey('highlight-${message.id}'),
+                          active: isHighlighted,
+                          anchorKey: isHighlighted ? focusMessageKey : null,
+                          child: bubbleBuilder != null
+                              ? bubbleBuilder!(
+                                  message: message,
+                                  retryLabel: retryLabel,
+                                  onRetry: () => chatNotifier.retryByMessageId(
+                                    message.sourceMessageId ?? message.id,
+                                  ),
+                                  packageName: packageName,
+                                )
+                              : AiChatBubble(
+                                  key: ValueKey(message.id),
+                                  content: message.content,
+                                  role: message.role,
+                                  isError: message.isError,
+                                  errorHint: message.errorHint,
+                                  retryLabel: retryLabel,
+                                  onRetry: () => chatNotifier.retryByMessageId(
+                                    message.sourceMessageId ?? message.id,
+                                  ),
+                                  packageName: packageName,
+                                  onEdit: message.role == 'user'
+                                      ? () => _editAndResendMessage(
+                                          context,
+                                          message,
+                                          chatNotifier.editUserMessageAndResend,
+                                        )
+                                      : null,
+                                  onRegenerate:
+                                      message.role == 'user' &&
+                                          !chatState.isStreaming
+                                      ? () => _confirmMessageAction(
+                                          context,
+                                          title: context.isZh
+                                              ? '从此处重新生成？'
+                                              : 'Regenerate from here?',
+                                          detail: context.isZh
+                                              ? '此消息之后的回复将被移除并重新生成。'
+                                              : 'Messages after this one will be removed and regenerated.',
+                                          confirmLabel: context.isZh
+                                              ? '重新生成'
+                                              : 'Regenerate',
+                                          action: () =>
+                                              chatNotifier.retryByMessageId(
+                                                message.sourceMessageId ??
+                                                    message.id,
+                                              ),
+                                        )
+                                      : null,
+                                  onDelete:
+                                      !chatState.isStreaming &&
+                                          message.sourceMessageId != null
+                                      ? () => _confirmMessageAction(
+                                          context,
+                                          title: context.isZh
+                                              ? '删除这条消息？'
+                                              : 'Delete this message?',
+                                          detail: context.isZh
+                                              ? '此操作无法撤销。'
+                                              : 'This action cannot be undone.',
+                                          confirmLabel: context.l10n.delete,
+                                          destructive: true,
+                                          action: () =>
+                                              chatNotifier.deleteMessage(
+                                                message.sourceMessageId!,
+                                              ),
+                                        )
+                                      : null,
+                                  rawDetails: message.rawDetails,
+                                  toolInvocations: message.toolInvocations,
+                                  imageSources: message.imageSources,
+                                  onToolApprove: hasApprovalActions
+                                      ? () => chatNotifier.approvePendingTools()
+                                      : null,
+                                  onToolReject: hasApprovalActions
+                                      ? () => chatNotifier.rejectPendingTools()
+                                      : null,
+                                  onQuote: onQuote == null
+                                      ? null
+                                      : () => onQuote!(message),
                                 ),
-                                packageName: packageName,
-                              )
-                            : AiChatBubble(
-                            key: ValueKey(message.id),
-                            content: message.content,
-                            role: message.role,
-                            isError: message.isError,
-                            errorHint: message.errorHint,
-                            retryLabel: retryLabel,
-                            onRetry: () => chatNotifier.retryByMessageId(
-                              message.sourceMessageId ?? message.id,
-                            ),
-                            packageName: packageName,
-                            onEdit: message.role == 'user'
-                                ? () => _editAndResendMessage(
-                                    context,
-                                    message,
-                                    chatNotifier.editUserMessageAndResend,
-                                  )
-                                : null,
-                            onRegenerate:
-                                message.role == 'user' && !chatState.isStreaming
-                                ? () => _confirmMessageAction(
-                                    context,
-                                    title: context.isZh
-                                        ? '从此处重新生成？'
-                                        : 'Regenerate from here?',
-                                    detail: context.isZh
-                                        ? '此消息之后的回复将被移除并重新生成。'
-                                        : 'Messages after this one will be removed and regenerated.',
-                                    confirmLabel: context.isZh
-                                        ? '重新生成'
-                                        : 'Regenerate',
-                                    action: () => chatNotifier.retryByMessageId(
-                                      message.sourceMessageId ?? message.id,
-                                    ),
-                                  )
-                                : null,
-                            onDelete:
-                                !chatState.isStreaming &&
-                                    message.sourceMessageId != null
-                                ? () => _confirmMessageAction(
-                                    context,
-                                    title: context.isZh
-                                        ? '删除这条消息？'
-                                        : 'Delete this message?',
-                                    detail: context.isZh
-                                        ? '此操作无法撤销。'
-                                        : 'This action cannot be undone.',
-                                    confirmLabel: context.l10n.delete,
-                                    destructive: true,
-                                    action: () => chatNotifier.deleteMessage(
-                                      message.sourceMessageId!,
-                                    ),
-                                  )
-                                : null,
-                            rawDetails: message.rawDetails,
-                            toolInvocations: message.toolInvocations,
-                            imageSources: message.imageSources,
-                            onToolApprove: hasApprovalActions
-                                ? () => chatNotifier.approvePendingTools()
-                                : null,
-                            onToolReject: hasApprovalActions
-                                ? () => chatNotifier.rejectPendingTools()
-                                : null,
-                            onQuote: onQuote == null
-                                ? null
-                                : () => onQuote!(message),
-                              ),
+                        ),
                       ),
                     ),
                   );
@@ -746,10 +784,68 @@ class _ChatErrorBanner extends HookWidget {
   }
 }
 
+class _AssistantMessageWithIcon extends StatelessWidget {
+  const _AssistantMessageWithIcon({
+    required this.brand,
+    required this.name,
+    required this.child,
+    this.visible = true,
+  });
+
+  final AiBrand? brand;
+  final String name;
+  final Widget child;
+  final bool visible;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!visible) return child;
+    final scale = AiChatCompactScope.scaleOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(left: 4 * scale, bottom: 6 * scale),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AiBrandIcon(
+                brand: brand,
+                size: 16 * scale,
+                fallbackIcon: Icons.auto_awesome_rounded,
+              ),
+              SizedBox(width: 6 * scale),
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12 * scale,
+                    fontWeight: FontWeight.w700,
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
 class _EmptyChatState extends StatelessWidget {
-  const _EmptyChatState({required this.isCompact, this.title, this.subtitle});
+  const _EmptyChatState({
+    required this.isCompact,
+    required this.brand,
+    this.title,
+    this.subtitle,
+  });
 
   final bool isCompact;
+  final AiBrand? brand;
   final String? title;
   final String? subtitle;
 
@@ -772,10 +868,12 @@ class _EmptyChatState extends StatelessWidget {
                 color: context.colorScheme.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                size: (isCompact ? 14 : 16) * scopeScale,
-                color: context.colorScheme.primary,
+              child: Center(
+                child: AiBrandIcon(
+                  brand: brand,
+                  size: (isCompact ? 14 : 16) * scopeScale,
+                  fallbackIcon: Icons.auto_awesome_rounded,
+                ),
               ),
             ),
             SizedBox(width: 8 * scopeScale),
@@ -838,7 +936,7 @@ class _EmptyChatState extends StatelessWidget {
               SizedBox(height: (isCompact ? 10 : 12) * scopeScale),
               OutlinedButton(
                 onPressed: () {
-                  UrlHelper.openUrlInBrowser(url: 'https://api.muxueai.pro');
+                  UrlHelper.openUrlInBrowser(url: builtinAiConfigBaseUrl);
                 },
                 style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.symmetric(
@@ -856,7 +954,7 @@ class _EmptyChatState extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                child: const Text('官方满血GPT接口'),
+                child: const Text('沐雪 AI 站点'),
               ),
             ],
           ),

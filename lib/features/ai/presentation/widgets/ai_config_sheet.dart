@@ -1501,17 +1501,15 @@ class AIConfigSheet extends HookConsumerWidget {
                                         config: resolvedConfig,
                                         models: availableModels.value,
                                         systemPrompt: systemPrompt,
-                                        contextMode: contextMode,
-                                        recentMessageLimit: recentMessageLimit,
                                         approvalMode: approvalMode,
                                         maxToolRounds: maxToolRounds,
-                                        fallbackContextTokens:
-                                            fallbackContextTokens,
                                         addToList:
                                             isNewMode.value || !existsInList,
                                       );
 
-                                  ref.invalidate(aiChatRuntimeStatusProvider);
+                                  await ref.refresh(
+                                    aiChatRuntimeStatusProvider.future,
+                                  );
                                   isNewMode.value = false;
                                   editingConfig.value = null;
                                   if (context.mounted &&

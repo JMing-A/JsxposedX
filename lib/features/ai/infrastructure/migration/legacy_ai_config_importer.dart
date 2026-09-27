@@ -78,21 +78,15 @@ class LegacyAiConfigImporter {
     AiConfigDto config, {
     List<AiModelDefinition> discoveredModels = const [],
     String? systemPrompt,
-    AiContextMode? contextMode,
-    int? recentMessageLimit,
     AiToolApprovalMode? approvalMode,
     int? maxToolRounds,
-    int? fallbackContextTokens,
   }) {
     return _importOne(
       config,
       discoveredModels: discoveredModels,
       systemPrompt: systemPrompt,
-      contextMode: contextMode,
-      recentMessageLimit: recentMessageLimit,
       approvalMode: approvalMode,
       maxToolRounds: maxToolRounds,
-      fallbackContextTokens: fallbackContextTokens,
     );
   }
 
@@ -100,11 +94,8 @@ class LegacyAiConfigImporter {
     AiConfigDto legacy, {
     List<AiModelDefinition> discoveredModels = const [],
     String? systemPrompt,
-    AiContextMode? contextMode,
-    int? recentMessageLimit,
     AiToolApprovalMode? approvalMode,
     int? maxToolRounds,
-    int? fallbackContextTokens,
   }) async {
     final endpoint = _parseEndpoint(legacy.apiUrl, legacy.apiType);
     final connectionId = 'legacy-connection-${legacy.id}';
@@ -173,13 +164,6 @@ class LegacyAiConfigImporter {
     final existingAssistant = await _catalogRepository.getAssistant(
       assistantId,
     );
-    final defaultContextMode = legacy.memoryRounds > 0
-        ? AiContextMode.recentMessages
-        : AiContextMode.tokenBudget;
-    final effectiveContextMode =
-        contextMode ??
-        existingAssistant?.contextPolicy.mode ??
-        defaultContextMode;
     final assistant =
         (existingAssistant ??
                 AiAssistantProfile(
@@ -195,12 +179,7 @@ class LegacyAiConfigImporter {
                         ? legacy.temperature
                         : null,
                   ),
-                  contextPolicy: AiContextPolicy(
-                    mode: defaultContextMode,
-                    recentMessageLimit: legacy.memoryRounds > 0
-                        ? legacy.memoryRounds.toInt()
-                        : null,
-                  ),
+                  contextPolicy: kDefaultContextPolicy,
                   createdAt: now,
                   updatedAt: now,
                 ))
@@ -211,31 +190,8 @@ class LegacyAiConfigImporter {
               systemPrompt: systemPrompt?.trim().isEmpty == true
                   ? null
                   : systemPrompt?.trim() ?? existingAssistant?.systemPrompt,
-              contextPolicy:
-                  (existingAssistant?.contextPolicy ??
-                          AiContextPolicy(mode: defaultContextMode))
-                      .copyWith(
-                        mode: effectiveContextMode,
-                        recentMessageLimit:
-                            effectiveContextMode == AiContextMode.recentMessages
-                            ? recentMessageLimit ??
-                                  existingAssistant
-                                      ?.contextPolicy
-                                      .recentMessageLimit ??
-                                  (legacy.memoryRounds > 0
-                                      ? legacy.memoryRounds.toInt()
-                                      : null)
-                            : null,
-                        // 兜底上下文长度：未显式传入时保留既有配置，
-                        // 首次导入回落到默认值。
-                        fallbackContextTokens: resolveFallbackContextTokens(
-                          fallbackContextTokens ??
-                              existingAssistant
-                                      ?.contextPolicy
-                                      .fallbackContextTokens ??
-                              kDefaultFallbackContextTokens,
-                        ),
-                      ),
+              // 上下文策略为全局固化行为，导入时统一收敛到系统默认值。
+              contextPolicy: kDefaultContextPolicy,
               toolPolicy:
                   (existingAssistant?.toolPolicy ?? const AiToolPolicy())
                       .copyWith(

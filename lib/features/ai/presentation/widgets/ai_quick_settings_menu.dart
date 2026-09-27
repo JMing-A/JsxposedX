@@ -12,6 +12,7 @@ import 'package:JsxposedX/features/ai/presentation/providers/config/disabled_too
 import 'package:JsxposedX/features/ai/presentation/providers/config/user_risky_tools_store.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_brand_icon.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -168,395 +169,383 @@ class _MenuContent extends HookConsumerWidget {
       child: ListView(
         padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
         children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 36.w,
-                height: 4.h,
-                decoration: BoxDecoration(
-                  color: context.theme.hintColor.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2.r),
-                ),
+          // Handle bar
+          Center(
+            child: Container(
+              width: 36.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: context.theme.hintColor.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2.r),
               ),
             ),
-            SizedBox(height: 16.h),
+          ),
+          SizedBox(height: 16.h),
 
-            // Title
-            Padding(
-              padding: EdgeInsets.only(bottom: 12.h),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          // Title
+          Padding(
+            padding: EdgeInsets.only(bottom: 12.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isZh ? '快捷设置' : 'Quick Settings',
+                  style: TextStyle(
+                    fontSize: 18.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  isBuiltin
+                      ? (isZh
+                            ? '内置配置 - $currentModelId'
+                            : 'Built-in - $currentModelId')
+                      : config.name,
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: context.theme.hintColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Section 1: Model ──
+          _SettingsSection(
+            title: isZh ? '模型选择' : 'Model',
+            icon: Icons.smart_toy_outlined,
+            initiallyExpanded: false,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    isZh ? '快捷设置' : 'Quick Settings',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Text(
+                      isZh ? '当前模型' : 'Current Model',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: context.theme.hintColor,
+                      ),
                     ),
                   ),
-                  SizedBox(height: 4.h),
-                  Text(
-                    isBuiltin
-                        ? (isZh
-                              ? '内置配置 - $currentModelId'
-                              : 'Built-in - $currentModelId')
-                        : config.name,
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: context.theme.hintColor,
+                  TextButton.icon(
+                    onPressed: modelsLoading.value
+                        ? null
+                        : () {
+                            modelsLoading.value = true;
+                            ref.invalidate(aiModelsProvider);
+                            Future.delayed(
+                              const Duration(milliseconds: 500),
+                              () {
+                                if (context.mounted) {
+                                  modelsLoading.value = false;
+                                }
+                              },
+                            );
+                          },
+                    icon: modelsLoading.value
+                        ? SizedBox(
+                            width: 14.w,
+                            height: 14.w,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: context.colorScheme.primary,
+                            ),
+                          )
+                        : Icon(
+                            Icons.refresh_rounded,
+                            size: 16.sp,
+                            color: context.colorScheme.primary,
+                          ),
+                    label: Text(
+                      isZh ? '刷新' : 'Refresh',
+                      style: TextStyle(fontSize: 12.sp),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 4.h,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
                 ],
               ),
-            ),
-
-            // ── Section 1: Model ──
-            _SettingsSection(
-              title: isZh ? '模型选择' : 'Model',
-              icon: Icons.smart_toy_outlined,
-              initiallyExpanded: false,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        isZh ? '当前模型' : 'Current Model',
+              SizedBox(height: 8.h),
+              modelsAsync.when(
+                loading: () => Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 16.w,
+                        height: 16.w,
+                        child: const CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 12.w),
+                      Text(
+                        isZh ? '加载模型列表...' : 'Loading models...',
                         style: TextStyle(
-                          fontSize: 12.sp,
+                          fontSize: 13.sp,
                           color: context.theme.hintColor,
                         ),
                       ),
-                    ),
-                    TextButton.icon(
-                      onPressed: modelsLoading.value
-                          ? null
-                          : () {
-                              modelsLoading.value = true;
-                              ref.invalidate(aiModelsProvider);
-                              Future.delayed(
-                                const Duration(milliseconds: 500),
-                                () {
-                                  if (context.mounted) {
-                                    modelsLoading.value = false;
-                                  }
-                                },
-                              );
-                            },
-                      icon: modelsLoading.value
-                          ? SizedBox(
-                              width: 14.w,
-                              height: 14.w,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: context.colorScheme.primary,
-                              ),
-                            )
-                          : Icon(
-                              Icons.refresh_rounded,
-                              size: 16.sp,
-                              color: context.colorScheme.primary,
-                            ),
-                      label: Text(
-                        isZh ? '刷新' : 'Refresh',
-                        style: TextStyle(fontSize: 12.sp),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                SizedBox(height: 8.h),
-                modelsAsync.when(
-                  loading: () => Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16.h),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 16.w,
-                          height: 16.w,
-                          child: const CircularProgressIndicator(
-                            strokeWidth: 2,
-                          ),
-                        ),
-                        SizedBox(width: 12.w),
-                        Text(
-                          isZh ? '加载模型列表...' : 'Loading models...',
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: context.theme.hintColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  error: (error, _) => _infoRow(
-                    context,
-                    icon: Icons.warning_amber_rounded,
-                    iconColor: Colors.orange,
-                    label: isZh ? '无法加载模型列表' : 'Cannot load models',
-                    detail: error.toString(),
-                    isDark: isDark,
-                  ),
-                  data: (models) {
-                    if (models.isEmpty) {
-                      return _infoRow(
-                        context,
-                        icon: Icons.info_outline,
-                        iconColor: context.theme.hintColor,
-                        label: isZh ? '暂无可用模型' : 'No models available',
-                        isDark: isDark,
-                      );
-                    }
-
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.04)
-                            : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: models.length,
-                        itemBuilder: (context, index) {
-                          final model = models[index];
-                          final isSelected = model.id == selectedModelId.value;
-                          final isFirst = index == 0;
-                          final isLast = index == models.length - 1;
-
-                          return _ModelListItem(
-                            model: model,
-                            isSelected: isSelected,
-                            isFirst: isFirst,
-                            isLast: isLast,
-                            isSaving: isSaving.value && isSelected,
-                            onTap: () {
-                              if (isSelected || isSaving.value) return;
-                              // 立即更新UI，提供即时反馈
-                              selectedModelId.value = model.id;
-                              isSaving.value = true;
-
-                              // 异步执行保存操作，不阻塞主线程
-                              Future.microtask(() async {
-                                try {
-                                  final updatedConfig = config.copyWith(
-                                    moduleName: model.id,
-                                  );
-                                  await ref
-                                      .read(aiConfigActionProvider.notifier)
-                                      .updateConfig(updatedConfig);
-                                  if (!context.mounted) return;
-                                  ref.invalidate(aiChatRuntimeStatusProvider);
-                                  if (context.mounted) {
-                                    ToastMessage.show(
-                                      isZh ? '模型已切换' : 'Model switched',
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  // 回滚UI状态
-                                  selectedModelId.value = currentModelId;
-                                  if (context.mounted) {
-                                    ToastMessage.show(
-                                      isZh ? '切换失败: $e' : 'Switch failed: $e',
-                                    );
-                                  }
-                                } finally {
-                                  if (context.mounted) {
-                                    isSaving.value = false;
-                                  }
-                                }
-                              });
-                            },
-                          );
-                        },
-                      ),
+                error: (error, _) => _infoRow(
+                  context,
+                  icon: Icons.warning_amber_rounded,
+                  iconColor: Colors.orange,
+                  label: isZh ? '无法加载模型列表' : 'Cannot load models',
+                  detail: error.toString(),
+                  isDark: isDark,
+                ),
+                data: (models) {
+                  if (models.isEmpty) {
+                    return _infoRow(
+                      context,
+                      icon: Icons.info_outline,
+                      iconColor: context.theme.hintColor,
+                      label: isZh ? '暂无可用模型' : 'No models available',
+                      isDark: isDark,
                     );
-                  },
-                ),
-              ],
-            ),
-            SizedBox(height: 12.h),
+                  }
 
-            // ── Section 2: Tool Approval ──
-            _SettingsSection(
-              title: isZh ? '工具审批' : 'Tool Approval',
-              icon: Icons.security_outlined,
-              initiallyExpanded: false,
-              children: [
-                Text(
-                  isZh
-                      ? '控制 AI 执行工具前是否需要用户确认'
-                      : 'Control whether AI tool calls require user approval',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: context.theme.hintColor,
-                  ),
-                ),
-                SizedBox(height: 12.h),
+                  final orderedModels = [...models];
+                  final selectedIndex = orderedModels.indexWhere(
+                    (model) => model.id == selectedModelId.value,
+                  );
+                  if (selectedIndex > 0) {
+                    final selectedModel = orderedModels.removeAt(selectedIndex);
+                    orderedModels.insert(0, selectedModel);
+                  }
 
-                // Approval mode selector
-                Container(
-                  padding: EdgeInsets.all(4.w),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12.r),
-                  ),
-                  child: Row(
-                    children: AiToolApprovalMode.values.map((mode) {
-                      final isSelected = mode == selectedApprovalMode.value;
-                      final label = _approvalModeShortLabel(context, mode);
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            if (isSelected || isSaving.value) return;
-                            // 立即更新UI，提供即时反馈
-                            selectedApprovalMode.value = mode;
-                            isSaving.value = true;
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: orderedModels.length,
+                    itemBuilder: (context, index) {
+                      final model = orderedModels[index];
+                      final isSelected = model.id == selectedModelId.value;
+                      return _ModelListItem(
+                        model: model,
+                        isSelected: isSelected,
+                        isSaving: isSaving.value && isSelected,
+                        onTap: () {
+                          if (isSelected || isSaving.value) return;
+                          // 立即更新UI，提供即时反馈
+                          selectedModelId.value = model.id;
+                          isSaving.value = true;
 
-                            // 异步执行保存操作，不阻塞主线程
-                            Future.microtask(() async {
-                              try {
-                                await ref
-                                    .read(aiConfigActionProvider.notifier)
-                                    .saveAssistantSettings(
-                                      configId: config.id,
-                                      systemPrompt: assistant?.systemPrompt,
-                                      contextMode:
-                                          assistant?.contextPolicy.mode ??
-                                          AiContextMode.tokenBudget,
-                                      recentMessageLimit: assistant
-                                          ?.contextPolicy
-                                          .recentMessageLimit,
-                                      approvalMode: mode,
-                                      maxToolRounds:
-                                          assistant?.toolPolicy.maxRounds ??
-                                          kDefaultMaxToolRounds,
-                                    );
-                                if (context.mounted) {
-                                  ref.invalidate(aiAssistantsV2Provider);
-                                  ToastMessage.show(
-                                    isZh ? '审批模式已更新' : 'Approval mode updated',
-                                  );
-                                }
-                              } catch (e) {
-                                if (!context.mounted) return;
-                                // 回滚UI状态
-                                selectedApprovalMode.value =
-                                    currentApprovalMode;
-                                if (context.mounted) {
-                                  ToastMessage.show(
-                                    isZh ? '更新失败: $e' : 'Update failed: $e',
-                                  );
-                                }
-                              } finally {
-                                if (context.mounted) {
-                                  isSaving.value = false;
-                                }
+                          // 异步执行保存操作，不阻塞主线程
+                          Future.microtask(() async {
+                            try {
+                              final updatedConfig = config.copyWith(
+                                moduleName: model.id,
+                              );
+                              await ref
+                                  .read(aiConfigActionProvider.notifier)
+                                  .updateConfig(updatedConfig);
+                              if (!context.mounted) return;
+                              ref.invalidate(aiChatRuntimeStatusProvider);
+                              if (context.mounted) {
+                                ToastMessage.show(
+                                  isZh ? '模型已切换' : 'Model switched',
+                                );
                               }
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: EdgeInsets.symmetric(vertical: 10.h),
-                            decoration: BoxDecoration(
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              // 回滚UI状态
+                              selectedModelId.value = currentModelId;
+                              if (context.mounted) {
+                                ToastMessage.show(
+                                  isZh ? '切换失败: $e' : 'Switch failed: $e',
+                                );
+                              }
+                            } finally {
+                              if (context.mounted) {
+                                isSaving.value = false;
+                              }
+                            }
+                          });
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+
+          // ── Section 2: Tool Approval ──
+          _SettingsSection(
+            title: isZh ? '工具审批' : 'Tool Approval',
+            icon: Icons.security_outlined,
+            initiallyExpanded: false,
+            children: [
+              Text(
+                isZh
+                    ? '控制 AI 执行工具前是否需要用户确认'
+                    : 'Control whether AI tool calls require user approval',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: context.theme.hintColor,
+                ),
+              ),
+              SizedBox(height: 12.h),
+
+              // Approval mode selector
+              Container(
+                padding: EdgeInsets.all(4.w),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Row(
+                  children: AiToolApprovalMode.values.map((mode) {
+                    final isSelected = mode == selectedApprovalMode.value;
+                    final label = _approvalModeShortLabel(context, mode);
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          if (isSelected || isSaving.value) return;
+                          // 立即更新UI，提供即时反馈
+                          selectedApprovalMode.value = mode;
+                          isSaving.value = true;
+
+                          // 异步执行保存操作，不阻塞主线程
+                          Future.microtask(() async {
+                            try {
+                              await ref
+                                  .read(aiConfigActionProvider.notifier)
+                                  .saveAssistantSettings(
+                                    configId: config.id,
+                                    systemPrompt: assistant?.systemPrompt,
+                                    approvalMode: mode,
+                                    maxToolRounds:
+                                        assistant?.toolPolicy.maxRounds ??
+                                        kDefaultMaxToolRounds,
+                                  );
+                              if (context.mounted) {
+                                ref.invalidate(aiAssistantsV2Provider);
+                                ToastMessage.show(
+                                  isZh ? '审批模式已更新' : 'Approval mode updated',
+                                );
+                              }
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              // 回滚UI状态
+                              selectedApprovalMode.value = currentApprovalMode;
+                              if (context.mounted) {
+                                ToastMessage.show(
+                                  isZh ? '更新失败: $e' : 'Update failed: $e',
+                                );
+                              }
+                            } finally {
+                              if (context.mounted) {
+                                isSaving.value = false;
+                              }
+                            }
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: EdgeInsets.symmetric(vertical: 10.h),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? (isDark
+                                      ? context.colorScheme.primary
+                                      : Colors.white)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10.r),
+                            boxShadow: isSelected && !isDark
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.06,
+                                      ),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Text(
+                            label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w600,
                               color: isSelected
                                   ? (isDark
-                                        ? context.colorScheme.primary
-                                        : Colors.white)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10.r),
-                              boxShadow: isSelected && !isDark
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.06,
-                                        ),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Text(
-                              label,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? (isDark
-                                          ? Colors.white
-                                          : context.colorScheme.primary)
-                                    : context.theme.hintColor,
-                              ),
+                                        ? Colors.white
+                                        : context.colorScheme.primary)
+                                  : context.theme.hintColor,
                             ),
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
+                      ),
+                    );
+                  }).toList(),
                 ),
+              ),
 
-                // Approval mode description
-                SizedBox(height: 10.h),
-                _approvalModeDescription(context, selectedApprovalMode.value),
+              // Approval mode description
+              SizedBox(height: 10.h),
+              _approvalModeDescription(context, selectedApprovalMode.value),
 
-                SizedBox(height: 20.h),
+              SizedBox(height: 20.h),
 
-                // ── Tool Management ──
-                _sectionHeader(
+              // ── Tool Management ──
+              _sectionHeader(
+                context,
+                zh: '可用工具列表',
+                en: 'Available Tools',
+                icon: Icons.build_outlined,
+              ),
+              SizedBox(height: 8.h),
+              Text(
+                isZh
+                    ? '启用或禁用 AI 可调用的工具，更改后下次会话生效'
+                    : 'Enable or disable tools that AI can call. Changes apply on next session.',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: context.theme.hintColor,
+                ),
+              ),
+              SizedBox(height: 12.h),
+
+              if (toolDefinitions.isEmpty)
+                _infoRow(
                   context,
-                  zh: '可用工具列表',
-                  en: 'Available Tools',
-                  icon: Icons.build_outlined,
+                  icon: Icons.info_outline,
+                  iconColor: context.colorScheme.primary.withValues(alpha: 0.7),
+                  label: isZh
+                      ? '当前配置下无可用工具'
+                      : 'No tools available for this configuration',
+                  detail: isZh
+                      ? '工具列表将在进入聊天后加载'
+                      : 'Tool list will load after entering chat',
+                  isDark: isDark,
+                )
+              else
+                _ToolList(
+                  configId: config.id,
+                  toolDefinitions: toolDefinitions,
+                  isSaving: isSaving,
                 ),
-                SizedBox(height: 8.h),
-                Text(
-                  isZh
-                      ? '启用或禁用 AI 可调用的工具，更改后下次会话生效'
-                      : 'Enable or disable tools that AI can call. Changes apply on next session.',
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: context.theme.hintColor,
-                  ),
-                ),
-                SizedBox(height: 12.h),
-
-                if (toolDefinitions.isEmpty)
-                  _infoRow(
-                    context,
-                    icon: Icons.info_outline,
-                    iconColor: context.colorScheme.primary.withValues(
-                      alpha: 0.7,
-                    ),
-                    label: isZh
-                        ? '当前配置下无可用工具'
-                        : 'No tools available for this configuration',
-                    detail: isZh
-                        ? '工具列表将在进入聊天后加载'
-                        : 'Tool list will load after entering chat',
-                    isDark: isDark,
-                  )
-                else
-                  _ToolList(
-                    configId: config.id,
-                    toolDefinitions: toolDefinitions,
-                    isSaving: isSaving,
-                  ),
-              ],
-            ),
-            SizedBox(height: 32.h),
-          ],
-        ),
-      );
+            ],
+          ),
+          SizedBox(height: 32.h),
+        ],
+      ),
+    );
   }
 
   static String _approvalModeShortLabel(
@@ -713,134 +702,145 @@ class _ModelListItem extends StatelessWidget {
   const _ModelListItem({
     required this.model,
     required this.isSelected,
-    required this.isFirst,
-    required this.isLast,
     required this.isSaving,
     required this.onTap,
   });
 
   final dynamic model; // AiModel from config provider
   final bool isSelected;
-  final bool isFirst;
-  final bool isLast;
   final bool isSaving;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final modelId = (model.id as String?) ?? '';
-    final isZh = context.isZh;
+    final isDark = context.isDark;
+    final brand = AiBrand.resolve(modelName: modelId);
+    final brandColor =
+        brand?.resolveColor(isDark: isDark) ?? context.colorScheme.primary;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.vertical(
-        top: isFirst ? Radius.circular(12.r) : Radius.zero,
-        bottom: isLast ? Radius.circular(12.r) : Radius.zero,
-      ),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-        decoration: BoxDecoration(
-          border: !isLast
-              ? Border(
-                  bottom: BorderSide(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.grey[300]!,
-                    width: 0.5,
-                  ),
-                )
-              : null,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      margin: EdgeInsets.only(bottom: 8.h),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? brandColor.withValues(alpha: isDark ? 0.16 : 0.09)
+            : (isDark ? context.colorScheme.surfaceContainerLow : Colors.white),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(
+          color: isSelected
+              ? brandColor.withValues(alpha: 0.55)
+              : context.colorScheme.outlineVariant.withValues(alpha: 0.55),
+          width: isSelected ? 1.2 : 0.8,
         ),
-        child: Row(
-          children: [
-            // Radio indicator
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 20.w,
-              height: 20.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected
-                      ? context.colorScheme.primary
-                      : context.theme.hintColor.withValues(alpha: 0.4),
-                  width: isSelected ? 6 : 2,
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.025),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
                 ),
-                color: isSelected ? null : Colors.transparent,
-              ),
-            ),
-            SizedBox(width: 12.w),
-            // Model info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14.r),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 11.h),
+            child: Row(
+              children: [
+                Container(
+                  width: 40.w,
+                  height: 40.w,
+                  decoration: BoxDecoration(
+                    color: brandColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(11.r),
+                  ),
+                  child: Center(
+                    child: AiBrandIcon(
+                      brand: brand,
+                      size: 21,
+                      fallbackIcon: Icons.memory_rounded,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          modelId,
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? context.colorScheme.primary
-                                : null,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      Text(
+                        modelId,
+                        softWrap: true,
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          height: 1.25,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: isSelected ? brandColor : null,
                         ),
                       ),
-                      if (isSelected) ...[
-                        SizedBox(width: 6.w),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6.w,
-                            vertical: 2.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: context.colorScheme.primary.withValues(
-                              alpha: 0.12,
+                      if (model.contextTokens != null) ...[
+                        SizedBox(height: 4.h),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.data_object_rounded,
+                              size: 12.sp,
+                              color: context.theme.hintColor,
                             ),
-                            borderRadius: BorderRadius.circular(4.r),
-                          ),
-                          child: Text(
-                            isZh ? '当前' : 'Active',
-                            style: TextStyle(
-                              fontSize: 10.sp,
-                              color: context.colorScheme.primary,
-                              fontWeight: FontWeight.w600,
+                            SizedBox(width: 3.w),
+                            Text(
+                              '${model.contextTokens} tokens',
+                              style: TextStyle(
+                                fontSize: 10.5.sp,
+                                color: context.theme.hintColor,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ],
                   ),
-                  if (model.contextTokens != null &&
-                      (model.contextTokens as int?) != null) ...[
-                    SizedBox(height: 2.h),
-                    Text(
-                      '${model.contextTokens} tokens',
-                      style: TextStyle(
-                        fontSize: 11.sp,
-                        color: context.theme.hintColor,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (isSaving)
-              SizedBox(
-                width: 16.w,
-                height: 16.w,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: context.colorScheme.primary,
                 ),
-              ),
-          ],
+                SizedBox(width: 8.w),
+                if (isSaving)
+                  SizedBox(
+                    width: 18.w,
+                    height: 18.w,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: brandColor,
+                    ),
+                  )
+                else
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 24.w,
+                    height: 24.w,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? brandColor
+                          : context.colorScheme.surfaceContainerHighest,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isSelected
+                          ? Icons.check_rounded
+                          : Icons.chevron_right_rounded,
+                      size: isSelected ? 15.sp : 17.sp,
+                      color: isSelected
+                          ? Colors.white
+                          : context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
