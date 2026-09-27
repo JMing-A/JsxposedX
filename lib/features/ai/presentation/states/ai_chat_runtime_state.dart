@@ -17,6 +17,7 @@ class AiChatRuntimeState {
     this.error,
     this.currentSessionId,
     this.systemPrompt,
+    this.planModeEnabled = false,
     this.environmentVersion,
     this.visibleMessageCount = 10,
     this.hasOlderMessages = false,
@@ -37,6 +38,9 @@ class AiChatRuntimeState {
   final String? error;
   final String? currentSessionId;
   final String? systemPrompt;
+
+  /// 计划模式是否开启。开启时系统规则会追加「先拆解需求、产出执行计划」的约束。
+  final bool planModeEnabled;
   final String? environmentVersion;
   final int visibleMessageCount;
   final bool hasOlderMessages;
@@ -119,6 +123,7 @@ class AiChatRuntimeState {
     Object? error = _runtimeStateSentinel,
     Object? currentSessionId = _runtimeStateSentinel,
     Object? systemPrompt = _runtimeStateSentinel,
+    bool? planModeEnabled,
     Object? environmentVersion = _runtimeStateSentinel,
     int? visibleMessageCount,
     bool? hasOlderMessages,
@@ -145,6 +150,7 @@ class AiChatRuntimeState {
       systemPrompt: identical(systemPrompt, _runtimeStateSentinel)
           ? this.systemPrompt
           : systemPrompt as String?,
+      planModeEnabled: planModeEnabled ?? this.planModeEnabled,
       environmentVersion: identical(environmentVersion, _runtimeStateSentinel)
           ? this.environmentVersion
           : environmentVersion as String?,

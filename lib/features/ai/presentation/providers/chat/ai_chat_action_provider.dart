@@ -22,6 +22,7 @@ import 'package:JsxposedX/features/ai/presentation/providers/chat/ai_chat_query_
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/disabled_tools_store.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/user_risky_tools_store.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/plan/ai_plan_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/ai/presentation/mappers/ai_chat_view_message_mapper.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
@@ -158,7 +159,7 @@ class AiChatAction extends _$AiChatAction {
       toolExecutor: snapshot.toolExecutor,
       toolDefinitions: snapshot.toolDefinitions,
       sessionContext: state.sessionContext.copyWith(
-        sessionRules: snapshot.systemPrompt,
+        sessionRules: _buildSessionRules(),
       ),
     );
     _lastSnapshot = snapshot;
@@ -204,7 +205,9 @@ class AiChatAction extends _$AiChatAction {
       id: 'reverse-${snapshot.scopeId}',
       scopeId: snapshot.scopeId,
       version: snapshot.environmentVersion,
-      systemPrompt: snapshot.systemPrompt,
+      // 系统规则统一由 _buildSessionRules 组装：基础提示 + 计划模式约束，
+      // 这样切换计划模式时无需重建环境快照即可生效。
+      systemPrompt: _buildSessionRules(),
       tools: tools
           .map((raw) {
             final rawFunction = raw['function'];
@@ -273,9 +276,7 @@ class AiChatAction extends _$AiChatAction {
         viewMessages: const [],
         visibleMessageCount: 10,
         hasOlderMessages: false,
-        sessionContext: AiChatSessionContext(
-          sessionRules: state.systemPrompt ?? '',
-        ),
+        sessionContext: AiChatSessionContext(sessionRules: _buildSessionRules()),
         contextStats: const AiChatContextStats(),
         contextVersion: AiChatSessionContext.currentVersion,
       );
@@ -351,9 +352,7 @@ class AiChatAction extends _$AiChatAction {
       error: null,
       isStreaming: false,
       lastResponseIssue: null,
-      sessionContext: AiChatSessionContext(
-        sessionRules: state.systemPrompt ?? '',
-      ),
+      sessionContext: AiChatSessionContext(sessionRules: _buildSessionRules()),
       contextStats: const AiChatContextStats(),
       contextVersion: AiChatSessionContext.currentVersion,
     );
@@ -586,12 +585,43 @@ class AiChatAction extends _$AiChatAction {
       error: null,
       isStreaming: false,
       lastResponseIssue: null,
-      sessionContext: AiChatSessionContext(
-        sessionRules: state.systemPrompt ?? '',
-      ),
+      sessionContext: AiChatSessionContext(sessionRules: _buildSessionRules()),
       contextStats: const AiChatContextStats(),
       contextVersion: AiChatSessionContext.currentVersion,
     );
+    await _attachSession();
+  }
+
+  /// 组合当前生效的会话系统规则：基础系统提示 + 计划模式约束。
+  String _buildSessionRules() {
+    return AiPlanPrompt.systemRules(
+      baseRules: state.systemPrompt ?? '',
+      enabled: state.planModeEnabled,
+      isZh: _resolveIsZh(),
+    );
+  }
+
+  /// 切换计划模式：更新系统规则，并让当前会话在下一轮请求中生效。
+  /// 计划约束只进入系统规则，不拼进用户消息，因此不会显示在对话气泡里。
+  Future<void> setPlanMode(bool enabled) async {
+    if (_disposed || state.planModeEnabled == enabled) return;
+    state = state.copyWith(
+      planModeEnabled: enabled,
+      sessionContext: AiChatSessionContext(
+        sessionRules: AiPlanPrompt.systemRules(
+          baseRules: state.systemPrompt ?? '',
+          enabled: enabled,
+          isZh: _resolveIsZh(),
+        ),
+      ),
+      contextVersion: AiChatSessionContext.currentVersion,
+    );
+    // _attachSession 用的是缓存的 _environment，这里必须同步重建，
+    // 否则新的系统规则不会进入下一轮请求。
+    final snapshot = _lastSnapshot;
+    if (snapshot != null) {
+      _environment = _standardEnvironment(snapshot);
+    }
     await _attachSession();
   }
 

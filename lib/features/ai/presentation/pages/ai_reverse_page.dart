@@ -6,6 +6,7 @@ import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/environments/apk_reverse_chat_environment_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/plan/ai_plan_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
@@ -14,6 +15,8 @@ import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_search_sheet.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_conversation_drawer.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_plan_menu.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_plan_mode_switch.dart';
 
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/logcat_provider.dart';
@@ -169,6 +172,39 @@ class AiReversePage extends HookConsumerWidget {
       return timer.cancel;
     }, [highlightedMessageId.value]);
 
+    // 计划模式：AI 每推进一个步骤都会重新输出完整清单，
+    // 这里把最新消息同步进计划菜单，实现计划项的增量渲染。
+    final planEnabled = ref.watch(
+      aiPlanProvider(packageName).select((state) => state.enabled),
+    );
+
+    void syncPlan(AiChatRuntimeState snapshot) {
+      ref
+          .read(aiPlanProvider(packageName).notifier)
+          .syncFromMessages(
+            snapshot.viewMessages,
+            isStreaming: snapshot.isStreaming,
+            sessionId: snapshot.currentSessionId,
+          );
+    }
+
+    // 首帧渲染完成后再做一次初始同步；build 期间直接改 provider 会抛
+    // "Tried to modify a provider while the widget tree was building"。
+    useEffect(() {
+      if (!planEnabled) return null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        syncPlan(ref.read(aiChatRuntimeProvider(packageName: packageName)));
+      });
+      return null;
+    }, [planEnabled, packageName]);
+
+    // 后续每次会话状态变化都在 build 之外同步一次。
+    ref.listen(aiChatRuntimeProvider(packageName: packageName), (_, next) {
+      if (!planEnabled) return;
+      syncPlan(next);
+    });
+
     Future<void> openConversationSearch() async {
       final sheetBackground =
           context.theme.bottomSheetTheme.backgroundColor ??
@@ -307,24 +343,26 @@ class AiReversePage extends HookConsumerWidget {
                       if (currentPage.value == 0)
                         AiChatInput(
                           packageName: packageName,
-                          inputTopContent: quotedMessage.value == null
-                              ? null
-                              : _QuoteReplyBar(
+                          inputTopContent: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (quotedMessage.value != null)
+                                _QuoteReplyBar(
                                   excerpt: _quoteExcerpt(
                                     quotedMessage.value!.content,
                                   ),
                                   onDismiss: () => quotedMessage.value = null,
                                 ),
-                          composeOutgoingText: (rawText) {
-                            final quoted = quotedMessage.value;
-                            if (quoted == null) return rawText;
-                            final excerpt = _quoteExcerpt(quoted.content);
-                            final prefix = '> ${excerpt.replaceAll('\n', '\n> ')}';
-                            if (rawText.isEmpty) {
-                              return '$prefix\n\n';
-                            }
-                            return '$prefix\n\n$rawText';
-                          },
+                              AiPlanMenu(packageName: packageName),
+                            ],
+                          ),
+                          quickActionsTrailing: AiPlanModeSwitch(
+                            packageName: packageName,
+                          ),
+                          composeOutgoingText: (rawText) => _composeQuotedText(
+                            rawText: rawText,
+                            quoted: quotedMessage.value,
+                          ),
                           hasComposedContent: quotedMessage.value != null,
                           onSendCommitted: () {
                             quotedMessage.value = null;
@@ -359,6 +397,20 @@ String _quoteExcerpt(String content, {int maxLength = 140}) {
     return normalized;
   }
   return '${normalized.substring(0, maxLength)}…';
+}
+
+/// 把被引用的消息以 markdown 引用块的形式拼到待发送文本前面。
+String _composeQuotedText({
+  required String rawText,
+  required AiChatViewMessage? quoted,
+}) {
+  if (quoted == null) return rawText;
+  final excerpt = _quoteExcerpt(quoted.content);
+  final prefix = '> ${excerpt.replaceAll('\n', '\n> ')}';
+  if (rawText.isEmpty) {
+    return '$prefix\n\n';
+  }
+  return '$prefix\n\n$rawText';
 }
 
 class _QuoteReplyBar extends StatelessWidget {

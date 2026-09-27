@@ -35,6 +35,9 @@ class AiChatInput extends HookConsumerWidget {
   final VoidCallback? onSendCommitted;
   final Widget? inputTopContent;
 
+  /// 追加在快捷操作行末端的自定义控件（例如计划模式开关）。
+  final Widget? quickActionsTrailing;
+
   const AiChatInput({
     super.key,
     required this.packageName,
@@ -49,6 +52,7 @@ class AiChatInput extends HookConsumerWidget {
     this.hasComposedContent = false,
     this.onSendCommitted,
     this.inputTopContent,
+    this.quickActionsTrailing,
   });
 
   @override
@@ -263,7 +267,10 @@ class AiChatInput extends HookConsumerWidget {
         _ContextUsageIndicator(stats: contextStats, usageRatio: usageRatio),
         if (inputTopContent != null) inputTopContent!,
         if (showQuickActions)
-          AiQuickActions(onOpenAnalysis: onOpenAnalysis),
+          AiQuickActions(
+            onOpenAnalysis: onOpenAnalysis,
+            trailing: quickActionsTrailing,
+          ),
         Container(
           padding: isEmbedded
               ? EdgeInsets.zero

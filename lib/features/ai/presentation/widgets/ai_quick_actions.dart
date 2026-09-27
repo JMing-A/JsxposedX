@@ -5,11 +5,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class AiQuickActions extends StatelessWidget {
   final VoidCallback? onOpenAnalysis;
 
-  const AiQuickActions({super.key, this.onOpenAnalysis});
+  /// 追加在快捷操作行末端的自定义控件（例如计划模式开关）。
+  final Widget? trailing;
+
+  const AiQuickActions({super.key, this.onOpenAnalysis, this.trailing});
 
   @override
   Widget build(BuildContext context) {
-    if (onOpenAnalysis == null) return const SizedBox.shrink();
+    if (onOpenAnalysis == null && trailing == null) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       height: 36.h,
@@ -18,12 +23,14 @@ class AiQuickActions extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 16.w),
         children: [
-          _QuickActionTile(
-            icon: Icons.inventory_2_outlined,
-            label: context.l10n.aiReverseOpenAnalysis,
-            color: Colors.blueGrey,
-            onTap: onOpenAnalysis!,
-          ),
+          if (onOpenAnalysis != null)
+            _QuickActionTile(
+              icon: Icons.inventory_2_outlined,
+              label: context.l10n.aiReverseOpenAnalysis,
+              color: Colors.blueGrey,
+              onTap: onOpenAnalysis!,
+            ),
+          if (trailing != null) trailing!,
         ],
       ),
     );

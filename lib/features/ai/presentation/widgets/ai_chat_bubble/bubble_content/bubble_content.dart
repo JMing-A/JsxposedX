@@ -6,6 +6,7 @@ import 'package:JsxposedX/core/routes/routes/home_route.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_thinking_markup.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_multimodal_message_codec.dart';
+import 'package:JsxposedX/features/ai/domain/services/ai_plan_parser.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -222,7 +223,12 @@ abstract class BaseBubbleContentPart {
     if (state.isError && state.content.isEmpty) {
       return context.l10n.aiMessageSendFailed;
     }
-    return state.content;
+    if (state.isUser || state.isToolResult) {
+      return state.content;
+    }
+    // 计划模式下 AI 会在正文里附带「执行计划」清单，该清单已由右侧计划
+    // 菜单单独呈现，这里摘掉以免同一份内容重复渲染在气泡中。
+    return AiPlanParser.stripPlanSection(state.content);
   }
 
   @protected
