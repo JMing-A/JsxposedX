@@ -125,6 +125,92 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pairing succeeded. Pairing alone does not add the device to the list. Find the IP address and port on the phone\'s Wireless debugging screen, enter it below, then select Connect ADB. The connection port is usually different from the pairing port.';
 
   @override
+  String get desktopSettingsAppearance => 'Appearance';
+
+  @override
+  String get desktopSettingsColorTheme => 'Color theme';
+
+  @override
+  String get desktopSettingsThemeDark => 'Dark';
+
+  @override
+  String get desktopSettingsThemeLight => 'Light';
+
+  @override
+  String get desktopSettingsDisplayLanguage => 'Display language';
+
+  @override
+  String get desktopSettingsApplication => 'Application';
+
+  @override
+  String get desktopDeviceDefaultName => 'Android device';
+
+  @override
+  String desktopDeviceSummary(String manufacturer, String api, String abi) {
+    return '$manufacturer · API $api · $abi';
+  }
+
+  @override
+  String get desktopDeviceCapabilities => 'Capabilities';
+
+  @override
+  String get desktopExplorerTitle => 'EXPLORER';
+
+  @override
+  String get desktopExplorerNewScript => 'New script';
+
+  @override
+  String get desktopExplorerLocalScripts => 'Local scripts';
+
+  @override
+  String get desktopExplorerDescription =>
+      'Scripts are stored locally and run on the selected device.';
+
+  @override
+  String get desktopEditorRunScript => 'Run script';
+
+  @override
+  String get desktopEditorCreateScript => 'Create or open a local script';
+
+  @override
+  String get desktopEditorConnectDevice => 'Connect a device to start';
+
+  @override
+  String get desktopEditorDescription =>
+      'Scripts stay on PC and sync to the selected device for execution.';
+
+  @override
+  String get desktopOutputTitle => 'OUTPUT';
+
+  @override
+  String get desktopOutputEmpty =>
+      'Run output and device events will appear here.';
+
+  @override
+  String desktopOutputRequestCompleted(String requestId) {
+    return 'Request $requestId completed';
+  }
+
+  @override
+  String desktopOutputEvent(String sequence, String event) {
+    return '[$sequence] $event';
+  }
+
+  @override
+  String get desktopOutputEventFallback => 'event';
+
+  @override
+  String get desktopStatusNoDevice => 'No device';
+
+  @override
+  String get desktopStatusConnecting => 'Connecting…';
+
+  @override
+  String desktopStatusDeviceInfo(String api, String abi) {
+    return 'API $api · $abi';
+  }
+
+  @override
   String get appSubtitle =>
       'Cross-platform Hook debugging tool based on Xposed Frida';
 

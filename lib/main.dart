@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/app_bootstrap.dart';
 import 'package:JsxposedX/core/providers/locale_provider.dart';
+import 'package:JsxposedX/core/transport/android_desktop_bridge_server.dart';
 import 'package:JsxposedX/core/providers/theme_provider.dart';
 import 'package:JsxposedX/core/routes/app_router.dart';
 import 'package:JsxposedX/features/home/presentation/pages/desktop_app.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
     runApp(const ProviderScope(child: DesktopApp()));
     return;
   }
+  unawaited(AndroidDesktopBridgeServer.instance.start());
   runApp(const ProviderScope(child: MainApp()));
 }
 

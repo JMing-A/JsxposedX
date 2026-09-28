@@ -153,6 +153,53 @@
   "@desktopConnectionPairNextStep": {
     "description": "PC - next step after successful ADB pairing"
   },
+  "desktopSettingsAppearance": "Appearance",
+  "desktopSettingsColorTheme": "Color theme",
+  "desktopSettingsThemeDark": "Dark",
+  "desktopSettingsThemeLight": "Light",
+  "desktopSettingsDisplayLanguage": "Display language",
+  "desktopSettingsApplication": "Application",
+  "desktopDeviceDefaultName": "Android device",
+  "desktopDeviceSummary": "{manufacturer} · API {api} · {abi}",
+  "@desktopDeviceSummary": {
+    "placeholders": {
+      "manufacturer": {"type": "String"},
+      "api": {"type": "String"},
+      "abi": {"type": "String"}
+    }
+  },
+  "desktopDeviceCapabilities": "Capabilities",
+  "desktopExplorerTitle": "EXPLORER",
+  "desktopExplorerNewScript": "New script",
+  "desktopExplorerLocalScripts": "Local scripts",
+  "desktopExplorerDescription": "Scripts are stored locally and run on the selected device.",
+  "desktopEditorRunScript": "Run script",
+  "desktopEditorCreateScript": "Create or open a local script",
+  "desktopEditorConnectDevice": "Connect a device to start",
+  "desktopEditorDescription": "Scripts stay on PC and sync to the selected device for execution.",
+  "desktopOutputTitle": "OUTPUT",
+  "desktopOutputEmpty": "Run output and device events will appear here.",
+  "desktopOutputRequestCompleted": "Request {requestId} completed",
+  "@desktopOutputRequestCompleted": {
+    "placeholders": {"requestId": {"type": "String"}}
+  },
+  "desktopOutputEvent": "[{sequence}] {event}",
+  "@desktopOutputEvent": {
+    "placeholders": {
+      "sequence": {"type": "String"},
+      "event": {"type": "String"}
+    }
+  },
+  "desktopOutputEventFallback": "event",
+  "desktopStatusNoDevice": "No device",
+  "desktopStatusConnecting": "Connecting…",
+  "desktopStatusDeviceInfo": "API {api} · {abi}",
+  "@desktopStatusDeviceInfo": {
+    "placeholders": {
+      "api": {"type": "String"},
+      "abi": {"type": "String"}
+    }
+  },
   "appSubtitle": "Cross-platform Hook debugging tool based on Xposed Frida",
   "@appSubtitle": {
     "description": "Application subtitle"

@@ -308,6 +308,156 @@ abstract class AppLocalizations {
   /// **'配对成功。配对不会让设备直接出现在列表中，请在手机无线调试页面查看“IP 地址和端口”，填入下方连接地址后点击“连接 ADB”。注意：连接端口通常与配对端口不同。'**
   String get desktopConnectionPairNextStep;
 
+  /// No description provided for @desktopSettingsAppearance.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观'**
+  String get desktopSettingsAppearance;
+
+  /// No description provided for @desktopSettingsColorTheme.
+  ///
+  /// In zh, this message translates to:
+  /// **'颜色主题'**
+  String get desktopSettingsColorTheme;
+
+  /// No description provided for @desktopSettingsThemeDark.
+  ///
+  /// In zh, this message translates to:
+  /// **'深色'**
+  String get desktopSettingsThemeDark;
+
+  /// No description provided for @desktopSettingsThemeLight.
+  ///
+  /// In zh, this message translates to:
+  /// **'浅色'**
+  String get desktopSettingsThemeLight;
+
+  /// No description provided for @desktopSettingsDisplayLanguage.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示语言'**
+  String get desktopSettingsDisplayLanguage;
+
+  /// No description provided for @desktopSettingsApplication.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get desktopSettingsApplication;
+
+  /// No description provided for @desktopDeviceDefaultName.
+  ///
+  /// In zh, this message translates to:
+  /// **'Android 设备'**
+  String get desktopDeviceDefaultName;
+
+  /// No description provided for @desktopDeviceSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'{manufacturer} · API {api} · {abi}'**
+  String desktopDeviceSummary(String manufacturer, String api, String abi);
+
+  /// No description provided for @desktopDeviceCapabilities.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备能力'**
+  String get desktopDeviceCapabilities;
+
+  /// No description provided for @desktopExplorerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'资源管理器'**
+  String get desktopExplorerTitle;
+
+  /// No description provided for @desktopExplorerNewScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建脚本'**
+  String get desktopExplorerNewScript;
+
+  /// No description provided for @desktopExplorerLocalScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地脚本'**
+  String get desktopExplorerLocalScripts;
+
+  /// No description provided for @desktopExplorerDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本保存在电脑本地，并在所选设备上运行。'**
+  String get desktopExplorerDescription;
+
+  /// No description provided for @desktopEditorRunScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行脚本'**
+  String get desktopEditorRunScript;
+
+  /// No description provided for @desktopEditorCreateScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建或打开本地脚本'**
+  String get desktopEditorCreateScript;
+
+  /// No description provided for @desktopEditorConnectDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接设备后开始'**
+  String get desktopEditorConnectDevice;
+
+  /// No description provided for @desktopEditorDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本保留在电脑中，并同步到所选设备执行。'**
+  String get desktopEditorDescription;
+
+  /// No description provided for @desktopOutputTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'输出'**
+  String get desktopOutputTitle;
+
+  /// No description provided for @desktopOutputEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行输出和设备事件将显示在此处。'**
+  String get desktopOutputEmpty;
+
+  /// No description provided for @desktopOutputRequestCompleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求 {requestId} 已完成'**
+  String desktopOutputRequestCompleted(String requestId);
+
+  /// No description provided for @desktopOutputEvent.
+  ///
+  /// In zh, this message translates to:
+  /// **'[{sequence}] {event}'**
+  String desktopOutputEvent(String sequence, String event);
+
+  /// No description provided for @desktopOutputEventFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'事件'**
+  String get desktopOutputEventFallback;
+
+  /// No description provided for @desktopStatusNoDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接设备'**
+  String get desktopStatusNoDevice;
+
+  /// No description provided for @desktopStatusConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接中…'**
+  String get desktopStatusConnecting;
+
+  /// No description provided for @desktopStatusDeviceInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'API {api} · {abi}'**
+  String desktopStatusDeviceInfo(String api, String abi);
+
   /// 应用副标题
   ///
   /// In zh, this message translates to:

@@ -23,7 +23,6 @@ class DesktopHomePage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentIndex = useState(0);
-    final colorScheme = context.colorScheme;
     final l10n = context.l10n;
 
     final navItems = <_DesktopNavItem>[
@@ -58,34 +57,37 @@ class DesktopHomePage extends HookConsumerWidget {
     }, const []);
 
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          _Sidebar(
-            navItems: navItems,
-            currentIndex: selectedIndex,
-            onSelect: (index) => currentIndex.value = index,
-          ),
           Expanded(
-            child: selectedIndex == 1
-                ? const _DesktopSettingsView()
-                : _ShellPlaceholder(
-                    title: navItems[selectedIndex].label,
-                    colorScheme: colorScheme,
-                  ),
+            child: Row(
+              children: [
+                _ActivityBar(
+                  navItems: navItems,
+                  currentIndex: selectedIndex,
+                  onSelect: (index) => currentIndex.value = index,
+                ),
+                Expanded(
+                  child: selectedIndex == 1
+                      ? const _DesktopSettingsView()
+                      : const _DesktopWorkbenchView(),
+                ),
+              ],
+            ),
           ),
+          const _DesktopStatusBar(),
         ],
       ),
     );
   }
 }
 
-/// 侧边栏
-class _Sidebar extends HookConsumerWidget {
+class _ActivityBar extends HookConsumerWidget {
   final List<_DesktopNavItem> navItems;
   final int currentIndex;
   final ValueChanged<int> onSelect;
 
-  const _Sidebar({
+  const _ActivityBar({
     required this.navItems,
     required this.currentIndex,
     required this.onSelect,
@@ -97,175 +99,103 @@ class _Sidebar extends HookConsumerWidget {
     final dividerColor = colorScheme.outlineVariant.withValues(alpha: 0.5);
 
     return Container(
-      width: 272,
+      width: 48,
       decoration: BoxDecoration(
-        color: colorScheme.surface,
-        border: Border(right: BorderSide(color: dividerColor, width: 1)),
+        color: colorScheme.surfaceContainer,
+        border: Border(right: BorderSide(color: dividerColor)),
       ),
       child: Column(
         children: [
-          // Logo
-          Container(
-            height: 64,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            alignment: Alignment.centerLeft,
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+          Tooltip(
+            message: 'JsxposedX',
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
                   child: Image.asset(
                     'assets/images/logo.png',
-                    width: 32,
-                    height: 32,
                     fit: BoxFit.cover,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  'JsxposedX',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           Divider(height: 1, color: dividerColor),
-
-          // 导航项
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-              itemCount: navItems.length,
+              padding: EdgeInsets.zero,
+              itemCount: navItems.length - 1,
               itemBuilder: (context, index) {
                 final item = navItems[index];
-                final isSelected = currentIndex == index;
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Material(
-                    color: isSelected
-                        ? colorScheme.primaryContainer
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    child: InkWell(
-                      onTap: () => onSelect(index),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        height: 48,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Icon(
-                              isSelected ? item.selectedIcon : item.icon,
-                              color: isSelected
-                                  ? colorScheme.onPrimaryContainer
-                                  : colorScheme.onSurfaceVariant,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              item.label,
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? colorScheme.onPrimaryContainer
-                                    : colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                final selected = currentIndex == index;
+                return _ActivityButton(
+                  tooltip: item.label,
+                  icon: selected ? item.selectedIcon : item.icon,
+                  selected: selected,
+                  onPressed: () => onSelect(index),
                 );
               },
             ),
           ),
-
-          // 设备连接（左下角常驻）
-          Divider(height: 1, color: dividerColor),
-          const _ConnectionPanel(),
-
-          // 主题切换
-          Divider(height: 1, color: dividerColor),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                onTap: () =>
-                    ref.read(desktopThemeModeProvider.notifier).toggle(),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        context.isDark ? Icons.light_mode : Icons.dark_mode,
-                        color: colorScheme.onSurfaceVariant,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        context.isDark
-                            ? context.l10n.desktopThemeSwitchToLight
-                            : context.l10n.desktopThemeSwitchToDark,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // 语言切换
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                onTap: () => ref.read(desktopLocaleProvider.notifier).toggle(),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.language,
-                        color: colorScheme.onSurfaceVariant,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        Localizations.localeOf(context).languageCode == 'en'
-                            ? '中文'
-                            : 'English',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+          _ActivityButton(
+            tooltip: navItems.last.label,
+            icon: currentIndex == navItems.length - 1
+                ? navItems.last.selectedIcon
+                : navItems.last.icon,
+            selected: currentIndex == navItems.length - 1,
+            onPressed: () => onSelect(navItems.length - 1),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ActivityButton extends StatelessWidget {
+  const _ActivityButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.selected = false,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    width: 2,
+                    color: selected ? colors.primary : Colors.transparent,
+                  ),
+                ),
+              ),
+              child: Icon(
+                icon,
+                size: 24,
+                color: selected ? colors.onSurface : colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -334,43 +264,104 @@ class _DesktopSettingsView extends HookConsumerWidget {
           const SizedBox(height: 24),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
-            child: Material(
-              color: colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(8),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  context.l10n.desktopSettingsAppearance,
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
-                leading: const Icon(Icons.system_update_alt),
-                title: Text(context.l10n.desktopUpdateCheck),
-                subtitle: Text(
-                  version == null
-                      ? context.l10n.desktopUpdateCheckDescription
-                      : context.l10n.desktopCurrentVersion(
-                          version.version,
-                          version.buildNumber,
+                const SizedBox(height: 8),
+                Material(
+                  color: colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: Icon(
+                          context.isDark
+                              ? Icons.dark_mode_outlined
+                              : Icons.light_mode_outlined,
                         ),
+                        title: Text(context.l10n.desktopSettingsColorTheme),
+                        subtitle: Text(
+                          context.isDark
+                              ? context.l10n.desktopSettingsThemeDark
+                              : context.l10n.desktopSettingsThemeLight,
+                        ),
+                        trailing: Switch(
+                          value: context.isDark,
+                          onChanged: (_) => ref
+                              .read(desktopThemeModeProvider.notifier)
+                              .toggle(),
+                        ),
+                        onTap: () => ref
+                            .read(desktopThemeModeProvider.notifier)
+                            .toggle(),
+                      ),
+                      Divider(height: 1, color: colorScheme.outlineVariant),
+                      ListTile(
+                        leading: const Icon(Icons.language),
+                        title: Text(
+                          context.l10n.desktopSettingsDisplayLanguage,
+                        ),
+                        subtitle: Text(
+                          Localizations.localeOf(context).languageCode == 'en'
+                              ? context.l10n.english
+                              : context.l10n.chinese,
+                        ),
+                        trailing: const Icon(Icons.swap_horiz),
+                        onTap: () =>
+                            ref.read(desktopLocaleProvider.notifier).toggle(),
+                      ),
+                    ],
+                  ),
                 ),
-                trailing: isChecking.value
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.chevron_right),
-                enabled: !isChecking.value,
-                onTap: () async {
-                  isChecking.value = true;
-                  await _checkDesktopUpdate(
-                    context,
-                    ref,
-                    showLatestResult: true,
-                  );
-                  if (context.mounted) {
-                    isChecking.value = false;
-                  }
-                },
-              ),
+                const SizedBox(height: 24),
+                Text(
+                  context.l10n.desktopSettingsApplication,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Material(
+                  color: colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(8),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    leading: const Icon(Icons.system_update_alt),
+                    title: Text(context.l10n.desktopUpdateCheck),
+                    subtitle: Text(
+                      version == null
+                          ? context.l10n.desktopUpdateCheckDescription
+                          : context.l10n.desktopCurrentVersion(
+                              version.version,
+                              version.buildNumber,
+                            ),
+                    ),
+                    trailing: isChecking.value
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.chevron_right),
+                    enabled: !isChecking.value,
+                    onTap: () async {
+                      isChecking.value = true;
+                      await _checkDesktopUpdate(
+                        context,
+                        ref,
+                        showLatestResult: true,
+                      );
+                      if (context.mounted) {
+                        isChecking.value = false;
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -379,45 +370,346 @@ class _DesktopSettingsView extends HookConsumerWidget {
   }
 }
 
-/// 主工作区占位
-class _ShellPlaceholder extends StatelessWidget {
-  final String title;
-  final ColorScheme colorScheme;
-
-  const _ShellPlaceholder({required this.title, required this.colorScheme});
+class _DesktopWorkbenchView extends HookConsumerWidget {
+  const _DesktopWorkbenchView();
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: colorScheme.surface,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.construction_outlined,
-              size: 64,
-              color: colorScheme.outline,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(desktopConnectionProvider);
+    final colors = context.colorScheme;
+    final outputExpanded = useState(true);
+
+    return ColoredBox(
+      color: colors.surface,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final showProjectPane = constraints.maxWidth >= 700;
+          final showExpandedOutput =
+              outputExpanded.value && constraints.maxHeight >= 240;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showProjectPane) ...[
+                const SizedBox(width: 220, child: _ProjectExplorer()),
+                VerticalDivider(width: 1, color: colors.outlineVariant),
+              ],
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: _EditorWorkspace(
+                        connected: connection.isConnected,
+                      ),
+                    ),
+                    if (constraints.maxHeight >= 40)
+                      _RunOutputPanel(
+                        connection: connection,
+                        expanded: showExpandedOutput,
+                        onToggle: () =>
+                            outputExpanded.value = !outputExpanded.value,
+                      ),
+                  ],
+                ),
               ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+Future<void> _showDeviceDetails(
+  BuildContext context,
+  DesktopConnectionState connection,
+) async {
+  final info = connection.deviceInfo;
+  if (info == null) return;
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(info.model ?? context.l10n.desktopDeviceDefaultName),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.desktopDeviceSummary(
+                info.manufacturer ?? 'Android',
+                '${info.androidApi}',
+                info.abi,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              context.l10n.desktopDeviceCapabilities,
+              style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 8),
-            Text(
-              context.l10n.desktopFeatureTodo,
-              style: TextStyle(
-                fontSize: 14,
-                color: colorScheme.onSurfaceVariant,
-              ),
+            ...?connection.capabilities?.values.entries.map(
+              (entry) => _CapabilityRow(name: entry.key, value: entry.value),
             ),
           ],
         ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ProjectExplorer extends StatelessWidget {
+  const _ProjectExplorer();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.desktopExplorerTitle,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: context.l10n.desktopExplorerNewScript,
+                onPressed: null,
+                icon: const Icon(Icons.note_add_outlined, size: 18),
+              ),
+            ],
+          ),
+        ),
+        ListTile(
+          dense: true,
+          leading: const Icon(Icons.folder_open_outlined, size: 19),
+          title: Text(context.l10n.desktopExplorerLocalScripts),
+          textColor: colors.onSurface,
+        ),
+        const Spacer(),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Text(
+            context.l10n.desktopExplorerDescription,
+            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CapabilityRow extends StatelessWidget {
+  const _CapabilityRow({required this.name, required this.value});
+
+  final String name;
+  final dynamic value;
+
+  @override
+  Widget build(BuildContext context) {
+    final available = value is bool
+        ? value as bool
+        : value is Map
+        ? value['available'] == true
+        : value != null;
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(
+        available ? Icons.check_circle_outline : Icons.block,
+        size: 17,
+        color: available
+            ? const Color(0xFF2E7D32)
+            : context.colorScheme.outline,
+      ),
+      title: Text(name),
+    );
+  }
+}
+
+class _EditorWorkspace extends StatelessWidget {
+  const _EditorWorkspace({required this.connected});
+
+  final bool connected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    return Column(
+      children: [
+        Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          color: colors.surfaceContainerLow,
+          child: Row(
+            children: [
+              const Icon(Icons.code, size: 18),
+              const SizedBox(width: 8),
+              const Text('untitled.js'),
+              const Spacer(),
+              IconButton(
+                tooltip: context.l10n.desktopEditorRunScript,
+                visualDensity: VisualDensity.compact,
+                onPressed: connected ? () {} : null,
+                icon: const Icon(Icons.play_arrow, size: 18),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.code_outlined, size: 48, color: colors.outline),
+                const SizedBox(height: 12),
+                Text(
+                  connected
+                      ? context.l10n.desktopEditorCreateScript
+                      : context.l10n.desktopEditorConnectDevice,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  context.l10n.desktopEditorDescription,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RunOutputPanel extends StatelessWidget {
+  const _RunOutputPanel({
+    required this.connection,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  final DesktopConnectionState connection;
+  final bool expanded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    final response = connection.lastResponse;
+    final header = SizedBox(
+      height: 40,
+      child: InkWell(
+        onTap: onToggle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.terminal, size: 17),
+              const SizedBox(width: 8),
+              Text(context.l10n.desktopOutputTitle),
+              const Spacer(),
+              if (connection.events.isNotEmpty)
+                Text(
+                  '${connection.events.length}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              const SizedBox(width: 8),
+              Icon(expanded ? Icons.expand_more : Icons.expand_less, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+    final decoration = BoxDecoration(
+      color: colors.surfaceContainerLowest,
+      border: Border(top: BorderSide(color: colors.outlineVariant)),
+    );
+
+    if (!expanded) {
+      return DecoratedBox(decoration: decoration, child: header);
+    }
+
+    return Container(
+      height: 180,
+      decoration: decoration,
+      child: Column(
+        children: [
+          header,
+          Expanded(
+            child: response == null && connection.events.isEmpty
+                ? Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Text(
+                        context.l10n.desktopOutputEmpty,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    children: [
+                      if (response != null)
+                        Text(
+                          response.isSuccess
+                              ? context.l10n.desktopOutputRequestCompleted(
+                                  response.id ?? '-',
+                                )
+                              : '${response.error!.code}: ${response.error!.message}',
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            color: response.isSuccess
+                                ? colors.onSurface
+                                : colors.error,
+                          ),
+                        ),
+                      ...connection.events.reversed
+                          .take(20)
+                          .map(
+                            (event) => Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                context.l10n.desktopOutputEvent(
+                                  '${event.sequence ?? '-'}',
+                                  event.event ??
+                                      context.l10n.desktopOutputEventFallback,
+                                ),
+                                style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -436,9 +728,104 @@ class _DesktopNavItem {
   });
 }
 
-/// 左下角设备连接面板
-///
-/// 常驻侧边栏底部，通过 WebSocket 与手机端保持即时连接。
+class _DesktopStatusBar extends ConsumerWidget {
+  const _DesktopStatusBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(desktopConnectionProvider);
+    final colors = context.colorScheme;
+    final connected = connection.isConnected;
+    return Container(
+      height: 22,
+      color: connected ? colors.primary : colors.surfaceContainerHighest,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            InkWell(
+              onTap: () => _showConnectionManager(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      connected ? Icons.device_hub : Icons.phonelink_off,
+                      size: 13,
+                      color: connected
+                          ? colors.onPrimary
+                          : colors.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      connection.deviceInfo?.model ??
+                          (connection.isConnecting
+                              ? context.l10n.desktopStatusConnecting
+                              : context.l10n.desktopStatusNoDevice),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: connected
+                            ? colors.onPrimary
+                            : colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (connected && constraints.maxWidth >= 420)
+              InkWell(
+                onTap: () => _showDeviceDetails(context, connection),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    context.l10n.desktopStatusDeviceInfo(
+                      '${connection.deviceInfo?.androidApi ?? '-'}',
+                      connection.deviceInfo?.abi ?? '-',
+                    ),
+                    style: TextStyle(fontSize: 11, color: colors.onPrimary),
+                  ),
+                ),
+              ),
+            const Spacer(),
+            if (constraints.maxWidth >= 560)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  'Jsxposed Protocol 1.0',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: connected
+                        ? colors.onPrimary
+                        : colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _showConnectionManager(BuildContext context) async {
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(context.l10n.desktopNavDeviceConnection),
+      content: const SizedBox(
+        width: 380,
+        child: SingleChildScrollView(child: _ConnectionPanel()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+        ),
+      ],
+    ),
+  );
+}
+
 enum _DesktopConnectionMode { adb, wifi }
 
 Future<void> _showAdbSettingsDialog(

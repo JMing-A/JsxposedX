@@ -153,6 +153,53 @@
   "@desktopConnectionPairNextStep": {
     "description": "PC 端-ADB 配对成功后的下一步提示"
   },
+  "desktopSettingsAppearance": "外观",
+  "desktopSettingsColorTheme": "颜色主题",
+  "desktopSettingsThemeDark": "深色",
+  "desktopSettingsThemeLight": "浅色",
+  "desktopSettingsDisplayLanguage": "显示语言",
+  "desktopSettingsApplication": "应用",
+  "desktopDeviceDefaultName": "Android 设备",
+  "desktopDeviceSummary": "{manufacturer} · API {api} · {abi}",
+  "@desktopDeviceSummary": {
+    "placeholders": {
+      "manufacturer": {"type": "String"},
+      "api": {"type": "String"},
+      "abi": {"type": "String"}
+    }
+  },
+  "desktopDeviceCapabilities": "设备能力",
+  "desktopExplorerTitle": "资源管理器",
+  "desktopExplorerNewScript": "新建脚本",
+  "desktopExplorerLocalScripts": "本地脚本",
+  "desktopExplorerDescription": "脚本保存在电脑本地，并在所选设备上运行。",
+  "desktopEditorRunScript": "运行脚本",
+  "desktopEditorCreateScript": "新建或打开本地脚本",
+  "desktopEditorConnectDevice": "连接设备后开始",
+  "desktopEditorDescription": "脚本保留在电脑中，并同步到所选设备执行。",
+  "desktopOutputTitle": "输出",
+  "desktopOutputEmpty": "运行输出和设备事件将显示在此处。",
+  "desktopOutputRequestCompleted": "请求 {requestId} 已完成",
+  "@desktopOutputRequestCompleted": {
+    "placeholders": {"requestId": {"type": "String"}}
+  },
+  "desktopOutputEvent": "[{sequence}] {event}",
+  "@desktopOutputEvent": {
+    "placeholders": {
+      "sequence": {"type": "String"},
+      "event": {"type": "String"}
+    }
+  },
+  "desktopOutputEventFallback": "事件",
+  "desktopStatusNoDevice": "未连接设备",
+  "desktopStatusConnecting": "连接中…",
+  "desktopStatusDeviceInfo": "API {api} · {abi}",
+  "@desktopStatusDeviceInfo": {
+    "placeholders": {
+      "api": {"type": "String"},
+      "abi": {"type": "String"}
+    }
+  },
   "appSubtitle": "基于 Xposed Frida 的跨平台Hook调试工具",
   "@appSubtitle": {
     "description": "应用副标题"

@@ -119,6 +119,89 @@ class AppLocalizationsZh extends AppLocalizations {
       '配对成功。配对不会让设备直接出现在列表中，请在手机无线调试页面查看“IP 地址和端口”，填入下方连接地址后点击“连接 ADB”。注意：连接端口通常与配对端口不同。';
 
   @override
+  String get desktopSettingsAppearance => '外观';
+
+  @override
+  String get desktopSettingsColorTheme => '颜色主题';
+
+  @override
+  String get desktopSettingsThemeDark => '深色';
+
+  @override
+  String get desktopSettingsThemeLight => '浅色';
+
+  @override
+  String get desktopSettingsDisplayLanguage => '显示语言';
+
+  @override
+  String get desktopSettingsApplication => '应用';
+
+  @override
+  String get desktopDeviceDefaultName => 'Android 设备';
+
+  @override
+  String desktopDeviceSummary(String manufacturer, String api, String abi) {
+    return '$manufacturer · API $api · $abi';
+  }
+
+  @override
+  String get desktopDeviceCapabilities => '设备能力';
+
+  @override
+  String get desktopExplorerTitle => '资源管理器';
+
+  @override
+  String get desktopExplorerNewScript => '新建脚本';
+
+  @override
+  String get desktopExplorerLocalScripts => '本地脚本';
+
+  @override
+  String get desktopExplorerDescription => '脚本保存在电脑本地，并在所选设备上运行。';
+
+  @override
+  String get desktopEditorRunScript => '运行脚本';
+
+  @override
+  String get desktopEditorCreateScript => '新建或打开本地脚本';
+
+  @override
+  String get desktopEditorConnectDevice => '连接设备后开始';
+
+  @override
+  String get desktopEditorDescription => '脚本保留在电脑中，并同步到所选设备执行。';
+
+  @override
+  String get desktopOutputTitle => '输出';
+
+  @override
+  String get desktopOutputEmpty => '运行输出和设备事件将显示在此处。';
+
+  @override
+  String desktopOutputRequestCompleted(String requestId) {
+    return '请求 $requestId 已完成';
+  }
+
+  @override
+  String desktopOutputEvent(String sequence, String event) {
+    return '[$sequence] $event';
+  }
+
+  @override
+  String get desktopOutputEventFallback => '事件';
+
+  @override
+  String get desktopStatusNoDevice => '未连接设备';
+
+  @override
+  String get desktopStatusConnecting => '连接中…';
+
+  @override
+  String desktopStatusDeviceInfo(String api, String abi) {
+    return 'API $api · $abi';
+  }
+
+  @override
   String get appSubtitle => '基于 Xposed Frida 的跨平台Hook调试工具';
 
   @override
