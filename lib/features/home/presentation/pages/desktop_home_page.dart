@@ -1,4 +1,5 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/home/presentation/providers/desktop_connection_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_locale_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_theme_provider.dart';
 import 'package:flutter/material.dart';
@@ -21,11 +22,6 @@ class DesktopHomePage extends HookConsumerWidget {
 
     final navItems = <_DesktopNavItem>[
       _DesktopNavItem(
-        label: l10n.desktopNavDeviceConnection,
-        icon: Icons.devices_outlined,
-        selectedIcon: Icons.devices,
-      ),
-      _DesktopNavItem(
         label: l10n.desktopNavWorkbench,
         icon: Icons.dashboard_outlined,
         selectedIcon: Icons.dashboard,
@@ -36,18 +32,21 @@ class DesktopHomePage extends HookConsumerWidget {
         selectedIcon: Icons.settings,
       ),
     ];
+    final selectedIndex = currentIndex.value >= navItems.length
+        ? navItems.length - 1
+        : currentIndex.value;
 
     return Scaffold(
       body: Row(
         children: [
           _Sidebar(
             navItems: navItems,
-            currentIndex: currentIndex.value,
+            currentIndex: selectedIndex,
             onSelect: (index) => currentIndex.value = index,
           ),
           Expanded(
             child: _ShellPlaceholder(
-              title: navItems[currentIndex.value].label,
+              title: navItems[selectedIndex].label,
               colorScheme: colorScheme,
             ),
           ),
@@ -75,12 +74,10 @@ class _Sidebar extends HookConsumerWidget {
     final dividerColor = colorScheme.outlineVariant.withValues(alpha: 0.5);
 
     return Container(
-      width: 240,
+      width: 272,
       decoration: BoxDecoration(
         color: colorScheme.surface,
-        border: Border(
-          right: BorderSide(color: dividerColor, width: 1),
-        ),
+        border: Border(right: BorderSide(color: dividerColor, width: 1)),
       ),
       child: Column(
         children: [
@@ -168,6 +165,10 @@ class _Sidebar extends HookConsumerWidget {
             ),
           ),
 
+          // 设备连接（左下角常驻）
+          Divider(height: 1, color: dividerColor),
+          const _ConnectionPanel(),
+
           // 主题切换
           Divider(height: 1, color: dividerColor),
           Padding(
@@ -176,7 +177,8 @@ class _Sidebar extends HookConsumerWidget {
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(8),
               child: InkWell(
-                onTap: () => ref.read(desktopThemeModeProvider.notifier).toggle(),
+                onTap: () =>
+                    ref.read(desktopThemeModeProvider.notifier).toggle(),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   height: 48,
@@ -251,10 +253,7 @@ class _ShellPlaceholder extends StatelessWidget {
   final String title;
   final ColorScheme colorScheme;
 
-  const _ShellPlaceholder({
-    required this.title,
-    required this.colorScheme,
-  });
+  const _ShellPlaceholder({required this.title, required this.colorScheme});
 
   @override
   Widget build(BuildContext context) {
@@ -304,4 +303,536 @@ class _DesktopNavItem {
     required this.icon,
     required this.selectedIcon,
   });
+}
+
+/// 左下角设备连接面板
+///
+/// 常驻侧边栏底部，通过 WebSocket 与手机端保持即时连接。
+enum _DesktopConnectionMode { adb, wifi }
+
+Future<void> _showAdbSettingsDialog(
+  BuildContext context,
+  DesktopConnectionNotifier notifier,
+) async {
+  final pairAddressController = TextEditingController();
+  final pairCodeController = TextEditingController();
+  final connectAddressController = TextEditingController();
+  final l10n = context.l10n;
+
+  await showDialog<void>(
+    context: context,
+    builder: (context) {
+      var isRunning = false;
+      String? commandOutput;
+      var commandSucceeded = false;
+
+      return StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(l10n.desktopConnectionAdbSettings),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.desktopConnectionPairSection,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: pairAddressController,
+                    enabled: !isRunning,
+                    decoration: InputDecoration(
+                      labelText: l10n.desktopConnectionPairAddressHint,
+                      prefixIcon: const Icon(Icons.link),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: pairCodeController,
+                          enabled: !isRunning,
+                          decoration: InputDecoration(
+                            labelText: l10n.desktopConnectionPairCodeHint,
+                            prefixIcon: const Icon(Icons.password),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: isRunning
+                            ? null
+                            : () async {
+                                if (pairAddressController.text.trim().isEmpty ||
+                                    pairCodeController.text.trim().isEmpty) {
+                                  return;
+                                }
+                                setDialogState(() {
+                                  isRunning = true;
+                                  commandOutput = null;
+                                  commandSucceeded = false;
+                                });
+                                final result = await notifier.pairAdb(
+                                  pairAddressController.text,
+                                  pairCodeController.text,
+                                );
+                                if (!context.mounted) return;
+                                setDialogState(() {
+                                  isRunning = false;
+                                  commandSucceeded = result.isSuccess;
+                                  commandOutput = result.isSuccess
+                                      ? '${result.details}\n\n${l10n.desktopConnectionPairNextStep}'
+                                      : result.details;
+                                });
+                              },
+                        child: Text(l10n.desktopConnectionPair),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    l10n.desktopConnectionWirelessSection,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: connectAddressController,
+                          enabled: !isRunning,
+                          decoration: InputDecoration(
+                            labelText: l10n.desktopConnectionAdbAddressHint,
+                            prefixIcon: const Icon(Icons.wifi),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: isRunning
+                            ? null
+                            : () async {
+                                if (connectAddressController.text
+                                    .trim()
+                                    .isEmpty) {
+                                  return;
+                                }
+                                setDialogState(() {
+                                  isRunning = true;
+                                  commandOutput = null;
+                                  commandSucceeded = false;
+                                });
+                                final result = await notifier
+                                    .connectAdbWireless(
+                                      connectAddressController.text,
+                                    );
+                                if (!context.mounted) return;
+                                if (result.isSuccess) {
+                                  Navigator.pop(context);
+                                  await notifier.connectAdb();
+                                  return;
+                                }
+                                setDialogState(() {
+                                  isRunning = false;
+                                  commandOutput = result.details;
+                                });
+                              },
+                        child: Text(l10n.desktopConnectionAdbConnect),
+                      ),
+                    ],
+                  ),
+                  if (isRunning) ...[
+                    const SizedBox(height: 16),
+                    const LinearProgressIndicator(),
+                  ],
+                  if (commandOutput != null) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxHeight: 220),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: commandSucceeded
+                            ? Theme.of(context).colorScheme.primaryContainer
+                            : Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          commandOutput!,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isRunning ? null : () => Navigator.pop(context),
+              child: Text(MaterialLocalizations.of(context).closeButtonLabel),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  pairAddressController.dispose();
+  pairCodeController.dispose();
+  connectAddressController.dispose();
+}
+
+class _ConnectionToolButton extends StatelessWidget {
+  const _ConnectionToolButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    this.color,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: 32,
+      child: IconButton(
+        tooltip: tooltip,
+        padding: EdgeInsets.zero,
+        visualDensity: VisualDensity.compact,
+        onPressed: onPressed,
+        icon: Icon(icon, size: 17, color: color),
+      ),
+    );
+  }
+}
+
+class _ConnectionStatusRow extends StatelessWidget {
+  const _ConnectionStatusRow({required this.color, required this.text});
+
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ConnectionPanel extends HookConsumerWidget {
+  const _ConnectionPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(desktopConnectionProvider);
+    final notifier = ref.read(desktopConnectionProvider.notifier);
+    final mode = useState(_DesktopConnectionMode.adb);
+    final wifiAddress = useState('');
+    final colorScheme = context.colorScheme;
+    final l10n = context.l10n;
+
+    final selectedDevice = connection.adbDevices
+        .where((device) => device.serial == connection.selectedAdbSerial)
+        .firstOrNull;
+    final address = mode.value == _DesktopConnectionMode.adb
+        ? 'ws://127.0.0.1:8765'
+        : wifiAddress.value.trim();
+
+    final statusColor = switch (connection.status) {
+      DesktopConnectionStatus.connected => const Color(0xFF4CAF50),
+      DesktopConnectionStatus.connecting => const Color(0xFFFFA726),
+      DesktopConnectionStatus.disconnected => colorScheme.outline,
+    };
+
+    final statusText = switch (connection.status) {
+      DesktopConnectionStatus.connected => l10n.desktopConnectionConnected,
+      DesktopConnectionStatus.connecting => l10n.desktopConnectionConnecting,
+      DesktopConnectionStatus.disconnected =>
+        l10n.desktopConnectionDisconnected,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.devices_outlined,
+                size: 18,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.desktopNavDeviceConnection,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (mode.value == _DesktopConnectionMode.adb)
+                _ConnectionToolButton(
+                  tooltip: l10n.desktopConnectionRefresh,
+                  icon: Icons.refresh,
+                  onPressed: connection.isConnecting
+                      ? null
+                      : notifier.scanAdbDevices,
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<_DesktopConnectionMode>(
+              segments: [
+                ButtonSegment(
+                  value: _DesktopConnectionMode.adb,
+                  label: Text(l10n.desktopConnectionAdb),
+                  icon: const Icon(Icons.usb, size: 16),
+                ),
+                ButtonSegment(
+                  value: _DesktopConnectionMode.wifi,
+                  label: Text(l10n.desktopConnectionWifi),
+                  icon: const Icon(Icons.wifi, size: 16),
+                ),
+              ],
+              selected: {mode.value},
+              onSelectionChanged: connection.isConnecting
+                  ? null
+                  : (selection) {
+                      notifier.clearError();
+                      mode.value = selection.first;
+                      if (mode.value == _DesktopConnectionMode.adb) {
+                        wifiAddress.value = '';
+                      }
+                    },
+              showSelectedIcon: false,
+              style: const ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (!connection.isConnected) ...[
+            if (mode.value == _DesktopConnectionMode.adb) ...[
+              OutlinedButton.icon(
+                onPressed: connection.isConnecting
+                    ? null
+                    : () => _showAdbSettingsDialog(context, notifier),
+                icon: const Icon(Icons.settings_ethernet, size: 17),
+                label: Text(l10n.desktopConnectionConfigureAdb),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                key: ValueKey(connection.selectedAdbSerial),
+                initialValue: connection.selectedAdbSerial,
+                isExpanded: true,
+                items: connection.adbDevices
+                    .map(
+                      (device) => DropdownMenuItem(
+                        value: device.serial,
+                        enabled: device.isAuthorized,
+                        child: Text(
+                          device.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: connection.isConnecting
+                    ? null
+                    : (serial) {
+                        if (serial != null) notifier.selectAdbDevice(serial);
+                      },
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.smartphone, size: 18),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 38),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 11,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+            ] else
+              TextField(
+                enabled: !connection.isConnecting,
+                onChanged: (value) => wifiAddress.value = value,
+                style: const TextStyle(fontSize: 12),
+                decoration: InputDecoration(
+                  hintText: l10n.desktopConnectionAddressHint,
+                  prefixIcon: const Icon(Icons.link, size: 18),
+                  prefixIconConstraints: const BoxConstraints(minWidth: 38),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 11,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 10),
+          ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: _ConnectionStatusRow(
+              color: statusColor,
+              text:
+                  mode.value == _DesktopConnectionMode.adb &&
+                      connection.isConnected &&
+                      selectedDevice != null
+                  ? l10n.desktopConnectionAdbActive(selectedDevice.displayName)
+                  : statusText,
+            ),
+          ),
+          if (selectedDevice != null && !selectedDevice.isAuthorized) ...[
+            const SizedBox(height: 8),
+            Text(
+              l10n.desktopConnectionDeviceUnauthorized,
+              style: TextStyle(fontSize: 11, color: colorScheme.error),
+            ),
+          ],
+          if (connection.error != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 16,
+                    color: colorScheme.onErrorContainer,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: SelectableText(
+                      connection.error!,
+                      maxLines: 3,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                  _ConnectionToolButton(
+                    tooltip: MaterialLocalizations.of(context).closeButtonLabel,
+                    icon: Icons.close,
+                    color: colorScheme.onErrorContainer,
+                    onPressed: notifier.clearError,
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          if (connection.isConnected) ...[
+            Text(
+              connection.address,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 7),
+          ],
+          SizedBox(
+            height: 38,
+            child: connection.isConnected
+                ? OutlinedButton.icon(
+                    onPressed: notifier.disconnect,
+                    icon: const Icon(Icons.link_off, size: 17),
+                    label: Text(l10n.desktopConnectionDisconnect),
+                  )
+                : FilledButton.icon(
+                    onPressed:
+                        connection.isConnecting ||
+                            (mode.value == _DesktopConnectionMode.adb
+                                ? selectedDevice?.isAuthorized != true
+                                : address.isEmpty)
+                        ? null
+                        : mode.value == _DesktopConnectionMode.adb
+                        ? notifier.connectAdb
+                        : () => notifier.connect(address),
+                    icon: connection.isConnecting
+                        ? const SizedBox.square(
+                            dimension: 15,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            mode.value == _DesktopConnectionMode.adb
+                                ? Icons.phone_android
+                                : Icons.wifi,
+                            size: 17,
+                          ),
+                    label: Text(
+                      connection.isConnecting
+                          ? l10n.desktopConnectionConnecting
+                          : mode.value == _DesktopConnectionMode.adb
+                          ? l10n.desktopConnectionConnectAdb
+                          : l10n.desktopConnectionConnectWifi,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
 }

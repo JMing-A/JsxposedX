@@ -30,6 +30,78 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopFeatureTodo => '功能待实现';
 
   @override
+  String get desktopConnectionConnected => '已连接';
+
+  @override
+  String get desktopConnectionConnecting => '连接中…';
+
+  @override
+  String get desktopConnectionDisconnected => '未连接';
+
+  @override
+  String desktopConnectionAdbActive(String device) {
+    return '已通过 ADB 连接 $device';
+  }
+
+  @override
+  String get desktopConnectionConnect => '连接';
+
+  @override
+  String get desktopConnectionDisconnect => '断开';
+
+  @override
+  String get desktopConnectionAddressHint => '手机端地址';
+
+  @override
+  String get desktopConnectionAdb => 'ADB';
+
+  @override
+  String get desktopConnectionWifi => 'Wi-Fi';
+
+  @override
+  String get desktopConnectionRefresh => '刷新设备';
+
+  @override
+  String get desktopConnectionDeviceUnauthorized => '设备未授权，请在手机上允许 USB 调试';
+
+  @override
+  String get desktopConnectionPairAddressHint => '配对地址，例如 192.168.1.2:37099';
+
+  @override
+  String get desktopConnectionPairCodeHint => '配对码';
+
+  @override
+  String get desktopConnectionPair => '配对';
+
+  @override
+  String get desktopConnectionAdbAddressHint => '连接地址，例如 192.168.1.2:5555';
+
+  @override
+  String get desktopConnectionAdbConnect => '连接 ADB';
+
+  @override
+  String get desktopConnectionAdbSettings => 'ADB 设置';
+
+  @override
+  String get desktopConnectionConfigureAdb => '配置 ADB 配对与无线连接';
+
+  @override
+  String get desktopConnectionConnectAdb => '通过 ADB 连接';
+
+  @override
+  String get desktopConnectionConnectWifi => '通过 Wi-Fi 连接';
+
+  @override
+  String get desktopConnectionPairSection => '无线调试配对';
+
+  @override
+  String get desktopConnectionWirelessSection => '无线连接';
+
+  @override
+  String get desktopConnectionPairNextStep =>
+      '配对成功。配对不会让设备直接出现在列表中，请在手机无线调试页面查看“IP 地址和端口”，填入下方连接地址后点击“连接 ADB”。注意：连接端口通常与配对端口不同。';
+
+  @override
   String get appSubtitle => '基于 Xposed Frida 的跨平台Hook调试工具';
 
   @override

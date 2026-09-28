@@ -30,6 +30,82 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopFeatureTodo => 'Feature coming soon';
 
   @override
+  String get desktopConnectionConnected => 'Connected';
+
+  @override
+  String get desktopConnectionConnecting => 'Connecting…';
+
+  @override
+  String get desktopConnectionDisconnected => 'Disconnected';
+
+  @override
+  String desktopConnectionAdbActive(String device) {
+    return 'Connected to $device via ADB';
+  }
+
+  @override
+  String get desktopConnectionConnect => 'Connect';
+
+  @override
+  String get desktopConnectionDisconnect => 'Disconnect';
+
+  @override
+  String get desktopConnectionAddressHint => 'Phone address';
+
+  @override
+  String get desktopConnectionAdb => 'ADB';
+
+  @override
+  String get desktopConnectionWifi => 'Wi-Fi';
+
+  @override
+  String get desktopConnectionRefresh => 'Refresh devices';
+
+  @override
+  String get desktopConnectionDeviceUnauthorized =>
+      'Device unauthorized. Allow USB debugging on the phone.';
+
+  @override
+  String get desktopConnectionPairAddressHint =>
+      'Pairing address, e.g. 192.168.1.2:37099';
+
+  @override
+  String get desktopConnectionPairCodeHint => 'Pairing code';
+
+  @override
+  String get desktopConnectionPair => 'Pair';
+
+  @override
+  String get desktopConnectionAdbAddressHint =>
+      'Connection address, e.g. 192.168.1.2:5555';
+
+  @override
+  String get desktopConnectionAdbConnect => 'Connect ADB';
+
+  @override
+  String get desktopConnectionAdbSettings => 'ADB Settings';
+
+  @override
+  String get desktopConnectionConfigureAdb =>
+      'Configure ADB Pairing & Wireless';
+
+  @override
+  String get desktopConnectionConnectAdb => 'Connect via ADB';
+
+  @override
+  String get desktopConnectionConnectWifi => 'Connect via Wi-Fi';
+
+  @override
+  String get desktopConnectionPairSection => 'Wireless Debugging Pairing';
+
+  @override
+  String get desktopConnectionWirelessSection => 'Wireless Connection';
+
+  @override
+  String get desktopConnectionPairNextStep =>
+      'Pairing succeeded. Pairing alone does not add the device to the list. Find the IP address and port on the phone\'s Wireless debugging screen, enter it below, then select Connect ADB. The connection port is usually different from the pairing port.';
+
+  @override
   String get appSubtitle =>
       'Cross-platform Hook debugging tool based on Xposed Frida';
 

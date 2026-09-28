@@ -28,6 +28,103 @@
   "@desktopFeatureTodo": {
     "description": "PC - feature placeholder"
   },
+  "desktopConnectionConnected": "Connected",
+  "@desktopConnectionConnected": {
+    "description": "PC - device connection status - connected"
+  },
+  "desktopConnectionConnecting": "Connecting…",
+  "@desktopConnectionConnecting": {
+    "description": "PC - device connection status - connecting"
+  },
+  "desktopConnectionDisconnected": "Disconnected",
+  "@desktopConnectionDisconnected": {
+    "description": "PC - device connection status - disconnected"
+  },
+  "desktopConnectionAdbActive": "Connected to {device} via ADB",
+  "@desktopConnectionAdbActive": {
+    "description": "PC - app connection completed through ADB",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopConnectionConnect": "Connect",
+  "@desktopConnectionConnect": {
+    "description": "PC - device connect button"
+  },
+  "desktopConnectionDisconnect": "Disconnect",
+  "@desktopConnectionDisconnect": {
+    "description": "PC - device disconnect button"
+  },
+  "desktopConnectionAddressHint": "Phone address",
+  "@desktopConnectionAddressHint": {
+    "description": "PC - device connection address hint"
+  },
+  "desktopConnectionAdb": "ADB",
+  "@desktopConnectionAdb": {
+    "description": "PC - connect through ADB port forwarding"
+  },
+  "desktopConnectionWifi": "Wi-Fi",
+  "@desktopConnectionWifi": {
+    "description": "PC - connect through Wi-Fi address"
+  },
+  "desktopConnectionRefresh": "Refresh devices",
+  "@desktopConnectionRefresh": {
+    "description": "PC - refresh ADB device list"
+  },
+  "desktopConnectionDeviceUnauthorized": "Device unauthorized. Allow USB debugging on the phone.",
+  "@desktopConnectionDeviceUnauthorized": {
+    "description": "PC - unauthorized ADB device message"
+  },
+  "desktopConnectionPairAddressHint": "Pairing address, e.g. 192.168.1.2:37099",
+  "@desktopConnectionPairAddressHint": {
+    "description": "PC - ADB wireless pairing address hint"
+  },
+  "desktopConnectionPairCodeHint": "Pairing code",
+  "@desktopConnectionPairCodeHint": {
+    "description": "PC - ADB wireless pairing code hint"
+  },
+  "desktopConnectionPair": "Pair",
+  "@desktopConnectionPair": {
+    "description": "PC - run ADB wireless pairing"
+  },
+  "desktopConnectionAdbAddressHint": "Connection address, e.g. 192.168.1.2:5555",
+  "@desktopConnectionAdbAddressHint": {
+    "description": "PC - ADB wireless connection address hint"
+  },
+  "desktopConnectionAdbConnect": "Connect ADB",
+  "@desktopConnectionAdbConnect": {
+    "description": "PC - run ADB wireless connection"
+  },
+  "desktopConnectionAdbSettings": "ADB Settings",
+  "@desktopConnectionAdbSettings": {
+    "description": "PC - open ADB pairing and wireless connection settings"
+  },
+  "desktopConnectionConfigureAdb": "Configure ADB Pairing & Wireless",
+  "@desktopConnectionConfigureAdb": {
+    "description": "PC - open ADB configuration"
+  },
+  "desktopConnectionConnectAdb": "Connect via ADB",
+  "@desktopConnectionConnectAdb": {
+    "description": "PC - complete device connection through ADB"
+  },
+  "desktopConnectionConnectWifi": "Connect via Wi-Fi",
+  "@desktopConnectionConnectWifi": {
+    "description": "PC - connect phone service through Wi-Fi"
+  },
+  "desktopConnectionPairSection": "Wireless Debugging Pairing",
+  "@desktopConnectionPairSection": {
+    "description": "PC - ADB pairing section title"
+  },
+  "desktopConnectionWirelessSection": "Wireless Connection",
+  "@desktopConnectionWirelessSection": {
+    "description": "PC - ADB wireless connection section title"
+  },
+  "desktopConnectionPairNextStep": "Pairing succeeded. Pairing alone does not add the device to the list. Find the IP address and port on the phone's Wireless debugging screen, enter it below, then select Connect ADB. The connection port is usually different from the pairing port.",
+  "@desktopConnectionPairNextStep": {
+    "description": "PC - next step after successful ADB pairing"
+  },
   "appSubtitle": "Cross-platform Hook debugging tool based on Xposed Frida",
   "@appSubtitle": {
     "description": "Application subtitle"

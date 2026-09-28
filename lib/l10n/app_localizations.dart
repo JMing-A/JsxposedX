@@ -140,6 +140,144 @@ abstract class AppLocalizations {
   /// **'功能待实现'**
   String get desktopFeatureTodo;
 
+  /// PC 端-设备连接状态-已连接
+  ///
+  /// In zh, this message translates to:
+  /// **'已连接'**
+  String get desktopConnectionConnected;
+
+  /// PC 端-设备连接状态-连接中
+  ///
+  /// In zh, this message translates to:
+  /// **'连接中…'**
+  String get desktopConnectionConnecting;
+
+  /// PC 端-设备未连接状态
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接'**
+  String get desktopConnectionDisconnected;
+
+  /// PC 端-通过 ADB 完成应用连接
+  ///
+  /// In zh, this message translates to:
+  /// **'已通过 ADB 连接 {device}'**
+  String desktopConnectionAdbActive(String device);
+
+  /// PC 端-设备连接按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'连接'**
+  String get desktopConnectionConnect;
+
+  /// PC 端-设备断开按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'断开'**
+  String get desktopConnectionDisconnect;
+
+  /// PC 端-设备连接地址输入提示
+  ///
+  /// In zh, this message translates to:
+  /// **'手机端地址'**
+  String get desktopConnectionAddressHint;
+
+  /// PC 端-通过 ADB 端口转发连接
+  ///
+  /// In zh, this message translates to:
+  /// **'ADB'**
+  String get desktopConnectionAdb;
+
+  /// PC 端-通过 Wi-Fi 地址连接
+  ///
+  /// In zh, this message translates to:
+  /// **'Wi-Fi'**
+  String get desktopConnectionWifi;
+
+  /// PC 端-刷新 ADB 设备列表
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新设备'**
+  String get desktopConnectionRefresh;
+
+  /// PC 端-ADB 设备未授权提示
+  ///
+  /// In zh, this message translates to:
+  /// **'设备未授权，请在手机上允许 USB 调试'**
+  String get desktopConnectionDeviceUnauthorized;
+
+  /// PC 端-ADB 无线配对地址输入提示
+  ///
+  /// In zh, this message translates to:
+  /// **'配对地址，例如 192.168.1.2:37099'**
+  String get desktopConnectionPairAddressHint;
+
+  /// PC 端-ADB 无线配对码输入提示
+  ///
+  /// In zh, this message translates to:
+  /// **'配对码'**
+  String get desktopConnectionPairCodeHint;
+
+  /// PC 端-执行 ADB 无线配对
+  ///
+  /// In zh, this message translates to:
+  /// **'配对'**
+  String get desktopConnectionPair;
+
+  /// PC 端-ADB 无线连接地址输入提示
+  ///
+  /// In zh, this message translates to:
+  /// **'连接地址，例如 192.168.1.2:5555'**
+  String get desktopConnectionAdbAddressHint;
+
+  /// PC 端-执行 ADB 无线连接
+  ///
+  /// In zh, this message translates to:
+  /// **'连接 ADB'**
+  String get desktopConnectionAdbConnect;
+
+  /// PC 端-打开 ADB 配对和无线连接设置
+  ///
+  /// In zh, this message translates to:
+  /// **'ADB 设置'**
+  String get desktopConnectionAdbSettings;
+
+  /// PC 端-打开 ADB 配置入口
+  ///
+  /// In zh, this message translates to:
+  /// **'配置 ADB 配对与无线连接'**
+  String get desktopConnectionConfigureAdb;
+
+  /// PC 端-通过 ADB 完成设备连接
+  ///
+  /// In zh, this message translates to:
+  /// **'通过 ADB 连接'**
+  String get desktopConnectionConnectAdb;
+
+  /// PC 端-通过 Wi-Fi 连接手机服务
+  ///
+  /// In zh, this message translates to:
+  /// **'通过 Wi-Fi 连接'**
+  String get desktopConnectionConnectWifi;
+
+  /// PC 端-ADB 配对设置分组标题
+  ///
+  /// In zh, this message translates to:
+  /// **'无线调试配对'**
+  String get desktopConnectionPairSection;
+
+  /// PC 端-ADB 无线连接设置分组标题
+  ///
+  /// In zh, this message translates to:
+  /// **'无线连接'**
+  String get desktopConnectionWirelessSection;
+
+  /// PC 端-ADB 配对成功后的下一步提示
+  ///
+  /// In zh, this message translates to:
+  /// **'配对成功。配对不会让设备直接出现在列表中，请在手机无线调试页面查看“IP 地址和端口”，填入下方连接地址后点击“连接 ADB”。注意：连接端口通常与配对端口不同。'**
+  String get desktopConnectionPairNextStep;
+
   /// 应用副标题
   ///
   /// In zh, this message translates to:

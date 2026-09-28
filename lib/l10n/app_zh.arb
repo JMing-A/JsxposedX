@@ -28,6 +28,103 @@
   "@desktopFeatureTodo": {
     "description": "PC 端-功能待实现占位"
   },
+  "desktopConnectionConnected": "已连接",
+  "@desktopConnectionConnected": {
+    "description": "PC 端-设备连接状态-已连接"
+  },
+  "desktopConnectionConnecting": "连接中…",
+  "@desktopConnectionConnecting": {
+    "description": "PC 端-设备连接状态-连接中"
+  },
+  "desktopConnectionDisconnected": "未连接",
+  "@desktopConnectionDisconnected": {
+    "description": "PC 端-设备未连接状态"
+  },
+  "desktopConnectionAdbActive": "已通过 ADB 连接 {device}",
+  "@desktopConnectionAdbActive": {
+    "description": "PC 端-通过 ADB 完成应用连接",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopConnectionConnect": "连接",
+  "@desktopConnectionConnect": {
+    "description": "PC 端-设备连接按钮"
+  },
+  "desktopConnectionDisconnect": "断开",
+  "@desktopConnectionDisconnect": {
+    "description": "PC 端-设备断开按钮"
+  },
+  "desktopConnectionAddressHint": "手机端地址",
+  "@desktopConnectionAddressHint": {
+    "description": "PC 端-设备连接地址输入提示"
+  },
+  "desktopConnectionAdb": "ADB",
+  "@desktopConnectionAdb": {
+    "description": "PC 端-通过 ADB 端口转发连接"
+  },
+  "desktopConnectionWifi": "Wi-Fi",
+  "@desktopConnectionWifi": {
+    "description": "PC 端-通过 Wi-Fi 地址连接"
+  },
+  "desktopConnectionRefresh": "刷新设备",
+  "@desktopConnectionRefresh": {
+    "description": "PC 端-刷新 ADB 设备列表"
+  },
+  "desktopConnectionDeviceUnauthorized": "设备未授权，请在手机上允许 USB 调试",
+  "@desktopConnectionDeviceUnauthorized": {
+    "description": "PC 端-ADB 设备未授权提示"
+  },
+  "desktopConnectionPairAddressHint": "配对地址，例如 192.168.1.2:37099",
+  "@desktopConnectionPairAddressHint": {
+    "description": "PC 端-ADB 无线配对地址输入提示"
+  },
+  "desktopConnectionPairCodeHint": "配对码",
+  "@desktopConnectionPairCodeHint": {
+    "description": "PC 端-ADB 无线配对码输入提示"
+  },
+  "desktopConnectionPair": "配对",
+  "@desktopConnectionPair": {
+    "description": "PC 端-执行 ADB 无线配对"
+  },
+  "desktopConnectionAdbAddressHint": "连接地址，例如 192.168.1.2:5555",
+  "@desktopConnectionAdbAddressHint": {
+    "description": "PC 端-ADB 无线连接地址输入提示"
+  },
+  "desktopConnectionAdbConnect": "连接 ADB",
+  "@desktopConnectionAdbConnect": {
+    "description": "PC 端-执行 ADB 无线连接"
+  },
+  "desktopConnectionAdbSettings": "ADB 设置",
+  "@desktopConnectionAdbSettings": {
+    "description": "PC 端-打开 ADB 配对和无线连接设置"
+  },
+  "desktopConnectionConfigureAdb": "配置 ADB 配对与无线连接",
+  "@desktopConnectionConfigureAdb": {
+    "description": "PC 端-打开 ADB 配置入口"
+  },
+  "desktopConnectionConnectAdb": "通过 ADB 连接",
+  "@desktopConnectionConnectAdb": {
+    "description": "PC 端-通过 ADB 完成设备连接"
+  },
+  "desktopConnectionConnectWifi": "通过 Wi-Fi 连接",
+  "@desktopConnectionConnectWifi": {
+    "description": "PC 端-通过 Wi-Fi 连接手机服务"
+  },
+  "desktopConnectionPairSection": "无线调试配对",
+  "@desktopConnectionPairSection": {
+    "description": "PC 端-ADB 配对设置分组标题"
+  },
+  "desktopConnectionWirelessSection": "无线连接",
+  "@desktopConnectionWirelessSection": {
+    "description": "PC 端-ADB 无线连接设置分组标题"
+  },
+  "desktopConnectionPairNextStep": "配对成功。配对不会让设备直接出现在列表中，请在手机无线调试页面查看“IP 地址和端口”，填入下方连接地址后点击“连接 ADB”。注意：连接端口通常与配对端口不同。",
+  "@desktopConnectionPairNextStep": {
+    "description": "PC 端-ADB 配对成功后的下一步提示"
+  },
   "appSubtitle": "基于 Xposed Frida 的跨平台Hook调试工具",
   "@appSubtitle": {
     "description": "应用副标题"
