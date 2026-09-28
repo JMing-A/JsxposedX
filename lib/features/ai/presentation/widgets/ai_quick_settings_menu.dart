@@ -20,9 +20,17 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 聊天界面快捷设置菜单：模型选择 + 工具审批 + 工具管理
 class AiQuickSettingsMenu extends HookConsumerWidget {
-  const AiQuickSettingsMenu({super.key, this.packageName});
+  const AiQuickSettingsMenu({
+    super.key,
+    this.packageName,
+    this.embedded = false,
+  });
 
   final String? packageName;
+
+  /// 嵌入模式：用于悬浮窗的 [OverlayPanelDialog]，由外层提供背景、圆角与滚动，
+  /// 自身不再绘制底部弹窗容器，也不再强制固定高度。
+  final bool embedded;
 
   /// 显示快捷设置底部弹窗
   static Future<void> show(BuildContext context, {String? packageName}) {
@@ -46,7 +54,6 @@ class AiQuickSettingsMenu extends HookConsumerWidget {
     ref.watch(aiConfigActionProvider);
     final configAsync = ref.watch(aiConfigProvider);
     final assistantsAsync = ref.watch(aiAssistantsV2Provider);
-    final isZh = context.isZh;
 
     // 读取工具定义列表
     final toolDefs = packageName != null
@@ -55,34 +62,41 @@ class AiQuickSettingsMenu extends HookConsumerWidget {
               .toolDefinitions
         : <AiToolDefinition>[];
 
+    final content = configAsync.when(
+      loading: () => _LoadingContent(),
+      error: (error, _) => _ErrorContent(
+        message: error.toString(),
+        onRetry: () => ref.invalidate(aiConfigProvider),
+      ),
+      data: (config) {
+        final isBuiltin = isBuiltinAiConfig(config);
+        final assistantId = 'legacy-assistant-${config.id}';
+        final assistant = assistantsAsync.when(
+          data: (list) => list.where((a) => a.id == assistantId).firstOrNull,
+          loading: () => null,
+          error: (_, __) => null,
+        );
+
+        return _MenuContent(
+          config: config,
+          isBuiltin: isBuiltin,
+          assistant: assistant,
+          toolDefinitions: toolDefs,
+          embedded: embedded,
+        );
+      },
+    );
+
+    if (embedded) {
+      return content;
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
       ),
-      child: configAsync.when(
-        loading: () => _LoadingContent(),
-        error: (error, _) => _ErrorContent(
-          message: error.toString(),
-          onRetry: () => ref.invalidate(aiConfigProvider),
-        ),
-        data: (config) {
-          final isBuiltin = isBuiltinAiConfig(config);
-          final assistantId = 'legacy-assistant-${config.id}';
-          final assistant = assistantsAsync.when(
-            data: (list) => list.where((a) => a.id == assistantId).firstOrNull,
-            loading: () => null,
-            error: (_, __) => null,
-          );
-
-          return _MenuContent(
-            config: config,
-            isBuiltin: isBuiltin,
-            assistant: assistant,
-            toolDefinitions: toolDefs,
-          );
-        },
-      ),
+      child: content,
     );
   }
 }
@@ -129,12 +143,14 @@ class _MenuContent extends HookConsumerWidget {
     required this.isBuiltin,
     required this.assistant,
     this.toolDefinitions = const [],
+    this.embedded = false,
   });
 
   final AiConfig config;
   final bool isBuiltin;
   final AiAssistantProfile? assistant;
   final List<AiToolDefinition> toolDefinitions;
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -164,12 +180,13 @@ class _MenuContent extends HookConsumerWidget {
       return null;
     }, [currentApprovalMode]);
 
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.75,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
-        children: [
-          // Handle bar
+    final list = ListView(
+      shrinkWrap: embedded,
+      physics: embedded ? const NeverScrollableScrollPhysics() : null,
+      padding: EdgeInsets.fromLTRB(20.w, 12.h, 20.w, 24.h),
+      children: [
+        // Handle bar（仅底部弹窗需要；嵌入面板时由外层容器承担边框）
+        if (!embedded) ...[
           Center(
             child: Container(
               width: 36.w,
@@ -181,6 +198,7 @@ class _MenuContent extends HookConsumerWidget {
             ),
           ),
           SizedBox(height: 16.h),
+        ],
 
           // Title
           Padding(
@@ -544,7 +562,15 @@ class _MenuContent extends HookConsumerWidget {
           ),
           SizedBox(height: 32.h),
         ],
-      ),
+      );
+
+    if (embedded) {
+      return list;
+    }
+
+    return SizedBox(
+      height: MediaQuery.of(context).size.height * 0.75,
+      child: list,
     );
   }
 

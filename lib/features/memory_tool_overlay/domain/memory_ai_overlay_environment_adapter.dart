@@ -183,11 +183,15 @@ class MemoryAiOverlayEnvironmentAdapter implements AiChatEnvironmentAdapter {
       requestUserChoice: requestUserChoice,
     );
 
+    final toolsSpec = MemoryAiOverlayChatToolsSpec();
     return AiChatEnvironmentSnapshot.ready(
       scopeId: scopeId,
       environmentVersion: environmentVersion,
       systemPrompt: systemPrompt,
-      toolsSpec: MemoryAiOverlayChatToolsSpec(),
+      toolsSpec: toolsSpec,
+      // 必须显式回填工具定义，否则 runtime state 的 toolDefinitions 为空，
+      // 快捷设置里的工具管理列表会一个工具都显示不出来。
+      toolDefinitions: toolsSpec.toolDefinitions,
       toolExecutor: ToolExecutor(
         handlers: {
           for (final h in buildMemoryAiOverlayToolHandlers(context: toolContext))

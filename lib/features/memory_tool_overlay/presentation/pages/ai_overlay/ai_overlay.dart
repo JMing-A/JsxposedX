@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/custom_text_field.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_panel_dialog.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_text_input_context_menu.dart';
@@ -9,19 +8,20 @@ import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/themes/ai_activation_theme.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/ask/ai_ask_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/plan/ai_plan_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/system/ai_catalog_actions_provider.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_session_view.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_view_message.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_ask_mode_switch.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_plan_menu.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_plan_mode_switch.dart';
+import 'package:JsxposedX/features/ai/presentation/widgets/ai_quick_settings_menu.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/ai_overlay_ui_state_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_overlay_environment_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_ai_overlay_selection_provider.dart';
@@ -149,6 +149,38 @@ class _AiOverlayViewport extends HookConsumerWidget {
     final chatState = ref.watch(
       aiChatRuntimeProvider(packageName: chatScopeId),
     );
+    // 计划模式：AI 每推进一个步骤都会重新输出完整清单，需要把最新消息同步进
+    // 计划菜单（与宿主 AI 逆向界面同一套逻辑），否则 AiPlanMenu 永远是空的。
+    final planEnabled = ref.watch(
+      aiPlanProvider(chatScopeId).select((state) => state.enabled),
+    );
+
+    void syncPlan(AiChatRuntimeState snapshot) {
+      ref
+          .read(aiPlanProvider(chatScopeId).notifier)
+          .syncFromMessages(
+            snapshot.viewMessages,
+            isStreaming: snapshot.isStreaming,
+            sessionId: snapshot.currentSessionId,
+          );
+    }
+
+    // 首帧渲染完成后再做一次初始同步；build 期间直接改 provider 会抛
+    // "Tried to modify a provider while the widget tree was building"。
+    useEffect(() {
+      if (!planEnabled) return null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        syncPlan(ref.read(aiChatRuntimeProvider(packageName: chatScopeId)));
+      });
+      return null;
+    }, [planEnabled, chatScopeId]);
+
+    // 后续每次会话状态变化都在 build 之外同步一次。
+    ref.listen(aiChatRuntimeProvider(packageName: chatScopeId), (_, next) {
+      if (!planEnabled) return;
+      syncPlan(next);
+    });
     final sessions = chatState.sessions;
     final AiChatSessionView? currentSession = () {
       for (final session in sessions) {
@@ -936,11 +968,13 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                   isCompact: isCompactPanel,
                                                   onRetryInitialization:
                                                       initializeOverlayChat,
-                                                  inputTopContent:
-                                                      quotedMessage.value ==
-                                                          null
-                                                      ? null
-                                                      : _AiOverlayQuoteBar(
+                                                  inputTopContent: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      if (quotedMessage.value !=
+                                                          null)
+                                                        _AiOverlayQuoteBar(
                                                           excerpt: _quoteExcerpt(
                                                             quotedMessage
                                                                 .value!
@@ -951,6 +985,31 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                                       .value =
                                                                   null,
                                                         ),
+                                                      // 执行计划面板与宿主逆向界面同源，计划模式开启且已
+                                                      // 生成计划时渲染；无计划时自身收起为 0 尺寸。
+                                                      AiPlanMenu(
+                                                        packageName:
+                                                            chatScopeId,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  // 与宿主 AI 逆向界面一致：计划模式与问答模式
+                                                  // 开关就放在输入框上方的快捷操作行，而不是藏进
+                                                  // 额外弹窗。
+                                                  quickActionsTrailing: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      AiPlanModeSwitch(
+                                                        packageName:
+                                                            chatScopeId,
+                                                      ),
+                                                      AiAskModeSwitch(
+                                                        packageName:
+                                                            chatScopeId,
+                                                      ),
+                                                    ],
+                                                  ),
                                                   hasComposedContent:
                                                       selectionTags.isNotEmpty ||
                                                       quotedMessage.value !=
@@ -1547,7 +1606,11 @@ class _AiOverlayCreateSessionDialog extends HookConsumerWidget {
   }
 }
 
-/// 悬浮窗 AI 快捷设置面板：计划模式开关 + 图片能力开关。
+/// 悬浮窗 AI 快捷设置面板。
+///
+/// 复用宿主同款 [AiQuickSettingsMenu]（模型选择 + 工具审批 + 工具管理），
+/// 悬浮窗为独立引擎无法用 `showModalBottomSheet`，改用 [OverlayPanelDialog]
+/// 以嵌入模式承载，保证与宿主行为一致。
 class _AiOverlayQuickSettingsDialog extends ConsumerWidget {
   const _AiOverlayQuickSettingsDialog({
     required this.chatScopeId,
@@ -1559,230 +1622,23 @@ class _AiOverlayQuickSettingsDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scale = AiChatCompactScope.scaleOf(context);
-    final planState = ref.watch(aiPlanProvider(chatScopeId));
-    final planEnabled = planState.enabled;
-    final askEnabled = ref.watch(
-      aiAskProvider(chatScopeId).select((state) => state.enabled),
-    );
-
     return OverlayPanelDialog.card(
       onClose: onClose,
-      maxWidthPortrait: 340.0,
-      maxWidthLandscape: 380.0,
-      maxHeightPortrait: 320.0,
-      maxHeightLandscape: 320.0,
+      maxWidthPortrait: 380.0,
+      maxWidthLandscape: 460.0,
+      maxHeightPortrait: 520.0,
+      maxHeightLandscape: 380.0,
       cardBorderRadius: 18.0,
+      fillCardHeight: true,
       childBuilder: (context, viewport, layout) {
         return SingleChildScrollView(
-          padding: EdgeInsets.all(14.0 * scale),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                context.isZh ? '快捷设置' : 'Quick Settings',
-                style: context.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              SizedBox(height: 12.0 * scale),
-              _QuickSettingsSwitchTile(
-                icon: planEnabled
-                    ? Icons.checklist_rounded
-                    : Icons.checklist_outlined,
-                title: context.isZh ? '计划模式' : 'Plan mode',
-                subtitle: planEnabled
-                    ? (context.isZh ? '已开启' : 'Enabled')
-                    : (context.isZh ? '已关闭' : 'Disabled'),
-                value: planEnabled,
-                scale: scale,
-                onChanged: (next) => _togglePlanMode(ref, next),
-              ),
-              SizedBox(height: 10.0 * scale),
-              _QuickSettingsSwitchTile(
-                icon: askEnabled
-                    ? Icons.question_answer_rounded
-                    : Icons.question_answer_outlined,
-                title: context.isZh ? '问答模式' : 'Ask mode',
-                subtitle: askEnabled
-                    ? (context.isZh ? 'AI 有疑问时先向你提问' : 'AI asks before acting')
-                    : (context.isZh ? '已关闭' : 'Disabled'),
-                value: askEnabled,
-                scale: scale,
-                onChanged: (next) => _toggleAskMode(ref, next),
-              ),
-              SizedBox(height: 10.0 * scale),
-              _AiOverlayVisionToggleRow(chatScopeId: chatScopeId, scale: scale),
-            ],
+          child: AiQuickSettingsMenu(
+            packageName: chatScopeId,
+            embedded: true,
           ),
         );
       },
     );
-  }
-
-  void _togglePlanMode(WidgetRef ref, bool target) {
-    final planNotifier = ref.read(aiPlanProvider(chatScopeId).notifier);
-    if (target && ref.read(aiPlanProvider(chatScopeId)).items.isNotEmpty) {
-      planNotifier.clearItems();
-    }
-    planNotifier.setEnabled(target);
-    ref
-        .read(aiChatRuntimeProvider(packageName: chatScopeId).notifier)
-        .setPlanMode(target);
-  }
-
-  /// 与计划模式互不干扰：问答模式独立开关，关闭时丢弃待作答状态。
-  void _toggleAskMode(WidgetRef ref, bool target) {
-    final askNotifier = ref.read(aiAskProvider(chatScopeId).notifier);
-    if (!target) {
-      askNotifier.clearPendingQuestion();
-    }
-    askNotifier.setEnabled(target);
-    ref
-        .read(aiChatRuntimeProvider(packageName: chatScopeId).notifier)
-        .setAskMode(target);
-  }
-}
-
-/// 快捷设置里的单行开关。
-class _QuickSettingsSwitchTile extends StatelessWidget {
-  const _QuickSettingsSwitchTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.value,
-    required this.onChanged,
-    required this.scale,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = context.colorScheme;
-    return Material(
-      color: scheme.surface.withValues(alpha: 0.26),
-      borderRadius: BorderRadius.circular(12.0 * scale),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12.0 * scale),
-        onTap: () => onChanged(!value),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: 12.0 * scale,
-            vertical: 10.0 * scale,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 20.0 * scale,
-                color: value ? scheme.primary : scheme.onSurfaceVariant,
-              ),
-              SizedBox(width: 10.0 * scale),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 13.0 * scale,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    SizedBox(height: 1.0 * scale),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 10.5 * scale,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                height: 24.0 * scale,
-                child: FittedBox(
-                  child: Switch.adaptive(value: value, onChanged: onChanged),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 快捷设置里的图片能力开关（复用模型能力读写逻辑）。
-class _AiOverlayVisionToggleRow extends ConsumerWidget {
-  const _AiOverlayVisionToggleRow({
-    required this.chatScopeId,
-    required this.scale,
-  });
-
-  final String chatScopeId;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final config = ref.watch(aiConfigProvider).asData?.value;
-    final modelId = config?.moduleName.trim() ?? '';
-    if (config == null || modelId.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final connectionId = 'legacy-connection-${config.id}';
-    final model = ref
-        .watch(aiModelsV2Provider(connectionId))
-        .asData
-        ?.value
-        .where((item) => item.id == modelId)
-        .firstOrNull;
-    if (model == null) {
-      return const SizedBox.shrink();
-    }
-    final supported = model.capabilities.visionInput;
-    return _QuickSettingsSwitchTile(
-      icon: supported
-          ? Icons.image_rounded
-          : Icons.image_not_supported_rounded,
-      title: context.isZh ? '图片输入能力' : 'Image input capability',
-      subtitle: supported
-          ? (context.isZh ? '当前模型支持图片输入' : 'Model supports image input')
-          : (context.isZh ? '当前模型不支持图片输入' : 'Model does not support image input'),
-      value: supported,
-      scale: scale,
-      onChanged: (next) => _update(ref, model, next),
-    );
-  }
-
-  Future<void> _update(
-    WidgetRef ref,
-    AiModelDefinition model,
-    bool value,
-  ) async {
-    try {
-      await ref
-          .read(aiCatalogActionsV2Provider.notifier)
-          .saveModel(
-            model.copyWith(
-              capabilities: model.capabilities.copyWith(visionInput: value),
-            ),
-          );
-    } catch (error) {
-      await ToastOverlayMessage.show(
-        error.toString().replaceFirst('Exception: ', ''),
-        duration: const Duration(milliseconds: 1400),
-      );
-    }
   }
 }
 
