@@ -4,6 +4,30 @@
   "@appName": {
     "description": "应用名称"
   },
+  "desktopNavDeviceConnection": "设备连接",
+  "@desktopNavDeviceConnection": {
+    "description": "PC 端侧边栏-设备连接"
+  },
+  "desktopNavWorkbench": "工作台",
+  "@desktopNavWorkbench": {
+    "description": "PC 端侧边栏-工作台"
+  },
+  "desktopNavSettings": "设置",
+  "@desktopNavSettings": {
+    "description": "PC 端侧边栏-设置"
+  },
+  "desktopThemeSwitchToLight": "浅色模式",
+  "@desktopThemeSwitchToLight": {
+    "description": "PC 端-切换到浅色模式"
+  },
+  "desktopThemeSwitchToDark": "深色模式",
+  "@desktopThemeSwitchToDark": {
+    "description": "PC 端-切换到深色模式"
+  },
+  "desktopFeatureTodo": "功能待实现",
+  "@desktopFeatureTodo": {
+    "description": "PC 端-功能待实现占位"
+  },
   "appSubtitle": "基于 Xposed Frida 的跨平台Hook调试工具",
   "@appSubtitle": {
     "description": "应用副标题"

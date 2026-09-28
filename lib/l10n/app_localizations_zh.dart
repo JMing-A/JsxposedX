@@ -12,6 +12,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appName => 'JSXPOSEDX';
 
   @override
+  String get desktopNavDeviceConnection => '设备连接';
+
+  @override
+  String get desktopNavWorkbench => '工作台';
+
+  @override
+  String get desktopNavSettings => '设置';
+
+  @override
+  String get desktopThemeSwitchToLight => '浅色模式';
+
+  @override
+  String get desktopThemeSwitchToDark => '深色模式';
+
+  @override
+  String get desktopFeatureTodo => '功能待实现';
+
+  @override
   String get appSubtitle => '基于 Xposed Frida 的跨平台Hook调试工具';
 
   @override

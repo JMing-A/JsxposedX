@@ -12,6 +12,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appName => 'JSXPOSEDX';
 
   @override
+  String get desktopNavDeviceConnection => 'Device Connection';
+
+  @override
+  String get desktopNavWorkbench => 'Workbench';
+
+  @override
+  String get desktopNavSettings => 'Settings';
+
+  @override
+  String get desktopThemeSwitchToLight => 'Light Mode';
+
+  @override
+  String get desktopThemeSwitchToDark => 'Dark Mode';
+
+  @override
+  String get desktopFeatureTodo => 'Feature coming soon';
+
+  @override
   String get appSubtitle =>
       'Cross-platform Hook debugging tool based on Xposed Frida';
 

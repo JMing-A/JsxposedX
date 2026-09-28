@@ -4,6 +4,30 @@
   "@appName": {
     "description": "Application name"
   },
+  "desktopNavDeviceConnection": "Device Connection",
+  "@desktopNavDeviceConnection": {
+    "description": "PC sidebar - device connection"
+  },
+  "desktopNavWorkbench": "Workbench",
+  "@desktopNavWorkbench": {
+    "description": "PC sidebar - workbench"
+  },
+  "desktopNavSettings": "Settings",
+  "@desktopNavSettings": {
+    "description": "PC sidebar - settings"
+  },
+  "desktopThemeSwitchToLight": "Light Mode",
+  "@desktopThemeSwitchToLight": {
+    "description": "PC - switch to light mode"
+  },
+  "desktopThemeSwitchToDark": "Dark Mode",
+  "@desktopThemeSwitchToDark": {
+    "description": "PC - switch to dark mode"
+  },
+  "desktopFeatureTodo": "Feature coming soon",
+  "@desktopFeatureTodo": {
+    "description": "PC - feature placeholder"
+  },
   "appSubtitle": "Cross-platform Hook debugging tool based on Xposed Frida",
   "@appSubtitle": {
     "description": "Application subtitle"

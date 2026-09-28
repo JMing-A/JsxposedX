@@ -104,6 +104,42 @@ abstract class AppLocalizations {
   /// **'JSXPOSEDX'**
   String get appName;
 
+  /// PC 端侧边栏-设备连接
+  ///
+  /// In zh, this message translates to:
+  /// **'设备连接'**
+  String get desktopNavDeviceConnection;
+
+  /// PC 端侧边栏-工作台
+  ///
+  /// In zh, this message translates to:
+  /// **'工作台'**
+  String get desktopNavWorkbench;
+
+  /// PC 端侧边栏-设置
+  ///
+  /// In zh, this message translates to:
+  /// **'设置'**
+  String get desktopNavSettings;
+
+  /// PC 端-切换到浅色模式
+  ///
+  /// In zh, this message translates to:
+  /// **'浅色模式'**
+  String get desktopThemeSwitchToLight;
+
+  /// PC 端-切换到深色模式
+  ///
+  /// In zh, this message translates to:
+  /// **'深色模式'**
+  String get desktopThemeSwitchToDark;
+
+  /// PC 端-功能待实现占位
+  ///
+  /// In zh, this message translates to:
+  /// **'功能待实现'**
+  String get desktopFeatureTodo;
+
   /// 应用副标题
   ///
   /// In zh, this message translates to:
