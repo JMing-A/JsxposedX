@@ -45,7 +45,12 @@ class AnthropicMessagesAdapter implements AiProtocolAdapter {
       'model': request.model.id,
       'messages': request.messages
           .where((message) => message.role != AiMessageRole.system)
-          .map(_messageJson)
+          .map(
+            (message) => _messageJson(
+              message,
+              allowImage: request.model.capabilities.visionInput,
+            ),
+          )
           .toList(growable: false),
       'max_tokens':
           request.options.maxOutputTokens ??
@@ -298,13 +303,20 @@ class AnthropicMessagesAdapter implements AiProtocolAdapter {
     }
   }
 
-  static Map<String, Object?> _messageJson(AiMessage message) {
+  static Map<String, Object?> _messageJson(
+    AiMessage message, {
+    required bool allowImage,
+  }) {
     final content = <Map<String, Object?>>[];
     final text = aiTextContent(message);
     if (message.role == AiMessageRole.user &&
         AiMultimodalMessageCodec.isEncoded(text)) {
       content.addAll(
-        AiMultimodalMessageCodec.toAnthropicContent(text, isZh: true),
+        AiMultimodalMessageCodec.toAnthropicContent(
+          text,
+          isZh: true,
+          allowImage: allowImage,
+        ),
       );
     } else if (text.isNotEmpty) {
       content.add({'type': 'text', 'text': text});

@@ -9,7 +9,9 @@ import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/themes/ai_activation_theme.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/ask/ai_ask_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/plan/ai_plan_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_catalog_actions_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
@@ -27,8 +29,10 @@ import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/me
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_saved_items_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_tool_search_provider.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/utils/memory_ai_conversation_export_util.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/ai_overlay_assistant_glyph.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/ai_overlay_collapsed_ball.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_ai_conversation_drawer.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_ai_message_bubble.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_ai_selection_tag_bar.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay_window_host_runtime_provider.dart';
@@ -109,8 +113,20 @@ class _AiOverlayViewport extends HookConsumerWidget {
     final resizeStartSize = useRef<Size?>(null);
     final isResizing = useRef(false);
     final isCreateSessionDialogOpen = useState(false);
+    final isQuickSettingsOpen = useState(false);
     final sessionPendingDelete = useState<AiChatSessionView?>(null);
     final quotedMessage = useState<AiChatViewMessage?>(null);
+    // 会话抽屉只在 AI 悬浮窗面板内部展开，不影响其它悬浮窗的触摸。
+    final isDrawerOpen = useState(false);
+    final drawerTicker = useSingleTickerProvider();
+    final drawerController = useMemoized(
+      () => AnimationController(
+        vsync: drawerTicker,
+        duration: const Duration(milliseconds: 240),
+        reverseDuration: const Duration(milliseconds: 200),
+      ),
+    );
+    useEffect(() => drawerController.dispose, [drawerController]);
     final pendingBoundPid = useRef<int?>(null);
     final pendingLayoutKey = useRef<String?>(null);
     final expansionController = useAnimationController(
@@ -157,6 +173,12 @@ class _AiOverlayViewport extends HookConsumerWidget {
         : selectedProcess.name;
     final displaySubtitle =
         '${selectedProcess.packageName} · PID ${selectedProcess.pid}';
+    final isUsingBuiltinConfig =
+        ref.watch(activeAiConfigMetaProvider) is AsyncData<ActiveAiConfigMeta>
+        ? (ref.watch(activeAiConfigMetaProvider) as AsyncData<ActiveAiConfigMeta>)
+              .value
+              .isBuiltin
+        : false;
     final expansionProgress = useAnimation(
       CurvedAnimation(
         parent: expansionController,
@@ -217,6 +239,8 @@ class _AiOverlayViewport extends HookConsumerWidget {
     final expandedSize = clampExpandedSize(
       persistedPanelSize ?? defaultExpandedSize,
     );
+    // 抽屉占据面板宽度的比例，滑出位移据此计算。
+    final drawerWidth = expandedSize.width * 0.82;
 
     Offset defaultOffset(Size size) =>
         Offset(viewportSize.width - size.width - 20.0, portraitTopInset + 88.0);
@@ -504,6 +528,19 @@ class _AiOverlayViewport extends HookConsumerWidget {
       dragStartOffset.value = null;
     }
 
+    void closeDrawer() {
+      isDrawerOpen.value = false;
+    }
+
+    useEffect(() {
+      if (isDrawerOpen.value) {
+        drawerController.forward();
+      } else {
+        drawerController.reverse();
+      }
+      return null;
+    }, [isDrawerOpen.value, drawerController]);
+
     return Offstage(
       offstage: !isPanelVisible,
       child: TickerMode(
@@ -653,6 +690,37 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                               ),
                                               child: Row(
                                                 children: [
+                                                  _AiOverlaySessionActions(
+                                                    sessionCount:
+                                                        sessions.length,
+                                                    isCompact: isCompactPanel,
+                                                    contentScale: contentScale,
+                                                    onToggleDrawer: () {
+                                                      isDrawerOpen.value =
+                                                          !isDrawerOpen.value;
+                                                    },
+                                                    isDrawerOpen:
+                                                        isDrawerOpen.value,
+                                                  ),
+                                                  SizedBox(width: headerGap),
+                                                  Expanded(
+                                                    child: _AiOverlayHeaderIdentity(
+                                                      displayTitle:
+                                                          displayTitle,
+                                                      displaySubtitle:
+                                                          displaySubtitle,
+                                                      contentScale:
+                                                          contentScale,
+                                                      isCompact: isCompactPanel,
+                                                      titleFontSize:
+                                                          headerTitleFontSize,
+                                                      subtitleFontSize:
+                                                          headerSubtitleFontSize,
+                                                      subtitleGap:
+                                                          headerSubtitleGap,
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: headerGap),
                                                   Material(
                                                     color: context
                                                         .colorScheme
@@ -690,46 +758,6 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                         ),
                                                       ),
                                                     ),
-                                                  ),
-                                                  SizedBox(width: headerGap),
-                                                  Expanded(
-                                                    child: _AiOverlayHeaderIdentity(
-                                                      displayTitle:
-                                                          displayTitle,
-                                                      displaySubtitle:
-                                                          displaySubtitle,
-                                                      contentScale:
-                                                          contentScale,
-                                                      isCompact: isCompactPanel,
-                                                      titleFontSize:
-                                                          headerTitleFontSize,
-                                                      subtitleFontSize:
-                                                          headerSubtitleFontSize,
-                                                      subtitleGap:
-                                                          headerSubtitleGap,
-                                                    ),
-                                                  ),
-                                                  SizedBox(width: headerGap),
-                                                  _AiOverlaySessionActions(
-                                                    chatScopeId: chatScopeId,
-                                                    sessions: sessions,
-                                                    currentSession:
-                                                        currentSession,
-                                                    isCompact: isCompactPanel,
-                                                    contentScale: contentScale,
-                                                    onCreateSession: () {
-                                                      isCreateSessionDialogOpen
-                                                              .value =
-                                                          true;
-                                                    },
-                                                    onDeleteCurrentSession:
-                                                        currentSession == null
-                                                        ? null
-                                                        : () async {
-                                                            sessionPendingDelete
-                                                                    .value =
-                                                                currentSession;
-                                                          },
                                                   ),
                                                 ],
                                               ),
@@ -901,10 +929,6 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                         contentScale,
                                                   ),
                                                 ],
-                                                _AiOverlayVisionToggle(
-                                                  contentScale: contentScale,
-                                                  isCompact: isCompactPanel,
-                                                ),
                                                 AiChatInput(
                                                   packageName: chatScopeId,
                                                   useOverlayFilePicker: true,
@@ -1061,6 +1085,133 @@ class _AiOverlayViewport extends HookConsumerWidget {
                   ),
                 ),
               ),
+              // 会话抽屉：只在面板区域内滑出，不占用面板外的触摸区域，
+              // 因此不会影响其它悬浮窗的点击。
+              if (showExpandedPanel)
+                Positioned(
+                  left: resolvedOffset.dx,
+                  top: resolvedOffset.dy,
+                  child: SizedBox(
+                    width: expandedSize.width,
+                    height: expandedSize.height,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        expandedBorderRadius,
+                      ),
+                      child: Stack(
+                        children: [
+                          // 左边缘右滑拉出抽屉：只覆盖面板左侧一条窄边，
+                          // 不拦截面板其余区域的点击与滚动。
+                          if (!isDrawerOpen.value)
+                            Positioned(
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: 22.0,
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.translucent,
+                                onHorizontalDragEnd: (details) {
+                                  if ((details.primaryVelocity ?? 0) > 120) {
+                                    isDrawerOpen.value = true;
+                                  }
+                                },
+                                onHorizontalDragUpdate: (details) {
+                                  if (details.delta.dx > 3) {
+                                    isDrawerOpen.value = true;
+                                  }
+                                },
+                              ),
+                            ),
+                          // 遮罩：点击面板空白处收起抽屉，同时吃住面板内的
+                          // 触摸，避免误触到下方的输入框。
+                          Positioned.fill(
+                            child: ValueListenableBuilder<double>(
+                              valueListenable: drawerController,
+                              builder: (context, progress, _) {
+                                if (progress <= 0.01) {
+                                  return const SizedBox.shrink();
+                                }
+                                return GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: closeDrawer,
+                                  onHorizontalDragEnd: (details) {
+                                    if ((details.primaryVelocity ?? 0) < -120) {
+                                      closeDrawer();
+                                    }
+                                  },
+                                  child: ColoredBox(
+                                    color: Colors.black.withValues(
+                                      alpha: 0.28 * progress,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          Positioned(
+                            top: 0,
+                            bottom: 0,
+                            left: 0,
+                            child: ValueListenableBuilder<double>(
+                              valueListenable: drawerController,
+                              builder: (context, progress, child) {
+                                if (progress <= 0.001) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Transform.translate(
+                                  offset: Offset(
+                                    -drawerWidth * (1 - progress),
+                                    0,
+                                  ),
+                                  child: child,
+                                );
+                              },
+                              child: Material(
+                                color: Colors.transparent,
+                                child: MemoryAiConversationDrawer(
+                                  processName: displayTitle,
+                                  packageName: selectedProcess.packageName,
+                                  pid: selectedProcess.pid,
+                                  appIcon: selectedProcess.icon,
+                                  isBuiltinConfig: isUsingBuiltinConfig,
+                                  sessions: sessions,
+                                  currentSessionId: currentSession?.id,
+                                  onClose: closeDrawer,
+                                  onOpenQuickSettings: () {
+                                    closeDrawer();
+                                    isQuickSettingsOpen.value = true;
+                                  },
+                                  onCreateSession: () {
+                                    closeDrawer();
+                                    isCreateSessionDialogOpen.value = true;
+                                  },
+                                  onSessionSelected: (sessionId) {
+                                    closeDrawer();
+                                    chatNotifier.switchSession(sessionId);
+                                  },
+                                  onRequestDelete: (session) {
+                                    closeDrawer();
+                                    sessionPendingDelete.value = session;
+                                  },
+                                  onRequestExport: (session, isMarkdown) {
+                                    closeDrawer();
+                                    exportOverlayAiConversation(
+                                      context: context,
+                                      ref: ref,
+                                      conversationId: session.id,
+                                      conversationTitle: session.name,
+                                      isMarkdown: isMarkdown,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               if (isCreateSessionDialogOpen.value)
                 Positioned.fill(
                   child: _AiOverlayCreateSessionDialog(
@@ -1089,10 +1240,19 @@ class _AiOverlayViewport extends HookConsumerWidget {
                     },
                   ),
                 ),
-            ],
+              if (isQuickSettingsOpen.value)
+                Positioned.fill(
+                  child: _AiOverlayQuickSettingsDialog(
+                    chatScopeId: chatScopeId,
+                    onClose: () {
+                      isQuickSettingsOpen.value = false;
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
     );
   }
 }
@@ -1163,185 +1323,129 @@ class _AiOverlayHeaderIdentity extends StatelessWidget {
   }
 }
 
-enum _AiOverlayHeaderAction { createSession, deleteCurrentSession }
-
-class _AiOverlaySessionActions extends HookConsumerWidget {
-  const _AiOverlaySessionActions({
-    required this.chatScopeId,
-    required this.sessions,
-    required this.currentSession,
+/// 悬浮窗头部的对话抽屉入口，右上角带会话数徽标。
+///
+/// 点击（或从面板左边缘右滑）拉出 [MemoryAiConversationDrawer]。
+/// 会话切换 / 新建 / 删除等能力都收在抽屉内，窗口上不再重复显示。
+class _AiOverlayDrawerButton extends StatelessWidget {
+  const _AiOverlayDrawerButton({
+    required this.sessionCount,
+    required this.isActive,
     required this.isCompact,
     required this.contentScale,
-    required this.onCreateSession,
-    required this.onDeleteCurrentSession,
+    required this.onTap,
   });
 
-  final String chatScopeId;
-  final List<AiChatSessionView> sessions;
-  final AiChatSessionView? currentSession;
+  final int sessionCount;
+  final bool isActive;
   final bool isCompact;
   final double contentScale;
-  final VoidCallback onCreateSession;
-  final Future<void> Function()? onDeleteCurrentSession;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(12.0 * contentScale);
     final surfaceColor = context.colorScheme.surface.withValues(alpha: 0.3);
     final borderColor = context.colorScheme.outlineVariant.withValues(
       alpha: 0.34,
     );
     final foregroundColor = context.colorScheme.onSurface;
-    final labelFontSize = (isCompact ? 10.0 : 11.5) * contentScale;
     final iconSize = (isCompact ? 14.0 : 16.0) * contentScale;
-    final currentName = currentSession?.name ?? context.l10n.aiNewSession;
-    final menuButtonExtent = (isCompact ? 30.0 : 34.0) * contentScale;
+    final extent = (isCompact ? 30.0 : 34.0) * contentScale;
+    final hasSessions = sessionCount > 0;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        PopupMenuButton<AiChatSessionView>(
-          enabled: sessions.isNotEmpty,
-          tooltip: context.l10n.aiSwitchSession,
-          onSelected: (session) async {
-            await ref
-                .read(aiChatRuntimeProvider(packageName: chatScopeId).notifier)
-                .switchSession(session.id);
-          },
-          itemBuilder: (menuContext) => sessions
-              .map(
-                (session) => PopupMenuItem<AiChatSessionView>(
-                  value: session,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: iconSize,
-                        color: session.id == currentSession?.id
-                            ? context.colorScheme.primary
-                            : menuContext.colorScheme.onSurfaceVariant,
-                      ),
-                      SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
-                      Expanded(
-                        child: Text(
-                          session.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-              .toList(),
-          child: Container(
-            constraints: BoxConstraints(
-              minWidth: (isCompact ? 96.0 : 112.0) * contentScale,
-              maxWidth: (isCompact ? 132.0 : 160.0) * contentScale,
+    return Tooltip(
+      message: context.isZh ? '对话列表' : 'Conversations',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        child: Container(
+          width: extent,
+          height: extent,
+          decoration: BoxDecoration(
+            color: isActive
+                ? aiActivationGradientColors[1].withValues(alpha: 0.16)
+                : surfaceColor,
+            borderRadius: borderRadius,
+            border: Border.all(
+              color: hasSessions
+                  ? aiActivationGradientColors[1].withValues(
+                      alpha: isActive ? 0.6 : 0.22,
+                    )
+                  : borderColor,
             ),
-            padding: EdgeInsets.symmetric(
-              horizontal: (isCompact ? 8.0 : 10.0) * contentScale,
-              vertical: (isCompact ? 6.0 : 7.0) * contentScale,
-            ),
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              borderRadius: borderRadius,
-              border: Border.all(
-                color: sessions.isEmpty
-                    ? borderColor
-                    : aiActivationGradientColors[1].withValues(alpha: 0.22),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.forum_outlined,
+                size: iconSize,
+                color: foregroundColor.withValues(alpha: 0.82),
               ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    currentName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: labelFontSize,
-                      fontWeight: FontWeight.w600,
-                      color: foregroundColor.withValues(
-                        alpha: sessions.isEmpty ? 0.55 : 0.88,
+              if (hasSessions)
+                Positioned(
+                  top: 4.0 * contentScale,
+                  right: 4.0 * contentScale,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 4.0 * contentScale,
+                      vertical: 0.5 * contentScale,
+                    ),
+                    constraints: BoxConstraints(
+                      minWidth: 12.0 * contentScale,
+                    ),
+                    decoration: BoxDecoration(
+                      color: context.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(7.0 * contentScale),
+                    ),
+                    child: Text(
+                      '$sessionCount',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: (isCompact ? 7.0 : 8.0) * contentScale,
+                        height: 1.0,
+                        fontWeight: FontWeight.w700,
+                        color: context.colorScheme.onPrimary,
                       ),
                     ),
                   ),
                 ),
-                SizedBox(width: (isCompact ? 4.0 : 6.0) * contentScale),
-                Icon(
-                  Icons.arrow_drop_down_rounded,
-                  size: (isCompact ? 18.0 : 20.0) * contentScale,
-                  color: foregroundColor.withValues(alpha: 0.72),
-                ),
-              ],
-            ),
+            ],
           ),
         ),
-        SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
-        PopupMenuButton<_AiOverlayHeaderAction>(
-          tooltip: context.isZh ? '更多操作' : 'More actions',
-          onSelected: (action) async {
-            switch (action) {
-              case _AiOverlayHeaderAction.createSession:
-                onCreateSession();
-                break;
-              case _AiOverlayHeaderAction.deleteCurrentSession:
-                await onDeleteCurrentSession?.call();
-                break;
-            }
-          },
-          itemBuilder: (menuContext) => [
-            PopupMenuItem<_AiOverlayHeaderAction>(
-              value: _AiOverlayHeaderAction.createSession,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.add_comment_rounded,
-                    size: iconSize,
-                    color: menuContext.colorScheme.onSurfaceVariant,
-                  ),
-                  SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
-                  Text(context.l10n.aiNewSession),
-                ],
-              ),
-            ),
-            PopupMenuItem<_AiOverlayHeaderAction>(
-              value: _AiOverlayHeaderAction.deleteCurrentSession,
-              enabled: onDeleteCurrentSession != null,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.delete_outline_rounded,
-                    size: iconSize,
-                    color: onDeleteCurrentSession == null
-                        ? menuContext.colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.4,
-                          )
-                        : menuContext.colorScheme.onSurfaceVariant,
-                  ),
-                  SizedBox(width: (isCompact ? 6.0 : 8.0) * contentScale),
-                  Text(context.l10n.delete),
-                ],
-              ),
-            ),
-          ],
-          child: Container(
-            width: menuButtonExtent,
-            height: menuButtonExtent,
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              borderRadius: borderRadius,
-              border: Border.all(color: borderColor),
-            ),
-            child: Icon(
-              Icons.more_horiz_rounded,
-              size: iconSize,
-              color: foregroundColor.withValues(alpha: 0.82),
-            ),
-          ),
-        ),
-      ],
+      ),
+    );
+  }
+}
+
+/// 窗口头部右侧只保留抽屉入口。
+///
+/// 会话列表、切换、新建、删除都已收进 [MemoryAiConversationDrawer]，
+/// 窗口上不再重复渲染，避免同一功能出现两次。
+class _AiOverlaySessionActions extends StatelessWidget {
+  const _AiOverlaySessionActions({
+    required this.sessionCount,
+    required this.isCompact,
+    required this.contentScale,
+    required this.onToggleDrawer,
+    required this.isDrawerOpen,
+  });
+
+  final int sessionCount;
+  final bool isCompact;
+  final double contentScale;
+  final VoidCallback onToggleDrawer;
+  final bool isDrawerOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return _AiOverlayDrawerButton(
+      sessionCount: sessionCount,
+      isActive: isDrawerOpen,
+      isCompact: isCompact,
+      contentScale: contentScale,
+      onTap: onToggleDrawer,
     );
   }
 }
@@ -1440,6 +1544,245 @@ class _AiOverlayCreateSessionDialog extends HookConsumerWidget {
         );
       },
     );
+  }
+}
+
+/// 悬浮窗 AI 快捷设置面板：计划模式开关 + 图片能力开关。
+class _AiOverlayQuickSettingsDialog extends ConsumerWidget {
+  const _AiOverlayQuickSettingsDialog({
+    required this.chatScopeId,
+    required this.onClose,
+  });
+
+  final String chatScopeId;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scale = AiChatCompactScope.scaleOf(context);
+    final planState = ref.watch(aiPlanProvider(chatScopeId));
+    final planEnabled = planState.enabled;
+    final askEnabled = ref.watch(
+      aiAskProvider(chatScopeId).select((state) => state.enabled),
+    );
+
+    return OverlayPanelDialog.card(
+      onClose: onClose,
+      maxWidthPortrait: 340.0,
+      maxWidthLandscape: 380.0,
+      maxHeightPortrait: 320.0,
+      maxHeightLandscape: 320.0,
+      cardBorderRadius: 18.0,
+      childBuilder: (context, viewport, layout) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(14.0 * scale),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                context.isZh ? '快捷设置' : 'Quick Settings',
+                style: context.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 12.0 * scale),
+              _QuickSettingsSwitchTile(
+                icon: planEnabled
+                    ? Icons.checklist_rounded
+                    : Icons.checklist_outlined,
+                title: context.isZh ? '计划模式' : 'Plan mode',
+                subtitle: planEnabled
+                    ? (context.isZh ? '已开启' : 'Enabled')
+                    : (context.isZh ? '已关闭' : 'Disabled'),
+                value: planEnabled,
+                scale: scale,
+                onChanged: (next) => _togglePlanMode(ref, next),
+              ),
+              SizedBox(height: 10.0 * scale),
+              _QuickSettingsSwitchTile(
+                icon: askEnabled
+                    ? Icons.question_answer_rounded
+                    : Icons.question_answer_outlined,
+                title: context.isZh ? '问答模式' : 'Ask mode',
+                subtitle: askEnabled
+                    ? (context.isZh ? 'AI 有疑问时先向你提问' : 'AI asks before acting')
+                    : (context.isZh ? '已关闭' : 'Disabled'),
+                value: askEnabled,
+                scale: scale,
+                onChanged: (next) => _toggleAskMode(ref, next),
+              ),
+              SizedBox(height: 10.0 * scale),
+              _AiOverlayVisionToggleRow(chatScopeId: chatScopeId, scale: scale),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _togglePlanMode(WidgetRef ref, bool target) {
+    final planNotifier = ref.read(aiPlanProvider(chatScopeId).notifier);
+    if (target && ref.read(aiPlanProvider(chatScopeId)).items.isNotEmpty) {
+      planNotifier.clearItems();
+    }
+    planNotifier.setEnabled(target);
+    ref
+        .read(aiChatRuntimeProvider(packageName: chatScopeId).notifier)
+        .setPlanMode(target);
+  }
+
+  /// 与计划模式互不干扰：问答模式独立开关，关闭时丢弃待作答状态。
+  void _toggleAskMode(WidgetRef ref, bool target) {
+    final askNotifier = ref.read(aiAskProvider(chatScopeId).notifier);
+    if (!target) {
+      askNotifier.clearPendingQuestion();
+    }
+    askNotifier.setEnabled(target);
+    ref
+        .read(aiChatRuntimeProvider(packageName: chatScopeId).notifier)
+        .setAskMode(target);
+  }
+}
+
+/// 快捷设置里的单行开关。
+class _QuickSettingsSwitchTile extends StatelessWidget {
+  const _QuickSettingsSwitchTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    required this.scale,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final double scale;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colorScheme;
+    return Material(
+      color: scheme.surface.withValues(alpha: 0.26),
+      borderRadius: BorderRadius.circular(12.0 * scale),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12.0 * scale),
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 12.0 * scale,
+            vertical: 10.0 * scale,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20.0 * scale,
+                color: value ? scheme.primary : scheme.onSurfaceVariant,
+              ),
+              SizedBox(width: 10.0 * scale),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13.0 * scale,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    SizedBox(height: 1.0 * scale),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 10.5 * scale,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 24.0 * scale,
+                child: FittedBox(
+                  child: Switch.adaptive(value: value, onChanged: onChanged),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 快捷设置里的图片能力开关（复用模型能力读写逻辑）。
+class _AiOverlayVisionToggleRow extends ConsumerWidget {
+  const _AiOverlayVisionToggleRow({
+    required this.chatScopeId,
+    required this.scale,
+  });
+
+  final String chatScopeId;
+  final double scale;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(aiConfigProvider).asData?.value;
+    final modelId = config?.moduleName.trim() ?? '';
+    if (config == null || modelId.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final connectionId = 'legacy-connection-${config.id}';
+    final model = ref
+        .watch(aiModelsV2Provider(connectionId))
+        .asData
+        ?.value
+        .where((item) => item.id == modelId)
+        .firstOrNull;
+    if (model == null) {
+      return const SizedBox.shrink();
+    }
+    final supported = model.capabilities.visionInput;
+    return _QuickSettingsSwitchTile(
+      icon: supported
+          ? Icons.image_rounded
+          : Icons.image_not_supported_rounded,
+      title: context.isZh ? '图片输入能力' : 'Image input capability',
+      subtitle: supported
+          ? (context.isZh ? '当前模型支持图片输入' : 'Model supports image input')
+          : (context.isZh ? '当前模型不支持图片输入' : 'Model does not support image input'),
+      value: supported,
+      scale: scale,
+      onChanged: (next) => _update(ref, model, next),
+    );
+  }
+
+  Future<void> _update(
+    WidgetRef ref,
+    AiModelDefinition model,
+    bool value,
+  ) async {
+    try {
+      await ref
+          .read(aiCatalogActionsV2Provider.notifier)
+          .saveModel(
+            model.copyWith(
+              capabilities: model.capabilities.copyWith(visionInput: value),
+            ),
+          );
+    } catch (error) {
+      await ToastOverlayMessage.show(
+        error.toString().replaceFirst('Exception: ', ''),
+        duration: const Duration(milliseconds: 1400),
+      );
+    }
   }
 }
 
@@ -1691,123 +2034,6 @@ String _composeQuotedText({
 ///
 /// 能力只保存在模型目录的 [AiModelDefinition] 上；发图失败后再去别处翻设置
 /// 太绕，所以这里把它摆在输入区上方，一眼可见、随手可改。
-class _AiOverlayVisionToggle extends ConsumerWidget {
-  const _AiOverlayVisionToggle({
-    required this.contentScale,
-    required this.isCompact,
-  });
-
-  final double contentScale;
-  final bool isCompact;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final config = ref.watch(aiConfigProvider).asData?.value;
-    final modelId = config?.moduleName.trim() ?? '';
-    if (config == null || modelId.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final connectionId = 'legacy-connection-${config.id}';
-    final model = ref
-        .watch(aiModelsV2Provider(connectionId))
-        .asData
-        ?.value
-        .where((item) => item.id == modelId)
-        .firstOrNull;
-    if (model == null) {
-      return const SizedBox.shrink();
-    }
-    final scale = contentScale;
-    final scheme = context.colorScheme;
-    final supported = model.capabilities.visionInput;
-    return Padding(
-      padding: EdgeInsets.only(bottom: (isCompact ? 4.0 : 6.0) * scale),
-      child: Material(
-        color: scheme.surface.withValues(alpha: 0.26),
-        borderRadius: BorderRadius.circular(10.0 * scale),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10.0 * scale),
-          onTap: () => _update(ref, model, !supported),
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: (isCompact ? 8.0 : 10.0) * scale,
-              vertical: (isCompact ? 2.0 : 4.0) * scale,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  supported
-                      ? Icons.image_rounded
-                      : Icons.image_not_supported_rounded,
-                  size: (isCompact ? 14.0 : 16.0) * scale,
-                  color: supported
-                      ? scheme.primary
-                      : scheme.onSurfaceVariant.withValues(alpha: 0.7),
-                ),
-                SizedBox(width: 6.0 * scale),
-                Expanded(
-                  child: Text(
-                    context.isZh
-                        ? '当前模型支持图片输入'
-                        : 'Model supports image input',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: (isCompact ? 10.5 : 11.5) * scale,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurface.withValues(alpha: 0.86),
-                    ),
-                  ),
-                ),
-                Text(
-                  modelId,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: (isCompact ? 9.0 : 10.0) * scale,
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
-                  ),
-                ),
-                SizedBox(width: 6.0 * scale),
-                SizedBox(
-                  height: (isCompact ? 20.0 : 24.0) * scale,
-                  child: FittedBox(
-                    child: Switch.adaptive(
-                      value: supported,
-                      onChanged: (value) => _update(ref, model, value),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _update(
-    WidgetRef ref,
-    AiModelDefinition model,
-    bool value,
-  ) async {
-    try {
-      await ref
-          .read(aiCatalogActionsV2Provider.notifier)
-          .saveModel(
-            model.copyWith(
-              capabilities: model.capabilities.copyWith(visionInput: value),
-            ),
-          );
-    } catch (error) {
-      await ToastOverlayMessage.show(
-        error.toString().replaceFirst('Exception: ', ''),
-        duration: const Duration(milliseconds: 1400),
-      );
-    }
-  }
-}
-
 class _AiOverlayResizeBorderHighlightPainter extends CustomPainter {
   const _AiOverlayResizeBorderHighlightPainter({
     required this.color,

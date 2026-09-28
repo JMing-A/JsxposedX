@@ -37,7 +37,14 @@ class OpenAiResponsesAdapter implements AiProtocolAdapter {
       headers: headers,
       context: context,
     );
-    final input = request.messages.expand(_inputItems).toList(growable: false);
+    final input = request.messages
+        .expand(
+          (message) => _inputItems(
+            message,
+            allowImage: request.model.capabilities.visionInput,
+          ),
+        )
+        .toList(growable: false);
     if (kDebugMode) {
       developer.log(
         '[AI][Responses] input=${input.map(_debugInputItem).join(' | ')}',
@@ -420,7 +427,10 @@ class OpenAiResponsesAdapter implements AiProtocolAdapter {
     }
   }
 
-  static Iterable<Map<String, Object?>> _inputItems(AiMessage message) sync* {
+  static Iterable<Map<String, Object?>> _inputItems(
+    AiMessage message, {
+    required bool allowImage,
+  }) sync* {
     final text = aiTextContent(message);
     if (text.isNotEmpty) {
       final role = switch (message.role) {
@@ -433,7 +443,11 @@ class OpenAiResponsesAdapter implements AiProtocolAdapter {
       final content =
           message.role == AiMessageRole.user &&
               AiMultimodalMessageCodec.isEncoded(text)
-          ? AiMultimodalMessageCodec.toOpenAiContent(text, isZh: true)
+          ? AiMultimodalMessageCodec.toOpenAiContent(
+              text,
+              isZh: true,
+              allowImage: allowImage,
+            )
                 .map<Map<String, Object?>>((part) {
                   if (part['type'] == 'image_url') {
                     final image = part['image_url'];

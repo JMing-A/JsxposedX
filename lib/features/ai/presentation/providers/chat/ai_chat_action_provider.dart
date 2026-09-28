@@ -685,9 +685,15 @@ class AiChatAction extends _$AiChatAction {
     // 记录本轮是否带图片：若发送失败，需要提示用户为该模型配置图片能力，
     // 而不是让整轮对话无声作废。
     _lastSendHadImage = AiMultimodalMessageCodec.hasImageAttachments(text);
+    // 关闭图片能力的模型，图片附件会在请求构造层被降级为文本占位。这里在发送
+    // 前就判定出来，发送后提示用户「图片未真正送达」，避免误以为已经发出。
+    final visionBlocked = _lastSendHadImage && !_currentModelAllowsVision();
     state = state.copyWith(visionConfigPromptPending: false);
     try {
       await controller.sendText(text);
+      if (!_disposed && visionBlocked) {
+        state = state.copyWith(visionConfigPromptPending: true);
+      }
     } catch (error) {
       if (!_disposed) {
         state = state.copyWith(
@@ -698,6 +704,22 @@ class AiChatAction extends _$AiChatAction {
         );
       }
     }
+  }
+
+  /// 当前模型是否声明支持图片输入。
+  ///
+  /// 仅读取已缓存的能力（[aiModelsV2Provider] 由快捷设置与配置页预加载），
+  /// 未加载时按「不支持」处理：宁可不发图片，也不要因误发触发服务端拒绝。
+  bool _currentModelAllowsVision() {
+    final config = ref.read(aiConfigProvider).value;
+    if (config == null) return false;
+    final modelId = config.moduleName.trim();
+    if (modelId.isEmpty) return false;
+    final connectionId = 'legacy-connection-${config.id}';
+    final models = ref.read(aiModelsV2Provider(connectionId)).value;
+    if (models == null) return false;
+    final model = models.where((item) => item.id == modelId).firstOrNull;
+    return model?.capabilities.visionInput ?? false;
   }
 
   /// 用户确认「当前模型支持图片输入」或「不支持」后写回模型能力。

@@ -39,7 +39,10 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
 
     final body = <String, Object?>{
       'model': request.model.id,
-      'messages': _sanitizeMessages(request.messages),
+      'messages': _sanitizeMessages(
+        request.messages,
+        allowImage: request.model.capabilities.visionInput,
+      ),
       'stream': request.options.stream,
     };
     final options = request.options;
@@ -304,7 +307,10 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
   /// 流中断留下的空壳消息。OpenAI 兼容网关（如 SiliconFlow 报 20015
   /// "messages in request are illegal"）会拒绝整个请求而非忽略异常条目，
   /// 因此必须在请求侧丢弃这些无法回放的片段，让会话可以继续。
-  static List<Object?> _sanitizeMessages(List<AiMessage> messages) {
+  static List<Object?> _sanitizeMessages(
+    List<AiMessage> messages, {
+    required bool allowImage,
+  }) {
     final serialized = <Object?>[];
     var index = 0;
     while (index < messages.length) {
@@ -321,7 +327,7 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
         if (id.isNotEmpty) callsById.putIfAbsent(id, () => part);
       }
       if (callsById.isEmpty) {
-        final json = _messageJson(message, const <String>{});
+        final json = _messageJson(message, const <String>{}, allowImage);
         if (json != null) serialized.add(json);
         index += 1;
         continue;
@@ -344,7 +350,7 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
         cursor += 1;
       }
       final pairedIds = callsById.keys.where(resultsById.containsKey).toSet();
-      final json = _messageJson(message, pairedIds);
+      final json = _messageJson(message, pairedIds, allowImage);
       if (json != null) serialized.add(json);
       for (final id in callsById.keys) {
         final result = resultsById[id];
@@ -363,6 +369,7 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
   static Map<String, Object?>? _messageJson(
     AiMessage message,
     Set<String> pairedToolCallIds,
+    bool allowImage,
   ) {
     final content = aiTextContent(message);
     // OpenAI 协议要求每个 tool_call 后必须紧跟对应的 tool 消息，反之亦然。
@@ -379,7 +386,11 @@ class OpenAiChatAdapter implements AiProtocolAdapter {
     final requestContent =
         message.role == AiMessageRole.user &&
             AiMultimodalMessageCodec.isEncoded(content)
-        ? AiMultimodalMessageCodec.toOpenAiContent(content, isZh: true)
+        ? AiMultimodalMessageCodec.toOpenAiContent(
+            content,
+            isZh: true,
+            allowImage: allowImage,
+          )
         : content;
     return {
       'role': message.role.name,

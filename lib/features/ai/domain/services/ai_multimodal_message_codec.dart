@@ -298,6 +298,7 @@ class AiMultimodalMessageCodec {
   static List<Map<String, dynamic>> toOpenAiContent(
     String content, {
     required bool isZh,
+    bool allowImage = true,
   }) {
     final payload = tryParse(content);
     if (payload == null) {
@@ -321,6 +322,16 @@ class AiMultimodalMessageCodec {
     for (final attachment in payload.attachments) {
       switch (attachment.kind) {
         case _AiAttachmentKind.image:
+          // 模型未声明支持图片输入时，图片附件绝不能编码进请求体：
+          // 服务端会直接以 "not a VLM" 拒绝整轮对话。此处降级为文本占位，
+          // 保证会话可继续而不是整轮报废。
+          if (!allowImage) {
+            parts.add({
+              'type': 'text',
+              'text': attachment.toTextBlock(isZh: isZh),
+            });
+            break;
+          }
           parts.add({
             'type': 'image_url',
             'image_url': {
@@ -350,6 +361,7 @@ class AiMultimodalMessageCodec {
   static List<Map<String, dynamic>> toAnthropicContent(
     String content, {
     required bool isZh,
+    bool allowImage = true,
   }) {
     final payload = tryParse(content);
     if (payload == null) {
@@ -373,6 +385,13 @@ class AiMultimodalMessageCodec {
     for (final attachment in payload.attachments) {
       switch (attachment.kind) {
         case _AiAttachmentKind.image:
+          if (!allowImage) {
+            parts.add({
+              'type': 'text',
+              'text': attachment.toTextBlock(isZh: isZh),
+            });
+            break;
+          }
           parts.add({
             'type': 'image',
             'source': {

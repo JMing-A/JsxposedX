@@ -968,9 +968,9 @@ class _VisionConfigPrompt extends StatelessWidget {
         children: [
           Text(
             isZh
-                ? '刚才的消息带图片，如果该模型不支持图片输入就会发送失败。'
-                : 'The message contained an image. If this model cannot accept '
-                      'images, the request will fail.',
+                ? '刚才的消息带图片，但当前模型未开启图片输入能力，图片不会被发送。'
+                : 'The message contained an image, but this model has image input '
+                      'disabled, so the image was not sent.',
             style: TextStyle(
               color: scheme.onSurface,
               fontSize: 11.5 * scale,
@@ -980,8 +980,9 @@ class _VisionConfigPrompt extends StatelessWidget {
           SizedBox(height: 4 * scale),
           Text(
             isZh
-                ? '请确认当前模型是否支持图片，配置后即可继续对话。'
-                : 'Confirm whether this model supports images to continue.',
+                ? '确认当前模型是否支持图片；已开启图片输入能力后，图片才会随消息发送。'
+                : 'Confirm whether this model supports images. Images are sent '
+                      'only after image input is enabled.',
             style: TextStyle(
               color: scheme.onSurfaceVariant,
               fontSize: 11 * scale,
