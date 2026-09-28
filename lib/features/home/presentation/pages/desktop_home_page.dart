@@ -315,6 +315,10 @@ class _DesktopSettingsView extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isChecking = useState(false);
     final colorScheme = context.colorScheme;
+    final packageInfo = useFuture(
+      useMemoized(ProcedureUtils.getPackageInfo, const []),
+    );
+    final version = packageInfo.data;
 
     return ColoredBox(
       color: colorScheme.surface,
@@ -340,7 +344,14 @@ class _DesktopSettingsView extends HookConsumerWidget {
                 ),
                 leading: const Icon(Icons.system_update_alt),
                 title: Text(context.l10n.desktopUpdateCheck),
-                subtitle: Text(context.l10n.desktopUpdateCheckDescription),
+                subtitle: Text(
+                  version == null
+                      ? context.l10n.desktopUpdateCheckDescription
+                      : context.l10n.desktopCurrentVersion(
+                          version.version,
+                          version.buildNumber,
+                        ),
+                ),
                 trailing: isChecking.value
                     ? const SizedBox.square(
                         dimension: 20,

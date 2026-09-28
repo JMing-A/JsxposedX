@@ -32,9 +32,21 @@
   "@desktopUpdateCheck": {
     "description": "PC 端-手动检查更新"
   },
-  "desktopUpdateCheckDescription": "检查 JsxposedX PC 端是否有新版本",
+  "desktopUpdateCheckDescription": "检查 JsxposedX 是否有新版本",
   "@desktopUpdateCheckDescription": {
     "description": "PC 端-检查更新设置项说明"
+  },
+  "desktopCurrentVersion": "当前版本 {version} ({buildNumber})",
+  "@desktopCurrentVersion": {
+    "description": "PC 端-显示与手机版统一的当前版本",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
   },
   "desktopUpdateLatest": "当前已是最新版本",
   "@desktopUpdateLatest": {

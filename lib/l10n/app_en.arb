@@ -32,9 +32,21 @@
   "@desktopUpdateCheck": {
     "description": "PC - manually check for updates"
   },
-  "desktopUpdateCheckDescription": "Check whether a new JsxposedX desktop version is available",
+  "desktopUpdateCheckDescription": "Check whether a new JsxposedX version is available",
   "@desktopUpdateCheckDescription": {
     "description": "PC - update setting description"
+  },
+  "desktopCurrentVersion": "Current version {version} ({buildNumber})",
+  "@desktopCurrentVersion": {
+    "description": "PC - show the version shared with mobile",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
   },
   "desktopUpdateLatest": "You're up to date",
   "@desktopUpdateLatest": {

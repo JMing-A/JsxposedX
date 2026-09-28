@@ -34,7 +34,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopUpdateCheckDescription =>
-      'Check whether a new JsxposedX desktop version is available';
+      'Check whether a new JsxposedX version is available';
+
+  @override
+  String desktopCurrentVersion(String version, String buildNumber) {
+    return 'Current version $version ($buildNumber)';
+  }
 
   @override
   String get desktopUpdateLatest => 'You\'re up to date';

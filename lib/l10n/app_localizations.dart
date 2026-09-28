@@ -149,8 +149,14 @@ abstract class AppLocalizations {
   /// PC 端-检查更新设置项说明
   ///
   /// In zh, this message translates to:
-  /// **'检查 JsxposedX PC 端是否有新版本'**
+  /// **'检查 JsxposedX 是否有新版本'**
   String get desktopUpdateCheckDescription;
+
+  /// PC 端-显示与手机版统一的当前版本
+  ///
+  /// In zh, this message translates to:
+  /// **'当前版本 {version} ({buildNumber})'**
+  String desktopCurrentVersion(String version, String buildNumber);
 
   /// PC 端-没有可用更新提示
   ///

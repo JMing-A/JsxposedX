@@ -33,7 +33,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopUpdateCheck => '检查更新';
 
   @override
-  String get desktopUpdateCheckDescription => '检查 JsxposedX PC 端是否有新版本';
+  String get desktopUpdateCheckDescription => '检查 JsxposedX 是否有新版本';
+
+  @override
+  String desktopCurrentVersion(String version, String buildNumber) {
+    return '当前版本 $version ($buildNumber)';
+  }
 
   @override
   String get desktopUpdateLatest => '当前已是最新版本';
