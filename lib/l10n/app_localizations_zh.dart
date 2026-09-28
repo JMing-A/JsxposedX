@@ -30,6 +30,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopFeatureTodo => '功能待实现';
 
   @override
+  String get desktopUpdateCheck => '检查更新';
+
+  @override
+  String get desktopUpdateCheckDescription => '检查 JsxposedX PC 端是否有新版本';
+
+  @override
+  String get desktopUpdateLatest => '当前已是最新版本';
+
+  @override
+  String get desktopUpdateCheckFailed => '检查更新失败，请稍后重试';
+
+  @override
   String get desktopConnectionConnected => '已连接';
 
   @override

@@ -7,6 +7,8 @@ import 'package:JsxposedX/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 是否为 PC（桌面）平台
@@ -28,27 +30,35 @@ class DesktopApp extends ConsumerWidget {
     final darkTheme = ref.watch(desktopDarkThemeProvider);
     final locale = ref.watch(desktopLocaleProvider);
     final router = ref.watch(appRouterProvider);
+    final view = View.of(context);
+    final windowSize = view.physicalSize / view.devicePixelRatio;
 
-    return MaterialApp.router(
-      title: 'JsxposedX Desktop',
-      debugShowCheckedModeBanner: false,
-      routerConfig: router,
-      locale: locale,
-      supportedLocales: const <Locale>[
-        Locale('zh', 'CN'),
-        Locale('en', 'US'),
-      ],
-      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      theme: lightTheme,
-      darkTheme: darkTheme,
-      themeMode: themeMode,
-      // 关闭主题过渡动画，避免切换时逐帧 lerp 两份 ThemeData 造成卡顿
-      themeAnimationDuration: Duration.zero,
+    return ScreenUtilInit(
+      designSize: windowSize,
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) => MaterialApp.router(
+        title: 'JsxposedX Desktop',
+        debugShowCheckedModeBanner: false,
+        routerConfig: router,
+        locale: locale,
+        supportedLocales: const <Locale>[
+          Locale('zh', 'CN'),
+          Locale('en', 'US'),
+        ],
+        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        theme: lightTheme,
+        darkTheme: darkTheme,
+        themeMode: themeMode,
+        builder: FlutterSmartDialog.init(),
+        // 关闭主题过渡动画，避免切换时逐帧 lerp 两份 ThemeData 造成卡顿
+        themeAnimationDuration: Duration.zero,
+      ),
     );
   }
 }

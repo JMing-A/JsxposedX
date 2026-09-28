@@ -140,6 +140,30 @@ abstract class AppLocalizations {
   /// **'功能待实现'**
   String get desktopFeatureTodo;
 
+  /// PC 端-手动检查更新
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新'**
+  String get desktopUpdateCheck;
+
+  /// PC 端-检查更新设置项说明
+  ///
+  /// In zh, this message translates to:
+  /// **'检查 JsxposedX PC 端是否有新版本'**
+  String get desktopUpdateCheckDescription;
+
+  /// PC 端-没有可用更新提示
+  ///
+  /// In zh, this message translates to:
+  /// **'当前已是最新版本'**
+  String get desktopUpdateLatest;
+
+  /// PC 端-检查更新失败提示
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败，请稍后重试'**
+  String get desktopUpdateCheckFailed;
+
   /// PC 端-设备连接状态-已连接
   ///
   /// In zh, this message translates to:

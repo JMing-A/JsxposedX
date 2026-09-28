@@ -28,6 +28,22 @@
   "@desktopFeatureTodo": {
     "description": "PC 端-功能待实现占位"
   },
+  "desktopUpdateCheck": "检查更新",
+  "@desktopUpdateCheck": {
+    "description": "PC 端-手动检查更新"
+  },
+  "desktopUpdateCheckDescription": "检查 JsxposedX PC 端是否有新版本",
+  "@desktopUpdateCheckDescription": {
+    "description": "PC 端-检查更新设置项说明"
+  },
+  "desktopUpdateLatest": "当前已是最新版本",
+  "@desktopUpdateLatest": {
+    "description": "PC 端-没有可用更新提示"
+  },
+  "desktopUpdateCheckFailed": "检查更新失败，请稍后重试",
+  "@desktopUpdateCheckFailed": {
+    "description": "PC 端-检查更新失败提示"
+  },
   "desktopConnectionConnected": "已连接",
   "@desktopConnectionConnected": {
     "description": "PC 端-设备连接状态-已连接"

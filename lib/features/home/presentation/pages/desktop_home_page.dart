@@ -1,7 +1,13 @@
+import 'package:JsxposedX/common/widgets/app_bottom_sheet.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/core/utils/procedure_utils.dart';
+import 'package:JsxposedX/features/home/presentation/providers/check_query_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_connection_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_locale_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_theme_provider.dart';
+import 'package:JsxposedX/features/home/presentation/utils/update_check_helper.dart';
+import 'package:JsxposedX/features/home/presentation/widgets/notice_bottom_sheet.dart';
+import 'package:JsxposedX/features/home/presentation/widgets/update_check_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -36,6 +42,21 @@ class DesktopHomePage extends HookConsumerWidget {
         ? navItems.length - 1
         : currentIndex.value;
 
+    useEffect(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!context.mounted) return;
+        await AppBottomSheet.show<void>(
+          context: context,
+          title: context.l10n.notice,
+          child: const NoticeBottomSheet(),
+        );
+        if (context.mounted) {
+          await _checkDesktopUpdate(context, ref, showLatestResult: false);
+        }
+      });
+      return null;
+    }, const []);
+
     return Scaffold(
       body: Row(
         children: [
@@ -45,10 +66,12 @@ class DesktopHomePage extends HookConsumerWidget {
             onSelect: (index) => currentIndex.value = index,
           ),
           Expanded(
-            child: _ShellPlaceholder(
-              title: navItems[selectedIndex].label,
-              colorScheme: colorScheme,
-            ),
+            child: selectedIndex == 1
+                ? const _DesktopSettingsView()
+                : _ShellPlaceholder(
+                    title: navItems[selectedIndex].label,
+                    colorScheme: colorScheme,
+                  ),
           ),
         ],
       ),
@@ -239,6 +262,103 @@ class _Sidebar extends HookConsumerWidget {
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _checkDesktopUpdate(
+  BuildContext context,
+  WidgetRef ref, {
+  required bool showLatestResult,
+}) async {
+  try {
+    if (showLatestResult) {
+      ref.invalidate(updateInfoProvider);
+    }
+    final localBuildNumber = await ProcedureUtils.getBuildNumber();
+    final update = await ref.read(updateInfoProvider.future);
+    if (!context.mounted) return;
+
+    if (shouldShowUpdateDialog(
+      update: update,
+      localBuildNumber: localBuildNumber,
+    )) {
+      await UpdateCheckDialog.show(context, update: update);
+      return;
+    }
+
+    if (showLatestResult && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.desktopUpdateLatest)));
+    }
+  } catch (error, stackTrace) {
+    debugPrint('Failed to check desktop update: $error');
+    debugPrintStack(stackTrace: stackTrace);
+    if (showLatestResult && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.desktopUpdateCheckFailed)),
+      );
+    }
+  }
+}
+
+class _DesktopSettingsView extends HookConsumerWidget {
+  const _DesktopSettingsView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isChecking = useState(false);
+    final colorScheme = context.colorScheme;
+
+    return ColoredBox(
+      color: colorScheme.surface,
+      child: ListView(
+        padding: const EdgeInsets.all(32),
+        children: [
+          Text(
+            context.l10n.desktopNavSettings,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 24),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: Material(
+              color: colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(8),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                leading: const Icon(Icons.system_update_alt),
+                title: Text(context.l10n.desktopUpdateCheck),
+                subtitle: Text(context.l10n.desktopUpdateCheckDescription),
+                trailing: isChecking.value
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.chevron_right),
+                enabled: !isChecking.value,
+                onTap: () async {
+                  isChecking.value = true;
+                  await _checkDesktopUpdate(
+                    context,
+                    ref,
+                    showLatestResult: true,
+                  );
+                  if (context.mounted) {
+                    isChecking.value = false;
+                  }
+                },
               ),
             ),
           ),

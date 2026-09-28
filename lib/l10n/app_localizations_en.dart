@@ -30,6 +30,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopFeatureTodo => 'Feature coming soon';
 
   @override
+  String get desktopUpdateCheck => 'Check for Updates';
+
+  @override
+  String get desktopUpdateCheckDescription =>
+      'Check whether a new JsxposedX desktop version is available';
+
+  @override
+  String get desktopUpdateLatest => 'You\'re up to date';
+
+  @override
+  String get desktopUpdateCheckFailed =>
+      'Failed to check for updates. Try again later.';
+
+  @override
   String get desktopConnectionConnected => 'Connected';
 
   @override
