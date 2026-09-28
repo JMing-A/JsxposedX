@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_question.dart';
+import 'package:JsxposedX/features/ai/presentation/states/ai_tool_invocation_view.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/ai_chat_bubble.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_ai_bubble/memory_ai_bubble_container.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/widgets/memory_ai_bubble/memory_ai_bubble_content.dart';
@@ -21,8 +23,17 @@ class MemoryAiChatBubble extends BaseAiChatBubble {
     super.loadingHint,
     super.streaming,
     super.onEdit,
+    super.onDelete,
+    super.onRegenerate,
+    super.onQuote,
     super.rawDetails,
+    super.toolInvocations,
+    super.onToolApprove,
+    super.onToolReject,
     super.errorHint,
+    super.imageSources,
+    super.pendingQuestion,
+    super.onAnswer,
     this.isToolResultBubble = false,
   });
 
@@ -40,8 +51,17 @@ class MemoryAiChatBubble extends BaseAiChatBubble {
       loadingHint: loadingHint,
       streaming: streaming,
       onEdit: onEdit,
+      onDelete: onDelete,
+      onRegenerate: onRegenerate,
+      onQuote: onQuote,
       rawDetails: rawDetails,
+      toolInvocations: toolInvocations,
+      onToolApprove: onToolApprove,
+      onToolReject: onToolReject,
       errorHint: errorHint,
+      imageSources: imageSources,
+      pendingQuestion: pendingQuestion,
+      onAnswer: onAnswer,
       isToolResultBubble: isToolResultBubble,
     );
   }
@@ -75,6 +95,12 @@ class MemoryAiStreamingChatBubble extends HookWidget {
     this.errorHint,
     this.onRetry,
     this.packageName,
+    this.onQuote,
+    this.toolInvocations = const <AiToolInvocationView>[],
+    this.onToolApprove,
+    this.onToolReject,
+    this.pendingQuestion,
+    this.onAnswer,
   });
 
   final String initialContent;
@@ -87,6 +113,12 @@ class MemoryAiStreamingChatBubble extends HookWidget {
   final Stream<bool> streamingThinkingStream;
   final VoidCallback? onRetry;
   final String? packageName;
+  final VoidCallback? onQuote;
+  final List<AiToolInvocationView> toolInvocations;
+  final VoidCallback? onToolApprove;
+  final VoidCallback? onToolReject;
+  final AiQuestion? pendingQuestion;
+  final ValueChanged<List<String>>? onAnswer;
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +171,12 @@ class MemoryAiStreamingChatBubble extends HookWidget {
       retryLabel: retryLabel,
       onRetry: onRetry,
       packageName: packageName,
+      onQuote: onQuote,
+      toolInvocations: toolInvocations,
+      onToolApprove: onToolApprove,
+      onToolReject: onToolReject,
+      pendingQuestion: pendingQuestion,
+      onAnswer: onAnswer,
       loadingHint: isThinking.value ? _memoryLoadingHint(context) : null,
       streaming: true,
     );

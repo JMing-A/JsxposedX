@@ -12,8 +12,17 @@ class MemoryAiBubbleState extends BubbleState {
     super.loadingHint,
     super.streaming,
     super.onEdit,
+    super.onDelete,
+    super.onRegenerate,
+    super.onQuote,
     super.rawDetails,
+    super.toolInvocations,
+    super.onToolApprove,
+    super.onToolReject,
     super.errorHint,
+    super.imageSources,
+    super.pendingQuestion,
+    super.onAnswer,
   });
 
   final bool isToolResultBubble;

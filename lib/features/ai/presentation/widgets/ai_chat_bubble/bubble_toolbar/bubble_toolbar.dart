@@ -13,6 +13,26 @@ import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_bubble/bubble
 abstract class BaseBubbleToolbarPart {
   const BaseBubbleToolbarPart();
 
+  /// 是否支持系统分享。悬浮窗为独立引擎，share_plus 需要宿主 Activity，
+  /// 子类可覆写为 false 以隐藏「系统分享」入口。
+  @protected
+  bool get supportsSystemShare => true;
+
+  /// 统一的弹层宿主。宿主 App 走底部弹窗，悬浮窗子类可覆写为
+  /// [OverlayPanelDialog] 等悬浮窗内的安全实现。
+  @protected
+  Future<void> presentSheet({
+    required BuildContext context,
+    required String title,
+    required Widget child,
+  }) {
+    return AppBottomSheet.show<void>(
+      context: context,
+      title: title,
+      child: child,
+    );
+  }
+
   void handleCopyToClipboard(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
     ToastMessage.show(context.l10n.codeCopied);
@@ -34,13 +54,13 @@ abstract class BaseBubbleToolbarPart {
       return;
     }
 
-    await AppBottomSheet.show<void>(
+    await presentSheet(
       context: context,
       title: context.l10n.aiBubbleActionsTitle,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _BubbleActionTile(
+          BubbleActionTile(
             icon: Icons.copy_all_rounded,
             title: context.l10n.aiBubbleCopyCurrent,
             onTap: () {
@@ -48,16 +68,17 @@ abstract class BaseBubbleToolbarPart {
               handleCopyToClipboard(context, normalized);
             },
           ),
-          _BubbleActionTile(
-            icon: Icons.share_rounded,
-            title: context.isZh ? '系统分享' : 'Share',
-            onTap: () async {
-              Navigator.of(context).pop();
-              await Share.share(normalized, subject: title);
-            },
-          ),
+          if (supportsSystemShare)
+            BubbleActionTile(
+              icon: Icons.share_rounded,
+              title: context.isZh ? '系统分享' : 'Share',
+              onTap: () async {
+                Navigator.of(context).pop();
+                await Share.share(normalized, subject: title);
+              },
+            ),
           if (onRetry != null)
-            _BubbleActionTile(
+            BubbleActionTile(
               icon: Icons.refresh_rounded,
               title: context.l10n.retry,
               onTap: () {
@@ -66,7 +87,7 @@ abstract class BaseBubbleToolbarPart {
               },
             ),
           if (onEdit != null)
-            _BubbleActionTile(
+            BubbleActionTile(
               icon: Icons.edit_rounded,
               title: context.isZh ? '编辑并重新发送' : 'Edit and resend',
               onTap: () {
@@ -75,7 +96,7 @@ abstract class BaseBubbleToolbarPart {
               },
             ),
           if (onQuote != null)
-            _BubbleActionTile(
+            BubbleActionTile(
               icon: Icons.format_quote_rounded,
               title: context.isZh ? '引用回复' : 'Quote reply',
               onTap: () {
@@ -84,7 +105,7 @@ abstract class BaseBubbleToolbarPart {
               },
             ),
           if (onRegenerate != null)
-            _BubbleActionTile(
+            BubbleActionTile(
               icon: Icons.replay_rounded,
               title: context.isZh ? '从此处重新生成' : 'Regenerate from here',
               onTap: () {
@@ -93,7 +114,7 @@ abstract class BaseBubbleToolbarPart {
               },
             ),
       if (rawDetails != null && rawDetails.trim().isNotEmpty)
-            _BubbleActionTile(
+            BubbleActionTile(
               icon: Icons.receipt_long_rounded,
               title: context.isZh ? '查看原始响应 (Trace)' : 'View raw response (Trace)',
               onTap: () {
@@ -105,7 +126,7 @@ abstract class BaseBubbleToolbarPart {
                 );
               },
             ),
-          _BubbleActionTile(
+          BubbleActionTile(
             icon: Icons.text_fields_rounded,
             title: context.l10n.aiBubbleSelectText,
             onTap: () {
@@ -114,7 +135,7 @@ abstract class BaseBubbleToolbarPart {
             },
           ),
           if (onDelete != null)
-            _BubbleActionTile(
+            BubbleActionTile(
               icon: Icons.delete_outline_rounded,
               title: context.isZh ? '删除消息' : 'Delete message',
               onTap: () {
@@ -133,7 +154,7 @@ abstract class BaseBubbleToolbarPart {
     required String text,
   }) async {
     final scale = AiChatCompactScope.scaleOf(context);
-    await AppBottomSheet.show<void>(
+    await presentSheet(
       context: context,
       title: title,
       child: SingleChildScrollView(
@@ -151,7 +172,7 @@ abstract class BaseBubbleToolbarPart {
     required String text,
   }) async {
     final scale = AiChatCompactScope.scaleOf(context);
-    await AppBottomSheet.show<void>(
+    await presentSheet(
       context: context,
       title: title,
       child: Column(
@@ -224,8 +245,9 @@ class DefaultBubbleToolbarPart extends BaseBubbleToolbarPart {
   }
 }
 
-class _BubbleActionTile extends StatelessWidget {
-  const _BubbleActionTile({
+class BubbleActionTile extends StatelessWidget {
+  const BubbleActionTile({
+    super.key,
     required this.icon,
     required this.title,
     required this.onTap,

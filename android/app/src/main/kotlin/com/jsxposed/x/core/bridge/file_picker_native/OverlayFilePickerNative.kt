@@ -9,6 +9,7 @@ object OverlayFilePickerNative {
     private const val CHANNEL_NAME = "com.jsxposed.x/file_picker_proxy"
     private const val EXTRA_REQUEST_TYPE = "request_type"
     private const val EXTRA_ALLOWED_EXTENSIONS = "allowed_extensions"
+    private const val EXTRA_SAVE_FILE_NAME = "save_file_name"
 
     private var pendingResult: MethodChannel.Result? = null
 
@@ -38,6 +39,13 @@ object OverlayFilePickerNative {
                     )
                 }
 
+                "saveFile" -> launchSaver(
+                    context = context,
+                    result = result,
+                    fileName = call.argument<String>("name"),
+                    bytes = call.argument<ByteArray>("bytes"),
+                )
+
                 else -> result.notImplemented()
             }
         }
@@ -54,7 +62,17 @@ object OverlayFilePickerNative {
         return intent.getStringArrayListExtra(EXTRA_ALLOWED_EXTENSIONS)
     }
 
+    internal fun saveFileName(intent: Intent): String? {
+        return intent.getStringExtra(EXTRA_SAVE_FILE_NAME)
+    }
+
     internal fun completeSuccess(data: Map<String, Any?>?) {
+        pendingResult?.success(data)
+        pendingResult = null
+    }
+
+    /// 保存流程回传的是纯字符串（展示路径）而非 map。
+    internal fun completeSuccessValue(data: String?) {
         pendingResult?.success(data)
         pendingResult = null
     }
@@ -66,6 +84,36 @@ object OverlayFilePickerNative {
 
     internal fun completeCancel() {
         completeSuccess(null)
+    }
+
+    private fun launchSaver(
+        context: Context,
+        result: MethodChannel.Result,
+        fileName: String?,
+        bytes: ByteArray?
+    ) {
+        if (bytes == null) {
+            result.error("invalid_args", "Missing file bytes", null)
+            return
+        }
+        if (pendingResult != null) {
+            result.error("already_active", "File picker is already active", null)
+            return
+        }
+
+        pendingResult = result
+        val intent = Intent(context, OverlayFileSaveProxyActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(EXTRA_SAVE_FILE_NAME, fileName)
+            putExtra(OverlayFileSaveProxyActivity.EXTRA_SAVE_FILE_BYTES, bytes)
+        }
+
+        try {
+            context.startActivity(intent)
+        } catch (t: Throwable) {
+            pendingResult = null
+            result.error("OPEN_SAVER_FAILED", t.message, null)
+        }
     }
 
     private fun launchPicker(

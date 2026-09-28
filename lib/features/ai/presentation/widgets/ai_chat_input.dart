@@ -21,6 +21,15 @@ final aiChatPendingAttachmentsProvider =
       (ref, packageName) => const [],
     );
 
+/// 自定义弹层宿主签名。悬浮窗是独立引擎，`AppBottomSheet` 无法正确呈现，
+/// 由悬浮窗侧注入基于 [OverlayPanelDialog] 的实现。
+typedef AiChatInputSheetPresenter =
+    Future<void> Function({
+      required BuildContext context,
+      required String title,
+      required Widget child,
+    });
+
 class AiChatInput extends HookConsumerWidget {
   final String packageName;
   final String? systemPrompt;
@@ -38,6 +47,9 @@ class AiChatInput extends HookConsumerWidget {
   /// 追加在快捷操作行末端的自定义控件（例如计划模式开关）。
   final Widget? quickActionsTrailing;
 
+  /// 自定义弹层宿主，留空时回退到 [AppBottomSheet]。
+  final AiChatInputSheetPresenter? presentSheet;
+
   const AiChatInput({
     super.key,
     required this.packageName,
@@ -53,6 +65,7 @@ class AiChatInput extends HookConsumerWidget {
     this.onSendCommitted,
     this.inputTopContent,
     this.quickActionsTrailing,
+    this.presentSheet,
   });
 
   @override
@@ -187,11 +200,20 @@ class AiChatInput extends HookConsumerWidget {
           if (!hasContextDetails) {
             return;
           }
-          AppBottomSheet.show<void>(
-            context: context,
-            title: context.l10n.aiContextTitle,
-            child: _ContextSheet(chatState: chatState),
-          );
+          final presenter = presentSheet;
+          if (presenter != null) {
+            await presenter(
+              context: context,
+              title: context.l10n.aiContextTitle,
+              child: _ContextSheet(chatState: chatState),
+            );
+          } else {
+            AppBottomSheet.show<void>(
+              context: context,
+              title: context.l10n.aiContextTitle,
+              child: _ContextSheet(chatState: chatState),
+            );
+          }
           break;
         case _AiInputMenuAction.uploadImage:
           try {

@@ -159,6 +159,7 @@ abstract class BaseBubbleContentPart {
       final thinking = _ThinkingMarkdownContent(
         state: state,
         toolbarPart: toolbarPart,
+        contentPart: this,
         thinkingContent: parts.thinking,
         answerContent: parts.answer,
         duration: parts.duration,
@@ -204,6 +205,23 @@ abstract class BaseBubbleContentPart {
     );
   }
 
+  /// 处理 Markdown 链接点击：绝对文件路径跳转文件查看器，其余走外部浏览器。
+  ///
+  /// 悬浮窗等无路由环境的子类可覆写为安全实现。
+  @protected
+  void handleMarkdownLink(BuildContext context, String? href) {
+    _handleMarkdownLink(context, href);
+  }
+
+  /// 打开本地绝对路径图片。悬浮窗等无路由环境的子类可覆写为安全实现。
+  @protected
+  void openLocalImage(BuildContext context, String src) {
+    if (GoRouter.maybeOf(context) == null) {
+      return;
+    }
+    context.push(HomeRoute.toFileViewer(path: src));
+  }
+
   /// 渲染 AI 回复携带的图片。复用 [_MarkdownImage] 的三态能力
   /// （网络链接 / data URI / 本地绝对路径）。
   Widget _buildAssistantImages(BuildContext context, BubbleState state) {
@@ -213,7 +231,11 @@ abstract class BaseBubbleContentPart {
       runSpacing: 8 * scale,
       children: [
         for (final source in state.imageSources)
-          _MarkdownImage(src: source, uiScale: scale),
+          _MarkdownImage(
+            src: source,
+            uiScale: scale,
+            onOpenLocal: (src) => openLocalImage(context, src),
+          ),
       ],
     );
   }
@@ -328,7 +350,7 @@ abstract class BaseBubbleContentPart {
         data: cursorEnabled ? _withStreamingCursor(markdown) : markdown,
         styleSheet: theme,
         selectable: false,
-        onTapLink: (text, href, title) => _handleMarkdownLink(context, href),
+        onTapLink: (text, href, title) => handleMarkdownLink(context, href),
         inlineSyntaxes: <md.InlineSyntax>[
           ...buildMathInlineSyntaxes(),
           if (cursorEnabled) _StreamingCursorSyntax(),
@@ -339,6 +361,7 @@ abstract class BaseBubbleContentPart {
             context,
             state,
             toolbarPart: toolbarPart,
+            contentPart: this,
           ),
           if (cursorEnabled) 'streaming-cursor': _StreamingCursorBuilder(),
         },
@@ -356,6 +379,7 @@ Map<String, MarkdownElementBuilder> buildMarkdownBuilders(
   BuildContext context,
   BubbleState state, {
   required BaseBubbleToolbarPart toolbarPart,
+  required BaseBubbleContentPart contentPart,
 }) {
   final scale = AiChatCompactScope.scaleOf(context);
   return {
@@ -365,7 +389,10 @@ Map<String, MarkdownElementBuilder> buildMarkdownBuilders(
       uiScale: scale,
     ),
     'table': _TableElementBuilder(uiScale: scale),
-    'img': _MarkdownImageElementBuilder(uiScale: scale),
+    'img': _MarkdownImageElementBuilder(
+      uiScale: scale,
+      onOpenLocal: (src) => contentPart.openLocalImage(context, src),
+    ),
     kAiMathInlineTag: AiMathElementBuilder(uiScale: scale),
     kAiMathBlockTag: AiMathElementBuilder(uiScale: scale),
   };
@@ -381,12 +408,17 @@ List<md.BlockSyntax> buildMathBlockSyntaxes() => <md.BlockSyntax>[
 ];
 
 /// 处理 Markdown 链接点击：绝对文件路径跳转文件查看器，其余走外部浏览器。
+///
+/// 通过 [GoRouter.maybeOf] 探测路由能力：悬浮窗（独立引擎、无 go_router）
+/// 直接退化为外部打开，避免 `context.push` 抛错导致整条气泡渲染失败。
 void _handleMarkdownLink(BuildContext context, String? href) {
   final target = href?.trim() ?? '';
   if (target.isEmpty) {
     return;
   }
-  if (target.startsWith('/') && containsClickablePath(target)) {
+  if (target.startsWith('/') &&
+      containsClickablePath(target) &&
+      GoRouter.maybeOf(context) != null) {
     context.push(HomeRoute.toFileViewer(path: target));
     return;
   }
@@ -521,6 +553,7 @@ class _ThinkingMarkdownContent extends HookWidget {
   const _ThinkingMarkdownContent({
     required this.state,
     required this.toolbarPart,
+    required this.contentPart,
     required this.thinkingContent,
     required this.answerContent,
     required this.duration,
@@ -529,6 +562,7 @@ class _ThinkingMarkdownContent extends HookWidget {
 
   final BubbleState state;
   final BaseBubbleToolbarPart toolbarPart;
+  final BaseBubbleContentPart contentPart;
   final String thinkingContent;
   final String answerContent;
   final Duration? duration;
@@ -628,11 +662,12 @@ class _ThinkingMarkdownContent extends HookWidget {
                         styleSheet: theme,
                         selectable: false,
                         onTapLink: (text, href, title) =>
-                            _handleMarkdownLink(context, href),
+                            contentPart.handleMarkdownLink(context, href),
                         builders: buildMarkdownBuilders(
                           context,
                           state,
                           toolbarPart: toolbarPart,
+                          contentPart: contentPart,
                         ),
                         shrinkWrap: true,
                         fitContent: true,
@@ -664,7 +699,7 @@ class _ThinkingMarkdownContent extends HookWidget {
               styleSheet: theme,
               selectable: false,
               onTapLink: (text, href, title) =>
-                  _handleMarkdownLink(context, href),
+                  contentPart.handleMarkdownLink(context, href),
               inlineSyntaxes: <md.InlineSyntax>[
                 ...buildMathInlineSyntaxes(),
                 if (showAnswerCursor) _StreamingCursorSyntax(),
@@ -675,6 +710,7 @@ class _ThinkingMarkdownContent extends HookWidget {
                   context,
                   state,
                   toolbarPart: toolbarPart,
+                  contentPart: contentPart,
                 ),
                 if (showAnswerCursor)
                   'streaming-cursor': _StreamingCursorBuilder(),
@@ -697,9 +733,10 @@ class _ThinkingMarkdownContent extends HookWidget {
 }
 
 class _MarkdownImageElementBuilder extends MarkdownElementBuilder {
-  _MarkdownImageElementBuilder({required this.uiScale});
+  _MarkdownImageElementBuilder({required this.uiScale, required this.onOpenLocal});
 
   final double uiScale;
+  final void Function(String src) onOpenLocal;
 
   @override
   Widget? visitElementAfterWithContext(
@@ -714,17 +751,26 @@ class _MarkdownImageElementBuilder extends MarkdownElementBuilder {
     }
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 6 * uiScale),
-      child: _MarkdownImage(src: src, uiScale: uiScale),
+      child: _MarkdownImage(
+        src: src,
+        uiScale: uiScale,
+        onOpenLocal: onOpenLocal,
+      ),
     );
   }
 }
 
 /// Markdown 内嵌图片：支持网络图片与本地绝对路径（经文件查看器兜底）。
 class _MarkdownImage extends StatelessWidget {
-  const _MarkdownImage({required this.src, required this.uiScale});
+  const _MarkdownImage({
+    required this.src,
+    required this.uiScale,
+    this.onOpenLocal,
+  });
 
   final String src;
   final double uiScale;
+  final void Function(String src)? onOpenLocal;
 
   @override
   Widget build(BuildContext context) {
@@ -775,7 +821,14 @@ class _MarkdownImage extends StatelessWidget {
       return _fallback(context);
     }
     return InkWell(
-      onTap: () => context.push(HomeRoute.toFileViewer(path: src)),
+      onTap: () {
+        final handler = onOpenLocal;
+        if (handler != null) {
+          handler(src);
+        } else {
+          context.push(HomeRoute.toFileViewer(path: src));
+        }
+      },
       child: Padding(
         padding: EdgeInsets.all(10 * uiScale),
         child: Row(

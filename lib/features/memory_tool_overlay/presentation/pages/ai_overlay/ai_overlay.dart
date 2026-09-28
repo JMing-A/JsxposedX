@@ -1,16 +1,22 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/custom_text_field.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_panel_dialog.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_text_input_context_menu.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/themes/ai_activation_theme.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_system_models.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_catalog_actions_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_session_view.dart';
+import 'package:JsxposedX/features/ai/presentation/states/ai_chat_view_message.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
@@ -103,6 +109,8 @@ class _AiOverlayViewport extends HookConsumerWidget {
     final resizeStartSize = useRef<Size?>(null);
     final isResizing = useRef(false);
     final isCreateSessionDialogOpen = useState(false);
+    final sessionPendingDelete = useState<AiChatSessionView?>(null);
+    final quotedMessage = useState<AiChatViewMessage?>(null);
     final pendingBoundPid = useRef<int?>(null);
     final pendingLayoutKey = useRef<String?>(null);
     final expansionController = useAnimationController(
@@ -718,62 +726,9 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                         currentSession == null
                                                         ? null
                                                         : () async {
-                                                            final shouldDelete =
-                                                                await showDialog<
-                                                                  bool
-                                                                >(
-                                                                  context:
-                                                                      context,
-                                                                  builder:
-                                                                      (
-                                                                        dialogContext,
-                                                                      ) => AlertDialog(
-                                                                        title: Text(
-                                                                          context
-                                                                              .l10n
-                                                                              .aiDeleteConfirmTitle,
-                                                                        ),
-                                                                        content: Text(
-                                                                          currentSession
-                                                                              .name,
-                                                                        ),
-                                                                        actions: [
-                                                                          TextButton(
-                                                                            onPressed: () => Navigator.pop(
-                                                                              dialogContext,
-                                                                              false,
-                                                                            ),
-                                                                            child: Text(
-                                                                              context.l10n.cancel,
-                                                                            ),
-                                                                          ),
-                                                                          TextButton(
-                                                                            onPressed: () => Navigator.pop(
-                                                                              dialogContext,
-                                                                              true,
-                                                                            ),
-                                                                            child: Text(
-                                                                              context.l10n.delete,
-                                                                            ),
-                                                                          ),
-                                                                        ],
-                                                                      ),
-                                                                ) ??
-                                                                false;
-                                                            if (!shouldDelete) {
-                                                              return;
-                                                            }
-                                                            await ref
-                                                                .read(
-                                                                  aiChatRuntimeProvider(
-                                                                    packageName:
-                                                                        chatScopeId,
-                                                                  ).notifier,
-                                                                )
-                                                                .deleteSession(
-                                                                  currentSession
-                                                                      .id,
-                                                                );
+                                                            sessionPendingDelete
+                                                                    .value =
+                                                                currentSession;
                                                           },
                                                   ),
                                                 ],
@@ -812,12 +767,28 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                         : 'Memory Assistant',
                                                     customSubtitle:
                                                         displaySubtitle,
+                                                    onQuote: (message) =>
+                                                        quotedMessage.value =
+                                                            message,
                                                     bubbleBuilder:
                                                         ({
                                                           required message,
                                                           required retryLabel,
                                                           required onRetry,
                                                           required packageName,
+                                                          onEdit,
+                                                          onRegenerate,
+                                                          onDelete,
+                                                          onQuote,
+                                                          rawDetails,
+                                                          toolInvocations =
+                                                              const [],
+                                                          onToolApprove,
+                                                          onToolReject,
+                                                          imageSources =
+                                                              const [],
+                                                          pendingQuestion,
+                                                          onAnswer,
                                                         }) => MemoryAiChatBubble(
                                                           key: ValueKey(
                                                             message.id,
@@ -837,6 +808,25 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                           onRetry: onRetry,
                                                           packageName:
                                                               packageName,
+                                                          onEdit: onEdit,
+                                                          onRegenerate:
+                                                              onRegenerate,
+                                                          onDelete: onDelete,
+                                                          onQuote: onQuote,
+                                                          rawDetails:
+                                                              rawDetails
+                                                                  as String?,
+                                                          toolInvocations:
+                                                              toolInvocations,
+                                                          onToolApprove:
+                                                              onToolApprove,
+                                                          onToolReject:
+                                                              onToolReject,
+                                                          imageSources:
+                                                              imageSources,
+                                                          pendingQuestion:
+                                                              pendingQuestion,
+                                                          onAnswer: onAnswer,
                                                         ),
                                                     streamingBubbleBuilder:
                                                         ({
@@ -846,6 +836,13 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                           required packageName,
                                                           required streamingContentStream,
                                                           required streamingThinkingStream,
+                                                          onQuote,
+                                                          toolInvocations =
+                                                              const [],
+                                                          onToolApprove,
+                                                          onToolReject,
+                                                          pendingQuestion,
+                                                          onAnswer,
                                                         }) => MemoryAiStreamingChatBubble(
                                                           key: ValueKey(
                                                             message.id,
@@ -869,6 +866,16 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                               streamingContentStream,
                                                           streamingThinkingStream:
                                                               streamingThinkingStream,
+                                                          onQuote: onQuote,
+                                                          toolInvocations:
+                                                              toolInvocations,
+                                                          onToolApprove:
+                                                              onToolApprove,
+                                                          onToolReject:
+                                                              onToolReject,
+                                                          pendingQuestion:
+                                                              pendingQuestion,
+                                                          onAnswer: onAnswer,
                                                         ),
                                                   ),
                                                 ),
@@ -894,20 +901,53 @@ class _AiOverlayViewport extends HookConsumerWidget {
                                                         contentScale,
                                                   ),
                                                 ],
+                                                _AiOverlayVisionToggle(
+                                                  contentScale: contentScale,
+                                                  isCompact: isCompactPanel,
+                                                ),
                                                 AiChatInput(
                                                   packageName: chatScopeId,
                                                   useOverlayFilePicker: true,
-                                                  showQuickActions: false,
                                                   isEmbedded: true,
                                                   isCompact: isCompactPanel,
                                                   onRetryInitialization:
                                                       initializeOverlayChat,
+                                                  inputTopContent:
+                                                      quotedMessage.value ==
+                                                          null
+                                                      ? null
+                                                      : _AiOverlayQuoteBar(
+                                                          excerpt: _quoteExcerpt(
+                                                            quotedMessage
+                                                                .value!
+                                                                .content,
+                                                          ),
+                                                          onDismiss: () =>
+                                                              quotedMessage
+                                                                      .value =
+                                                                  null,
+                                                        ),
                                                   hasComposedContent:
-                                                      selectionTags.isNotEmpty,
-                                                  composeOutgoingText:
-                                                      composeSelectionTagMessage,
-                                                  onSendCommitted:
-                                                      clearSelectionTags,
+                                                      selectionTags.isNotEmpty ||
+                                                      quotedMessage.value !=
+                                                          null,
+                                                  composeOutgoingText: (rawText) =>
+                                                      _composeQuotedText(
+                                                        rawText:
+                                                            composeSelectionTagMessage(
+                                                              rawText,
+                                                            ),
+                                                        quoted:
+                                                            quotedMessage.value,
+                                                      ),
+                                                  onSendCommitted: () {
+                                                    clearSelectionTags();
+                                                    quotedMessage.value = null;
+                                                  },
+                                                  // 悬浮窗为独立引擎，宿主 AppBottomSheet 无法
+                                                  // 正确呈现，改用覆盖层面板承载引用上下文等面板。
+                                                  presentSheet:
+                                                      showOverlayPanelSheet,
                                                 ),
                                               ],
                                             ),
@@ -1029,6 +1069,23 @@ class _AiOverlayViewport extends HookConsumerWidget {
                         '${context.l10n.aiNewSession} ${DateFormat('MM-dd HH:mm').format(DateTime.now())}',
                     onClose: () {
                       isCreateSessionDialogOpen.value = false;
+                    },
+                  ),
+                ),
+              if (sessionPendingDelete.value != null)
+                Positioned.fill(
+                  child: _AiOverlayDeleteSessionDialog(
+                    sessionName: sessionPendingDelete.value!.name,
+                    onClose: () {
+                      sessionPendingDelete.value = null;
+                    },
+                    onConfirm: () async {
+                      final target = sessionPendingDelete.value;
+                      sessionPendingDelete.value = null;
+                      if (target == null) {
+                        return;
+                      }
+                      await chatNotifier.deleteSession(target.id);
                     },
                   ),
                 ),
@@ -1467,6 +1524,287 @@ class _AiOverlayInitBanner extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _AiOverlayDeleteSessionDialog extends StatelessWidget {
+  const _AiOverlayDeleteSessionDialog({
+    required this.sessionName,
+    required this.onClose,
+    required this.onConfirm,
+  });
+
+  final String sessionName;
+  final VoidCallback onClose;
+  final Future<void> Function() onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return OverlayPanelDialog.card(
+      onClose: onClose,
+      maxWidthPortrait: 320.0,
+      maxWidthLandscape: 360.0,
+      maxHeightPortrait: 220.0,
+      maxHeightLandscape: 220.0,
+      cardBorderRadius: 18.0,
+      childBuilder: (context, viewport, layout) {
+        return Padding(
+          padding: const EdgeInsets.all(14.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                context.l10n.aiDeleteConfirmTitle,
+                style: context.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 10.0),
+              Text(
+                sessionName,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: onClose,
+                      child: Text(context.l10n.cancel),
+                    ),
+                  ),
+                  const SizedBox(width: 10.0),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: context.colorScheme.error,
+                        foregroundColor: context.colorScheme.onError,
+                      ),
+                      onPressed: onConfirm,
+                      child: Text(context.l10n.delete),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AiOverlayQuoteBar extends StatelessWidget {
+  const _AiOverlayQuoteBar({required this.excerpt, required this.onDismiss});
+
+  final String excerpt;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final scale = AiChatCompactScope.scaleOf(context);
+    return Container(
+      margin: EdgeInsets.fromLTRB(4 * scale, 4 * scale, 4 * scale, 0),
+      padding: EdgeInsets.fromLTRB(10 * scale, 7 * scale, 2 * scale, 7 * scale),
+      decoration: BoxDecoration(
+        color: context.colorScheme.primaryContainer.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(10 * scale),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.format_quote_rounded,
+            size: 16 * scale,
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+          SizedBox(width: 8 * scale),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.isZh ? '引用回复' : 'Quoting',
+                  style: TextStyle(
+                    fontSize: 11 * scale,
+                    fontWeight: FontWeight.w600,
+                    color: context.colorScheme.onSurface,
+                  ),
+                ),
+                SizedBox(height: 2 * scale),
+                Text(
+                  excerpt,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5 * scale,
+                    height: 1.3,
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onDismiss,
+            iconSize: 16 * scale,
+            visualDensity: VisualDensity.compact,
+            tooltip: context.isZh ? '取消引用' : 'Cancel quote',
+            icon: Icon(
+              Icons.close_rounded,
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 截取引用摘录：折叠空白、限制长度，避免超长消息撑爆输入框上方的卡片。
+String _quoteExcerpt(String content, {int maxLength = 140}) {
+  final normalized = content.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return '${normalized.substring(0, maxLength)}…';
+}
+
+/// 把被引用的消息以 markdown 引用块的形式拼到待发送文本前面。
+String _composeQuotedText({
+  required String rawText,
+  required AiChatViewMessage? quoted,
+}) {
+  if (quoted == null) return rawText;
+  final excerpt = _quoteExcerpt(quoted.content);
+  final prefix = '> ${excerpt.replaceAll('\n', '\n> ')}';
+  if (rawText.isEmpty) {
+    return '$prefix\n\n';
+  }
+  return '$prefix\n\n$rawText';
+}
+
+/// 在悬浮窗 AI 面板里直接调整「当前模型是否支持图片输入」。
+///
+/// 能力只保存在模型目录的 [AiModelDefinition] 上；发图失败后再去别处翻设置
+/// 太绕，所以这里把它摆在输入区上方，一眼可见、随手可改。
+class _AiOverlayVisionToggle extends ConsumerWidget {
+  const _AiOverlayVisionToggle({
+    required this.contentScale,
+    required this.isCompact,
+  });
+
+  final double contentScale;
+  final bool isCompact;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final config = ref.watch(aiConfigProvider).asData?.value;
+    final modelId = config?.moduleName.trim() ?? '';
+    if (config == null || modelId.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final connectionId = 'legacy-connection-${config.id}';
+    final model = ref
+        .watch(aiModelsV2Provider(connectionId))
+        .asData
+        ?.value
+        .where((item) => item.id == modelId)
+        .firstOrNull;
+    if (model == null) {
+      return const SizedBox.shrink();
+    }
+    final scale = contentScale;
+    final scheme = context.colorScheme;
+    final supported = model.capabilities.visionInput;
+    return Padding(
+      padding: EdgeInsets.only(bottom: (isCompact ? 4.0 : 6.0) * scale),
+      child: Material(
+        color: scheme.surface.withValues(alpha: 0.26),
+        borderRadius: BorderRadius.circular(10.0 * scale),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10.0 * scale),
+          onTap: () => _update(ref, model, !supported),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: (isCompact ? 8.0 : 10.0) * scale,
+              vertical: (isCompact ? 2.0 : 4.0) * scale,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  supported
+                      ? Icons.image_rounded
+                      : Icons.image_not_supported_rounded,
+                  size: (isCompact ? 14.0 : 16.0) * scale,
+                  color: supported
+                      ? scheme.primary
+                      : scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+                SizedBox(width: 6.0 * scale),
+                Expanded(
+                  child: Text(
+                    context.isZh
+                        ? '当前模型支持图片输入'
+                        : 'Model supports image input',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: (isCompact ? 10.5 : 11.5) * scale,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface.withValues(alpha: 0.86),
+                    ),
+                  ),
+                ),
+                Text(
+                  modelId,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: (isCompact ? 9.0 : 10.0) * scale,
+                    color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                  ),
+                ),
+                SizedBox(width: 6.0 * scale),
+                SizedBox(
+                  height: (isCompact ? 20.0 : 24.0) * scale,
+                  child: FittedBox(
+                    child: Switch.adaptive(
+                      value: supported,
+                      onChanged: (value) => _update(ref, model, value),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _update(
+    WidgetRef ref,
+    AiModelDefinition model,
+    bool value,
+  ) async {
+    try {
+      await ref
+          .read(aiCatalogActionsV2Provider.notifier)
+          .saveModel(
+            model.copyWith(
+              capabilities: model.capabilities.copyWith(visionInput: value),
+            ),
+          );
+    } catch (error) {
+      await ToastOverlayMessage.show(
+        error.toString().replaceFirst('Exception: ', ''),
+        duration: const Duration(milliseconds: 1400),
+      );
+    }
   }
 }
 

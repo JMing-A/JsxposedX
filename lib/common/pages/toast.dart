@@ -13,7 +13,20 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 class ToastMessage {
   const ToastMessage._();
 
+  /// 自定义提示实现。悬浮窗（独立引擎）会在启动时把它替换成
+  /// [ToastOverlayMessage.show]，让复用宿主 UI 的组件无需感知引擎差异。
+  static void Function(dynamic msg)? override;
+
   static void show(dynamic msg) {
+    final custom = override;
+    if (custom != null) {
+      custom(msg);
+      return;
+    }
+    _showDefault(msg);
+  }
+
+  static void _showDefault(dynamic msg) {
     SmartDialog.showToast(
       '',
       alignment: Alignment.bottomCenter,

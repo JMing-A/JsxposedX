@@ -25,6 +25,17 @@ typedef AiChatBubbleBuilder =
       required String retryLabel,
       required VoidCallback onRetry,
       required String packageName,
+      VoidCallback? onEdit,
+      VoidCallback? onRegenerate,
+      VoidCallback? onDelete,
+      VoidCallback? onQuote,
+      Object? rawDetails,
+      List<AiToolInvocationView> toolInvocations,
+      VoidCallback? onToolApprove,
+      VoidCallback? onToolReject,
+      List<String> imageSources,
+      AiQuestion? pendingQuestion,
+      ValueChanged<List<String>>? onAnswer,
     });
 
 typedef AiChatStreamingBubbleBuilder =
@@ -35,6 +46,12 @@ typedef AiChatStreamingBubbleBuilder =
       required String packageName,
       required Stream<String> streamingContentStream,
       required Stream<bool> streamingThinkingStream,
+      VoidCallback? onQuote,
+      List<AiToolInvocationView> toolInvocations,
+      VoidCallback? onToolApprove,
+      VoidCallback? onToolReject,
+      AiQuestion? pendingQuestion,
+      ValueChanged<List<String>>? onAnswer,
     });
 
 class AiChatList extends HookConsumerWidget {
@@ -268,6 +285,15 @@ class AiChatList extends HookConsumerWidget {
             onRetry: chatState.canRetryLastTurn
                 ? chatNotifier.retryLastTurn
                 : null,
+            // 带图片的请求失败：直接把「该模型是否支持图片」的选择摆在
+            // 错误旁边，让用户从错误本身完成配置，避免整轮对话作废。
+            visionConfigPromptPending: chatState.hasVisionConfigPrompt,
+            onMarkVisionSupported: () =>
+                chatNotifier.markVisionCapability(supported: true),
+            onMarkVisionUnsupported: () =>
+                chatNotifier.markVisionCapability(supported: false),
+            onResendWithoutImage: chatNotifier.resendLastTurnWithoutImage,
+            onDismissVisionPrompt: chatNotifier.dismissVisionConfigPrompt,
           ),
         Expanded(
           child: Stack(
@@ -307,6 +333,13 @@ class AiChatList extends HookConsumerWidget {
 
                   if (shouldShowStreaming) {
                     if (streamingBubbleBuilder != null) {
+                      final streamingCustomHasApproval =
+                          chatNotifier.hasPendingToolApproval &&
+                          message.toolInvocations.any(
+                            (inv) =>
+                                inv.status ==
+                                AiToolInvocationViewStatus.awaitingApproval,
+                          );
                       return RepaintBoundary(
                         child: streamingBubbleBuilder!(
                           message: message,
@@ -318,6 +351,19 @@ class AiChatList extends HookConsumerWidget {
                               chatNotifier.streamingContentStream,
                           streamingThinkingStream:
                               chatNotifier.streamingThinkingStream,
+                          toolInvocations: message.toolInvocations,
+                          onToolApprove: streamingCustomHasApproval
+                              ? () => chatNotifier.approvePendingTools()
+                              : null,
+                          onToolReject: streamingCustomHasApproval
+                              ? () => chatNotifier.rejectPendingTools()
+                              : null,
+                          pendingQuestion: chatState.pendingQuestion,
+                          onAnswer: (answers) =>
+                              chatNotifier.submitAnswer(answers),
+                          onQuote: onQuote == null
+                              ? null
+                              : () => onQuote!(message),
                         ),
                       );
                     }
@@ -407,6 +453,68 @@ class AiChatList extends HookConsumerWidget {
                                     message.sourceMessageId ?? message.id,
                                   ),
                                   packageName: packageName,
+                                  onEdit: message.role == 'user'
+                                      ? () => _editAndResendMessage(
+                                          context,
+                                          message,
+                                          chatNotifier.editUserMessageAndResend,
+                                        )
+                                      : null,
+                                  onRegenerate:
+                                      message.role == 'user' &&
+                                          !chatState.isStreaming
+                                      ? () => _confirmMessageAction(
+                                          context,
+                                          title: context.isZh
+                                              ? '从此处重新生成？'
+                                              : 'Regenerate from here?',
+                                          detail: context.isZh
+                                              ? '此消息之后的回复将被移除并重新生成。'
+                                              : 'Messages after this one will be removed and regenerated.',
+                                          confirmLabel: context.isZh
+                                              ? '重新生成'
+                                              : 'Regenerate',
+                                          action: () =>
+                                              chatNotifier.retryByMessageId(
+                                                message.sourceMessageId ??
+                                                    message.id,
+                                              ),
+                                        )
+                                      : null,
+                                  onDelete:
+                                      !chatState.isStreaming &&
+                                          message.sourceMessageId != null
+                                      ? () => _confirmMessageAction(
+                                          context,
+                                          title: context.isZh
+                                              ? '删除这条消息？'
+                                              : 'Delete this message?',
+                                          detail: context.isZh
+                                              ? '此操作无法撤销。'
+                                              : 'This action cannot be undone.',
+                                          confirmLabel: context.l10n.delete,
+                                          destructive: true,
+                                          action: () =>
+                                              chatNotifier.deleteMessage(
+                                                message.sourceMessageId!,
+                                              ),
+                                        )
+                                      : null,
+                                  rawDetails: message.rawDetails,
+                                  toolInvocations: message.toolInvocations,
+                                  imageSources: message.imageSources,
+                                  onToolApprove: hasApprovalActions
+                                      ? () => chatNotifier.approvePendingTools()
+                                      : null,
+                                  onToolReject: hasApprovalActions
+                                      ? () => chatNotifier.rejectPendingTools()
+                                      : null,
+                                  pendingQuestion: chatState.pendingQuestion,
+                                  onAnswer: (answers) =>
+                                      chatNotifier.submitAnswer(answers),
+                                  onQuote: onQuote == null
+                                      ? null
+                                      : () => onQuote!(message),
                                 )
                               : AiChatBubble(
                                   key: ValueKey(message.id),
@@ -676,11 +784,23 @@ class _ChatErrorBanner extends HookWidget {
     required this.detail,
     required this.retryLabel,
     required this.onRetry,
+    this.visionConfigPromptPending = false,
+    this.onMarkVisionSupported,
+    this.onMarkVisionUnsupported,
+    this.onResendWithoutImage,
+    this.onDismissVisionPrompt,
   });
 
   final String detail;
   final String retryLabel;
   final VoidCallback? onRetry;
+
+  /// 本次失败是否由「带图片的消息」引起，若是则展开图片能力配置区。
+  final bool visionConfigPromptPending;
+  final VoidCallback? onMarkVisionSupported;
+  final VoidCallback? onMarkVisionUnsupported;
+  final VoidCallback? onResendWithoutImage;
+  final VoidCallback? onDismissVisionPrompt;
 
   @override
   Widget build(BuildContext context) {
@@ -691,6 +811,7 @@ class _ChatErrorBanner extends HookWidget {
     final lines = detail.split('\n');
     final title = lines.first;
     final body = lines.length > 1 ? lines.skip(1).join('\n') : detail;
+    final isZh = context.isZh;
     return Container(
       width: double.infinity,
       margin: EdgeInsets.fromLTRB(16 * scale, 8 * scale, 16 * scale, 0),
@@ -700,91 +821,229 @@ class _ChatErrorBanner extends HookWidget {
         borderRadius: BorderRadius.circular(10 * scale),
         border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.only(top: 1 * scale),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  size: 18 * scale,
+                  color: color,
+                ),
+              ),
+              SizedBox(width: 8 * scale),
+              Expanded(
+                child: GestureDetector(
+                  onTap: canExpand
+                      ? () => expanded.value = !expanded.value
+                      : null,
+                  onLongPress: () async {
+                    await Clipboard.setData(ClipboardData(text: detail));
+                    if (context.mounted) {
+                      ToastMessage.show(
+                        isZh ? '错误详情已复制' : 'Error details copied',
+                      );
+                    }
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: expanded.value ? null : (canExpand ? 2 : 3),
+                        overflow: expanded.value ? null : TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.colorScheme.onErrorContainer,
+                          fontSize: 12 * scale,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
+                        ),
+                      ),
+                      if (expanded.value && body != title) ...[
+                        SizedBox(height: 6 * scale),
+                        Text(
+                          body,
+                          style: TextStyle(
+                            color: context.colorScheme.onErrorContainer
+                                .withValues(alpha: 0.8),
+                            fontSize: 11.5 * scale,
+                            fontFamily: 'monospace',
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (canExpand)
+                IconButton(
+                  onPressed: () => expanded.value = !expanded.value,
+                  tooltip: expanded.value
+                      ? (isZh ? '收起详情' : 'Collapse details')
+                      : (isZh ? '展开详情' : 'Expand details'),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(
+                    minWidth: 30 * scale,
+                    minHeight: 30 * scale,
+                  ),
+                  icon: Icon(
+                    expanded.value ? Icons.expand_less : Icons.expand_more,
+                    size: 18 * scale,
+                    color: color,
+                  ),
+                ),
+              if (onRetry != null)
+                IconButton(
+                  onPressed: onRetry,
+                  tooltip: retryLabel,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(
+                    minWidth: 30 * scale,
+                    minHeight: 30 * scale,
+                  ),
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    size: 18 * scale,
+                    color: color,
+                  ),
+                ),
+            ],
+          ),
+          if (visionConfigPromptPending) ...[
+            SizedBox(height: 8 * scale),
+            _VisionConfigPrompt(
+              scale: scale,
+              isZh: isZh,
+              onMarkSupported: onMarkVisionSupported,
+              onMarkUnsupported: onMarkVisionUnsupported,
+              onResendWithoutImage: onResendWithoutImage,
+              onDismiss: onDismissVisionPrompt,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 错误旁的「模型图片能力」配置区。
+///
+/// 直接内联在错误提示里，不依赖任何弹层 API，因此宿主 App 与悬浮窗
+/// 两个引擎都能正常呈现。
+class _VisionConfigPrompt extends StatelessWidget {
+  const _VisionConfigPrompt({
+    required this.scale,
+    required this.isZh,
+    this.onMarkSupported,
+    this.onMarkUnsupported,
+    this.onResendWithoutImage,
+    this.onDismiss,
+  });
+
+  final double scale;
+  final bool isZh;
+  final VoidCallback? onMarkSupported;
+  final VoidCallback? onMarkUnsupported;
+  final VoidCallback? onResendWithoutImage;
+  final VoidCallback? onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colorScheme;
+    return Container(
+      padding: EdgeInsets.all(10 * scale),
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(8 * scale),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsets.only(top: 1 * scale),
-            child: Icon(
-              Icons.error_outline_rounded,
-              size: 18 * scale,
-              color: color,
+          Text(
+            isZh
+                ? '刚才的消息带图片，如果该模型不支持图片输入就会发送失败。'
+                : 'The message contained an image. If this model cannot accept '
+                      'images, the request will fail.',
+            style: TextStyle(
+              color: scheme.onSurface,
+              fontSize: 11.5 * scale,
+              height: 1.4,
             ),
           ),
-          SizedBox(width: 8 * scale),
-          Expanded(
-            child: GestureDetector(
-              onTap: canExpand ? () => expanded.value = !expanded.value : null,
-              onLongPress: () async {
-                await Clipboard.setData(ClipboardData(text: detail));
-                if (context.mounted) {
-                  ToastMessage.show(
-                    context.isZh ? '错误详情已复制' : 'Error details copied',
-                  );
-                }
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: expanded.value ? null : (canExpand ? 2 : 3),
-                    overflow: expanded.value ? null : TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: context.colorScheme.onErrorContainer,
-                      fontSize: 12 * scale,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                    ),
+          SizedBox(height: 4 * scale),
+          Text(
+            isZh
+                ? '请确认当前模型是否支持图片，配置后即可继续对话。'
+                : 'Confirm whether this model supports images to continue.',
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 11 * scale,
+              height: 1.4,
+            ),
+          ),
+          SizedBox(height: 8 * scale),
+          Wrap(
+            spacing: 8 * scale,
+            runSpacing: 6 * scale,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: onMarkSupported,
+                icon: Icon(Icons.image_rounded, size: 16 * scale),
+                label: Text(
+                  isZh ? '支持图片输入' : 'Supports images',
+                  style: TextStyle(fontSize: 12 * scale),
+                ),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.symmetric(horizontal: 12 * scale),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onMarkUnsupported,
+                icon: Icon(Icons.image_not_supported_rounded, size: 16 * scale),
+                label: Text(
+                  isZh ? '不支持图片' : 'No image support',
+                  style: TextStyle(fontSize: 12 * scale),
+                ),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.symmetric(horizontal: 12 * scale),
+                ),
+              ),
+              if (onResendWithoutImage != null)
+                TextButton.icon(
+                  onPressed: onResendWithoutImage,
+                  icon: Icon(Icons.text_fields_rounded, size: 16 * scale),
+                  label: Text(
+                    isZh ? '去掉图片重发' : 'Resend without image',
+                    style: TextStyle(fontSize: 12 * scale),
                   ),
-                  if (expanded.value && body != title) ...[
-                    SizedBox(height: 6 * scale),
-                    Text(
-                      body,
-                      style: TextStyle(
-                        color: context.colorScheme.onErrorContainer.withValues(
-                          alpha: 0.8,
-                        ),
-                        fontSize: 11.5 * scale,
-                        fontFamily: 'monospace',
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.symmetric(horizontal: 12 * scale),
+                  ),
+                ),
+              if (onDismiss != null)
+                TextButton(
+                  onPressed: onDismiss,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.symmetric(horizontal: 12 * scale),
+                  ),
+                  child: Text(
+                    isZh ? '忽略' : 'Ignore',
+                    style: TextStyle(fontSize: 12 * scale),
+                  ),
+                ),
+            ],
           ),
-          if (canExpand)
-            IconButton(
-              onPressed: () => expanded.value = !expanded.value,
-              tooltip: expanded.value
-                  ? (context.isZh ? '收起详情' : 'Collapse details')
-                  : (context.isZh ? '展开详情' : 'Expand details'),
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              constraints: BoxConstraints(
-                minWidth: 30 * scale,
-                minHeight: 30 * scale,
-              ),
-              icon: Icon(
-                expanded.value ? Icons.expand_less : Icons.expand_more,
-                size: 18 * scale,
-                color: color,
-              ),
-            ),
-          if (onRetry != null)
-            IconButton(
-              onPressed: onRetry,
-              tooltip: retryLabel,
-              visualDensity: VisualDensity.compact,
-              padding: EdgeInsets.zero,
-              constraints: BoxConstraints(
-                minWidth: 30 * scale,
-                minHeight: 30 * scale,
-              ),
-              icon: Icon(Icons.refresh_rounded, size: 18 * scale, color: color),
-            ),
         ],
       ),
     );

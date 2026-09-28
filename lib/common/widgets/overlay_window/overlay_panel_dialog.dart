@@ -1,5 +1,85 @@
 import 'package:flutter/material.dart';
 
+/// 在悬浮窗引擎内以 [OverlayPanelDialog] 的形式弹出承载 [child] 的面板。
+///
+/// 悬浮窗是独立引擎，`showModalBottomSheet` / `showDialog` / `SmartDialog`
+/// 无法正确呈现；这里通过覆盖层路由 `Navigator.push` 直接渲染对话框，供
+/// 悬浮窗内的长按菜单、引用上下文等面板统一复用。
+Future<void> showOverlayPanelSheet({
+  required BuildContext context,
+  required String title,
+  required Widget child,
+  double maxWidthPortrait = 420.0,
+  double maxWidthLandscape = 520.0,
+  double maxHeightPortrait = 560.0,
+  double maxHeightLandscape = 420.0,
+  Size portraitBaseSize = const Size(360.0, 520.0),
+  Size landscapeBaseSize = const Size(440.0, 400.0),
+}) {
+  return Navigator.of(context).push<void>(
+    PageRouteBuilder<void>(
+      opaque: false,
+      barrierColor: Colors.transparent,
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+      pageBuilder: (routeContext, _, _) => OverlayPanelDialog.scaledCard(
+        onClose: () => Navigator.of(routeContext).maybePop(),
+        maxWidthPortrait: maxWidthPortrait,
+        maxWidthLandscape: maxWidthLandscape,
+        maxHeightPortrait: maxHeightPortrait,
+        maxHeightLandscape: maxHeightLandscape,
+        portraitBaseSize: portraitBaseSize,
+        landscapeBaseSize: landscapeBaseSize,
+        cardBorderRadius: 18.0,
+        childBuilder: (cardContext, viewport, scaledLayout) {
+          final scale = scaledLayout.scale;
+          return Padding(
+            padding: EdgeInsets.all(14.0 * scale),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: Theme.of(cardContext).textTheme.titleSmall
+                            ?.copyWith(
+                          fontSize: 15.0 * scale,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(cardContext).maybePop(),
+                      iconSize: 18.0 * scale,
+                      visualDensity: VisualDensity.compact,
+                      tooltip: MaterialLocalizations.of(
+                        cardContext,
+                      ).closeButtonTooltip,
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: Theme.of(
+                          cardContext,
+                        ).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 6.0 * scale),
+                Flexible(
+                  child: SingleChildScrollView(child: child),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ),
+  );
+}
+
 class OverlayPanelViewport {
   const OverlayPanelViewport(this.constraints);
 

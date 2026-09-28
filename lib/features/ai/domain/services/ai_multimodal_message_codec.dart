@@ -191,6 +191,26 @@ class AiMultimodalMessageCodec {
     );
   }
 
+  /// 移除图片附件，仅保留文字内容与文本类附件。
+  ///
+  /// 用于「当前模型不支持图片理解」的失败重发：用户确认后可以丢弃图片，
+  /// 让原本已经写好的文字仍然能发出去，避免整轮对话作废。
+  static String stripImageAttachments(String content) {
+    final payload = tryParse(content);
+    if (payload == null) {
+      return content;
+    }
+    final remaining = payload.attachments
+        .where((attachment) => attachment.kind != _AiAttachmentKind.image)
+        .toList(growable: false);
+    if (remaining.isEmpty) {
+      return payload.text;
+    }
+    return '$_prefix${jsonEncode(
+      payload.copyWith(attachments: remaining).toJson(),
+    )}';
+  }
+
   static String toDisplayText(
     String content, {
     required bool isZh,

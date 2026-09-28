@@ -32,6 +32,7 @@ class AiChatRuntimeState {
     this.toolsSpec,
     this.toolExecutor,
     this.toolDefinitions = const [],
+    this.visionConfigPromptPending = false,
   });
 
   final List<AiMessage> standardMessages;
@@ -61,6 +62,16 @@ class AiChatRuntimeState {
   final AiChatToolsSpec? toolsSpec;
   final AiChatToolExecutorContract? toolExecutor;
   final List<AiToolDefinition> toolDefinitions;
+
+  /// 本轮「带图片的消息」发送失败后置位，用于提示用户为该模型配置图片能力。
+  /// 用户完成配置或主动忽略后由 notifier 复位。
+  ///
+  /// 声明为可空是为了兼容热重载前创建的旧实例（其字段可能为 null），
+  /// 读取处统一用 `== true` 判断。
+  final bool? visionConfigPromptPending;
+
+  /// 是否需要提示用户配置模型图片能力。
+  bool get hasVisionConfigPrompt => visionConfigPromptPending == true;
   List<AiChatViewMessage> get visibleViewMessages {
     if (viewMessages.length <= visibleMessageCount) {
       return List<AiChatViewMessage>.unmodifiable(viewMessages);
@@ -146,6 +157,7 @@ class AiChatRuntimeState {
     Object? toolsSpec = _runtimeStateSentinel,
     Object? toolExecutor = _runtimeStateSentinel,
     Object? toolDefinitions = _runtimeStateSentinel,
+    bool? visionConfigPromptPending,
   }) {
     return AiChatRuntimeState(
       standardMessages: standardMessages ?? this.standardMessages,
@@ -187,6 +199,9 @@ class AiChatRuntimeState {
       toolDefinitions: identical(toolDefinitions, _runtimeStateSentinel)
           ? this.toolDefinitions
           : toolDefinitions as List<AiToolDefinition>,
+      visionConfigPromptPending: visionConfigPromptPending ??
+          this.visionConfigPromptPending ??
+          false,
     );
   }
 }

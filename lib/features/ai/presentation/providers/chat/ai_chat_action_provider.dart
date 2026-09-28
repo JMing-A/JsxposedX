@@ -25,6 +25,7 @@ import 'package:JsxposedX/features/ai/presentation/providers/config/disabled_too
 import 'package:JsxposedX/features/ai/presentation/providers/config/user_risky_tools_store.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/plan/ai_plan_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/ask/ai_ask_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_catalog_actions_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/ai/presentation/mappers/ai_chat_view_message_mapper.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
@@ -73,6 +74,10 @@ class AiChatAction extends _$AiChatAction {
   AiChatEnvironmentSnapshot? _lastSnapshot;
   bool _sessionReady = false;
   bool _disposed = false;
+
+  /// 记录最近一次发送是否携带图片：带图片的请求失败后需要提示用户
+  /// 为该模型配置图片能力，避免用户不知道“整个对话为什么废了”。
+  bool _lastSendHadImage = false;
 
   Stream<String> get streamingContentStream =>
       _streamingContentController.stream;
@@ -473,6 +478,12 @@ class AiChatAction extends _$AiChatAction {
           ? null
           : LegacyAiConversationMigrator.describeAiFailure(next.failure!),
       lastResponseIssue: _issueFor(next.failure),
+      // 带图片的请求失败时提示用户配置该模型的图片能力，
+      // 让用户能从错误本身直接完成配置，而不是整轮对话作废。
+      visionConfigPromptPending:
+          next.failure != null &&
+          next.failure!.code != standard.AiFailureCode.cancelled &&
+          _lastSendHadImage,
       pendingQuestion: next.isAwaitingUserAnswer
           ? _sessionController?.pendingQuestion
           : null,
@@ -671,16 +682,10 @@ class AiChatAction extends _$AiChatAction {
     }
     final controller = _readyController();
     if (controller == null) return;
-    final model = controller.state.model;
-    if (AiMultimodalMessageCodec.hasImageAttachments(text) &&
-        model?.capabilities.visionInput == false &&
-        _looksExplicitlyTextOnlyModel(model?.id ?? '')) {
-      state = state.copyWith(
-        error: '当前模型不支持图片理解，请切换到支持视觉的模型后再发送图片。',
-        lastResponseIssue: AiResponseIssue.parseError,
-      );
-      return;
-    }
+    // 记录本轮是否带图片：若发送失败，需要提示用户为该模型配置图片能力，
+    // 而不是让整轮对话无声作废。
+    _lastSendHadImage = AiMultimodalMessageCodec.hasImageAttachments(text);
+    state = state.copyWith(visionConfigPromptPending: false);
     try {
       await controller.sendText(text);
     } catch (error) {
@@ -689,9 +694,72 @@ class AiChatAction extends _$AiChatAction {
           error: '消息发送失败：$error',
           isStreaming: false,
           lastResponseIssue: AiResponseIssue.networkError,
+          visionConfigPromptPending: _lastSendHadImage,
         );
       }
     }
+  }
+
+  /// 用户确认「当前模型支持图片输入」或「不支持」后写回模型能力。
+  ///
+  /// 能力只存在于模型目录（[standard.AiModelDefinition]）里，因此这里基于
+  /// 目录中的现有定义做 [standard.AiModelDefinition.copyWith]，既保留其它
+  /// 能力与限制，又能让下一轮请求按新的能力判断。
+  Future<void> markVisionCapability({required bool supported}) async {
+    final config = ref.read(aiConfigProvider).value;
+    if (config == null) return;
+    final modelId = config.moduleName.trim();
+    if (modelId.isEmpty) return;
+    final connectionId = 'legacy-connection-${config.id}';
+    final repository = ref.read(aiCatalogRepositoryProvider);
+    final models = await repository.getModels(connectionId);
+    final index = models.indexWhere((model) => model.id == modelId);
+    if (index < 0) return;
+    final current = models[index];
+    final updated = current.copyWith(
+      capabilities: current.capabilities.copyWith(visionInput: supported),
+    );
+    await ref.read(aiCatalogActionsV2Provider.notifier).saveModel(updated);
+    if (!_disposed) {
+      state = state.copyWith(visionConfigPromptPending: false);
+    }
+  }
+
+  /// 用户忽略「配置图片能力」提示时复位标志。
+  void dismissVisionConfigPrompt() {
+    if (_disposed || !state.hasVisionConfigPrompt) return;
+    state = state.copyWith(visionConfigPromptPending: false);
+  }
+
+  /// 去掉最近一条用户消息中的图片后重发，保留原有文字内容。
+  ///
+  /// 用于模型确实不支持图片的场景：用户不必重新组织文案，直接以纯文本
+  /// 继续这一轮对话。
+  Future<void> resendLastTurnWithoutImage() async {
+    if (state.isStreaming) return;
+    final index = state.standardMessages.lastIndexWhere(
+      (message) => message.role == standard.AiMessageRole.user,
+    );
+    if (index < 0) return;
+    final original = state.standardMessages[index];
+    final originalText = original.parts
+        .whereType<standard.AiTextPart>()
+        .map((part) => part.text)
+        .join();
+    final stripped = AiMultimodalMessageCodec.stripImageAttachments(
+      originalText,
+    );
+    if (!AiMultimodalMessageCodec.hasImageAttachments(originalText)) return;
+    if (stripped.trim().isEmpty) {
+      if (!_disposed) {
+        state = state.copyWith(visionConfigPromptPending: false);
+      }
+      return;
+    }
+    await editUserMessageAndResend(
+      messageId: original.id,
+      updatedText: stripped,
+    );
   }
 
   Future<void> editUserMessageAndResend({
@@ -974,16 +1042,6 @@ class AiChatAction extends _$AiChatAction {
   void _clearStreaming() {
     _pushStreaming('');
     _pushThinking(false);
-  }
-
-  bool _looksExplicitlyTextOnlyModel(String modelName) {
-    final normalized = modelName.toLowerCase();
-    if (normalized.isEmpty) return false;
-    return normalized.contains('text-embedding') ||
-        normalized.contains('embedding') ||
-        normalized.contains('rerank') ||
-        normalized.contains('whisper') ||
-        normalized.contains('tts');
   }
 }
 
