@@ -17,9 +17,6 @@ class QuillCustomButton extends quill.EmbedBuilder {
     final height = double.parse(buttonData["height"]?.toString() ?? "40");
     final text = buttonData["title"] ?? "按钮";
     final url = buttonData["url"] ?? "";
-    final route = buttonData["route"] ?? "";
-    final type = buttonData["type"] ?? 1;
-
     return UnconstrainedBox(
       alignment: Alignment.centerLeft,
       child: SizedBox(

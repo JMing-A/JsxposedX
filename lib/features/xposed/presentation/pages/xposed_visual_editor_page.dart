@@ -47,7 +47,9 @@ class XposedVisualEditorPage extends HookConsumerWidget {
     );
     useEffect(() => codeController.dispose, []);
 
-    final findController = useMemoized(() => CodeFindController(codeController));
+    final findController = useMemoized(
+      () => CodeFindController(codeController),
+    );
     useEffect(() => findController.dispose, []);
 
     final tabController = useTabController(initialLength: 2);
@@ -84,19 +86,30 @@ class XposedVisualEditorPage extends HookConsumerWidget {
           _syncVisualToCode(blocks.value, codeController);
         }
       }
+
       tabController.addListener(listener);
       return () => tabController.removeListener(listener);
     }, [tabController]);
 
     final tabButtons = _buildTabButtons(
-      context, ref, codeController, findController,
-      showLogcat, isLogcatFullscreen,
+      context,
+      ref,
+      codeController,
+      findController,
+      showLogcat,
+      isLogcatFullscreen,
+      scriptName,
     );
 
     return Scaffold(
       appBar: _buildAppBar(
-        context, ref, scriptName, scriptFileName,
-        codeController, blocks, showLogcat,
+        context,
+        ref,
+        scriptName,
+        scriptFileName,
+        codeController,
+        blocks,
+        showLogcat,
       ),
       body: Column(
         children: [
@@ -149,7 +162,11 @@ class XposedVisualEditorPage extends HookConsumerWidget {
                       controller: tabController,
                       children: [
                         _buildVisualTab(blocks),
-                        _buildCodeTab(codeController, findController, promptsBuilder),
+                        _buildCodeTab(
+                          codeController,
+                          findController,
+                          promptsBuilder,
+                        ),
                       ],
                     ),
                   ),
@@ -232,7 +249,9 @@ class XposedVisualEditorPage extends HookConsumerWidget {
               ).future,
             );
             // showLogcat.value = true;
-            ref.read(logcatProvider.notifier).start(packageName);
+            final console = ref.read(logcatProvider.notifier);
+            console.configureSession('xposed', scriptName);
+            await console.start(packageName);
           },
         ),
       ],
@@ -280,6 +299,7 @@ class XposedVisualEditorPage extends HookConsumerWidget {
     CodeFindController findController,
     ValueNotifier<bool> showLogcat,
     ValueNotifier<bool> isLogcatFullscreen,
+    String scriptName,
   ) {
     final l10n = context.l10n;
     return [
@@ -323,7 +343,9 @@ class XposedVisualEditorPage extends HookConsumerWidget {
         onClick: () {
           showLogcat.value = !showLogcat.value;
           if (showLogcat.value) {
-            ref.read(logcatProvider.notifier).start(packageName);
+            final console = ref.read(logcatProvider.notifier);
+            console.configureSession('xposed', scriptName);
+            console.start(packageName);
           } else {
             ref.read(logcatProvider.notifier).stop();
             isLogcatFullscreen.value = false;

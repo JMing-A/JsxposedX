@@ -6,17 +6,27 @@ class MemoryAiBubbleState extends BubbleState {
     required super.role,
     required super.isError,
     required super.onRetry,
-    required super.isToolCalling,
     required super.packageName,
     required this.isToolResultBubble,
     super.retryLabel,
     super.loadingHint,
+    super.streaming,
+    super.onEdit,
+    super.onDelete,
+    super.onRegenerate,
+    super.onQuote,
+    super.rawDetails,
+    super.toolInvocations,
+    super.onToolApprove,
+    super.onToolReject,
+    super.errorHint,
+    super.imageSources,
+    super.pendingQuestion,
+    super.onAnswer,
   });
 
   final bool isToolResultBubble;
 
   @override
   bool get isToolResult => isToolResultBubble || super.isToolResult;
-
-  bool get isSystem => role == 'system';
 }

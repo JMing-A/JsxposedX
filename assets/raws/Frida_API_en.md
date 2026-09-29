@@ -4,6 +4,129 @@ Frida is a powerful dynamic instrumentation toolkit. JsXposed_X integrates Frida
 
 ---
 
+# 0. Script Authoring Rules (Read Before Generating Scripts)
+
+The following are hard requirements. Violating any of them will make the script fail to run or be rejected by validation.
+
+## 0.1 Use Only the `Fx.*` APIs Listed Here
+
+Native Frida APIs are forbidden (validation rejects them):
+
+| Forbidden | Correct |
+|---|---|
+| `Java.perform(function(){...})` | Omit it. The loader already wraps scripts in `Java.perform` |
+| `Java.use("com.a.B")` | `Fx.use("com.a.B")` |
+| `Java.use(cls).m.overload(...).implementation = fn` | `Fx.use(cls).hook("m", [...], {...})` |
+| `Java.cast(obj, Java.use(cls))` | `Fx.wrap(obj).cast(cls)` |
+
+Any API not found in this document must be treated as non-existent.
+
+## 0.2 Write Statements at the Top Level
+
+Do **not** wrap your code in `Java.perform` and do not defer execution. The loader places the whole script inside the Java context already:
+
+```javascript
+// Correct: top-level statements
+Fx.use("com.example.Target").hook("checkVip", [], {
+  after: function(retval, args, thisObj) {
+    try {
+      return true;
+    } catch (e) {
+      console.log("[Fx] error: " + e);
+    }
+  }
+});
+```
+
+## 0.3 Hook Callback Signature Is `(args, thisObj)`, Not `param`
+
+`Fx` differs from `Jx`: there is **no** `param` object; arguments arrive as function parameters:
+
+| Callback | Signature | Description |
+|---|---|---|
+| `before` | `function(args, thisObj)` | `args` is the argument array; mutate with `args[0] = x` |
+| `after` | `function(retval, args, thisObj)` | `retval` is the original return value |
+| `replace` | `function(args, thisObj)` | Its `return` becomes the method result; the original method does not run |
+
+```javascript
+Fx.use("com.example.Target").hook("checkVip", [], {
+  before: function(args, thisObj) { console.log("[Fx] called, arg0: " + args[0]); },
+  after:  function(retval, args, thisObj) { console.log("[Fx] returned: " + retval); }
+});
+```
+
+## 0.4 `after` Returning a Falsy Value Has No Effect
+
+An `after` return value replaces the original only when **truthy**:
+
+```javascript
+// To force true -- works
+after: function(retval, args, thisObj) { return true; }
+
+// To force false -- this does NOT work! false is falsy, so the original value is kept
+after: function(retval, args, thisObj) { return false; }   // wrong
+
+// Correct option 1: returnConst
+Fx.use(cls).returnConst("isVip", [], false);
+
+// Correct option 2: replace
+Fx.use(cls).replace("isVip", [], function(args, thisObj) { return false; });
+```
+
+## 0.5 The Parameter Type Array Is Mandatory
+
+The second argument is the Java parameter type array; pass `[]` for no-arg methods:
+
+```javascript
+Fx.use(cls).hook("isVip", [], { ... });                             // no args
+Fx.use(cls).hook("setFlag", ["int", "java.lang.String"], { ... });  // (int, String)
+```
+
+Passing `[]` matches the method's first overload; when a method has several overloads and you need a specific one, list all types.
+
+## 0.6 Wrap Every Callback in try-catch
+
+```javascript
+after: function(retval, args, thisObj) {
+  try {
+    console.log("[Fx] original result: " + retval);
+  } catch (e) {
+    console.log("[Fx] error: " + e);
+  }
+}
+```
+
+## 0.7 Log with `console.log` / `Fx.log`
+
+The log tag is `JsxposedX-Frida` and output is visible in the script log panel.
+
+## 0.8 Minimal Working Skeleton
+
+```javascript
+// Goal: make com.example.Target#checkVip() always return true
+Fx.use("com.example.Target").hook("checkVip", [], {
+  before: function(args, thisObj) {
+    console.log("[Fx] checkVip called");
+  },
+  after: function(retval, args, thisObj) {
+    try {
+      console.log("[Fx] original result: " + retval);
+      return true;
+    } catch (e) {
+      console.log("[Fx] error: " + e);
+    }
+  }
+});
+```
+
+To pin a return value in one line:
+
+```javascript
+Fx.use("com.example.Target").returnConst("checkVip", [], true);
+```
+
+---
+
 # 1. Frida Native API
 
 These are Frida's core APIs, powerful and flexible.

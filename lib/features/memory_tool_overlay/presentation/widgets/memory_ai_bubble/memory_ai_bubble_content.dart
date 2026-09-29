@@ -18,6 +18,9 @@ class MemoryAiBubbleContentPart extends BaseBubbleContentPart {
     BubbleState state, {
     required BaseBubbleToolbarPart toolbarPart,
   }) {
+    if (state.toolInvocations.isNotEmpty) {
+      return buildToolInvocations(context, state);
+    }
     if (state.isToolResult) {
       return GestureDetector(
         onLongPress: () => toolbarPart.showTextActionsSheet(

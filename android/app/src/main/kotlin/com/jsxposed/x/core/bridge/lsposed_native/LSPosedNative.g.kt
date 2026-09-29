@@ -13,7 +13,7 @@ import io.flutter.plugin.common.StandardMethodCodec
 import io.flutter.plugin.common.StandardMessageCodec
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
-private object LsposedNativePigeonUtils {
+private object LSPosedNativePigeonUtils {
 
   fun wrapResult(result: Any?): List<Any?> {
     return listOf(result)
@@ -47,7 +47,7 @@ class FlutterError (
   override val message: String? = null,
   val details: Any? = null
 ) : Throwable()
-private open class LsposedNativePigeonCodec : StandardMessageCodec() {
+private open class LSPosedNativePigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return     super.readValueOfType(type, buffer)
   }
@@ -67,7 +67,7 @@ interface LSPosedNative {
   companion object {
     /** The codec used by LSPosedNative. */
     val codec: MessageCodec<Any?> by lazy {
-      LsposedNativePigeonCodec()
+      LSPosedNativePigeonCodec()
     }
     /** Sets up an instance of `LSPosedNative` to handle messages through the `binaryMessenger`. */
     @JvmOverloads
@@ -83,10 +83,10 @@ interface LSPosedNative {
             api.addModuleScope(packageNameArg, userIdArg) { result: Result<Boolean> ->
               val error = result.exceptionOrNull()
               if (error != null) {
-                reply.reply(LsposedNativePigeonUtils.wrapError(error))
+                reply.reply(LSPosedNativePigeonUtils.wrapError(error))
               } else {
                 val data = result.getOrNull()
-                reply.reply(LsposedNativePigeonUtils.wrapResult(data))
+                reply.reply(LSPosedNativePigeonUtils.wrapResult(data))
               }
             }
           }
@@ -104,10 +104,10 @@ interface LSPosedNative {
             api.removeModuleScope(packageNameArg, userIdArg) { result: Result<Boolean> ->
               val error = result.exceptionOrNull()
               if (error != null) {
-                reply.reply(LsposedNativePigeonUtils.wrapError(error))
+                reply.reply(LSPosedNativePigeonUtils.wrapError(error))
               } else {
                 val data = result.getOrNull()
-                reply.reply(LsposedNativePigeonUtils.wrapResult(data))
+                reply.reply(LSPosedNativePigeonUtils.wrapResult(data))
               }
             }
           }
@@ -122,10 +122,10 @@ interface LSPosedNative {
             api.getModuleScope{ result: Result<List<String>> ->
               val error = result.exceptionOrNull()
               if (error != null) {
-                reply.reply(LsposedNativePigeonUtils.wrapError(error))
+                reply.reply(LSPosedNativePigeonUtils.wrapError(error))
               } else {
                 val data = result.getOrNull()
-                reply.reply(LsposedNativePigeonUtils.wrapResult(data))
+                reply.reply(LSPosedNativePigeonUtils.wrapResult(data))
               }
             }
           }
@@ -140,7 +140,7 @@ interface LSPosedNative {
             val wrapped: List<Any?> = try {
               listOf(api.isLSPosedAvailable())
             } catch (exception: Throwable) {
-              LsposedNativePigeonUtils.wrapError(exception)
+              LSPosedNativePigeonUtils.wrapError(exception)
             }
             reply.reply(wrapped)
           }

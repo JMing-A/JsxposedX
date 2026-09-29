@@ -17,10 +17,36 @@ import java.nio.ByteOrder
 import java.util.zip.ZipFile
 
 class ApkAnalysis(private val context: Context, private val session: ApkSession = ApkSession(context)) {
+    companion object {
+        private const val MAX_APK_INDEX_SESSIONS = 2
+        private const val MAX_DEX_CACHE_ENTRIES = 3
+        private const val MAX_JADX_CACHE_ENTRIES = 1
+    }
 
     fun openSession(packageName: String): String = session.openSession(packageName)
 
-    fun closeSession(sessionId: String) = session.closeSession(sessionId)
+    @Synchronized
+    fun closeSession(sessionId: String) {
+        val prefix = "$sessionId::"
+        classDexIndex.remove(sessionId)
+        dexCache.keys.filter { it.startsWith(prefix) }.forEach(dexCache::remove)
+        jadxCache.keys.filter { it.startsWith(prefix) }.forEach { key ->
+            jadxCache.remove(key)?.let { runCatching { it.close() } }
+        }
+        File(context.cacheDir, "dex_extract")
+            .listFiles { file -> file.name.startsWith("${sessionId}_") }
+            ?.forEach { it.delete() }
+        session.closeSession(sessionId)
+    }
+
+    @Synchronized
+    fun clearCaches() {
+        jadxCache.values.forEach { runCatching { it.close() } }
+        jadxCache.clear()
+        dexCache.clear()
+        classDexIndex.clear()
+        session.closeAll()
+    }
 
     fun getApkAssets(sessionId: String): List<ApkAsset> =
         getApkAssetsAt(sessionId, "")
@@ -37,7 +63,7 @@ class ApkAnalysis(private val context: Context, private val session: ApkSession 
                 if (!entryPath.startsWith(path)) continue
                 val relative = entryPath.removePrefix(path)
                 if (relative.isEmpty()) continue
-                val segments = relative.split("/").filter { it.isNotEmpty() }
+                val segments = relative.split('/').filter { it.isNotEmpty() }
                 if (segments.isEmpty()) continue
                 if (segments.size > 1) {
                     dirs.add(segments[0])
@@ -50,7 +76,7 @@ class ApkAnalysis(private val context: Context, private val session: ApkSession 
                             compressedSize = entry.compressedSize.coerceAtLeast(0),
                             isDirectory = false,
                             lastModified = entry.lastModifiedTime?.toMillis() ?: 0L,
-                        )
+                        ),
                     )
                 }
             }
@@ -65,7 +91,7 @@ class ApkAnalysis(private val context: Context, private val session: ApkSession 
                     compressedSize = 0,
                     isDirectory = true,
                     lastModified = 0L,
-                )
+                ),
             )
         }
         result.addAll(files.sortedBy { it.name })
@@ -159,11 +185,30 @@ class ApkAnalysis(private val context: Context, private val session: ApkSession 
         return parseDexBytes(dexBytes)
     }
 
-    private val dexCache = mutableMapOf<String, List<DexClass>>()
+    private val dexCache = object : LinkedHashMap<String, List<DexClass>>(4, 0.75f, true) {
+        override fun removeEldestEntry(
+            eldest: MutableMap.MutableEntry<String, List<DexClass>>,
+        ): Boolean = size > MAX_DEX_CACHE_ENTRIES
+    }
+    private val classDexIndex = object : LinkedHashMap<String, MutableMap<String, String>>(
+        MAX_APK_INDEX_SESSIONS + 1,
+        0.75f,
+        true,
+    ) {
+        override fun removeEldestEntry(
+            eldest: MutableMap.MutableEntry<String, MutableMap<String, String>>,
+        ): Boolean = size > MAX_APK_INDEX_SESSIONS
+    }
 
+    @Synchronized
     private fun loadDex(sessionId: String, dexPath: String): List<DexClass> {
         val key = "$sessionId::$dexPath"
-        return dexCache.getOrPut(key) { parseDex(sessionId, dexPath) }
+        dexCache[key]?.let { return it }
+        val classes = parseDex(sessionId, dexPath)
+        dexCache[key] = classes
+        val sessionIndex = classDexIndex.getOrPut(sessionId) { mutableMapOf() }
+        classes.forEach { sessionIndex.putIfAbsent(it.className, dexPath) }
+        return classes
     }
 
     fun getDexPackages(sessionId: String, dexPaths: List<String>, packagePrefix: String): List<String> {
@@ -257,11 +302,13 @@ class ApkAnalysis(private val context: Context, private val session: ApkSession 
         return "// Class not found: $className"
     }
 
-    private val jadxCache = mutableMapOf<String, JadxDecompiler>()
+    private val jadxCache = LinkedHashMap<String, JadxDecompiler>(2, 0.75f, true)
 
+    @Synchronized
     private fun getJadxForSingleDex(sessionId: String, dexPath: String): JadxDecompiler {
         val key = "$sessionId::$dexPath"
-        return jadxCache.getOrPut(key) {
+        jadxCache[key]?.let { return it }
+        val jadx = run {
             val args = JadxArgs().apply {
                 inputFiles = listOf(extractDexToFile(sessionId, dexPath))
                 isSkipResources = true
@@ -275,13 +322,22 @@ class ApkAnalysis(private val context: Context, private val session: ApkSession 
                 isDeobfuscationOn = false  // 关闭反混淆，加快速度
                 isUseImports = true  // 使用 import 语句，减少代码冗余
             }
-            val jadx = JadxDecompiler(args)
-            jadx.load()
-            jadx
+            JadxDecompiler(args).also { it.load() }
         }
+        jadxCache[key] = jadx
+        while (jadxCache.size > MAX_JADX_CACHE_ENTRIES) {
+            val eldestKey = jadxCache.entries.first().key
+            jadxCache.remove(eldestKey)?.let { runCatching { it.close() } }
+        }
+        return jadx
     }
 
     private fun findDexContaining(sessionId: String, dexPaths: List<String>, className: String): String? {
+        classDexIndex[sessionId]?.get(className)?.let { indexedPath ->
+            if (indexedPath in dexPaths) {
+                return indexedPath
+            }
+        }
         for (dexPath in dexPaths) {
             val classes = loadDex(sessionId, dexPath)
             if (classes.any { it.className == className }) return dexPath
@@ -289,6 +345,7 @@ class ApkAnalysis(private val context: Context, private val session: ApkSession 
         return null
     }
 
+    @Synchronized
     fun decompileClass(sessionId: String, dexPaths: List<String>, className: String): String {
         return try {
             val dexPath = findDexContaining(sessionId, dexPaths, className)

@@ -1,10 +1,10 @@
 import 'package:JsxposedX/common/widgets/custom_dIalog.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
-import 'package:JsxposedX/core/models/ai_session.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/environments/api_manual_chat_environment_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/runtime/ai_chat_environment_initializer.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
+import 'package:JsxposedX/features/ai/presentation/states/ai_chat_session_view.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_input.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_list.dart';
 import 'package:flutter/material.dart';
@@ -23,26 +23,34 @@ class AiApiManualPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isZh = context.isZh;
-    final apiType = useState<String>(initialApiType ?? 'xposed'); // 'xposed' or 'frida'
+    final apiType = useState<String>(
+      initialApiType ?? 'xposed',
+    ); // 'xposed' or 'frida'
 
     // 加载 MD 文档内容
     final mdFuture = useMemoized(
       () => rootBundle.loadString(
         apiType.value == 'frida'
-            ? (isZh ? 'assets/raws/Frida_API.md' : 'assets/raws/Frida_API_en.md')
-            : (isZh ? 'assets/raws/JsxposedX_API.md' : 'assets/raws/JsxposedX_API_en.md'),
+            ? (isZh
+                  ? 'assets/raws/Frida_API.md'
+                  : 'assets/raws/Frida_API_en.md')
+            : (isZh
+                  ? 'assets/raws/JsxposedX_API.md'
+                  : 'assets/raws/JsxposedX_API_en.md'),
       ),
       [isZh, apiType.value],
     );
     final mdSnapshot = useFuture(mdFuture);
 
     if (!mdSnapshot.hasData) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final systemPrompt = _buildSystemPrompt(mdSnapshot.data!, isZh, apiType.value);
+    final systemPrompt = _buildSystemPrompt(
+      mdSnapshot.data!,
+      isZh,
+      apiType.value,
+    );
 
     final packageName = 'jsxposed_api_manual_${apiType.value}';
     final environment = ref.watch(
@@ -76,7 +84,7 @@ class AiApiManualPage extends HookConsumerWidget {
     // 自动滚动逻辑（同 AiReversePage）
     final lastMessageId = useRef<String?>(null);
     useEffect(() {
-      final visibleMessages = chatState.visibleMessages;
+      final visibleMessages = chatState.visibleViewMessages;
       if (visibleMessages.isNotEmpty) {
         final currentLastId = visibleMessages.last.id;
         final isNewMessage = lastMessageId.value != currentLastId;
@@ -93,7 +101,7 @@ class AiApiManualPage extends HookConsumerWidget {
         }
       }
       return null;
-    }, [chatState.visibleMessages.length]);
+    }, [chatState.visibleViewMessages.length]);
 
     return Scaffold(
       appBar: _buildAppBar(context, ref, chatState, systemPrompt, apiType),
@@ -103,7 +111,7 @@ class AiApiManualPage extends HookConsumerWidget {
           children: [
             Expanded(
               child: AiChatList(
-                messages: chatState.visibleMessages,
+                messages: chatState.visibleViewMessages,
                 scrollController: scrollController,
                 packageName: packageName,
                 systemPrompt: systemPrompt,
@@ -142,7 +150,9 @@ class AiApiManualPage extends HookConsumerWidget {
         // API 类型切换按钮
         PopupMenuButton<String>(
           icon: Icon(
-            apiType.value == 'xposed' ? Icons.code_rounded : Icons.memory_rounded,
+            apiType.value == 'xposed'
+                ? Icons.code_rounded
+                : Icons.memory_rounded,
             size: 20.sp,
           ),
           tooltip: 'Switch API',
@@ -158,7 +168,9 @@ class AiApiManualPage extends HookConsumerWidget {
                   Icon(
                     Icons.code_rounded,
                     size: 16.sp,
-                    color: apiType.value == 'xposed' ? context.colorScheme.primary : null,
+                    color: apiType.value == 'xposed'
+                        ? context.colorScheme.primary
+                        : null,
                   ),
                   SizedBox(width: 8.w),
                   Text('Xposed API'),
@@ -172,7 +184,9 @@ class AiApiManualPage extends HookConsumerWidget {
                   Icon(
                     Icons.memory_rounded,
                     size: 16.sp,
-                    color: apiType.value == 'frida' ? context.colorScheme.primary : null,
+                    color: apiType.value == 'frida'
+                        ? context.colorScheme.primary
+                        : null,
                   ),
                   SizedBox(width: 8.w),
                   Text('Frida API'),
@@ -181,7 +195,7 @@ class AiApiManualPage extends HookConsumerWidget {
             ),
           ],
         ),
-        PopupMenuButton<AiSession>(
+        PopupMenuButton<AiChatSessionView>(
           icon: Icon(Icons.chat_bubble_outline_rounded, size: 20.sp),
           tooltip: context.l10n.aiSwitchSession,
           offset: const Offset(0, 40),
@@ -189,28 +203,30 @@ class AiApiManualPage extends HookConsumerWidget {
             ref.read(providerKey.notifier).switchSession(session.id);
           },
           itemBuilder: (_) => chatState.sessions
-              .map((s) => PopupMenuItem(
-                    value: s,
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          size: 16.sp,
-                          color: s.id == chatState.currentSessionId
-                              ? context.colorScheme.primary
-                              : null,
+              .map(
+                (s) => PopupMenuItem(
+                  value: s,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline_rounded,
+                        size: 16.sp,
+                        color: s.id == chatState.currentSessionId
+                            ? context.colorScheme.primary
+                            : null,
+                      ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Text(
+                          s.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(width: 8.w),
-                        Expanded(
-                          child: Text(
-                            s.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ))
+                      ),
+                    ],
+                  ),
+                ),
+              )
               .toList(),
         ),
         _AppBarAction(
@@ -254,8 +270,10 @@ class AiApiManualPage extends HookConsumerWidget {
           decoration: InputDecoration(
             labelText: context.l10n.aiSessionName,
             hintText: context.l10n.aiSessionNameHint,
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 16.w,
+              vertical: 12.h,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.r),
               borderSide: BorderSide(color: context.theme.dividerColor),

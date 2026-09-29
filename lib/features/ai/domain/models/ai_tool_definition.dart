@@ -2,12 +2,16 @@
 class AiToolDefinition {
   final String name;
   final String description;
+  final String descriptionEn;
   final Map<String, dynamic> parameters;
+  final bool isRisky;
 
   const AiToolDefinition({
     required this.name,
     required this.description,
+    this.descriptionEn = '',
     required this.parameters,
+    this.isRisky = false,
   });
 
   /// 转为 OpenAI Function Calling 格式

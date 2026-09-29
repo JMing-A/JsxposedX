@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:JsxposedX/common/widgets/custom_text_field.dart';
 import 'package:JsxposedX/common/widgets/quill/embed_buttons/quill_embed.dart';
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
 
 /// 剧透盒嵌入按钮
 class SpoilerEmbedButton extends QuillEmbed {

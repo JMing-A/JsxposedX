@@ -6,6 +6,7 @@ import com.jsxposed.x.core.bridge.apk_analysis_native.ApkSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -16,7 +17,10 @@ class SoAnalysisNativeImpl(private val context: Context, private val sharedSessi
     private fun ensureSession(sessionId: String) {
         val path = try {
             sharedSession.getLocalPath(sessionId)
-        } catch (_: Exception) { return }
+        } catch (_: Exception) {
+            soAnalysis.clearSession(sessionId)
+            return
+        }
         soAnalysis.registerSession(sessionId, path)
     }
 
@@ -114,5 +118,10 @@ class SoAnalysisNativeImpl(private val context: Context, private val sharedSessi
                 withContext(Dispatchers.Main) { callback(Result.failure(e)) }
             }
         }
+    }
+
+    fun cleanup() {
+        scope.cancel()
+        soAnalysis.clearAll()
     }
 }

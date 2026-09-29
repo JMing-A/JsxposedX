@@ -11,10 +11,7 @@ class HttpInterceptor extends Interceptor {
   static const _requestStartTimeKey = 'request_start_time';
 
   @override
-  void onRequest(
-    RequestOptions options,
-    RequestInterceptorHandler handler,
-  ) {
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     options.extra[_requestStartTimeKey] = DateTime.now().millisecondsSinceEpoch;
     options.headers.putIfAbsent(
       NetworkHeaders.accept,
@@ -22,7 +19,9 @@ class HttpInterceptor extends Interceptor {
     );
 
     final contentType = options.headers[NetworkHeaders.contentType];
-    if (contentType == null && options.data != null && options.data is! FormData) {
+    if (contentType == null &&
+        options.data != null &&
+        options.data is! FormData) {
       options.headers[NetworkHeaders.contentType] = NetworkHeaders.json;
     }
 
@@ -122,9 +121,7 @@ class HttpInterceptor extends Interceptor {
       return data;
     }
     return <String, Object?>{
-      'fields': {
-        for (final field in data.fields) field.key: field.value,
-      },
+      'fields': {for (final field in data.fields) field.key: field.value},
       'files': [
         for (final file in data.files)
           {
@@ -139,7 +136,14 @@ class HttpInterceptor extends Interceptor {
   Object? _sanitizeValue(Object? value) {
     if (value is Map) {
       final entries = value.entries
-          .map((entry) => MapEntry(entry.key, _sanitizeValue(entry.value)))
+          .map(
+            (entry) => MapEntry(
+              entry.key,
+              _isSensitiveKey(entry.key)
+                  ? '[REDACTED]'
+                  : _sanitizeValue(entry.value),
+            ),
+          )
           .where((entry) => _hasValue(entry.value));
       final sanitized = <Object?, Object?>{
         for (final entry in entries) entry.key: entry.value,
@@ -160,6 +164,18 @@ class HttpInterceptor extends Interceptor {
     }
 
     return value;
+  }
+
+  bool _isSensitiveKey(Object? key) {
+    final normalized = key?.toString().toLowerCase() ?? '';
+    return normalized == 'authorization' ||
+        normalized == 'proxy-authorization' ||
+        normalized.contains('api-key') ||
+        normalized.contains('apikey') ||
+        normalized.contains('token') ||
+        normalized.contains('secret') ||
+        normalized == 'cookie' ||
+        normalized == 'set-cookie';
   }
 
   bool _hasValue(Object? value) {

@@ -108,8 +108,16 @@ class _TabHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _TabItem(label: 'Smali', selected: index == 0, onTap: () => onChanged(0)),
-        _TabItem(label: 'Java', selected: index == 1, onTap: () => onChanged(1)),
+        _TabItem(
+          label: 'Smali',
+          selected: index == 0,
+          onTap: () => onChanged(0),
+        ),
+        _TabItem(
+          label: 'Java',
+          selected: index == 1,
+          onTap: () => onChanged(1),
+        ),
         _TabItem(label: 'Map', selected: index == 2, onTap: () => onChanged(2)),
       ],
     );
@@ -121,7 +129,11 @@ class _TabItem extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _TabItem({required this.label, required this.selected, required this.onTap});
+  const _TabItem({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -265,7 +277,10 @@ class _ActionBtn extends StatelessWidget {
         children: [
           Icon(icon, size: 13.sp, color: c),
           SizedBox(width: 3.w),
-          Text(label, style: TextStyle(fontSize: 11.sp, color: c)),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11.sp, color: c),
+          ),
         ],
       ),
     );
@@ -287,11 +302,13 @@ class _JavaTab extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final codeAsync = ref.watch(decompileClassProvider(
-      sessionId: sessionId,
-      dexPaths: dexPaths,
-      className: className,
-    ));
+    final codeAsync = ref.watch(
+      decompileClassProvider(
+        sessionId: sessionId,
+        dexPaths: dexPaths,
+        className: className,
+      ),
+    );
 
     useEffect(() {
       if (codeAsync.isLoading) {
@@ -303,13 +320,20 @@ class _JavaTab extends HookConsumerWidget {
     }, [codeAsync.isLoading]);
 
     return codeAsync.when(
-      data: (code) => _CodeView(code: code, language: 'java', packageName: packageName, className: className),
+      data: (code) => _CodeView(
+        code: code,
+        language: 'java',
+        packageName: packageName,
+        className: className,
+      ),
       error: (e, _) => RefError(
-        onRetry: () => ref.invalidate(decompileClassProvider(
-          sessionId: sessionId,
-          dexPaths: dexPaths,
-          className: className,
-        )),
+        onRetry: () => ref.invalidate(
+          decompileClassProvider(
+            sessionId: sessionId,
+            dexPaths: dexPaths,
+            className: className,
+          ),
+        ),
       ),
       loading: () => const SizedBox.shrink(),
     );
@@ -331,11 +355,13 @@ class _SmaliTab extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final codeAsync = ref.watch(getClassSmaliProvider(
-      sessionId: sessionId,
-      dexPaths: dexPaths,
-      className: className,
-    ));
+    final codeAsync = ref.watch(
+      getClassSmaliProvider(
+        sessionId: sessionId,
+        dexPaths: dexPaths,
+        className: className,
+      ),
+    );
 
     useEffect(() {
       if (codeAsync.isLoading) {
@@ -347,13 +373,20 @@ class _SmaliTab extends HookConsumerWidget {
     }, [codeAsync.isLoading]);
 
     return codeAsync.when(
-      data: (code) => _CodeView(code: code, language: 'smali', packageName: packageName, className: className),
+      data: (code) => _CodeView(
+        code: code,
+        language: 'smali',
+        packageName: packageName,
+        className: className,
+      ),
       error: (e, _) => RefError(
-        onRetry: () => ref.invalidate(getClassSmaliProvider(
-          sessionId: sessionId,
-          dexPaths: dexPaths,
-          className: className,
-        )),
+        onRetry: () => ref.invalidate(
+          getClassSmaliProvider(
+            sessionId: sessionId,
+            dexPaths: dexPaths,
+            className: className,
+          ),
+        ),
       ),
       loading: () => const SizedBox.shrink(),
     );
@@ -366,7 +399,12 @@ class _CodeView extends HookConsumerWidget {
   final String? packageName;
   final String? className;
 
-  const _CodeView({required this.code, required this.language, this.packageName, this.className});
+  const _CodeView({
+    required this.code,
+    required this.language,
+    this.packageName,
+    this.className,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -379,7 +417,11 @@ class _CodeView extends HookConsumerWidget {
           ? (selectedText) {
               final langLabel = language == 'smali' ? 'Smali' : 'Java';
               final prompt = cls != null && cls.isNotEmpty
-                  ? context.l10n.apkAnalyzeSelectedCode(cls, langLabel, selectedText)
+                  ? context.l10n.apkAnalyzeSelectedCode(
+                      cls,
+                      langLabel,
+                      selectedText,
+                    )
                   : selectedText;
               ref
                   .read(aiChatRuntimeProvider(packageName: pkg).notifier)

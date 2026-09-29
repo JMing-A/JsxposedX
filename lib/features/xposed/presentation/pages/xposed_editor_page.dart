@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:uuid/uuid.dart';
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/app_code_editor/widgets/code_find_panel_view.dart';
 import 'package:JsxposedX/common/widgets/app_code_editor/app_code_editor.dart';
@@ -13,6 +15,8 @@ import 'package:JsxposedX/core/routes/routes/home_route.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_action_provider.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/xposed_query_provider.dart';
 import 'package:JsxposedX/features/xposed/presentation/providers/logcat_provider.dart';
+import 'package:JsxposedX/core/providers/pinia_provider.dart';
+import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/xposed/presentation/widgets/editor_tab_button.dart';
 import 'package:JsxposedX/features/xposed/presentation/widgets/logcat_panel_view.dart';
 import 'package:file_picker/file_picker.dart';
@@ -33,6 +37,33 @@ class XposedEditorPage extends HookConsumerWidget {
     required this.path,
     required this.packageName,
   });
+
+  Future<void> _prepareScriptRun(WidgetRef ref, String scriptName) async {
+    final conversationId = 'standalone:$packageName:xposed:$scriptName';
+    final key = 'jx_script_run_context_${packageName}_xposed_$scriptName';
+    final pinia = ref.read(piniaProvider);
+    final runId = const Uuid().v4();
+    final startedAt = DateTime.now().toUtc();
+    await ref
+        .read(scriptLogRepositoryProvider)
+        .startRun(
+          runId: runId,
+          conversationId: conversationId,
+          source: 'xposed',
+          scriptName: scriptName,
+          startedAt: startedAt,
+        );
+    await pinia.setString(
+      key: key,
+      value: jsonEncode({
+        'runId': runId,
+        'conversationId': conversationId,
+        'source': 'xposed',
+        'scriptName': scriptName,
+        'startedAt': startedAt.toIso8601String(),
+      }),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -107,10 +138,17 @@ class XposedEditorPage extends HookConsumerWidget {
         name: context.l10n.terminal,
         icon: Icons.terminal_rounded,
         color: showLogcat.value ? Colors.green : Colors.grey,
-        onClick: (CodeLineEditingController ctrl) {
+        onClick: (CodeLineEditingController ctrl) async {
           showLogcat.value = !showLogcat.value;
           if (showLogcat.value) {
-            ref.read(logcatProvider.notifier).start(packageName);
+            final console = ref.read(logcatProvider.notifier);
+            await _prepareScriptRun(ref, scriptFileName);
+            console.configureSession(
+              'xposed',
+              scriptFileName,
+              conversationId: 'standalone:$packageName:xposed:$scriptFileName',
+            );
+            console.start(packageName);
           } else {
             ref.read(logcatProvider.notifier).stop();
             isLogcatFullscreen.value = false;
@@ -180,7 +218,15 @@ class XposedEditorPage extends HookConsumerWidget {
                   localPath: path,
                 ).future,
               );
-              ref.read(logcatProvider.notifier).start(packageName);
+              final console = ref.read(logcatProvider.notifier);
+              await _prepareScriptRun(ref, scriptFileName);
+              console.configureSession(
+                'xposed',
+                scriptFileName,
+                conversationId:
+                    'standalone:$packageName:xposed:$scriptFileName',
+              );
+              await console.start(packageName);
             },
           ),
         ],
@@ -257,7 +303,7 @@ class XposedEditorPage extends HookConsumerWidget {
 class _TabButtonData {
   final String name;
   final IconData icon;
-  final void Function(CodeLineEditingController) onClick;
+  final FutureOr<void> Function(CodeLineEditingController) onClick;
   final Color? color;
 
   const _TabButtonData({

@@ -1,6 +1,93 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
+
+/// 默认的粘贴感知上下文菜单构建器，确保长按时始终显示粘贴按钮
+Widget _defaultContextMenuBuilder(
+  BuildContext context,
+  EditableTextState editableTextState,
+) {
+  return AdaptiveTextSelectionToolbar.buttonItems(
+    anchors: editableTextState.contextMenuAnchors,
+    buttonItems: _ensurePasteButton(editableTextState),
+  );
+}
+
+List<ContextMenuButtonItem> _ensurePasteButton(
+  EditableTextState editableTextState,
+) {
+  final buttonItems = editableTextState.contextMenuButtonItems
+      .map((item) => item.type == ContextMenuButtonType.paste
+          ? item.copyWith(
+              onPressed: () => _pasteFromClipboard(editableTextState),
+            )
+          : item)
+      .toList(growable: true);
+
+  final canPaste = !editableTextState.widget.readOnly;
+  final hasPaste =
+      buttonItems.any((item) => item.type == ContextMenuButtonType.paste);
+  if (canPaste && !hasPaste) {
+    final insertIndex = _pasteInsertIndex(buttonItems);
+    buttonItems.insert(
+      insertIndex,
+      ContextMenuButtonItem(
+        type: ContextMenuButtonType.paste,
+        onPressed: () => _pasteFromClipboard(editableTextState),
+      ),
+    );
+  }
+
+  return buttonItems;
+}
+
+int _pasteInsertIndex(List<ContextMenuButtonItem> buttonItems) {
+  final copyIdx =
+      buttonItems.lastIndexWhere((item) => item.type == ContextMenuButtonType.copy);
+  if (copyIdx >= 0) return copyIdx + 1;
+  final cutIdx =
+      buttonItems.lastIndexWhere((item) => item.type == ContextMenuButtonType.cut);
+  if (cutIdx >= 0) return cutIdx + 1;
+  return 0;
+}
+
+Future<void> _pasteFromClipboard(EditableTextState editableTextState) async {
+  if (editableTextState.widget.readOnly) {
+    editableTextState.hideToolbar();
+    return;
+  }
+
+  final data = await Clipboard.getData(Clipboard.kTextPlain);
+  final text = data?.text;
+  if (!editableTextState.mounted || text == null || text.isEmpty) {
+    editableTextState.hideToolbar();
+    return;
+  }
+
+  final value = editableTextState.textEditingValue;
+  final selection = value.selection.isValid
+      ? value.selection
+      : TextSelection.collapsed(offset: value.text.length);
+  final nextValue = value
+      .replaced(selection, text)
+      .copyWith(
+        selection: TextSelection.collapsed(offset: selection.start + text.length),
+        composing: TextRange.empty,
+      );
+  editableTextState.userUpdateTextEditingValue(
+    nextValue,
+    SelectionChangedCause.toolbar,
+  );
+
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    if (!editableTextState.mounted) return;
+    editableTextState.bringIntoView(
+      editableTextState.textEditingValue.selection.extent,
+    );
+    editableTextState.hideToolbar();
+  });
+}
 
 /// 精美输入框
 
@@ -24,7 +111,7 @@ class CustomTextField extends StatelessWidget {
   final String? name;
   final List<TextInputFormatter>? inputFormatters;
   final bool isFormBuilder;
-  final EditableTextContextMenuBuilder? contextMenuBuilder;
+  final Widget Function(BuildContext, EditableTextState)? contextMenuBuilder;
 
   const CustomTextField({
     super.key,
@@ -70,7 +157,7 @@ class CustomTextField extends StatelessWidget {
     Color? focusedBorderColor,
     Color? enabledBorderColor,
     List<TextInputFormatter>? inputFormatters,
-    EditableTextContextMenuBuilder? contextMenuBuilder,
+    Widget Function(BuildContext, EditableTextState)? contextMenuBuilder,
     //// 只能输入数字
     // inputFormatters: [FilteringTextInputFormatter.digitsOnly]
     //
@@ -175,7 +262,8 @@ class CustomTextField extends StatelessWidget {
         style: textStyle ?? const TextStyle(fontSize: 16),
         decoration: decoration,
         inputFormatters: inputFormatters,
-        contextMenuBuilder: contextMenuBuilder,
+        contextMenuBuilder:
+            contextMenuBuilder ?? _defaultContextMenuBuilder,
       );
     }
 
@@ -193,7 +281,8 @@ class CustomTextField extends StatelessWidget {
       style: textStyle ?? const TextStyle(fontSize: 16),
       decoration: decoration,
       inputFormatters: inputFormatters,
-      contextMenuBuilder: contextMenuBuilder,
+      contextMenuBuilder:
+          contextMenuBuilder ?? _defaultContextMenuBuilder,
     );
   }
 }

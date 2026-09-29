@@ -4,7 +4,6 @@ import 'package:JsxposedX/core/providers/pinia_provider.dart';
 import 'package:JsxposedX/features/ai/data/models/ai_message_dto.dart';
 import 'package:JsxposedX/features/ai/data/models/ai_session_dto.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
-import 'package:JsxposedX/features/ai/domain/models/padi_chat_options.dart';
 
 class AiChatQueryDatasource {
   AiChatQueryDatasource({required PiniaStorage storage}) : _storage = storage;
@@ -17,7 +16,6 @@ class AiChatQueryDatasource {
   static const String _chatContentKey = 'messages';
   static const String _chatContextKey = 'context';
   static const String _chatConfigKey = 'config';
-  static const String _padiChatOptionsKey = 'padi_chat_options';
 
   Future<List<AiSessionDto>> getSessions(String packageName) async {
     final json = await _storage.getString(_getSessionIndexKey(packageName));
@@ -61,7 +59,10 @@ class AiChatQueryDatasource {
     try {
       final list = jsonDecode(json) as List<dynamic>;
       return list
-          .map((item) => AiMessageDto.fromStorageJson(item as Map<String, dynamic>))
+          .map(
+            (item) =>
+                AiMessageDto.fromStorageJson(item as Map<String, dynamic>),
+          )
           .toList(growable: false);
     } catch (_) {
       return [];
@@ -83,26 +84,6 @@ class AiChatQueryDatasource {
     try {
       final data = jsonDecode(json) as Map<String, dynamic>;
       return AiChatSessionContext.fromStorageJson(data);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<PadiChatOptions?> getPadiChatOptions(
-    String packageName,
-    String sessionId,
-  ) async {
-    final json = await _storage.getString(
-      _padiChatOptionsKey,
-      space: _getChatSpace(sessionId, packageName),
-    );
-    if (json.isEmpty) {
-      return null;
-    }
-
-    try {
-      final data = jsonDecode(json) as Map<String, dynamic>;
-      return PadiChatOptions.fromJson(data);
     } catch (_) {
       return null;
     }

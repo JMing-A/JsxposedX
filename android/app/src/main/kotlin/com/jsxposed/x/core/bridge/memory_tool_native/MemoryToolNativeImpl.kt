@@ -6,6 +6,7 @@ import androidx.annotation.RequiresApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -623,5 +624,10 @@ class MemoryToolNativeImpl(val context: Context) : MemoryToolNative {
                 }
             }
         }
+    }
+
+    fun cleanup() {
+        scope.cancel()
+        memoryTool.close()
     }
 }

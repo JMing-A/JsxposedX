@@ -4,7 +4,6 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:JsxposedX/common/widgets/custom_text_field.dart';
 import 'package:JsxposedX/common/widgets/quill/embed_buttons/quill_embed.dart';
-import 'package:JsxposedX/core/extensions/context_extensions.dart';
 
 /// 列表项类型
 /// 1 = 弹窗显示内容, 2 = 跳转URL

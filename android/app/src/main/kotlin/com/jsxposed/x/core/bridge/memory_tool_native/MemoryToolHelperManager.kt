@@ -3,6 +3,7 @@ package com.jsxposed.x.core.bridge.memory_tool_native
 import android.content.Context
 import android.os.Build
 import android.os.Process
+import android.os.SystemClock
 import com.jsxposed.x.core.utils.log.LogX
 import com.jsxposed.x.core.utils.shell.Shell
 import java.io.File
@@ -13,6 +14,7 @@ class MemoryToolHelperManager(private val context: Context) {
         private const val TAG = "MemoryToolHelperManager"
         private const val STARTUP_RETRY_COUNT = 30
         private const val STARTUP_RETRY_DELAY_MS = 150L
+        private const val DAEMON_PING_CACHE_TTL_MS = 1_000L
         private const val HELPER_LOG_FILE_NAME = "memory_tool_helper.log"
         private const val ROOT_RUNTIME_DIR = "/data/local/tmp/JsxposedX/memory_tool"
         private const val ROOT_HELPER_LIBRARY_DIR = "$ROOT_RUNTIME_DIR/helper_libs"
@@ -20,6 +22,10 @@ class MemoryToolHelperManager(private val context: Context) {
     }
 
     private val socketName = "jsxposed_memory_tool_${Process.myPid()}"
+    @Volatile
+    private var lastDaemonPingAtMs = 0L
+    @Volatile
+    private var lastDaemonPingResult = false
     private val rootShell by lazy { Shell(su = true) }
     private val helperLogFile by lazy {
         val logDirectory = context.externalCacheDir ?: context.cacheDir
@@ -44,7 +50,25 @@ class MemoryToolHelperManager(private val context: Context) {
     }
 
     fun isDaemonAlive(): Boolean {
-        return MemoryToolDaemonClient.ping(socketName)
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastDaemonPingAtMs < DAEMON_PING_CACHE_TTL_MS) {
+            return lastDaemonPingResult
+        }
+        return synchronized(this) {
+            val checkedAt = SystemClock.elapsedRealtime()
+            if (checkedAt - lastDaemonPingAtMs < DAEMON_PING_CACHE_TTL_MS) {
+                return@synchronized lastDaemonPingResult
+            }
+            MemoryToolDaemonClient.ping(socketName).also { alive ->
+                lastDaemonPingResult = alive
+                lastDaemonPingAtMs = checkedAt
+            }
+        }
+    }
+
+    fun invalidateDaemonState() {
+        lastDaemonPingResult = false
+        lastDaemonPingAtMs = 0L
     }
 
     private fun startDaemon() {

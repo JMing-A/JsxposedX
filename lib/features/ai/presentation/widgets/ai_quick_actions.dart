@@ -1,30 +1,19 @@
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
-import 'package:JsxposedX/features/ai/data/prompts/system_prompts.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-class AiQuickActions extends ConsumerWidget {
-  final String packageName;
-  final String? systemPrompt;
+class AiQuickActions extends StatelessWidget {
   final VoidCallback? onOpenAnalysis;
 
-  const AiQuickActions({
-    super.key,
-    required this.packageName,
-    this.systemPrompt,
-    this.onOpenAnalysis,
-  });
+  /// 追加在快捷操作行末端的自定义控件（例如计划模式开关）。
+  final Widget? trailing;
+
+  const AiQuickActions({super.key, this.onOpenAnalysis, this.trailing});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isZh = context.isZh;
-
-    void sendQuickAction(String prompt) {
-      ref
-          .read(aiChatRuntimeProvider(packageName: packageName).notifier)
-          .send(prompt);
+  Widget build(BuildContext context) {
+    if (onOpenAnalysis == null && trailing == null) {
+      return const SizedBox.shrink();
     }
 
     return Container(
@@ -41,38 +30,7 @@ class AiQuickActions extends ConsumerWidget {
               color: Colors.blueGrey,
               onTap: onOpenAnalysis!,
             ),
-          _QuickActionTile(
-            icon: Icons.description_outlined,
-            label: context.l10n.aiAnalyzeManifest,
-            color: Colors.orange,
-            onTap: () => sendQuickAction(
-              SystemPrompts.quickAnalyzeManifest(isZh: isZh),
-            ),
-          ),
-          _QuickActionTile(
-            icon: Icons.security_outlined,
-            label: context.l10n.aiHardeningDetection,
-            color: Colors.green,
-            onTap: () => sendQuickAction(
-              SystemPrompts.quickHardeningDetection(isZh: isZh),
-            ),
-          ),
-          _QuickActionTile(
-            icon: Icons.code_outlined,
-            label: context.l10n.aiExportInterfaces,
-            color: Colors.blue,
-            onTap: () => sendQuickAction(
-              SystemPrompts.quickExportInterfaces(isZh: isZh),
-            ),
-          ),
-          _QuickActionTile(
-            icon: Icons.terminal_outlined,
-            label: context.l10n.aiFindHookPoints,
-            color: Colors.purple,
-            onTap: () => sendQuickAction(
-              SystemPrompts.quickFindHookPoints(isZh: isZh),
-            ),
-          ),
+          if (trailing != null) trailing!,
         ],
       ),
     );

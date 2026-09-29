@@ -421,7 +421,7 @@ class OverlayWindowBar extends StatelessWidget implements PreferredSizeWidget {
     final resolvedActions = <Widget>[...actions, ...builtInActions];
     final resolvedLeading = switch (leading) {
       null => null,
-      final widget? => ConstrainedBox(
+      final widget => ConstrainedBox(
         constraints: BoxConstraints.tightFor(width: resolvedLeadingWidth),
         child: Align(
           alignment: Alignment.center,

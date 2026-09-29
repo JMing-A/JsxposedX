@@ -230,21 +230,21 @@ private open class ProjectNativePigeonCodec : StandardMessageCodec() {
 
 /** Generated interface from Pigeon that represents a handler of messages from Flutter. */
 interface ProjectNative {
-  fun initProject()
-  fun projectExists(packageName: String): Boolean
-  fun createProject(packageName: String)
-  fun deleteProject(packageName: String)
-  fun getProjects(): List<AppInfo>
-  fun getFridaScripts(packageName: String): List<String>
-  fun createFridaScript(packageName: String, content: String, localPath: String, append: Boolean)
-  fun readFridaScript(packageName: String, localPath: String): String
-  fun deleteFridaScript(packageName: String, scriptName: String)
+  fun initProject(callback: (Result<Unit>) -> Unit)
+  fun projectExists(packageName: String, callback: (Result<Boolean>) -> Unit)
+  fun createProject(packageName: String, callback: (Result<Unit>) -> Unit)
+  fun deleteProject(packageName: String, callback: (Result<Unit>) -> Unit)
+  fun getProjects(callback: (Result<List<AppInfo>>) -> Unit)
+  fun getFridaScripts(packageName: String, callback: (Result<List<String>>) -> Unit)
+  fun createFridaScript(packageName: String, content: String, localPath: String, append: Boolean, callback: (Result<Unit>) -> Unit)
+  fun readFridaScript(packageName: String, localPath: String, callback: (Result<String>) -> Unit)
+  fun deleteFridaScript(packageName: String, scriptName: String, callback: (Result<Unit>) -> Unit)
   fun importFridaScripts(packageName: String, localPaths: List<String>, callback: (Result<Unit>) -> Unit)
   fun bundleFridaHookJs(packageName: String, callback: (Result<Unit>) -> Unit)
-  fun getJsScripts(packageName: String): List<String>
-  fun createJsScript(packageName: String, content: String, localPath: String, append: Boolean)
-  fun readJsScript(packageName: String, localPath: String): String
-  fun deleteJsScript(packageName: String, localPath: String)
+  fun getJsScripts(packageName: String, callback: (Result<List<String>>) -> Unit)
+  fun createJsScript(packageName: String, content: String, localPath: String, append: Boolean, callback: (Result<Unit>) -> Unit)
+  fun readJsScript(packageName: String, localPath: String, callback: (Result<String>) -> Unit)
+  fun deleteJsScript(packageName: String, localPath: String, callback: (Result<Unit>) -> Unit)
   fun importJsScripts(packageName: String, localPaths: List<String>, callback: (Result<Unit>) -> Unit)
   fun getAuditLogs(packageName: String, limit: Long, offset: Long, keyword: String?, callback: (Result<List<AuditLog?>>) -> Unit)
   fun deleteAuditLog(packageName: String, timestamp: Long, callback: (Result<Unit>) -> Unit)
@@ -264,13 +264,14 @@ interface ProjectNative {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.ProjectNative.initProject$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              api.initProject()
-              listOf(null)
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.initProject{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(ProjectNativePigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -282,12 +283,15 @@ interface ProjectNative {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
-            val wrapped: List<Any?> = try {
-              listOf(api.projectExists(packageNameArg))
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.projectExists(packageNameArg) { result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(ProjectNativePigeonUtils.wrapResult(data))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -299,13 +303,14 @@ interface ProjectNative {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
-            val wrapped: List<Any?> = try {
-              api.createProject(packageNameArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.createProject(packageNameArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(ProjectNativePigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -317,13 +322,14 @@ interface ProjectNative {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
-            val wrapped: List<Any?> = try {
-              api.deleteProject(packageNameArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.deleteProject(packageNameArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(ProjectNativePigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -333,12 +339,15 @@ interface ProjectNative {
         val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.JsxposedX.ProjectNative.getProjects$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            val wrapped: List<Any?> = try {
-              listOf(api.getProjects())
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.getProjects{ result: Result<List<AppInfo>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(ProjectNativePigeonUtils.wrapResult(data))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -350,12 +359,15 @@ interface ProjectNative {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
-            val wrapped: List<Any?> = try {
-              listOf(api.getFridaScripts(packageNameArg))
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.getFridaScripts(packageNameArg) { result: Result<List<String>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(ProjectNativePigeonUtils.wrapResult(data))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -370,13 +382,14 @@ interface ProjectNative {
             val contentArg = args[1] as String
             val localPathArg = args[2] as String
             val appendArg = args[3] as Boolean
-            val wrapped: List<Any?> = try {
-              api.createFridaScript(packageNameArg, contentArg, localPathArg, appendArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.createFridaScript(packageNameArg, contentArg, localPathArg, appendArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(ProjectNativePigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -389,12 +402,15 @@ interface ProjectNative {
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
             val localPathArg = args[1] as String
-            val wrapped: List<Any?> = try {
-              listOf(api.readFridaScript(packageNameArg, localPathArg))
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.readFridaScript(packageNameArg, localPathArg) { result: Result<String> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(ProjectNativePigeonUtils.wrapResult(data))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -407,13 +423,14 @@ interface ProjectNative {
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
             val scriptNameArg = args[1] as String
-            val wrapped: List<Any?> = try {
-              api.deleteFridaScript(packageNameArg, scriptNameArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.deleteFridaScript(packageNameArg, scriptNameArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(ProjectNativePigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -464,12 +481,15 @@ interface ProjectNative {
           channel.setMessageHandler { message, reply ->
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
-            val wrapped: List<Any?> = try {
-              listOf(api.getJsScripts(packageNameArg))
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.getJsScripts(packageNameArg) { result: Result<List<String>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(ProjectNativePigeonUtils.wrapResult(data))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -484,13 +504,14 @@ interface ProjectNative {
             val contentArg = args[1] as String
             val localPathArg = args[2] as String
             val appendArg = args[3] as Boolean
-            val wrapped: List<Any?> = try {
-              api.createJsScript(packageNameArg, contentArg, localPathArg, appendArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.createJsScript(packageNameArg, contentArg, localPathArg, appendArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(ProjectNativePigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -503,12 +524,15 @@ interface ProjectNative {
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
             val localPathArg = args[1] as String
-            val wrapped: List<Any?> = try {
-              listOf(api.readJsScript(packageNameArg, localPathArg))
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.readJsScript(packageNameArg, localPathArg) { result: Result<String> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(ProjectNativePigeonUtils.wrapResult(data))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)
@@ -521,13 +545,14 @@ interface ProjectNative {
             val args = message as List<Any?>
             val packageNameArg = args[0] as String
             val localPathArg = args[1] as String
-            val wrapped: List<Any?> = try {
-              api.deleteJsScript(packageNameArg, localPathArg)
-              listOf(null)
-            } catch (exception: Throwable) {
-              ProjectNativePigeonUtils.wrapError(exception)
+            api.deleteJsScript(packageNameArg, localPathArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(ProjectNativePigeonUtils.wrapError(error))
+              } else {
+                reply.reply(ProjectNativePigeonUtils.wrapResult(null))
+              }
             }
-            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)

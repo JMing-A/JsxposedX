@@ -269,19 +269,17 @@ class AuditLogItem extends HookConsumerWidget {
         final isLast = index == reversedStack.length - 1;
         final isFirst = index == 0;
 
-        String methodName = frame ?? '';
+        String methodName = frame;
         String classInfo = '';
 
         try {
-          if (frame != null) {
-            final bracketIndex = frame.indexOf('(');
-            if (bracketIndex != -1) {
-              final beforeBracket = frame.substring(0, bracketIndex);
-              final lastDotIndex = beforeBracket.lastIndexOf('.');
-              if (lastDotIndex != -1) {
-                methodName = beforeBracket.substring(lastDotIndex + 1);
-                classInfo = beforeBracket.substring(0, lastDotIndex);
-              }
+          final bracketIndex = frame.indexOf('(');
+          if (bracketIndex != -1) {
+            final beforeBracket = frame.substring(0, bracketIndex);
+            final lastDotIndex = beforeBracket.lastIndexOf('.');
+            if (lastDotIndex != -1) {
+              methodName = beforeBracket.substring(lastDotIndex + 1);
+              classInfo = beforeBracket.substring(0, lastDotIndex);
             }
           }
         } catch (_) {}
@@ -369,7 +367,7 @@ class AuditLogItem extends HookConsumerWidget {
                         ],
                         SizedBox(height: 4.h),
                         SelectableText(
-                          frame ?? '',
+                          frame,
                           style: TextStyle(
                             fontSize: 10.sp,
                             color: colorScheme.outline,

@@ -3,14 +3,14 @@ package com.jsxposed.x.core.bridge.app_native
 import android.content.Context
 import kotlinx.coroutines.*
 
-class AppNativeImpl(val context: Context) : AppNative {
-    private val app = App(context)
+class AppNativeImpl(context: Context) : AppNative {
+    private val app = App(context.applicationContext)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun getAppCount(includeSystemApps: Boolean, query: String): Long {
         return app.getAppCount(includeSystemApps, query).toLong()
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     override fun getInstalledApps(
         includeSystemApps: Boolean,
         offset: Long,
@@ -19,30 +19,31 @@ class AppNativeImpl(val context: Context) : AppNative {
         callback: (Result<List<AppInfo>>) -> Unit
     ) {
         // 使用协程在 IO 线程执行查询，避免 UI 卡顿
-        GlobalScope.launch(Dispatchers.IO) {
-            try {
+        scope.launch {
+            val result = try {
                 val apps = app.getInstalledApps(
                     includeSystemApps,
                     offset.toInt(),
                     limit.toInt(),
                     query
                 )
-                callback(Result.success(apps))
+                Result.success(apps)
             } catch (e: Exception) {
-                callback(Result.failure(e))
+                Result.failure(e)
             }
+            withContext(Dispatchers.Main.immediate) { callback(result) }
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     override fun getAppByPackageName(packageName: String, callback: (Result<AppInfo?>) -> Unit) {
-        GlobalScope.launch(Dispatchers.IO) {
-            try {
+        scope.launch {
+            val result = try {
                 val app = app.getAppByPackageName(packageName)
-                callback(Result.success(app))
+                Result.success(app)
             } catch (e: Exception) {
-                callback(Result.failure(e))
+                Result.failure(e)
             }
+            withContext(Dispatchers.Main.immediate) { callback(result) }
         }
     }
 
@@ -50,6 +51,18 @@ class AppNativeImpl(val context: Context) : AppNative {
         packageName: String,
         callback: (Result<Unit>) -> Unit
     ) {
-        return app.openAppX(packageName)
+        scope.launch {
+            val result: Result<Unit> = try {
+                app.openAppX(packageName)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+            withContext(Dispatchers.Main.immediate) { callback(result) }
+        }
+    }
+
+    fun dispose() {
+        scope.cancel()
     }
 }

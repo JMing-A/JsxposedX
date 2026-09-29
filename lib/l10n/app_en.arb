@@ -1,4 +1,4 @@
-﻿{
+{
   "@@locale": "en",
   "appName": "JSXPOSEDX",
   "@appName": {
@@ -476,6 +476,12 @@
   "aiContext": "Context",
   "aiContextTitle": "Context",
   "aiContextBudget": "Context budget",
+  "aiContextUsage": "Usage",
+  "aiContextMemoryEntries": "Memory entries",
+  "aiContextHighWatermark": "High watermark",
+  "aiContextHighWatermarkReached": "Reached",
+  "aiContextHighWatermarkNotReached": "Not reached",
+  "aiContextHighWatermarkAlert": "Context is near its capacity limit; history was compacted automatically",
   "aiContextRemaining": "Remaining budget",
   "aiContextLayers": "Assembled layers",
   "aiContextRecentRounds": "Recent raw rounds",
@@ -533,16 +539,24 @@
   "aiBubbleAssistantTextTitle": "AI Reply",
   "aiBubbleThinkingTitle": "Thinking",
   "aiBubbleAnswerTitle": "Answer",
-  "aiAnalyzeManifest": "Analyze Manifest",
-  "aiHardeningDetection": "Hardening Detection",
-  "aiExportInterfaces": "Export Interfaces",
-  "aiFindHookPoints": "Find Hook Points",
   "aiTestConnecting": "Testing connection...",
   "aiTestSuccess": "Test successful! Received reply: \n{result}",
   "aiTestFailed": "Test failed: {error}",
   "aiSavingAndTesting": "Saving and testing connectivity...",
   "aiSaveFailed": "Save failed (Connection test failed): \n{error}",
   "aiShowMoreMessages": "Show earlier messages ({count})",
+  "aiSearchInConversation": "Search in conversation",
+  "aiSearchMessagesHint": "Search message content...",
+  "aiSearchNoResults": "No matching messages",
+  "aiSearchResultCount": "{count} matches",
+  "@aiSearchResultCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "aiSearchRoleUser": "Me",
+  "aiSearchRoleAssistant": "AI",
+  "aiSearchRoleSystem": "System",
+  "aiSearchRoleTool": "Tool",
+  "aiSearchMessageNotFound": "This message is not in the loaded conversation",
   "aiToolUnknown": "Unknown tool: {toolName}",
   "@aiToolUnknown": {
     "placeholders": { "toolName": { "type": "String" } }
@@ -607,15 +621,6 @@
   "aiBuyCardSecret": "Buy Access Code",
   "aiApiKeyConfigured": "API Key configured",
   "aiApiKeyNotConfigured": "API Key not configured",
-  "aiPadiModelLabel": "Model",
-  "aiPadiReasoningLabel": "Thinking",
-  "aiPadiEffortNone": "Minimal",
-  "aiPadiEffortLow": "Low",
-  "aiPadiEffortMedium": "Medium",
-  "aiPadiEffortHigh": "High",
-  "aiPadiEffortXHigh": "Extreme",
-  "aiPadiOptionsExpand": "Expand",
-  "aiPadiOptionsCollapse": "Collapse",
   "aiCurrentStatus": "Status: {status}",
   "@aiCurrentStatus": {
     "placeholders": {
@@ -631,10 +636,44 @@
   "terminal": "Terminal",
   "terminalFilterHint": "Secondary Filter...",
   "autoScroll": "Auto Scroll",
-  "clearPanel": "Clear Panel",
+  "clearPanel": "Clear view",
+  "consoleClearViewTooltip": "Clears the current view only; persisted logs are kept",
   "noLogs": "No output yet",
   "noLogsFiltered": "No matching logs",
   "logcatFullscreen": "Fullscreen",
+  "consoleSourceSession": "Session",
+  "consoleSourceFrida": "Frida",
+  "consoleSourceXposed": "Xposed",
+  "consoleSourceApp": "App",
+  "consoleSourceCore": "Core",
+  "consoleSourceSystem": "System",
+  "consoleLevelDebug": "Debug",
+  "consoleLevelInfo": "Info",
+  "consoleLevelWarn": "Warn",
+  "consoleLevelError": "Error",
+  "consoleAll": "All",
+  "consoleHistory": "Persisted script logs",
+  "consolePauseOutput": "Pause output",
+  "consoleResumeOutput": "Resume output",
+  "consoleActions": "Console actions",
+  "consoleCopyVisible": "Copy visible logs",
+  "consoleExportVisible": "Export visible logs",
+  "consoleCopied": "{count} logs copied",
+  "consoleCopiedTruncated": "Too many logs; copied the latest {count} of {total}. Use export for the full set.",
+  "consoleRegexSearch": "Regex search",
+  "consoleCaseSensitive": "Case sensitive",
+  "consoleExpandStack": "Expand stack",
+  "consoleCollapseStack": "Collapse stack",
+  "consoleExportDialogTitle": "Export console logs",
+  "consoleNoHistory": "No persisted script logs",
+  "consoleLiveBelow": "Live output below",
+  "consoleLoadOlder": "Load older logs",
+  "consoleLogCopied": "Log copied",
+  "consoleDeleteHistory": "Delete this conversation's logs",
+  "consoleDeleteHistoryConfirmTitle": "Delete history logs?",
+  "consoleDeleteHistoryConfirmMessage": "Persisted script logs for this conversation will be permanently deleted. This cannot be undone.",
+  "consoleDeleteHistoryDone": "History logs deleted for this conversation",
+  "consoleDeleteHistoryUnavailable": "No persisted records are linked to this session",
   "apiManual": "Manual",
   "aiApiManualTitle": "API AI Assistant",
   "aiApiManualSubtitle": "Ask me about JsxposedX API usage",
@@ -787,6 +826,100 @@
       "target": { "type": "String" },
       "name": { "type": "String" }
     }
+  },
+  "runScript": "Run",
+  "@runScript": {
+    "description": "Run script button"
+  },
+  "aiScriptRunning": "{target} script enabled: {name}",
+  "@aiScriptRunning": {
+    "description": "AI script running success message",
+    "placeholders": {
+      "target": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "exportConversation": "Export",
+  "@exportConversation": {
+    "description": "Export conversation button"
+  },
+  "exportingConversation": "Exporting conversation...",
+  "@exportingConversation": {
+    "description": "Exporting conversation message"
+  },
+  "conversationExported": "Conversation exported to {path}",
+  "@conversationExported": {
+    "description": "Conversation export success message",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFailed": "Export failed: {error}",
+  "@exportFailed": {
+    "description": "Export failed message",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFormat": "Export Format",
+  "@exportFormat": {
+    "description": "Export format label"
+  },
+  "exportOptions": "Export Options",
+  "@exportOptions": {
+    "description": "Export options label"
+  },
+  "includeToolCalls": "Include Tool Calls",
+  "@includeToolCalls": {
+    "description": "Include tool calls option"
+  },
+  "includeToolCallsDesc": "Export AI tool invocations and parameters",
+  "@includeToolCallsDesc": {
+    "description": "Include tool calls description"
+  },
+  "includeThinking": "Include Thinking Process",
+  "@includeThinking": {
+    "description": "Include thinking process option"
+  },
+  "includeThinkingDesc": "Export AI reasoning and thought content",
+  "@includeThinkingDesc": {
+    "description": "Include thinking process description"
+  },
+  "preview": "Preview",
+  "@preview": {
+    "description": "Preview button"
+  },
+  "previewTruncated": "Preview content truncated",
+  "@previewTruncated": {
+    "description": "Preview truncated message"
+  },
+  "copyToClipboard": "Copy",
+  "@copyToClipboard": {
+    "description": "Copy to clipboard button"
+  },
+  "copiedToClipboard": "Copied to clipboard",
+  "@copiedToClipboard": {
+    "description": "Copy success message"
+  },
+  "share": "Share",
+  "@share": {
+    "description": "Share button"
+  },
+  "conversationExport": "Conversation Export",
+  "@conversationExport": {
+    "description": "Conversation export title"
+  },
+  "exportToFile": "Save File",
+  "@exportToFile": {
+    "description": "Export to file button"
   },
   "aiScriptSaveFailed": "Save failed: {error}",
   "@aiScriptSaveFailed": {

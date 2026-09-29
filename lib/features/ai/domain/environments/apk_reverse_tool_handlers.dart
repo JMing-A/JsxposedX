@@ -1,52 +1,22 @@
 import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tool_handler.dart';
+import 'package:JsxposedX/features/ai/domain/environments/ai_tool_runtime_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_tool_call.dart';
-import 'package:JsxposedX/features/apk_analysis/domain/repositories/apk_analysis_query_repository.dart';
-import 'package:JsxposedX/features/so_analysis/data/datasources/so_analysis_datasource.dart';
 
-class ApkReverseToolRuntimeContext {
-  const ApkReverseToolRuntimeContext({
-    required this.repo,
-    required this.soDataSource,
-    required this.sessionId,
-    required this.dexPaths,
-  });
-
-  final ApkAnalysisQueryRepository repo;
-  final SoAnalysisDatasource soDataSource;
-  final String sessionId;
-  final List<String> dexPaths;
-}
-
-Iterable<AiChatToolHandler> buildApkReverseToolHandlers({
-  required ApkReverseToolRuntimeContext context,
-  bool includeSoTools = true,
-}) sync* {
-  yield _GetManifestToolHandler(context);
-  yield _DecompileClassToolHandler(context);
-  yield _GetSmaliToolHandler(context);
-  yield _ListPackagesToolHandler(context);
-  yield _ListClassesToolHandler(context);
-  yield _SearchClassesToolHandler(context);
-  yield _ListApkFilesToolHandler(context);
-  if (!includeSoTools) {
-    return;
-  }
-  yield _GetSoInfoToolHandler(context);
-  yield _SearchSoSymbolsToolHandler(context);
-  yield _GetJniFunctionsToolHandler(context);
-  yield _SearchSoStringsToolHandler(context);
-  yield _GenerateSoHookToolHandler(context);
-}
-
-abstract class _ApkReverseToolHandlerBase implements AiChatToolHandler {
-  const _ApkReverseToolHandlerBase(this.context);
+/// APK 逆向工具 handler 基类。
+///
+/// 运行时上下文见 [ApkReverseToolRuntimeContext]（ai_tool_runtime_context.dart）；
+/// schema/handler/策略的配对注册见 AiToolRegistry。
+/// 注意：handler 不允许内部 try/catch 吞错返回"失败"字符串，
+/// 异常一律抛给 ToolExecutor 统一映射错误码（封装标准 §4.3）。
+abstract class ApkReverseToolHandlerBase implements AiChatToolHandler {
+  const ApkReverseToolHandlerBase(this.context);
 
   final ApkReverseToolRuntimeContext context;
 }
 
-class _GetManifestToolHandler extends _ApkReverseToolHandlerBase {
-  const _GetManifestToolHandler(super.context);
+class GetManifestToolHandler extends ApkReverseToolHandlerBase {
+  const GetManifestToolHandler(super.context);
 
   @override
   String get toolName => 'get_manifest';
@@ -58,12 +28,12 @@ class _GetManifestToolHandler extends _ApkReverseToolHandlerBase {
   }) async {
     final manifest = await context.repo.parseManifest(context.sessionId);
     final apkContext = AiApkContext.fromManifest(manifest);
-    return apkContext.toPromptText(isZh: true);
+    return apkContext.toPromptText(isZh: context.isZh);
   }
 }
 
-class _DecompileClassToolHandler extends _ApkReverseToolHandlerBase {
-  const _DecompileClassToolHandler(super.context);
+class DecompileClassToolHandler extends ApkReverseToolHandlerBase {
+  const DecompileClassToolHandler(super.context);
 
   @override
   String get toolName => 'decompile_class';
@@ -85,8 +55,8 @@ class _DecompileClassToolHandler extends _ApkReverseToolHandlerBase {
   }
 }
 
-class _GetSmaliToolHandler extends _ApkReverseToolHandlerBase {
-  const _GetSmaliToolHandler(super.context);
+class GetSmaliToolHandler extends ApkReverseToolHandlerBase {
+  const GetSmaliToolHandler(super.context);
 
   @override
   String get toolName => 'get_smali';
@@ -108,8 +78,8 @@ class _GetSmaliToolHandler extends _ApkReverseToolHandlerBase {
   }
 }
 
-class _ListPackagesToolHandler extends _ApkReverseToolHandlerBase {
-  const _ListPackagesToolHandler(super.context);
+class ListPackagesToolHandler extends ApkReverseToolHandlerBase {
+  const ListPackagesToolHandler(super.context);
 
   @override
   String get toolName => 'list_packages';
@@ -132,8 +102,8 @@ class _ListPackagesToolHandler extends _ApkReverseToolHandlerBase {
   }
 }
 
-class _ListClassesToolHandler extends _ApkReverseToolHandlerBase {
-  const _ListClassesToolHandler(super.context);
+class ListClassesToolHandler extends ApkReverseToolHandlerBase {
+  const ListClassesToolHandler(super.context);
 
   @override
   String get toolName => 'list_classes';
@@ -177,8 +147,8 @@ class _ListClassesToolHandler extends _ApkReverseToolHandlerBase {
   }
 }
 
-class _SearchClassesToolHandler extends _ApkReverseToolHandlerBase {
-  const _SearchClassesToolHandler(super.context);
+class SearchClassesToolHandler extends ApkReverseToolHandlerBase {
+  const SearchClassesToolHandler(super.context);
 
   @override
   String get toolName => 'search_classes';
@@ -204,8 +174,8 @@ class _SearchClassesToolHandler extends _ApkReverseToolHandlerBase {
   }
 }
 
-class _ListApkFilesToolHandler extends _ApkReverseToolHandlerBase {
-  const _ListApkFilesToolHandler(super.context);
+class ListApkFilesToolHandler extends ApkReverseToolHandlerBase {
+  const ListApkFilesToolHandler(super.context);
 
   @override
   String get toolName => 'list_apk_files';
@@ -216,33 +186,29 @@ class _ListApkFilesToolHandler extends _ApkReverseToolHandlerBase {
     AiToolProgressCallback? onProgress,
   }) async {
     final path = call.getString('path');
-    try {
-      final items = await context.repo.getApkAssetsAt(context.sessionId, path);
-      if (items.isEmpty) {
-        return '目录为空: "$path"';
-      }
-
-      final buffer = StringBuffer();
-      buffer.writeln('路径: "$path" 下共 ${items.length} 个条目：\n');
-      for (final item in items) {
-        if (item.isDirectory) {
-          buffer.writeln('[DIR]  ${item.path}');
-          continue;
-        }
-        final kb = item.size > 0
-            ? ' (${(item.size / 1024).toStringAsFixed(1)}KB)'
-            : '';
-        buffer.writeln('[FILE] ${item.path}$kb');
-      }
-      return buffer.toString();
-    } catch (error) {
-      return '列出文件失败: $error';
+    final items = await context.repo.getApkAssetsAt(context.sessionId, path);
+    if (items.isEmpty) {
+      return '目录为空: "$path"';
     }
+
+    final buffer = StringBuffer();
+    buffer.writeln('路径: "$path" 下共 ${items.length} 个条目：\n');
+    for (final item in items) {
+      if (item.isDirectory) {
+        buffer.writeln('[DIR]  ${item.path}');
+        continue;
+      }
+      final kb = item.size > 0
+          ? ' (${(item.size / 1024).toStringAsFixed(1)}KB)'
+          : '';
+      buffer.writeln('[FILE] ${item.path}$kb');
+    }
+    return buffer.toString();
   }
 }
 
-class _GetSoInfoToolHandler extends _ApkReverseToolHandlerBase {
-  const _GetSoInfoToolHandler(super.context);
+class GetSoInfoToolHandler extends ApkReverseToolHandlerBase {
+  const GetSoInfoToolHandler(super.context);
 
   @override
   String get toolName => 'get_so_info';
@@ -257,58 +223,54 @@ class _GetSoInfoToolHandler extends _ApkReverseToolHandlerBase {
       throw ArgumentError('soPath 不能为空');
     }
 
-    try {
-      final header = await context.soDataSource.parseSoHeader(
-        context.sessionId,
-        soPath,
-      );
-      final deps = await context.soDataSource.getDependencies(
-        context.sessionId,
-        soPath,
-      );
-      final exportedSymbols = await context.soDataSource.getExportedSymbols(
-        context.sessionId,
-        soPath,
-      );
-      final importedSymbols = await context.soDataSource.getImportedSymbols(
-        context.sessionId,
-        soPath,
-      );
-      final jniFunctions = await context.soDataSource.getJniFunctions(
-        context.sessionId,
-        soPath,
-      );
+    final header = await context.soDataSource.parseSoHeader(
+      context.sessionId,
+      soPath,
+    );
+    final deps = await context.soDataSource.getDependencies(
+      context.sessionId,
+      soPath,
+    );
+    final exportedSymbols = await context.soDataSource.getExportedSymbols(
+      context.sessionId,
+      soPath,
+    );
+    final importedSymbols = await context.soDataSource.getImportedSymbols(
+      context.sessionId,
+      soPath,
+    );
+    final jniFunctions = await context.soDataSource.getJniFunctions(
+      context.sessionId,
+      soPath,
+    );
 
-      final buffer = StringBuffer();
-      buffer.writeln('SO 文件: $soPath');
-      buffer.writeln('\n【ELF 头信息】');
-      buffer.writeln('架构: ${header.machine}');
-      buffer.writeln('类型: ${header.classType}');
-      buffer.writeln('字节序: ${header.dataEncoding}');
-      buffer.writeln('OS/ABI: ${header.osAbi}');
-      buffer.writeln('文件类型: ${header.fileType}');
-      buffer.writeln('入口点: 0x${header.entryPoint.toRadixString(16)}');
+    final buffer = StringBuffer();
+    buffer.writeln('SO 文件: $soPath');
+    buffer.writeln('\n【ELF 头信息】');
+    buffer.writeln('架构: ${header.machine}');
+    buffer.writeln('类型: ${header.classType}');
+    buffer.writeln('字节序: ${header.dataEncoding}');
+    buffer.writeln('OS/ABI: ${header.osAbi}');
+    buffer.writeln('文件类型: ${header.fileType}');
+    buffer.writeln('入口点: 0x${header.entryPoint.toRadixString(16)}');
 
-      if (deps.isNotEmpty) {
-        buffer.writeln('\n【依赖库】(${deps.length}个)');
-        for (final dep in deps) {
-          buffer.writeln('  - ${dep.name}');
-        }
+    if (deps.isNotEmpty) {
+      buffer.writeln('\n【依赖库】(${deps.length}个)');
+      for (final dep in deps) {
+        buffer.writeln('  - ${dep.name}');
       }
-
-      buffer.writeln('\n【符号统计】');
-      buffer.writeln('导出符号: ${exportedSymbols.length} 个');
-      buffer.writeln('导入符号: ${importedSymbols.length} 个');
-      buffer.writeln('JNI 函数: ${jniFunctions.length} 个');
-      return buffer.toString();
-    } catch (error) {
-      return '获取 SO 信息失败: $error';
     }
+
+    buffer.writeln('\n【符号统计】');
+    buffer.writeln('导出符号: ${exportedSymbols.length} 个');
+    buffer.writeln('导入符号: ${importedSymbols.length} 个');
+    buffer.writeln('JNI 函数: ${jniFunctions.length} 个');
+    return buffer.toString();
   }
 }
 
-class _SearchSoSymbolsToolHandler extends _ApkReverseToolHandlerBase {
-  const _SearchSoSymbolsToolHandler(super.context);
+class SearchSoSymbolsToolHandler extends ApkReverseToolHandlerBase {
+  const SearchSoSymbolsToolHandler(super.context);
 
   @override
   String get toolName => 'search_so_symbols';
@@ -327,56 +289,52 @@ class _SearchSoSymbolsToolHandler extends _ApkReverseToolHandlerBase {
       throw ArgumentError('keyword 不能为空');
     }
 
-    try {
-      final exported = await context.soDataSource.getExportedSymbols(
-        context.sessionId,
-        soPath,
-      );
-      final imported = await context.soDataSource.getImportedSymbols(
-        context.sessionId,
-        soPath,
-      );
-      final lowerKeyword = keyword.toLowerCase();
-      final matchedExported = exported
-          .where((symbol) => symbol.name.toLowerCase().contains(lowerKeyword))
-          .take(50)
-          .toList(growable: false);
-      final matchedImported = imported
-          .where((symbol) => symbol.name.toLowerCase().contains(lowerKeyword))
-          .take(50)
-          .toList(growable: false);
+    final exported = await context.soDataSource.getExportedSymbols(
+      context.sessionId,
+      soPath,
+    );
+    final imported = await context.soDataSource.getImportedSymbols(
+      context.sessionId,
+      soPath,
+    );
+    final lowerKeyword = keyword.toLowerCase();
+    final matchedExported = exported
+        .where((symbol) => symbol.name.toLowerCase().contains(lowerKeyword))
+        .take(50)
+        .toList(growable: false);
+    final matchedImported = imported
+        .where((symbol) => symbol.name.toLowerCase().contains(lowerKeyword))
+        .take(50)
+        .toList(growable: false);
 
-      if (matchedExported.isEmpty && matchedImported.isEmpty) {
-        return '未找到包含关键词 "$keyword" 的符号';
-      }
-
-      final buffer = StringBuffer();
-      buffer.writeln('搜索关键词: "$keyword"');
-      if (matchedExported.isNotEmpty) {
-        buffer.writeln('\n【导出符号】(${matchedExported.length}个)');
-        for (final symbol in matchedExported) {
-          buffer.writeln(symbol.name);
-          buffer.writeln(
-            '  类型: ${symbol.type}, 绑定: ${symbol.binding}, 地址: 0x${symbol.address.toRadixString(16)}',
-          );
-        }
-      }
-      if (matchedImported.isNotEmpty) {
-        buffer.writeln('\n【导入符号】(${matchedImported.length}个)');
-        for (final symbol in matchedImported) {
-          buffer.writeln(symbol.name);
-          buffer.writeln('  类型: ${symbol.type}, 绑定: ${symbol.binding}');
-        }
-      }
-      return buffer.toString();
-    } catch (error) {
-      return '搜索符号失败: $error';
+    if (matchedExported.isEmpty && matchedImported.isEmpty) {
+      return '未找到包含关键词 "$keyword" 的符号';
     }
+
+    final buffer = StringBuffer();
+    buffer.writeln('搜索关键词: "$keyword"');
+    if (matchedExported.isNotEmpty) {
+      buffer.writeln('\n【导出符号】(${matchedExported.length}个)');
+      for (final symbol in matchedExported) {
+        buffer.writeln(symbol.name);
+        buffer.writeln(
+          '  类型: ${symbol.type}, 绑定: ${symbol.binding}, 地址: 0x${symbol.address.toRadixString(16)}',
+        );
+      }
+    }
+    if (matchedImported.isNotEmpty) {
+      buffer.writeln('\n【导入符号】(${matchedImported.length}个)');
+      for (final symbol in matchedImported) {
+        buffer.writeln(symbol.name);
+        buffer.writeln('  类型: ${symbol.type}, 绑定: ${symbol.binding}');
+      }
+    }
+    return buffer.toString();
   }
 }
 
-class _GetJniFunctionsToolHandler extends _ApkReverseToolHandlerBase {
-  const _GetJniFunctionsToolHandler(super.context);
+class GetJniFunctionsToolHandler extends ApkReverseToolHandlerBase {
+  const GetJniFunctionsToolHandler(super.context);
 
   @override
   String get toolName => 'get_jni_functions';
@@ -391,36 +349,32 @@ class _GetJniFunctionsToolHandler extends _ApkReverseToolHandlerBase {
       throw ArgumentError('soPath 不能为空');
     }
 
-    try {
-      final jniFunctions = await context.soDataSource.getJniFunctions(
-        context.sessionId,
-        soPath,
-      );
-      if (jniFunctions.isEmpty) {
-        return '未找到 JNI 函数';
-      }
-
-      final buffer = StringBuffer();
-      buffer.writeln('共找到 ${jniFunctions.length} 个 JNI 函数：\n');
-      for (final function in jniFunctions) {
-        buffer.writeln('${function.javaClass}.${function.javaMethod}');
-        buffer.writeln('  符号: ${function.symbolName}');
-        buffer.writeln('  地址: 0x${function.address.toRadixString(16)}');
-        buffer.writeln('  类型: ${function.isDynamic ? "动态注册" : "静态注册"}');
-        if (function.signature != null) {
-          buffer.writeln('  签名: ${function.signature}');
-        }
-        buffer.writeln();
-      }
-      return buffer.toString();
-    } catch (error) {
-      return '获取 JNI 函数失败: $error';
+    final jniFunctions = await context.soDataSource.getJniFunctions(
+      context.sessionId,
+      soPath,
+    );
+    if (jniFunctions.isEmpty) {
+      return '未找到 JNI 函数';
     }
+
+    final buffer = StringBuffer();
+    buffer.writeln('共找到 ${jniFunctions.length} 个 JNI 函数：\n');
+    for (final function in jniFunctions) {
+      buffer.writeln('${function.javaClass}.${function.javaMethod}');
+      buffer.writeln('  符号: ${function.symbolName}');
+      buffer.writeln('  地址: 0x${function.address.toRadixString(16)}');
+      buffer.writeln('  类型: ${function.isDynamic ? "动态注册" : "静态注册"}');
+      if (function.signature != null) {
+        buffer.writeln('  签名: ${function.signature}');
+      }
+      buffer.writeln();
+    }
+    return buffer.toString();
   }
 }
 
-class _SearchSoStringsToolHandler extends _ApkReverseToolHandlerBase {
-  const _SearchSoStringsToolHandler(super.context);
+class SearchSoStringsToolHandler extends ApkReverseToolHandlerBase {
+  const SearchSoStringsToolHandler(super.context);
 
   @override
   String get toolName => 'search_so_strings';
@@ -439,39 +393,35 @@ class _SearchSoStringsToolHandler extends _ApkReverseToolHandlerBase {
       throw ArgumentError('keyword 不能为空');
     }
 
-    try {
-      final strings = await context.soDataSource.getSoStrings(
-        context.sessionId,
-        soPath,
-      );
-      final lowerKeyword = keyword.toLowerCase();
-      final matched = strings
-          .where((value) => value.value.toLowerCase().contains(lowerKeyword))
-          .take(100)
-          .toList(growable: false);
-      if (matched.isEmpty) {
-        return '未找到包含关键词 "$keyword" 的字符串';
-      }
-
-      final buffer = StringBuffer();
-      buffer.writeln('搜索关键词: "$keyword"');
-      buffer.writeln('共找到 ${matched.length} 个匹配字符串：\n');
-      for (final value in matched) {
-        buffer.writeln('"${value.value}"');
-        buffer.writeln(
-          '  位置: ${value.section}, 偏移: 0x${value.offset.toRadixString(16)}',
-        );
-        buffer.writeln();
-      }
-      return buffer.toString();
-    } catch (error) {
-      return '搜索字符串失败: $error';
+    final strings = await context.soDataSource.getSoStrings(
+      context.sessionId,
+      soPath,
+    );
+    final lowerKeyword = keyword.toLowerCase();
+    final matched = strings
+        .where((value) => value.value.toLowerCase().contains(lowerKeyword))
+        .take(100)
+        .toList(growable: false);
+    if (matched.isEmpty) {
+      return '未找到包含关键词 "$keyword" 的字符串';
     }
+
+    final buffer = StringBuffer();
+    buffer.writeln('搜索关键词: "$keyword"');
+    buffer.writeln('共找到 ${matched.length} 个匹配字符串：\n');
+    for (final value in matched) {
+      buffer.writeln('"${value.value}"');
+      buffer.writeln(
+        '  位置: ${value.section}, 偏移: 0x${value.offset.toRadixString(16)}',
+      );
+      buffer.writeln();
+    }
+    return buffer.toString();
   }
 }
 
-class _GenerateSoHookToolHandler extends _ApkReverseToolHandlerBase {
-  const _GenerateSoHookToolHandler(super.context);
+class GenerateSoHookToolHandler extends ApkReverseToolHandlerBase {
+  const GenerateSoHookToolHandler(super.context);
 
   @override
   String get toolName => 'generate_so_hook';
@@ -494,19 +444,16 @@ class _GenerateSoHookToolHandler extends _ApkReverseToolHandlerBase {
       throw ArgumentError('address 不能为空');
     }
 
-    try {
-      final parsedAddress = int.parse(
-        address.replaceFirst('0x', ''),
-        radix: 16,
-      );
-      return context.soDataSource.generateFridaHook(
-        context.sessionId,
-        soPath,
-        symbolName,
-        parsedAddress,
-      );
-    } catch (error) {
-      return '生成 Hook 代码失败: $error';
-    }
+    // 解析失败抛 FormatException → 执行器映射为 E_PARAM
+    final parsedAddress = int.parse(
+      address.replaceFirst('0x', ''),
+      radix: 16,
+    );
+    return context.soDataSource.generateFridaHook(
+      context.sessionId,
+      soPath,
+      symbolName,
+      parsedAddress,
+    );
   }
 }

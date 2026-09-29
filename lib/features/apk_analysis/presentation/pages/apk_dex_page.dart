@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/common/widgets/ref_error.dart';
@@ -32,15 +34,26 @@ class ApkDexPage extends HookConsumerWidget {
     final pkgStack = useState(<String>[]);
     final searchController = useTextEditingController();
     final searchQuery = useState('');
+    final searchDebounce = useRef<Timer?>(null);
     final searchFocus = useFocusNode();
+
+    useEffect(() {
+      return () => searchDebounce.value?.cancel();
+    }, const []);
 
     return Column(
       children: [
         _SearchBar(
           controller: searchController,
           focusNode: searchFocus,
-          onChanged: (v) => searchQuery.value = v,
+          onChanged: (value) {
+            searchDebounce.value?.cancel();
+            searchDebounce.value = Timer(const Duration(milliseconds: 250), () {
+              searchQuery.value = value.trim();
+            });
+          },
           onClear: () {
+            searchDebounce.value?.cancel();
             searchController.clear();
             searchQuery.value = '';
             searchFocus.unfocus();
@@ -51,7 +64,7 @@ class ApkDexPage extends HookConsumerWidget {
             child: _SearchResultsLevel(
               sessionId: sid,
               dexPaths: dexPaths,
-              keyword: searchQuery.value.trim(),
+              keyword: searchQuery.value,
               packageName: packageName,
             ),
           )

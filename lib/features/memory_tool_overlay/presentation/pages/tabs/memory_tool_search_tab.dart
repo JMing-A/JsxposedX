@@ -44,7 +44,6 @@ class MemoryToolSearchTab extends HookConsumerWidget {
     final sessionStateAsync = ref.watch(getSearchSessionStateProvider);
     final taskStateAsync = ref.watch(getSearchTaskStateProvider);
     final hasMatchingSession = ref.watch(hasMatchingSearchSessionProvider);
-    final hasRunningTask = ref.watch(hasRunningSearchTaskProvider);
     final previousTaskStatus = useRef<SearchTaskStatus?>(null);
     final previousSelectedPid = useRef<int?>(selectedPid);
     final previousSessionPid = useRef<int?>(null);
@@ -71,17 +70,6 @@ class MemoryToolSearchTab extends HookConsumerWidget {
         ref.invalidate(currentSearchResultLivePreviewsProvider);
       });
     }
-
-    useEffect(() {
-      if (!hasRunningTask) {
-        return null;
-      }
-
-      final timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-        ref.invalidate(getSearchTaskStateProvider);
-      });
-      return timer.cancel;
-    }, [hasRunningTask]);
 
     useEffect(() {
       taskStateAsync.whenData((state) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:JsxposedX/common/widgets/app_code_editor/app_code_editor.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/utils/block_l10n.dart';
@@ -62,8 +64,11 @@ class BlockNodeWidget extends HookConsumerWidget {
     final lastGen = useRef(0);
     final controllers = useRef(<String, TextEditingController>{});
     final codeControllers = useRef(<String, CodeLineEditingController>{});
+    final codeUpdateTimers = useRef(<String, Timer>{});
     final syncingCode = useRef(false);
     final focusedKey = useRef(<String>{});
+    final latestNode = useRef(node)..value = node;
+    final latestOnUpdate = useRef(onUpdate)..value = onUpdate;
     final promptsBuilder = useMemoized(() => buildJsxposedPromptsBuilder());
 
     // 折叠代数变化时重置
@@ -75,6 +80,9 @@ class BlockNodeWidget extends HookConsumerWidget {
     // Dispose controllers on unmount
     useEffect(() {
       return () {
+        for (final timer in codeUpdateTimers.value.values) {
+          timer.cancel();
+        }
         for (final c in controllers.value.values) {
           c.dispose();
         }
@@ -107,7 +115,21 @@ class BlockNodeWidget extends HookConsumerWidget {
           final ct = CodeLineEditingController.fromText(value);
           ct.addListener(() {
             if (!syncingCode.value && ct.text != (node.params[key] ?? '')) {
-              onUpdate(node.copyWith(params: {...node.params, key: ct.text}));
+              codeUpdateTimers.value[key]?.cancel();
+              codeUpdateTimers.value[key] = Timer(
+                const Duration(milliseconds: 250),
+                () {
+                  final content = ct.text;
+                  final currentNode = latestNode.value;
+                  if (content != (currentNode.params[key] ?? '')) {
+                    latestOnUpdate.value(
+                      currentNode.copyWith(
+                        params: {...currentNode.params, key: content},
+                      ),
+                    );
+                  }
+                },
+              );
             }
           });
           return ct;

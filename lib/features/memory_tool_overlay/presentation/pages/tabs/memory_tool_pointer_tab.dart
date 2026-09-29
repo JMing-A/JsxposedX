@@ -25,10 +25,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class MemoryToolPointerTab extends HookConsumerWidget {
-  const MemoryToolPointerTab({
-    super.key,
-    required this.onOpenBrowseTab,
-  });
+  const MemoryToolPointerTab({super.key, required this.onOpenBrowseTab});
 
   final VoidCallback onOpenBrowseTab;
 
@@ -37,7 +34,9 @@ class MemoryToolPointerTab extends HookConsumerWidget {
     useAutomaticKeepAlive();
     final selectedProcess = ref.watch(memoryToolSelectedProcessProvider);
     final pointerState = ref.watch(memoryToolPointerControllerProvider);
-    final pointerController = ref.read(memoryToolPointerControllerProvider.notifier);
+    final pointerController = ref.read(
+      memoryToolPointerControllerProvider.notifier,
+    );
     final taskStateAsync = ref.watch(getPointerScanTaskStateProvider);
     final sessionStateAsync = ref.watch(getPointerScanSessionStateProvider);
     final currentLayer = pointerState.currentLayer;
@@ -70,39 +69,27 @@ class MemoryToolPointerTab extends HookConsumerWidget {
         (currentLayer.isLoadingInitial || currentLayer.isLoadingMore);
     final shouldShowPointerTaskMask =
         !pointerState.isAutoChasing && isRunningTask;
-    final shouldPollTaskState =
-        isRunningTask || pointerState.isAutoChasing || isManualScanLoading;
-
-    useEffect(() {
-      if (!shouldPollTaskState) {
+    useEffect(
+      () {
+        sessionStateAsync.whenData((sessionState) {
+          if (pointerState.isAutoChasing || !sessionState.hasActiveSession) {
+            return;
+          }
+          pointerController.ensureSessionLayerVisible(
+            sessionState: sessionState,
+            isLoadingInitial: isRunningTask,
+          );
+        });
         return null;
-      }
-
-      final timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-        ref.invalidate(getPointerScanTaskStateProvider);
-        ref.invalidate(getPointerScanSessionStateProvider);
-      });
-      return timer.cancel;
-    }, [shouldPollTaskState, ref]);
-
-    useEffect(() {
-      sessionStateAsync.whenData((sessionState) {
-        if (pointerState.isAutoChasing || !sessionState.hasActiveSession) {
-          return;
-        }
-        pointerController.ensureSessionLayerVisible(
-          sessionState: sessionState,
-          isLoadingInitial: isRunningTask,
-        );
-      });
-      return null;
-    }, [
-      sessionStateAsync,
-      pointerState.isAutoChasing,
-      pointerState.layers.length,
-      isRunningTask,
-      pointerController,
-    ]);
+      },
+      [
+        sessionStateAsync,
+        pointerState.isAutoChasing,
+        pointerState.layers.length,
+        isRunningTask,
+        pointerController,
+      ],
+    );
 
     useEffect(() {
       taskStateAsync.whenData((taskState) {
@@ -129,11 +116,9 @@ class MemoryToolPointerTab extends HookConsumerWidget {
     }, [taskStateAsync, pointerController, ref, isManualScanLoading]);
 
     final availableRegionTypeKeys = <String>[
-      if (currentLayer != null)
-        ...{
-          for (final result in currentLayer.results)
-            result.regionTypeKey,
-        },
+      if (currentLayer != null) ...{
+        for (final result in currentLayer.results) result.regionTypeKey,
+      },
     ];
     final availableRegionTypeSignature = availableRegionTypeKeys.join(',');
     final selectedRegionTypeSignature = selectedRegionTypeKeys.value.toList()
@@ -204,40 +189,47 @@ class MemoryToolPointerTab extends HookConsumerWidget {
         : currentLayer.results
               .where(matchesPointerResult)
               .toList(growable: false);
-    final selectedPointerLoaded = currentLayer == null ||
+    final selectedPointerLoaded =
+        currentLayer == null ||
         currentLayer.selectedPointerAddress == null ||
         currentLayer.results.any(
-          (result) => result.pointerAddress == currentLayer.selectedPointerAddress,
+          (result) =>
+              result.pointerAddress == currentLayer.selectedPointerAddress,
         );
 
-    final shouldAutoLoadMore = currentLayer != null &&
+    final shouldAutoLoadMore =
+        currentLayer != null &&
         !currentLayer.isLoadingInitial &&
         !currentLayer.isLoadingMore &&
         currentLayer.hasMore &&
-        ((!selectedPointerLoaded && currentLayer.selectedPointerAddress != null) ||
+        ((!selectedPointerLoaded &&
+                currentLayer.selectedPointerAddress != null) ||
             (selectedRegionTypeKeys.value.isNotEmpty &&
                 filteredResults.length < 12));
 
-    useEffect(() {
-      if (!shouldAutoLoadMore) {
-        return null;
-      }
+    useEffect(
+      () {
+        if (!shouldAutoLoadMore) {
+          return null;
+        }
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        pointerController.loadMore();
-      });
-      return null;
-    }, [
-      shouldAutoLoadMore,
-      currentLayer?.results.length,
-      currentLayer?.hasMore,
-      currentLayer?.isLoadingInitial,
-      currentLayer?.isLoadingMore,
-      filteredResults.length,
-      selectedPointerLoaded,
-      currentLayer?.selectedPointerAddress,
-      selectedRegionTypeSignature.join(','),
-    ]);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          pointerController.loadMore();
+        });
+        return null;
+      },
+      [
+        shouldAutoLoadMore,
+        currentLayer?.results.length,
+        currentLayer?.hasMore,
+        currentLayer?.isLoadingInitial,
+        currentLayer?.isLoadingMore,
+        filteredResults.length,
+        selectedPointerLoaded,
+        currentLayer?.selectedPointerAddress,
+        selectedRegionTypeSignature.join(','),
+      ],
+    );
 
     if (selectedProcess == null) {
       return Center(
@@ -284,7 +276,8 @@ class MemoryToolPointerTab extends HookConsumerWidget {
               Expanded(
                 child: currentLayer == null
                     ? const SizedBox.shrink()
-                    : currentLayer.results.isEmpty && currentLayer.errorText != null
+                    : currentLayer.results.isEmpty &&
+                          currentLayer.errorText != null
                     ? Center(
                         child: Text(
                           currentLayer.errorText!,
@@ -295,9 +288,13 @@ class MemoryToolPointerTab extends HookConsumerWidget {
                           ),
                         ),
                       )
-                    : currentLayer.results.isEmpty && !isManualScanLoading && !isRunningTask
+                    : currentLayer.results.isEmpty &&
+                          !isManualScanLoading &&
+                          !isRunningTask
                     ? const SizedBox.shrink()
-                    : filteredResults.isEmpty && !isManualScanLoading && !isRunningTask
+                    : filteredResults.isEmpty &&
+                          !isManualScanLoading &&
+                          !isRunningTask
                     ? const SizedBox.shrink()
                     : MemoryToolPointerResultList(
                         results: filteredResults,
@@ -305,7 +302,8 @@ class MemoryToolPointerTab extends HookConsumerWidget {
                         scrollController: scrollController,
                         chainLayers: pointerState.layers,
                         currentLayerIndex: pointerState.currentLayerIndex,
-                        selectedPointerAddress: currentLayer.selectedPointerAddress,
+                        selectedPointerAddress:
+                            currentLayer.selectedPointerAddress,
                         isTerminalLayer: currentLayer.isTerminalLayer,
                         onContinueSearch: (result) async {
                           await pointerController.continueScan(
@@ -348,9 +346,7 @@ class MemoryToolPointerTab extends HookConsumerWidget {
             ),
           ),
         if (isJumpingToTarget.value)
-          const Positioned.fill(
-            child: _MemoryToolPointerJumpLoadingMask(),
-          ),
+          const Positioned.fill(child: _MemoryToolPointerJumpLoadingMask()),
       ],
     );
   }
@@ -434,9 +430,7 @@ class _MemoryToolPointerTaskMask extends StatelessWidget {
                                   Text(
                                     '${(progress * 100).toStringAsFixed(1)}%',
                                     style: context.textTheme.labelLarge
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                                        ?.copyWith(fontWeight: FontWeight.w800),
                                   ),
                                 ],
                               ),
@@ -483,7 +477,8 @@ class _MemoryToolPointerTaskMask extends StatelessWidget {
                                     '${formatBytesCompact(taskState!.processedBytes)}/${formatBytesCompact(taskState!.totalBytes)}',
                               ),
                             _MemoryToolPointerTaskMetricChip(
-                              label: context.l10n.memoryToolTaskResultCountLabel,
+                              label:
+                                  context.l10n.memoryToolTaskResultCountLabel,
                               value: (taskState?.resultCount ?? 0).toString(),
                             ),
                           ],
@@ -628,9 +623,7 @@ class _MemoryToolPointerAutoChaseMask extends StatelessWidget {
                                   Text(
                                     '${(progress * 100).toStringAsFixed(1)}%',
                                     style: context.textTheme.labelLarge
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                                        ?.copyWith(fontWeight: FontWeight.w800),
                                   ),
                                 ],
                               ),
@@ -682,7 +675,8 @@ class _MemoryToolPointerAutoChaseMask extends StatelessWidget {
                                     '${formatBytesCompact(taskState!.processedBytes)}/${formatBytesCompact(taskState!.totalBytes)}',
                               ),
                             _MemoryToolPointerTaskMetricChip(
-                              label: context.l10n.memoryToolTaskResultCountLabel,
+                              label:
+                                  context.l10n.memoryToolTaskResultCountLabel,
                               value: (taskState?.resultCount ?? 0).toString(),
                             ),
                           ],
@@ -774,10 +768,7 @@ class _PointerHeaderPanel extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _PointerBreadcrumbRow(
-                state: state,
-                onTapLayer: onTapLayer,
-              ),
+              _PointerBreadcrumbRow(state: state, onTapLayer: onTapLayer),
               if (availableRegionTypeKeys.isNotEmpty) ...<Widget>[
                 SizedBox(height: 8.r),
                 _PointerFilterPanel(
@@ -796,10 +787,7 @@ class _PointerHeaderPanel extends StatelessWidget {
 }
 
 class _PointerBreadcrumbRow extends StatelessWidget {
-  const _PointerBreadcrumbRow({
-    required this.state,
-    required this.onTapLayer,
-  });
+  const _PointerBreadcrumbRow({required this.state, required this.onTapLayer});
 
   final MemoryToolPointerState state;
   final ValueChanged<int> onTapLayer;
@@ -842,15 +830,14 @@ class _PointerFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final loadedCount = currentLayer == null
-        ? 0
-        : currentLayer!.results.length;
+    final loadedCount = currentLayer == null ? 0 : currentLayer!.results.length;
     final sessionCount = sessionStateAsync.asData?.value.resultCount ?? 0;
     final totalCount = currentLayer?.totalResultCount ?? 0;
     final resolvedTotalCount = totalCount > 0 ? totalCount : sessionCount;
     final stopReasonText = switch (currentLayer?.autoStopReasonKey) {
       'staticReached' => context.l10n.memoryToolPointerStopReasonStaticReached,
-      'noMorePointers' => context.l10n.memoryToolPointerStopReasonNoMorePointers,
+      'noMorePointers' =>
+        context.l10n.memoryToolPointerStopReasonNoMorePointers,
       'maxDepth' => context.l10n.memoryToolPointerStopReasonMaxDepth,
       'cancelled' => context.l10n.memoryToolPointerStopReasonCancelled,
       'failed' => context.l10n.memoryToolPointerStopReasonFailed,
@@ -936,7 +923,10 @@ class _PointerFilterPanel extends StatelessWidget {
             return Padding(
               padding: EdgeInsets.only(right: 6.r),
               child: FilterChip(
-                visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+                visualDensity: const VisualDensity(
+                  horizontal: -2,
+                  vertical: -2,
+                ),
                 label: Text(
                   mapMemoryToolSearchResultRegionTypeLabel(
                     context,

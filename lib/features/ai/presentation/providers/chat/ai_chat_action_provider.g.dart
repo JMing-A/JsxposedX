@@ -40,109 +40,61 @@ final class AiStatusProvider
   }
 }
 
-String _$aiStatusHash() => r'b98885c6a1b35649dcb576b5063e08ea12d34800';
+String _$aiStatusHash() => r'3202fb17366bc6964f4dc7c4b96364438bad331e';
 
-@ProviderFor(aiChatActionDatasource)
-const aiChatActionDatasourceProvider = AiChatActionDatasourceProvider._();
+@ProviderFor(aiConnectionTestService)
+const aiConnectionTestServiceProvider = AiConnectionTestServiceProvider._();
 
-final class AiChatActionDatasourceProvider
+final class AiConnectionTestServiceProvider
     extends
         $FunctionalProvider<
-          AiChatActionDatasource,
-          AiChatActionDatasource,
-          AiChatActionDatasource
+          AiConnectionTestService,
+          AiConnectionTestService,
+          AiConnectionTestService
         >
-    with $Provider<AiChatActionDatasource> {
-  const AiChatActionDatasourceProvider._()
+    with $Provider<AiConnectionTestService> {
+  const AiConnectionTestServiceProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
-        name: r'aiChatActionDatasourceProvider',
+        name: r'aiConnectionTestServiceProvider',
         isAutoDispose: true,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
 
   @override
-  String debugGetCreateSourceHash() => _$aiChatActionDatasourceHash();
+  String debugGetCreateSourceHash() => _$aiConnectionTestServiceHash();
 
   @$internal
   @override
-  $ProviderElement<AiChatActionDatasource> $createElement(
+  $ProviderElement<AiConnectionTestService> $createElement(
     $ProviderPointer pointer,
   ) => $ProviderElement(pointer);
 
   @override
-  AiChatActionDatasource create(Ref ref) {
-    return aiChatActionDatasource(ref);
+  AiConnectionTestService create(Ref ref) {
+    return aiConnectionTestService(ref);
   }
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AiChatActionDatasource value) {
+  Override overrideWithValue(AiConnectionTestService value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<AiChatActionDatasource>(value),
+      providerOverride: $SyncValueProvider<AiConnectionTestService>(value),
     );
   }
 }
 
-String _$aiChatActionDatasourceHash() =>
-    r'062973391994e8a309f34d36e40ebac8377c1f6e';
-
-@ProviderFor(aiChatActionRepository)
-const aiChatActionRepositoryProvider = AiChatActionRepositoryProvider._();
-
-final class AiChatActionRepositoryProvider
-    extends
-        $FunctionalProvider<
-          AiChatActionRepository,
-          AiChatActionRepository,
-          AiChatActionRepository
-        >
-    with $Provider<AiChatActionRepository> {
-  const AiChatActionRepositoryProvider._()
-    : super(
-        from: null,
-        argument: null,
-        retry: null,
-        name: r'aiChatActionRepositoryProvider',
-        isAutoDispose: true,
-        dependencies: null,
-        $allTransitiveDependencies: null,
-      );
-
-  @override
-  String debugGetCreateSourceHash() => _$aiChatActionRepositoryHash();
-
-  @$internal
-  @override
-  $ProviderElement<AiChatActionRepository> $createElement(
-    $ProviderPointer pointer,
-  ) => $ProviderElement(pointer);
-
-  @override
-  AiChatActionRepository create(Ref ref) {
-    return aiChatActionRepository(ref);
-  }
-
-  /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AiChatActionRepository value) {
-    return $ProviderOverride(
-      origin: this,
-      providerOverride: $SyncValueProvider<AiChatActionRepository>(value),
-    );
-  }
-}
-
-String _$aiChatActionRepositoryHash() =>
-    r'572065a5d829ff9a010a557f4e62d1d87c1565d0';
+String _$aiConnectionTestServiceHash() =>
+    r'a225edc79d7089f0385ca50015bc2dadd83fa748';
 
 @ProviderFor(AiChatAction)
 const aiChatActionProvider = AiChatActionFamily._();
 
 final class AiChatActionProvider
-    extends $NotifierProvider<AiChatAction, AiChatActionState> {
+    extends $NotifierProvider<AiChatAction, AiChatRuntimeState> {
   const AiChatActionProvider._({
     required AiChatActionFamily super.from,
     required String super.argument,
@@ -169,10 +121,10 @@ final class AiChatActionProvider
   AiChatAction create() => AiChatAction();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(AiChatActionState value) {
+  Override overrideWithValue(AiChatRuntimeState value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<AiChatActionState>(value),
+      providerOverride: $SyncValueProvider<AiChatRuntimeState>(value),
     );
   }
 
@@ -187,15 +139,15 @@ final class AiChatActionProvider
   }
 }
 
-String _$aiChatActionHash() => r'd2e101f6c485c9ec654dcfc45c51e9288f4cc402';
+String _$aiChatActionHash() => r'126f997668253e461b37d924df61a80c48da64d1';
 
 final class AiChatActionFamily extends $Family
     with
         $ClassFamilyOverride<
           AiChatAction,
-          AiChatActionState,
-          AiChatActionState,
-          AiChatActionState,
+          AiChatRuntimeState,
+          AiChatRuntimeState,
+          AiChatRuntimeState,
           String
         > {
   const AiChatActionFamily._()
@@ -214,21 +166,21 @@ final class AiChatActionFamily extends $Family
   String toString() => r'aiChatActionProvider';
 }
 
-abstract class _$AiChatAction extends $Notifier<AiChatActionState> {
+abstract class _$AiChatAction extends $Notifier<AiChatRuntimeState> {
   late final _$args = ref.$arg as String;
   String get packageName => _$args;
 
-  AiChatActionState build({required String packageName});
+  AiChatRuntimeState build({required String packageName});
   @$mustCallSuper
   @override
   void runBuild() {
     final created = build(packageName: _$args);
-    final ref = this.ref as $Ref<AiChatActionState, AiChatActionState>;
+    final ref = this.ref as $Ref<AiChatRuntimeState, AiChatRuntimeState>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<AiChatActionState, AiChatActionState>,
-              AiChatActionState,
+              AnyNotifier<AiChatRuntimeState, AiChatRuntimeState>,
+              AiChatRuntimeState,
               Object?,
               Object?
             >;

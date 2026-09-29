@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'dart:ui';
 
 import 'package:JsxposedX/core/extensions/context_extensions.dart';

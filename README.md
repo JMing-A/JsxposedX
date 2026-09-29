@@ -74,8 +74,8 @@ The author has always advocated for the use of AI technology in legal, legitimat
 - Flutter UI with Android-side Xposed hooks, LSPosed service integration, and native bridge modules
 - Project entries for `Quick Functions`, `AI Reverse`, `Xposed Project`, and `Frida Project`
 - Additional pages for crypto audit and SO analysis
-- Pigeon code generation via `.buildScript/pigen_watch.ps1`
-- Debug install flow via `.buildScript/run_install_debug.ps1`
+- Pigeon code generation via `.buildScript/pigen_watch.ps1` on Windows or `.buildScript/pigen_watch.sh` on macOS/Linux
+- Debug install flow via `.buildScript/run_install_debug.ps1` on Windows or `.buildScript/run_install_debug.sh` on macOS/Linux
 - Shared run configurations in `.idea/runConfigurations/`: `watch_pigeons` and `build_for_xposed_type`
 ## Build Note
 
@@ -87,10 +87,20 @@ The Android module now uses two thin Xposed shells:
 - `android/app/src/api101/` for the modern `api101` shell
 - `android/app/src/main/` for shared Flutter/UI and hook core code
 
-Default debug tasks still point to `api100`:
+The debug install script builds, installs, launches, and attaches to the app. Run it from the repository root. Default debug tasks point to `api100`.
 
 ```powershell
 .\.buildScript\run_install_debug.ps1
+```
+
+```bash
+./.buildScript/run_install_debug.sh
+```
+
+To install and launch on macOS/Linux without keeping the terminal in `flutter attach`:
+
+```bash
+./.buildScript/run_install_debug.sh --skip-attach
 ```
 
 Install the `api101` shell explicitly with:
@@ -98,6 +108,18 @@ Install the `api101` shell explicitly with:
 ```powershell
 .\.buildScript\run_install_debug.ps1 -GradleTask :app:installApi101Debug
 ```
+
+```bash
+./.buildScript/run_install_debug.sh --gradle-task :app:installApi101Debug
+```
+
+The script selects `--device-id`, then `ANDROID_SERIAL`, then the Android Studio selected device, and finally a single connected `adb` device. On macOS it selects JDK 17 for Gradle and uses a single-use daemon so stale daemons are not reused. Override the JDK with `--java-home PATH`. Gradle output is also saved to `build/logs/install-debug.log`. To diagnose a failure on macOS/Linux, rerun with:
+
+```bash
+./.buildScript/run_install_debug.sh --skip-attach --gradle-arg --stacktrace
+```
+
+Running `android/gradlew` without a task only displays Gradle help; it does not build or install the app.
 
 Build/release note:
 

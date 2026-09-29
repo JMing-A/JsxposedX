@@ -196,13 +196,13 @@ class SelectAppSheet extends HookConsumerWidget {
 
   /// 处理添加应用到 LSPosed scope
   Future<void> _handleLSPosedScopeAdd(BuildContext context, AppInfo app) async {
-    print('[LSPosed] 开始处理添加 ${app.packageName} 到作用域');
+    debugPrint('[LSPosed] 开始处理添加 ${app.packageName} 到作用域');
     final lsposedApi = LSPosedNative();
     
     // 先检查 LSPosed 是否可用
     try {
-      final isAvailable = lsposedApi.isLSPosedAvailable();
-      print('[LSPosed] LSPosed 可用性: $isAvailable');
+      final isAvailable = await lsposedApi.isLSPosedAvailable();
+      debugPrint('[LSPosed] LSPosed 可用性: $isAvailable');
       
       if (isAvailable == false) {
         if (context.mounted) {
@@ -217,7 +217,7 @@ class SelectAppSheet extends HookConsumerWidget {
         return;
       }
     } catch (e) {
-      print('[LSPosed] 检查可用性失败: $e');
+      debugPrint('[LSPosed] 检查可用性失败: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -237,9 +237,9 @@ class SelectAppSheet extends HookConsumerWidget {
     }
     
     try {
-      print('[LSPosed] 调用 addModuleScope: ${app.packageName}');
+      debugPrint('[LSPosed] 调用 addModuleScope: ${app.packageName}');
       final result = await lsposedApi.addModuleScope(app.packageName, 0);
-      print('[LSPosed] addModuleScope 返回结果: $result');
+      debugPrint('[LSPosed] addModuleScope 返回结果: $result');
       
       if (context.mounted) {
         if (result) {
@@ -261,8 +261,8 @@ class SelectAppSheet extends HookConsumerWidget {
         }
       }
     } catch (e, stackTrace) {
-      print('[LSPosed] 添加失败: $e');
-      print('[LSPosed] 堆栈: $stackTrace');
+      debugPrint('[LSPosed] 添加失败: $e');
+      debugPrint('[LSPosed] 堆栈: $stackTrace');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

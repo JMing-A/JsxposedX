@@ -1,8 +1,7 @@
 import 'package:JsxposedX/core/networks/http_service.dart';
 
 class RepositoryActionDatasource {
-  final HttpService _httpService;
+  final HttpService httpService;
 
-  RepositoryActionDatasource({required HttpService httpService})
-      : _httpService = httpService;
+  RepositoryActionDatasource({required this.httpService});
 }

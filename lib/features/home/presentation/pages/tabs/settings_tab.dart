@@ -8,7 +8,7 @@ import 'package:JsxposedX/core/providers/status_management_provider.dart';
 import 'package:JsxposedX/core/providers/theme_provider.dart';
 import 'package:JsxposedX/core/utils/procedure_utils.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
-import 'package:JsxposedX/features/ai/presentation/widgets/ai_config_sheet.dart';
+import 'package:JsxposedX/features/ai/presentation/pages/ai_config_page.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/settings_community_card.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/settings_section.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/settings_tile.dart';
@@ -137,7 +137,7 @@ class SettingsTab extends HookConsumerWidget {
                     ToastMessage.show(context.l10n.pleaseActivateXposed);
                     return;
                   }
-                  AIConfigSheet.show(context);
+                  AiConfigPage.show(context);
                 },
               ),
             ],

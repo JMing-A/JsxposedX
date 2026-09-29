@@ -5,6 +5,8 @@ import android.net.LocalSocket
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.Closeable
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
 
 object MemoryToolHelperMain {
@@ -19,8 +21,14 @@ object MemoryToolHelperMain {
 private class MemoryToolDaemonServer(
     private val socketName: String
 ) : Closeable {
+    companion object {
+        private const val MAX_PAGE_SIZE = 1_000
+    }
     private val running = AtomicBoolean(true)
     private val serverSocket = LocalServerSocket(socketName)
+    private val clientExecutor = Executors.newFixedThreadPool(4) { runnable ->
+        Thread(runnable, "memory-tool-client").apply { isDaemon = true }
+    }
 
     fun run() {
         while (running.get()) {
@@ -30,33 +38,57 @@ private class MemoryToolDaemonServer(
                 break
             }
 
-            handleClient(client)
+            try {
+                clientExecutor.execute { handleClient(client) }
+            } catch (_: RejectedExecutionException) {
+                kotlin.runCatching { client.close() }
+            }
         }
     }
 
     override fun close() {
         running.set(false)
         kotlin.runCatching { serverSocket.close() }
+        clientExecutor.shutdownNow()
     }
 
     private fun handleClient(client: LocalSocket) {
         client.use { socket ->
             val reader = socket.inputStream.bufferedReader()
             val writer = socket.outputStream.bufferedWriter()
-            val requestText = reader.readLine() ?: return
-
-            val response = try {
-                handleRequest(JSONObject(requestText))
-            } catch (t: Throwable) {
-                JSONObject().apply {
-                    put("ok", false)
-                    put("error", t.message ?: t.javaClass.simpleName)
+            while (running.get()) {
+                val requestText = reader.readLine() ?: return
+                val parsedRequest = runCatching { JSONObject(requestText) }
+                if (parsedRequest.isFailure) {
+                    val error = parsedRequest.exceptionOrNull()
+                    writer.write(
+                        JSONObject()
+                            .put("ok", false)
+                            .put("error", error?.message ?: "Invalid request.")
+                            .toString(),
+                    )
+                    writer.newLine()
+                    writer.flush()
+                    continue
                 }
-            }
+                val request = parsedRequest.getOrThrow()
 
-            writer.write(response.toString())
-            writer.newLine()
-            writer.flush()
+                val response = try {
+                    handleRequest(request)
+                } catch (t: Throwable) {
+                    JSONObject().apply {
+                        put("ok", false)
+                        put("error", t.message ?: t.javaClass.simpleName)
+                    }
+                }
+                if (request.has("requestId")) {
+                    response.put("requestId", request.getLong("requestId"))
+                }
+
+                writer.write(response.toString())
+                writer.newLine()
+                writer.flush()
+            }
         }
     }
 
@@ -70,7 +102,7 @@ private class MemoryToolDaemonServer(
                 MemoryToolHelperNativeBridge.getMemoryRegionsJson(
                     pid = params.getLong("pid"),
                     offset = params.getInt("offset"),
-                    limit = params.getInt("limit"),
+                    limit = boundedLimit(params),
                     readableOnly = params.optBoolean("readableOnly", true),
                     includeAnonymous = params.optBoolean("includeAnonymous", true),
                     includeFileBacked = params.optBoolean("includeFileBacked", true)
@@ -88,7 +120,7 @@ private class MemoryToolDaemonServer(
             "getSearchResults" -> JSONArray(
                 MemoryToolHelperNativeBridge.getSearchResultsJson(
                     offset = params.getInt("offset"),
-                    limit = params.getInt("limit")
+                    limit = boundedLimit(params)
                 )
             )
 
@@ -103,7 +135,7 @@ private class MemoryToolDaemonServer(
             "getPointerScanResults" -> JSONArray(
                 MemoryToolHelperNativeBridge.getPointerScanResultsJson(
                     offset = params.getInt("offset"),
-                    limit = params.getInt("limit")
+                    limit = boundedLimit(params)
                 )
             )
 
@@ -119,7 +151,7 @@ private class MemoryToolDaemonServer(
                 MemoryToolHelperNativeBridge.getPointerAutoChaseLayerResultsJson(
                     layerIndex = params.getInt("layerIndex"),
                     offset = params.getInt("offset"),
-                    limit = params.getInt("limit")
+                    limit = boundedLimit(params)
                 )
             )
 
@@ -166,7 +198,7 @@ private class MemoryToolDaemonServer(
                 MemoryToolHelperNativeBridge.getMemoryBreakpointHitsJson(
                     pid = params.getLong("pid"),
                     offset = params.getInt("offset"),
-                    limit = params.getInt("limit")
+                    limit = boundedLimit(params)
                 )
             )
 
@@ -335,6 +367,9 @@ private class MemoryToolDaemonServer(
             items.getJSONObject(index).getLong(fieldName)
         }
     }
+
+    private fun boundedLimit(params: JSONObject): Int =
+        params.optInt("limit", 100).coerceIn(1, MAX_PAGE_SIZE)
 
     private fun extractLongArray(items: JSONArray): LongArray {
         return LongArray(items.length()) { index ->

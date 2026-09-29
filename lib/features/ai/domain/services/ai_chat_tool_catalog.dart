@@ -23,4 +23,7 @@ class AiChatToolCatalog implements AiChatToolsSpec {
         )
         .toList(growable: false);
   }
+
+  @override
+  List<AiToolDefinition> get toolDefinitions => definitions;
 }

@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
-import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_saved_item.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
@@ -34,8 +33,6 @@ import 'package:JsxposedX/generated/memory_tool.g.dart'
     show
         MemoryInstructionPreview,
         MemoryValuePreview,
-        SearchResult,
-        SearchValueType,
         MemoryInstructionPatchRequest;
 import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
@@ -120,7 +117,7 @@ class MemoryToolSavedTab extends HookConsumerWidget {
     final currentFrozenAddresses = selectedPid == null
         ? null
         : frozenValuesAsync.asData?.value
-              ?.where((value) => value.pid == selectedPid)
+              .where((value) => value.pid == selectedPid)
               .map((value) => value.address)
               .toSet();
     final selectedItems = savedItems

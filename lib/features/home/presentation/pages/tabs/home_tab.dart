@@ -1,11 +1,9 @@
 import 'dart:async';
 
-import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/common/widgets/ref_error.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/providers/status_management_provider.dart';
-import 'package:JsxposedX/core/routes/routes/home_route.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/frida/presentation/providers/frida_query_provider.dart';
@@ -14,7 +12,6 @@ import 'package:JsxposedX/features/home/presentation/widgets/info_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 首页 Tab
@@ -30,20 +27,18 @@ class HomeTab extends HookConsumerWidget {
     final isZygiskModuleInstalledAsync = ref.watch(
       isZygiskModuleInstalledProvider,
     );
-    final isRoot_ = useState(false);
-    final isHook_ = useState(false);
-    final isInitingFrida = useState(false);
-
     // LSPosed service is sometimes bound a bit later than app startup.
     // Keep refreshing hook status for a short window until it turns true.
     useEffect(() {
       Timer? timer;
+      var attempts = 0;
       timer = Timer.periodic(const Duration(seconds: 2), (_) {
         final current = ref.read(isHookProvider);
-        if (current.value == true) {
+        if (current.value == true || attempts >= 6) {
           timer?.cancel();
           return;
         }
+        attempts += 1;
         if (!current.isLoading) {
           ref.invalidate(isHookProvider);
         }
@@ -68,20 +63,16 @@ class HomeTab extends HookConsumerWidget {
               ),
               SizedBox(height: 8.h),
               isRootAsync.when(
-                data: (isRoot) {
-                  isRoot_.value = isRoot;
-                  return ActivationCard(isActivated: isRoot, title: 'Root');
-                },
+                data: (isRoot) =>
+                    ActivationCard(isActivated: isRoot, title: 'Root'),
                 error: (error, stack) =>
                     RefError(onRetry: () => ref.invalidate(isRootProvider)),
                 loading: () => const Loading(),
               ),
               SizedBox(height: 8.h),
               isHookAsync.when(
-                data: (isHooK) {
-                  isHook_.value = isHooK;
-                  return ActivationCard(isActivated: isHooK, title: 'Xposed');
-                },
+                data: (isHook) =>
+                    ActivationCard(isActivated: isHook, title: 'Xposed'),
                 error: (error, stack) =>
                     RefError(onRetry: () => ref.invalidate(isHookProvider)),
                 loading: () => const Loading(),
@@ -155,11 +146,7 @@ class HomeTab extends HookConsumerWidget {
           ShaderMask(
             shaderCallback: (bounds) => LinearGradient(
               colors: hasAi
-                  ? [
-                      Color(0xFF70D7F9),
-                      Color(0xFFAD98FF),
-                      Color(0xFFFFB385),
-                    ]
+                  ? [Color(0xFF70D7F9), Color(0xFFAD98FF), Color(0xFFFFB385)]
                   : [
                       context.colorScheme.primary,
                       context.colorScheme.secondary,

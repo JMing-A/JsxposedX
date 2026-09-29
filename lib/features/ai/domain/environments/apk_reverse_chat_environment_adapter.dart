@@ -4,30 +4,37 @@ import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_environment_adapt
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_environment_snapshot.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_context.dart';
 import 'package:JsxposedX/features/ai/domain/environments/apk_reverse_prompt_builder.dart';
-import 'package:JsxposedX/features/ai/domain/environments/apk_reverse_tool_handlers.dart';
+import 'package:JsxposedX/features/ai/domain/environments/ai_tool_runtime_context.dart';
+import 'package:JsxposedX/features/ai/domain/services/ai_conversation_export_service.dart';
+import 'package:JsxposedX/features/ai/domain/services/ai_tool_registry.dart';
 import 'package:JsxposedX/features/ai/domain/services/tool_executor.dart';
 import 'package:JsxposedX/features/apk_analysis/domain/repositories/apk_analysis_action_repository.dart';
 import 'package:JsxposedX/features/apk_analysis/domain/repositories/apk_analysis_query_repository.dart';
 import 'package:JsxposedX/features/so_analysis/data/datasources/so_analysis_datasource.dart';
 
-import 'apk_reverse_chat_tools_spec.dart';
+import 'package:JsxposedX/features/ai/domain/environments/apk_reverse_chat_tools_spec.dart';
 
 class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
   ApkReverseChatEnvironmentAdapter({
     required this.packageName,
     required this.isZh,
+    required this.conversationBinding,
     required ApkAnalysisActionRepository apkActionRepository,
     required ApkAnalysisQueryRepository apkQueryRepository,
     required SoAnalysisDatasource soDataSource,
+    required AiConversationExportService exportService,
   }) : _apkActionRepository = apkActionRepository,
        _apkQueryRepository = apkQueryRepository,
-       _soDataSource = soDataSource;
+       _soDataSource = soDataSource,
+       _exportService = exportService;
 
   final String packageName;
   final bool isZh;
+  final ScriptConversationBinding conversationBinding;
   final ApkAnalysisActionRepository _apkActionRepository;
   final ApkAnalysisQueryRepository _apkQueryRepository;
   final SoAnalysisDatasource _soDataSource;
+  final AiConversationExportService _exportService;
 
   String? _sessionId;
   List<String> _dexPaths = const [];
@@ -38,7 +45,7 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
 
   @override
   String get environmentVersion =>
-      'apk_reverse:${isZh ? "zh" : "en"}:so_tools_v1';
+      'apk_reverse:${isZh ? "zh" : "en"}:so_tools_v2_manual_lookup';
 
   String? get sessionId => _sessionId;
 
@@ -55,7 +62,9 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
       await _apkActionRepository.closeApkSession(previousSessionId);
     }
 
-    final nextSessionId = await _apkActionRepository.openApkSession(packageName);
+    final nextSessionId = await _apkActionRepository.openApkSession(
+      packageName,
+    );
     _sessionId = nextSessionId;
 
     final manifest = await _apkQueryRepository.parseManifest(nextSessionId);
@@ -70,28 +79,51 @@ class ApkReverseChatEnvironmentAdapter implements AiChatEnvironmentAdapter {
         .toList(growable: false);
 
     final apkContext = AiApkContext.fromManifest(manifest, soFiles: soFiles);
-    final apiSummary = await ApkReversePromptBuilder.loadApiSummary();
+    final manualBundle = await ApkReversePromptBuilder.exportManualBundle(
+      isZh: isZh,
+    );
     final systemPrompt = ApkReversePromptBuilder(isZh: isZh)
         .withApkContext(apkContext)
-        .withApiSummary(apiSummary)
+        .withManualBundle(manualBundle)
         .withTools()
         .buildSystemPrompt();
 
+    final allRegs = [
+      ...AiToolRegistry.apkReverse(includeSoTools: true),
+      ...AiToolRegistry.scriptLifecycle(),
+      ...AiToolRegistry.contentProduction(),
+      ...AiToolRegistry.dataAnalysis(),
+      ...AiToolRegistry.systemControl(),
+      ...AiToolRegistry.multimodal(),
+    ];
+
+    final ctx = ApkReverseToolRuntimeContext(
+      repo: _apkQueryRepository,
+      soDataSource: _soDataSource,
+      sessionId: nextSessionId,
+      dexPaths: _dexPaths,
+      conversationBinding: conversationBinding,
+      packageName: packageName,
+      isZh: isZh,
+      exportService: _exportService,
+    );
+    final toolsSpec = ApkReverseChatToolsSpec(
+      includeSoTools: true,
+      definitionsOverride: allRegs
+          .map((r) => r.definition)
+          .toList(growable: false),
+    );
     return AiChatEnvironmentSnapshot.ready(
       scopeId: scopeId,
       environmentVersion: environmentVersion,
       systemPrompt: systemPrompt,
-      toolsSpec: ApkReverseChatToolsSpec(includeSoTools: true),
+      toolsSpec: toolsSpec,
+      toolDefinitions: toolsSpec.toolDefinitions,
       toolExecutor: ToolExecutor(
-        handlers: buildApkReverseToolHandlers(
-          context: ApkReverseToolRuntimeContext(
-            repo: _apkQueryRepository,
-            soDataSource: _soDataSource,
-            sessionId: nextSessionId,
-            dexPaths: _dexPaths,
-          ),
-          includeSoTools: true,
-        ),
+        handlers: {
+          for (final r in allRegs) r.definition.name: r.handlerFactory(ctx),
+        },
+        registrations: {for (final r in allRegs) r.definition.name: r},
       ),
     );
   }

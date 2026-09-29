@@ -12,10 +12,13 @@ class AiChatContextAssembler {
     AiPinnedContextExtractor? pinnedContextExtractor,
     AiChatHistoryRetriever? historyRetriever,
   }) : _estimator = estimator ?? const AiChatContextBudgetEstimator(),
-       _pinnedContextExtractor = pinnedContextExtractor ?? AiPinnedContextExtractor(),
+       _pinnedContextExtractor =
+           pinnedContextExtractor ?? AiPinnedContextExtractor(),
        _historyRetriever =
            historyRetriever ??
-           AiChatHistoryRetriever(estimator: estimator ?? const AiChatContextBudgetEstimator());
+           AiChatHistoryRetriever(
+             estimator: estimator ?? const AiChatContextBudgetEstimator(),
+           );
 
   static const String legacySummaryPrefix = '[session_summary]';
 
@@ -40,10 +43,7 @@ class AiChatContextAssembler {
       previousItems: previousContext?.pinnedContext ?? const [],
     );
     var recentMessages = List<AiMessage>.from(
-      _selectRecentWindow(
-        sanitized.messages,
-        recentRounds: recentRounds,
-      ),
+      _selectRecentWindow(sanitized.messages, recentRounds: recentRounds),
     );
     final toolTrace = _buildToolTrace(sanitized.messages);
 
@@ -70,7 +70,7 @@ class AiChatContextAssembler {
         lastError: lastError,
         recoveryMode: recoveryMode == AiChatRecoveryMode.none
             ? previousContext?.taskState.lastRecoveryMode ??
-                AiChatRecoveryMode.none
+                  AiChatRecoveryMode.none
             : recoveryMode,
       );
       retrieval = _historyRetriever.retrieve(
@@ -128,9 +128,7 @@ class AiChatContextAssembler {
           ? 0
           : tokenBudget - estimatedTokens,
       didCompact: didCompact,
-      compactReason: didCompact
-          ? (forceCompact ? 'manual' : 'budget')
-          : null,
+      compactReason: didCompact ? (forceCompact ? 'manual' : 'budget') : null,
       repairedToolContext: sanitized.repairedToolContext,
       migratedLegacySummary: legacySummary != null,
       recentRoundsKept: _countUserRounds(recentMessages),
@@ -185,7 +183,9 @@ class AiChatContextAssembler {
     ];
   }
 
-  _SanitizedMessages _sanitizeProtocolMessages(List<AiMessage> protocolMessages) {
+  _SanitizedMessages _sanitizeProtocolMessages(
+    List<AiMessage> protocolMessages,
+  ) {
     final sanitized = <AiMessage>[];
     final pendingToolCallIds = <String>{};
     var awaitingToolResults = false;
@@ -313,11 +313,11 @@ class AiChatContextAssembler {
       recentMessages.length > 2 ? 2 : recentMessages.length,
     )) {
       if (message.role == 'tool') {
-        _addUnique(memory.toolFindings, _truncate(message.content, 180));
+        _addUnique(memory.toolFindings, _truncate(message.content, 1000));
       }
     }
     if (lastError != null && lastError.trim().isNotEmpty) {
-      _addUnique(memory.blockers, _truncate(lastError, 180));
+      _addUnique(memory.blockers, _truncate(lastError, 600));
     }
 
     return AiChatSessionMemory(
@@ -331,8 +331,10 @@ class AiChatContextAssembler {
 
   void _ingestMessage(_MemoryAccumulator memory, AiMessage message) {
     final normalized = _truncate(
-      _semanticContent(message).replaceAll('\r', ' ').replaceAll('\n', ' ').trim(),
-      180,
+      _semanticContent(
+        message,
+      ).replaceAll('\r', ' ').replaceAll('\n', ' ').trim(),
+      800,
     );
     if (normalized.isEmpty) {
       return;
@@ -430,10 +432,11 @@ class AiChatContextAssembler {
           if (id.isEmpty) {
             continue;
           }
-          final function = toolCall['function'] as Map<String, dynamic>? ?? const {};
+          final function =
+              toolCall['function'] as Map<String, dynamic>? ?? const {};
           argumentSummaries[id] = _truncate(
             function['arguments']?.toString() ?? '',
-            180,
+            400,
           );
         }
         break;
@@ -471,25 +474,25 @@ class AiChatContextAssembler {
     for (var index = recentMessages.length - 1; index >= 0; index--) {
       final message = recentMessages[index];
       if (lastUserGoal == null && message.role == 'user') {
-        lastUserGoal = _truncate(_semanticContent(message).trim(), 180);
+        lastUserGoal = _truncate(_semanticContent(message).trim(), 600);
       }
       if (recentSuccessStep == null &&
           message.role == 'assistant' &&
           !message.isError &&
           !message.hasToolCalls &&
           _semanticContent(message).trim().isNotEmpty) {
-        recentSuccessStep = _truncate(_semanticContent(message).trim(), 180);
+        recentSuccessStep = _truncate(_semanticContent(message).trim(), 800);
       }
       if (currentStep == null &&
           message.role == 'assistant' &&
           _semanticContent(message).trim().isNotEmpty &&
           !message.hasToolCalls) {
-        currentStep = _truncate(_semanticContent(message).trim(), 180);
+        currentStep = _truncate(_semanticContent(message).trim(), 600);
       }
       if (nextStep == null &&
           message.role == 'user' &&
           _semanticContent(message).trim().isNotEmpty) {
-        nextStep = _truncate(_semanticContent(message).trim(), 180);
+        nextStep = _truncate(_semanticContent(message).trim(), 1000);
       }
     }
 
@@ -502,13 +505,18 @@ class AiChatContextAssembler {
       nextStep: nextStep,
       recentSuccessStep: recentSuccessStep,
       lastError: lastError,
-      lastUserGoal: lastUserGoal ??
-          (sessionMemory.userGoals.isNotEmpty ? sessionMemory.userGoals.last : null),
+      lastUserGoal:
+          lastUserGoal ??
+          (sessionMemory.userGoals.isNotEmpty
+              ? sessionMemory.userGoals.last
+              : null),
       lastRecoveryMode: recoveryMode,
     );
   }
 
-  AiMessage? _buildPinnedSystemMessage(List<AiPinnedContextItem> pinnedContext) {
+  AiMessage? _buildPinnedSystemMessage(
+    List<AiPinnedContextItem> pinnedContext,
+  ) {
     if (pinnedContext.isEmpty) {
       return null;
     }
@@ -663,10 +671,7 @@ class AiChatContextAssembler {
     if (message.role != 'user') {
       return message.content;
     }
-    return AiMultimodalMessageCodec.toSemanticText(
-      message.content,
-      isZh: true,
-    );
+    return AiMultimodalMessageCodec.toSemanticText(message.content, isZh: true);
   }
 }
 

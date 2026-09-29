@@ -1,6 +1,7 @@
 package com.jsxposed.x.feature.jsxposed.loader
 
 import android.content.Context
+import android.util.Log
 import com.jsxposed.x.JsXposedTransportConfig
 import com.jsxposed.x.core.bridge.xposed_js_snapshot.XposedScriptSnapshotRepository
 import com.jsxposed.x.core.utils.shell.PiniaRoot
@@ -68,11 +69,16 @@ class ScriptLoader(
                     continue
                 }
 
+                val runContextKey = "jx_script_run_context_${packageName}_xposed_$scriptName"
+                val runContext = runCatching {
+                    JSONObject(piniaRoot.getString(runContextKey, ""))
+                }.getOrNull()
+                val runId = runContext?.optString("runId").orEmpty()
                 val removed = bridgeManager.unhookScript(localPath)
                 LogX.d(TAG, "script-reload-cleanup package=$packageName script=$scriptName removed=$removed")
                 LogX.d(TAG, "script-execute-start package=$packageName script=$scriptName size=${sourceCode.length}")
                 val executeStart = System.currentTimeMillis()
-                bridgeManager.beginScriptScope(localPath)
+                bridgeManager.beginScriptScope(localPath, runId)
                 try {
                     executeScript(scriptName, sourceCode)
                 } finally {
@@ -94,7 +100,11 @@ class ScriptLoader(
             qjs.evaluate(sourceCode, scriptName)
             LogX.d(TAG, "[$packageName] 脚本执行成功: $scriptName")
         } catch (e: Exception) {
-            LogX.e(TAG, "[$packageName] 脚本语法错误或者执行崩溃 ($scriptName): ${e.message}")
+            LogX.e(
+                TAG,
+                "[$packageName] 脚本语法错误或者执行崩溃 ($scriptName): ${e.message}",
+                Log.getStackTraceString(e),
+            )
         }
     }
 }

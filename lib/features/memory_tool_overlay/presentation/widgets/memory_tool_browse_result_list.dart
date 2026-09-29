@@ -1,7 +1,6 @@
 import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_display_item.dart';
-import 'package:JsxposedX/features/memory_tool_overlay/presentation/models/memory_tool_entry_kind.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_query_provider.dart';
@@ -22,7 +21,6 @@ import 'package:JsxposedX/features/overlay_window/presentation/providers/overlay
 import 'package:JsxposedX/generated/memory_tool.g.dart'
     show
         MemoryInstructionPatchRequest,
-        MemoryInstructionPatchResult,
         MemoryValuePreview,
         PointerScanRequest;
 import 'package:flutter/material.dart';

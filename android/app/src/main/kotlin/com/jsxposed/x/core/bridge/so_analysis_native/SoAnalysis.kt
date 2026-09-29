@@ -70,6 +70,12 @@ object SoAnalysisJni {
 }
 
 class SoAnalysis(private val context: Context) {
+    companion object {
+        private const val MAX_CACHED_SO_FILES = 2
+        private const val MAX_SO_BYTES = 32L * 1024L * 1024L
+        private const val MAX_RESULT_ENTRIES = 20_000
+    }
+
     private val apkSessions = mutableMapOf<String, String>()
     
     // 缓存 SO 文件字节数据，避免重复读取 APK
@@ -83,44 +89,69 @@ class SoAnalysis(private val context: Context) {
     private val dependenciesCache = mutableMapOf<String, List<SoDependency>>()
     private val stringsCache = mutableMapOf<String, List<SoString>>()
     private val jniFunctionsCache = mutableMapOf<String, List<SoJniFunction>>()
+    private val cacheAccessOrder = LinkedHashMap<String, Unit>(4, 0.75f, true)
 
+    @Synchronized
     fun registerSession(sessionId: String, apkPath: String) {
         apkSessions[sessionId] = apkPath
     }
     
+    @Synchronized
     fun clearSession(sessionId: String) {
         apkSessions.remove(sessionId)
-        // 清理该 session 相关的所有缓存
-        val keysToRemove = soBytesCache.keys.filter { it.startsWith("$sessionId::") }
-        keysToRemove.forEach { key ->
-            soBytesCache.remove(key)
-            headerCache.remove(key)
-            sectionsCache.remove(key)
-            exportedSymbolsCache.remove(key)
-            importedSymbolsCache.remove(key)
-            dependenciesCache.remove(key)
-            stringsCache.remove(key)
-            jniFunctionsCache.remove(key)
-        }
+        cacheAccessOrder.keys
+            .filter { it.startsWith("$sessionId::") }
+            .forEach(::evictCacheKey)
+    }
+
+    @Synchronized
+    fun clearAll() {
+        cacheAccessOrder.keys.toList().forEach(::evictCacheKey)
+        apkSessions.clear()
     }
 
     private fun getCacheKey(sessionId: String, soPath: String): String = "$sessionId::$soPath"
 
+    private fun touchCacheKey(cacheKey: String) {
+        cacheAccessOrder[cacheKey] = Unit
+        while (cacheAccessOrder.size > MAX_CACHED_SO_FILES) {
+            evictCacheKey(cacheAccessOrder.entries.first().key)
+        }
+    }
+
+    private fun evictCacheKey(cacheKey: String) {
+        cacheAccessOrder.remove(cacheKey)
+        soBytesCache.remove(cacheKey)
+        headerCache.remove(cacheKey)
+        sectionsCache.remove(cacheKey)
+        exportedSymbolsCache.remove(cacheKey)
+        importedSymbolsCache.remove(cacheKey)
+        dependenciesCache.remove(cacheKey)
+        stringsCache.remove(cacheKey)
+        jniFunctionsCache.remove(cacheKey)
+    }
+
     private fun readSoBytes(sessionId: String, soPath: String): ByteArray {
         val cacheKey = getCacheKey(sessionId, soPath)
+        touchCacheKey(cacheKey)
         return soBytesCache.getOrPut(cacheKey) {
             val apkPath = apkSessions[sessionId]
                 ?: throw IllegalStateException("SO session not found: $sessionId")
             ZipFile(apkPath).use { zip ->
                 val entry = zip.getEntry(soPath)
                     ?: throw IllegalArgumentException("Entry not found: $soPath")
+                require(entry.size <= MAX_SO_BYTES) {
+                    "SO file is too large to analyze: ${entry.size} bytes"
+                }
                 zip.getInputStream(entry).readBytes()
             }
         }
     }
 
+    @Synchronized
     fun parseSoHeader(sessionId: String, soPath: String): SoElfHeader {
         val cacheKey = getCacheKey(sessionId, soPath)
+        touchCacheKey(cacheKey)
         return headerCache.getOrPut(cacheKey) {
             val bytes = readSoBytes(sessionId, soPath)
             val jni = SoAnalysisJni.parseSoHeader(bytes)
@@ -142,59 +173,72 @@ class SoAnalysis(private val context: Context) {
         }
     }
 
+    @Synchronized
     fun getSoSections(sessionId: String, soPath: String): List<SoSection> {
         val cacheKey = getCacheKey(sessionId, soPath)
+        touchCacheKey(cacheKey)
         return sectionsCache.getOrPut(cacheKey) {
             val bytes = readSoBytes(sessionId, soPath)
-            SoAnalysisJni.getSoSections(bytes).map {
+            SoAnalysisJni.getSoSections(bytes).asSequence().take(MAX_RESULT_ENTRIES).map {
                 SoSection(name = it.name, type = it.type, offset = it.offset, size = it.size, flags = it.flags, alignment = it.alignment)
-            }
+            }.toList()
         }
     }
 
+    @Synchronized
     fun getExportedSymbols(sessionId: String, soPath: String): List<SoSymbol> {
         val cacheKey = getCacheKey(sessionId, soPath)
+        touchCacheKey(cacheKey)
         return exportedSymbolsCache.getOrPut(cacheKey) {
             val bytes = readSoBytes(sessionId, soPath)
-            SoAnalysisJni.getExportedSymbols(bytes).map {
+            SoAnalysisJni.getExportedSymbols(bytes).asSequence().take(MAX_RESULT_ENTRIES).map {
                 SoSymbol(name = it.name, type = it.type, binding = it.binding, visibility = it.visibility, address = it.address, size = it.size, shndx = it.shndx)
-            }
+            }.toList()
         }
     }
 
+    @Synchronized
     fun getImportedSymbols(sessionId: String, soPath: String): List<SoSymbol> {
         val cacheKey = getCacheKey(sessionId, soPath)
+        touchCacheKey(cacheKey)
         return importedSymbolsCache.getOrPut(cacheKey) {
             val bytes = readSoBytes(sessionId, soPath)
-            SoAnalysisJni.getImportedSymbols(bytes).map {
+            SoAnalysisJni.getImportedSymbols(bytes).asSequence().take(MAX_RESULT_ENTRIES).map {
                 SoSymbol(name = it.name, type = it.type, binding = it.binding, visibility = it.visibility, address = it.address, size = it.size, shndx = it.shndx)
-            }
+            }.toList()
         }
     }
 
+    @Synchronized
     fun getDependencies(sessionId: String, soPath: String): List<SoDependency> {
         val cacheKey = getCacheKey(sessionId, soPath)
+        touchCacheKey(cacheKey)
         return dependenciesCache.getOrPut(cacheKey) {
             val bytes = readSoBytes(sessionId, soPath)
-            SoAnalysisJni.getDependencies(bytes).map { SoDependency(name = it.name) }
+            SoAnalysisJni.getDependencies(bytes).asSequence().take(MAX_RESULT_ENTRIES)
+                .map { SoDependency(name = it.name) }.toList()
         }
     }
 
+    @Synchronized
     fun getSoStrings(sessionId: String, soPath: String): List<SoString> {
         val cacheKey = getCacheKey(sessionId, soPath)
+        touchCacheKey(cacheKey)
         return stringsCache.getOrPut(cacheKey) {
             val bytes = readSoBytes(sessionId, soPath)
-            SoAnalysisJni.getSoStrings(bytes).map {
+            SoAnalysisJni.getSoStrings(bytes).asSequence().take(MAX_RESULT_ENTRIES).map {
                 SoString(offset = it.offset, value = it.value, section = it.section)
-            }
+            }.toList()
         }
     }
 
+    @Synchronized
     fun getJniFunctions(sessionId: String, soPath: String): List<SoJniFunction> {
         val cacheKey = getCacheKey(sessionId, soPath)
+        touchCacheKey(cacheKey)
         return jniFunctionsCache.getOrPut(cacheKey) {
             val bytes = readSoBytes(sessionId, soPath)
-            SoAnalysisJni.getJniFunctions(bytes).map {
+            SoAnalysisJni.getJniFunctions(bytes).asSequence().take(MAX_RESULT_ENTRIES).map {
                 SoJniFunction(
                     symbolName = it.symbolName,
                     javaClass = it.javaClass,
@@ -203,7 +247,7 @@ class SoAnalysis(private val context: Context) {
                     address = it.address,
                     isDynamic = it.isDynamic,
                 )
-            }
+            }.toList()
         }
     }
 

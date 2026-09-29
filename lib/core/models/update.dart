@@ -1,5 +1,4 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:JsxposedX/core/enums/ai_api_type.dart';
 
 part 'update.freezed.dart';
 

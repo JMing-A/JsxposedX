@@ -5,130 +5,143 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import com.jsxposed.x.core.bridge.xposed_js_snapshot.XposedScriptSnapshotRepository
 import com.jsxposed.x.core.models.Encrypt
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class ProjectNativeImpl(val context: Context) : ProjectNative {
-    companion object {
-        // Avoid blocking UI thread
-        private val fridaExecutor = Executors.newSingleThreadExecutor()
+class ProjectNativeImpl(context: Context) : ProjectNative {
+    private val appContext = context.applicationContext
+    private val project = Project(appContext)
+    private val snapshotRepository by lazy { XposedScriptSnapshotRepository(appContext) }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private fun <T> launchResult(callback: (Result<T>) -> Unit, block: () -> T) {
+        scope.launch {
+            val result = try {
+                Result.success(block())
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Result.failure(error)
+            }
+            withContext(Dispatchers.Main.immediate) {
+                callback(result)
+            }
+        }
     }
 
-    private val snapshotRepository by lazy { XposedScriptSnapshotRepository(context) }
-    override fun initProject() = runBlocking(Dispatchers.IO) {
-        Project(context).initProject()
+    override fun initProject(callback: (Result<Unit>) -> Unit) = launchResult(callback) {
+        project.initProject()
     }
 
-    override fun projectExists(packageName: String): Boolean = runBlocking(Dispatchers.IO) {
-        Project(context).projectExists(packageName)
+    override fun projectExists(packageName: String, callback: (Result<Boolean>) -> Unit) = launchResult(callback) {
+        project.projectExists(packageName)
     }
 
-    override fun createProject(packageName: String) = runBlocking(Dispatchers.IO) {
-        Project(context).createProject(packageName)
+    override fun createProject(packageName: String, callback: (Result<Unit>) -> Unit) = launchResult(callback) {
+        project.createProject(packageName)
     }
 
-    override fun deleteProject(packageName: String) = runBlocking(Dispatchers.IO) {
-        Project(context).deleteProject(packageName)
+    override fun deleteProject(packageName: String, callback: (Result<Unit>) -> Unit) = launchResult(callback) {
+        project.deleteProject(packageName)
     }
 
-    override fun getProjects(): List<AppInfo> = runBlocking(Dispatchers.IO) {
-        Project(context).getProjects()
+    override fun getProjects(callback: (Result<List<AppInfo>>) -> Unit) = launchResult(callback) {
+        project.getProjects()
     }
 
-    override fun getFridaScripts(packageName: String): List<String> = runBlocking(Dispatchers.IO) {
-        Project(context).getFridaScripts(packageName)
+    override fun getFridaScripts(packageName: String, callback: (Result<List<String>>) -> Unit) = launchResult(callback) {
+        project.getFridaScripts(packageName)
     }
 
     override fun createFridaScript(
-        packageName: String, content: String, localPath: String, append: Boolean
-    ) = runBlocking(Dispatchers.IO) {
-        Project(context).createFridaScript(
+        packageName: String,
+        content: String,
+        localPath: String,
+        append: Boolean,
+        callback: (Result<Unit>) -> Unit,
+    ) = launchResult(callback) {
+        project.createFridaScript(
             packageName = packageName, content = content, localPath = localPath, append = append
         )
     }
 
     override fun readFridaScript(
-        packageName: String, localPath: String
-    ): String = runBlocking(Dispatchers.IO) {
-        Project(context).readFridaScript(
+        packageName: String,
+        localPath: String,
+        callback: (Result<String>) -> Unit,
+    ) = launchResult(callback) {
+        project.readFridaScript(
             packageName = packageName,
             localPath = localPath,
         )
     }
 
-    override fun deleteFridaScript(packageName: String, scriptName: String) =
-        runBlocking(Dispatchers.IO) {
-            Project(context).deleteFridaScript(packageName, scriptName)
-        }
+    override fun deleteFridaScript(
+        packageName: String,
+        scriptName: String,
+        callback: (Result<Unit>) -> Unit,
+    ) = launchResult(callback) {
+        project.deleteFridaScript(packageName, scriptName)
+    }
 
     override fun importFridaScripts(
         packageName: String, localPaths: List<String>, callback: (Result<Unit>) -> Unit
-    ) {
-        runBlocking(Dispatchers.IO) {
-            try {
-                Project(context).importFridaScripts(packageName, localPaths)
-                callback(Result.success(Unit))
-            } catch (e: Exception) {
-                callback(Result.failure(e))
-            }
-        }
+    ) = launchResult(callback) {
+        project.importFridaScripts(packageName, localPaths)
     }
 
 
-    override fun bundleFridaHookJs(packageName: String, callback: (Result<Unit>) -> Unit) {
-        Thread {
-            try {
-                runBlocking(Dispatchers.IO) {
-                    Project(context).bundleFridaHookJs(packageName)
-                }
-                callback(Result.success(Unit))
-            } catch (e: Exception) {
-                callback(Result.failure(e))
-            }
-        }.start()
+    override fun bundleFridaHookJs(packageName: String, callback: (Result<Unit>) -> Unit) = launchResult(callback) {
+        project.bundleFridaHookJs(packageName)
     }
 
-    override fun getJsScripts(packageName: String): List<String> = runBlocking(Dispatchers.IO) {
-        Project(context).getJsScripts(packageName)
+    override fun getJsScripts(packageName: String, callback: (Result<List<String>>) -> Unit) = launchResult(callback) {
+        project.getJsScripts(packageName)
     }
 
     override fun createJsScript(
-        packageName: String, content: String, localPath: String, append: Boolean
-    ) = runBlocking(Dispatchers.IO) {
-        Project(context).createJsScript(
+        packageName: String,
+        content: String,
+        localPath: String,
+        append: Boolean,
+        callback: (Result<Unit>) -> Unit,
+    ) = launchResult(callback) {
+        project.createJsScript(
             packageName = packageName, content = content, localPath = localPath, append = append
         )
         snapshotRepository.writeSnapshot(packageName)
     }
 
-    override fun readJsScript(packageName: String, localPath: String): String =
-        runBlocking(Dispatchers.IO) {
-            Project(context).readJsScript(
-                packageName = packageName,
-                localPath = localPath,
-            )
-        }
+    override fun readJsScript(
+        packageName: String,
+        localPath: String,
+        callback: (Result<String>) -> Unit,
+    ) = launchResult(callback) {
+        project.readJsScript(
+            packageName = packageName,
+            localPath = localPath,
+        )
+    }
 
-    override fun deleteJsScript(packageName: String, localPath: String) =
-        runBlocking(Dispatchers.IO) {
-            Project(context).deleteJsScript(packageName, localPath)
-            snapshotRepository.writeSnapshot(packageName)
-        }
+    override fun deleteJsScript(
+        packageName: String,
+        localPath: String,
+        callback: (Result<Unit>) -> Unit,
+    ) = launchResult(callback) {
+        project.deleteJsScript(packageName, localPath)
+        snapshotRepository.writeSnapshot(packageName)
+    }
 
     override fun importJsScripts(
         packageName: String, localPaths: List<String>, callback: (Result<Unit>) -> Unit
-    ) {
-        runBlocking(Dispatchers.IO) {
-            try {
-                Project(context).importJsScripts(packageName, localPaths)
-                snapshotRepository.writeSnapshot(packageName)
-                callback(Result.success(Unit))
-            } catch (e: Exception) {
-                callback(Result.failure(e))
-            }
-        }
+    ) = launchResult(callback) {
+        project.importJsScripts(packageName, localPaths)
+        snapshotRepository.writeSnapshot(packageName)
     }
 
     @RequiresApi(Build.VERSION_CODES.FROYO)
@@ -138,89 +151,60 @@ class ProjectNativeImpl(val context: Context) : ProjectNative {
         offset: Long,
         keyword: String?,
         callback: (Result<List<AuditLog?>>) -> Unit
-    ) {
-        val project = Project(context)
-        runBlocking(Dispatchers.IO) {
-            try {
-                val logs = project.getAuditLogs(packageName, limit, offset, keyword)
-                val pigeonLogs = logs.map { encrypt ->
-                    AuditLog(
-                        algorithm = encrypt.algorithm,
-                        operation = encrypt.operation.toLong(),
-                        key = encrypt.key,
-                        keyBase64 = Project.hexToBase64(encrypt.key),
-                        keyPlaintext = Project.hexToPlaintext(encrypt.key),
-                        iv = encrypt.iv,
-                        ivBase64 = Project.hexToBase64(encrypt.iv),
-                        ivPlaintext = Project.hexToPlaintext(encrypt.iv),
-                        input = encrypt.input,
-                        inputBase64 = Project.hexToBase64(encrypt.inputHex),
-                        output = encrypt.output,
-                        outputBase64 = Project.hexToBase64(encrypt.outputHex),
-                        inputHex = encrypt.inputHex,
-                        outputHex = encrypt.outputHex,
-                        stackTrace = encrypt.stackTrace,
-                        fingerprint = encrypt.fingerprint,
-                        timestamp = encrypt.timestamp
-                    )
-                }
-                callback(Result.success(pigeonLogs))
-            } catch (e: Exception) {
-                callback(Result.failure(e))
-            }
+    ) = launchResult(callback) {
+        project.getAuditLogs(packageName, limit, offset, keyword).map { encrypt ->
+            AuditLog(
+                algorithm = encrypt.algorithm,
+                operation = encrypt.operation.toLong(),
+                key = encrypt.key,
+                keyBase64 = Project.hexToBase64(encrypt.key),
+                keyPlaintext = Project.hexToPlaintext(encrypt.key),
+                iv = encrypt.iv,
+                ivBase64 = Project.hexToBase64(encrypt.iv),
+                ivPlaintext = Project.hexToPlaintext(encrypt.iv),
+                input = encrypt.input,
+                inputBase64 = Project.hexToBase64(encrypt.inputHex),
+                output = encrypt.output,
+                outputBase64 = Project.hexToBase64(encrypt.outputHex),
+                inputHex = encrypt.inputHex,
+                outputHex = encrypt.outputHex,
+                stackTrace = encrypt.stackTrace,
+                fingerprint = encrypt.fingerprint,
+                timestamp = encrypt.timestamp,
+            )
         }
     }
 
     override fun deleteAuditLog(
         packageName: String, timestamp: Long, callback: (Result<Unit>) -> Unit
-    ) {
-        val project = Project(context)
-        runBlocking(Dispatchers.IO) {
-            try {
-                project.deleteAuditLog(packageName, timestamp)
-                callback(Result.success(Unit))
-            } catch (e: Exception) {
-                callback(Result.failure(e))
-            }
-        }
+    ) = launchResult(callback) {
+        project.deleteAuditLog(packageName, timestamp)
     }
 
     override fun updateAuditLog(
         packageName: String, updatedLog: AuditLog, callback: (Result<Unit>) -> Unit
-    ) {
-        val project = Project(context)
-        runBlocking(Dispatchers.IO) {
-            try {
-                val encrypt = Encrypt(
-                    algorithm = updatedLog.algorithm,
-                    operation = updatedLog.operation.toInt(),
-                    key = updatedLog.key,
-                    iv = updatedLog.iv,
-                    input = updatedLog.input,
-                    output = updatedLog.output,
-                    inputHex = updatedLog.inputHex,
-                    outputHex = updatedLog.outputHex,
-                    stackTrace = updatedLog.stackTrace.filterNotNull(),
-                    fingerprint = updatedLog.fingerprint,
-                    timestamp = updatedLog.timestamp
-                )
-                project.updateAuditLog(packageName, encrypt)
-                callback(Result.success(Unit))
-            } catch (e: Exception) {
-                callback(Result.failure(e))
-            }
-        }
+    ) = launchResult(callback) {
+        val encrypt = Encrypt(
+            algorithm = updatedLog.algorithm,
+            operation = updatedLog.operation.toInt(),
+            key = updatedLog.key,
+            iv = updatedLog.iv,
+            input = updatedLog.input,
+            output = updatedLog.output,
+            inputHex = updatedLog.inputHex,
+            outputHex = updatedLog.outputHex,
+            stackTrace = updatedLog.stackTrace.filterNotNull(),
+            fingerprint = updatedLog.fingerprint,
+            timestamp = updatedLog.timestamp,
+        )
+        project.updateAuditLog(packageName, encrypt)
     }
 
-    override fun clearAuditLogs(packageName: String, callback: (Result<Unit>) -> Unit) {
-        val project = Project(context)
-        runBlocking(Dispatchers.IO) {
-            try {
-                project.clearAuditLogs(packageName)
-                callback(Result.success(Unit))
-            } catch (e: Exception) {
-                callback(Result.failure(e))
-            }
-        }
+    override fun clearAuditLogs(packageName: String, callback: (Result<Unit>) -> Unit) = launchResult(callback) {
+        project.clearAuditLogs(packageName)
+    }
+
+    fun cleanup() {
+        scope.cancel()
     }
 }

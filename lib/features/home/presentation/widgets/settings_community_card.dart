@@ -289,34 +289,6 @@ class SettingsCommunityCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHostChip(BuildContext context, ColorScheme colorScheme) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: context.isDark ? 0.08 : 0.55),
-        borderRadius: BorderRadius.circular(999.r),
-        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.travel_explore_rounded,
-            size: 14.sp,
-            color: colorScheme.primary,
-          ),
-          SizedBox(width: 6.w),
-          Text(
-            forumHost,
-            style: context.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPrimaryAction(
     BuildContext context, {
     required IconData icon,

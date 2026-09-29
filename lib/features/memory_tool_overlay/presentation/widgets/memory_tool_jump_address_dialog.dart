@@ -150,7 +150,7 @@ class MemoryToolJumpAddressDialog extends HookWidget {
                           ? () async {
                               isSubmitting.value = true;
                               try {
-                                await onConfirm(resolvedAddress!);
+                                await onConfirm(resolvedAddress);
                               } finally {
                                 if (context.mounted) {
                                   isSubmitting.value = false;

@@ -4,8 +4,6 @@ import 'package:JsxposedX/features/project/domain/models/crypto_rule.dart';
 import 'package:flutter/foundation.dart';
 
 class CryptoJsGenerator {
-  static const _markerStart = '// --- VISUAL RULES START ---';
-  static const _markerEnd = '// --- VISUAL RULES END ---';
   static const _ruleStart = '/* === CRYPTO_RULES ===';
   static const _ruleEnd = '=== END_CRYPTO_RULES === */';
 

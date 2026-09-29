@@ -4,7 +4,7 @@ description: "flutter for hook"
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 
-version: 6.0.1+601
+version: 6.1.0+610
 
 environment:
   sdk: ^3.9.2
@@ -26,6 +26,7 @@ dependencies:
   hive: ^2.2.3
   path_provider: ^2.1.5
   shared_preferences: ^2.5.3
+  flutter_secure_storage: ^9.2.4
   flutter_smart_dialog: ^4.9.8+9
   fluttertoast: ^8.2.8
   json_annotation: ^4.9.0
@@ -48,8 +49,10 @@ dependencies:
   re_editor: ^0.8.0
   re_highlight: ^0.0.3
   flutter_markdown: ^0.7.7+1
+  flutter_math_fork: ^0.7.4
   uuid: ^4.5.3
   url_launcher: ^6.3.2
+  share_plus: ^10.1.4
   custom_pop_up_menu: ^1.2.4
   popover: ^0.4.0
   file_picker: ^10.3.10
@@ -64,6 +67,7 @@ dependencies:
   flutter_floating: ^2.0.2
   flutter_overlay_window: ^0.5.0
   liquid_glass_widgets: ^0.5.0
+  flutter_svg: ^2.3.0
 
 
 
@@ -91,6 +95,7 @@ flutter:
   assets:
     - assets/
     - assets/images/
+    - assets/images/ai_icons/
     - assets/raws/
   fonts:
     - family: AliMama

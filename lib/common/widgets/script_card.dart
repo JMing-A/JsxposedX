@@ -43,7 +43,6 @@ class ScriptCard extends StatelessWidget {
                   aspectRatio: 16 / 8.5,
                   child: CacheImage(
                     imageUrl: post.cover,
-                    width: double.infinity,
                     fit: BoxFit.cover,
                   ),
                 ),

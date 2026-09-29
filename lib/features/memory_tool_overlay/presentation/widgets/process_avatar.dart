@@ -18,7 +18,14 @@ class ProcessAvatar extends StatelessWidget {
         width: 40.r,
         height: 40.r,
         child: icon != null && icon.isNotEmpty
-            ? Image.memory(icon, fit: BoxFit.cover)
+            ? Image.memory(
+                icon,
+                fit: BoxFit.cover,
+                cacheWidth:
+                    (40.r * MediaQuery.devicePixelRatioOf(context)).round(),
+                cacheHeight:
+                    (40.r * MediaQuery.devicePixelRatioOf(context)).round(),
+              )
             : ColoredBox(
                 color: context.colorScheme.surfaceContainerHighest,
                 child: Icon(

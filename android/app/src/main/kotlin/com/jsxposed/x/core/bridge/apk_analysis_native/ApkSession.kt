@@ -8,6 +8,7 @@ import java.util.UUID
 class ApkSession(private val context: Context) {
     private val sessions = mutableMapOf<String, String>()
 
+    @Synchronized
     fun openSession(packageName: String): String {
         val sessionId = UUID.randomUUID().toString()
         val apkPath = context.packageManager.getApplicationInfo(packageName, 0).publicSourceDir
@@ -15,15 +16,22 @@ class ApkSession(private val context: Context) {
         return sessionId
     }
 
+    @Synchronized
     fun getLocalPath(sessionId: String): String =
         sessions[sessionId] ?: throw IllegalStateException("Session not found: $sessionId")
 
+    @Synchronized
     fun closeSession(sessionId: String) {
         val path = sessions.remove(sessionId) ?: return
         val file = File(path)
         if (file.canonicalPath.startsWith(context.cacheDir.canonicalPath)) {
             file.delete()
         }
+    }
+
+    @Synchronized
+    fun closeAll() {
+        sessions.keys.toList().forEach(::closeSession)
     }
 
     private fun resolveLocalPath(apkPath: String, sessionId: String): String {

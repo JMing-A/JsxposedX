@@ -3,16 +3,14 @@ import 'package:JsxposedX/common/widgets/app_bottom_sheet.dart';
 import 'dart:developer' as developer;
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/utils/file_picker_util.dart';
-import 'package:JsxposedX/features/ai/domain/constants/builtin_ai_config.dart';
+import 'package:JsxposedX/core/themes/app_colors.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_chat_session_context.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 import 'package:JsxposedX/features/ai/domain/services/ai_multimodal_message_codec.dart';
-import 'package:JsxposedX/features/ai/presentation/providers/config/ai_config_query_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/ai/presentation/states/ai_chat_runtime_state.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_chat_compact_scope.dart';
 import 'package:JsxposedX/features/ai/presentation/widgets/ai_quick_actions.dart';
-import 'package:JsxposedX/features/ai/presentation/widgets/padi_chat_options_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -23,6 +21,15 @@ final aiChatPendingAttachmentsProvider =
       (ref, packageName) => const [],
     );
 
+/// 自定义弹层宿主签名。悬浮窗是独立引擎，`AppBottomSheet` 无法正确呈现，
+/// 由悬浮窗侧注入基于 [OverlayPanelDialog] 的实现。
+typedef AiChatInputSheetPresenter =
+    Future<void> Function({
+      required BuildContext context,
+      required String title,
+      required Widget child,
+    });
+
 class AiChatInput extends HookConsumerWidget {
   final String packageName;
   final String? systemPrompt;
@@ -30,13 +37,18 @@ class AiChatInput extends HookConsumerWidget {
   final bool showQuickActions;
   final bool isEmbedded;
   final bool isCompact;
-  final bool showBuiltinOptions;
-  final bool builtinOptionsCompact;
   final Future<void> Function()? onRetryInitialization;
   final VoidCallback? onOpenAnalysis;
   final String Function(String rawText)? composeOutgoingText;
   final bool hasComposedContent;
   final VoidCallback? onSendCommitted;
+  final Widget? inputTopContent;
+
+  /// 追加在快捷操作行末端的自定义控件（例如计划模式开关）。
+  final Widget? quickActionsTrailing;
+
+  /// 自定义弹层宿主，留空时回退到 [AppBottomSheet]。
+  final AiChatInputSheetPresenter? presentSheet;
 
   const AiChatInput({
     super.key,
@@ -46,13 +58,14 @@ class AiChatInput extends HookConsumerWidget {
     this.showQuickActions = true,
     this.isEmbedded = false,
     this.isCompact = false,
-    this.showBuiltinOptions = true,
-    this.builtinOptionsCompact = false,
     this.onRetryInitialization,
     this.onOpenAnalysis,
     this.composeOutgoingText,
     this.hasComposedContent = false,
     this.onSendCommitted,
+    this.inputTopContent,
+    this.quickActionsTrailing,
+    this.presentSheet,
   });
 
   @override
@@ -70,7 +83,6 @@ class AiChatInput extends HookConsumerWidget {
     final chatState = ref.watch(
       aiChatRuntimeProvider(packageName: packageName),
     );
-    final aiConfigAsync = ref.watch(aiConfigProvider);
 
     final textValue = useValueListenable(textController);
     final hasContent = textValue.text.trim().isNotEmpty;
@@ -188,11 +200,20 @@ class AiChatInput extends HookConsumerWidget {
           if (!hasContextDetails) {
             return;
           }
-          AppBottomSheet.show<void>(
-            context: context,
-            title: context.l10n.aiContextTitle,
-            child: _ContextSheet(chatState: chatState),
-          );
+          final presenter = presentSheet;
+          if (presenter != null) {
+            await presenter(
+              context: context,
+              title: context.l10n.aiContextTitle,
+              child: _ContextSheet(chatState: chatState),
+            );
+          } else {
+            AppBottomSheet.show<void>(
+              context: context,
+              title: context.l10n.aiContextTitle,
+              child: _ContextSheet(chatState: chatState),
+            );
+          }
           break;
         case _AiInputMenuAction.uploadImage:
           try {
@@ -259,24 +280,18 @@ class AiChatInput extends HookConsumerWidget {
       }
     }
 
+    final contextStats = chatState.contextStats;
+    final usageRatio = contextStats.usageRatio.clamp(0.0, 1.0);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        _ContextUsageIndicator(stats: contextStats, usageRatio: usageRatio),
+        if (inputTopContent != null) inputTopContent!,
         if (showQuickActions)
           AiQuickActions(
-            packageName: packageName,
-            systemPrompt: systemPrompt,
             onOpenAnalysis: onOpenAnalysis,
-          ),
-        if (showBuiltinOptions &&
-            aiConfigAsync.value != null &&
-            shouldUseBuiltinPadiOptions(aiConfigAsync.value!))
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16 * scopeScale),
-            child: PadiChatOptionsBar(
-              packageName: packageName,
-              isCompact: builtinOptionsCompact,
-            ),
+            trailing: quickActionsTrailing,
           ),
         Container(
           padding: isEmbedded
@@ -366,15 +381,31 @@ class AiChatInput extends HookConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         PopupMenuButton<_AiInputMenuAction>(
-                          tooltip: context.isZh ? '更多操作' : 'More actions',
-                          offset: const Offset(0, -180),
+                          tooltip: context.isZh ? '添加内容' : 'Add content',
+                          offset: Offset(0, -180 * scopeScale),
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(
+                            minWidth: 220 * scopeScale,
+                            maxWidth:
+                                MediaQuery.sizeOf(context).width -
+                                (32 * scopeScale),
+                          ),
                           color: popupMenuColor,
                           surfaceTintColor: Colors.transparent,
-                          shadowColor: Colors.black.withValues(alpha: 0.18),
+                          elevation: 8,
+                          shadowColor: context.colorScheme.shadow.withValues(
+                            alpha: 0.22,
+                          ),
                           clipBehavior: Clip.antiAlias,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
                               14 * scopeScale,
+                            ),
+                            side: BorderSide(
+                              color: context.colorScheme.outlineVariant
+                                  .withValues(
+                                    alpha: context.isDark ? 0.65 : 0.5,
+                                  ),
                             ),
                           ),
                           onSelected: handleMenuAction,
@@ -383,10 +414,10 @@ class AiChatInput extends HookConsumerWidget {
                               value: _AiInputMenuAction.previewContext,
                               enabled: hasContextDetails,
                               child: _AiInputMenuItem(
-                                icon: Icons.data_object_rounded,
+                                icon: Icons.subject_rounded,
                                 title: context.isZh
-                                    ? '查看上下文'
-                                    : 'Preview context',
+                                    ? '查看对话上下文'
+                                    : 'View conversation context',
                                 subtitle: context.isZh
                                     ? '预览自动压缩后的对话上下文'
                                     : 'Preview the current compressed context',
@@ -395,8 +426,8 @@ class AiChatInput extends HookConsumerWidget {
                             PopupMenuItem(
                               value: _AiInputMenuAction.uploadImage,
                               child: _AiInputMenuItem(
-                                icon: Icons.image_outlined,
-                                title: context.isZh ? '上传图片' : 'Upload image',
+                                icon: Icons.add_photo_alternate_outlined,
+                                title: context.isZh ? '添加图片' : 'Add image',
                                 subtitle: context.isZh
                                     ? '添加图片到待发送附件'
                                     : 'Add an image as a pending attachment',
@@ -405,8 +436,8 @@ class AiChatInput extends HookConsumerWidget {
                             PopupMenuItem(
                               value: _AiInputMenuAction.uploadFile,
                               child: _AiInputMenuItem(
-                                icon: Icons.attach_file_rounded,
-                                title: context.isZh ? '上传文件' : 'Upload file',
+                                icon: Icons.note_add_outlined,
+                                title: context.isZh ? '添加文件' : 'Add file',
                                 subtitle: context.isZh
                                     ? '添加文件到待发送附件'
                                     : 'Add a file as a pending attachment',
@@ -539,8 +570,11 @@ class _AiInputMenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scopeScale = AiChatCompactScope.scaleOf(context);
-    return SizedBox(
-      width: 210 * scopeScale,
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minWidth: 188 * scopeScale,
+        maxWidth: 272 * scopeScale,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -658,6 +692,146 @@ class _PendingAttachmentChip extends StatelessWidget {
   }
 }
 
+class _ContextUsageIndicator extends HookWidget {
+  const _ContextUsageIndicator({required this.stats, required this.usageRatio});
+
+  final AiChatContextStats stats;
+  final double usageRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    final expanded = useState(false);
+
+    if (stats.tokenBudget <= 0 && stats.memoryEntryCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final scopeScale = AiChatCompactScope.scaleOf(context);
+    final isWarning = stats.highWatermarkReached;
+    final color = isWarning ? AppColors.warning : context.colorScheme.primary;
+    final radius = BorderRadius.circular(8 * scopeScale);
+    // 不再给整块铺实心底色，只用一条淡描边界定区域，
+    // 避免在输入框上方形成突兀的色块。仅在告警时使用淡橙底强调。
+    final surfaceDecoration = BoxDecoration(
+      color: isWarning ? AppColors.warning.withValues(alpha: 0.10) : null,
+      borderRadius: radius,
+      border: Border.all(
+        color: isWarning
+            ? AppColors.warning.withValues(alpha: 0.35)
+            : context.colorScheme.outlineVariant.withValues(alpha: 0.45),
+      ),
+    );
+
+    final progressBar = ClipRRect(
+      borderRadius: BorderRadius.circular(2 * scopeScale),
+      child: LinearProgressIndicator(
+        value: usageRatio,
+        minHeight: 3 * scopeScale,
+        backgroundColor: color.withValues(alpha: 0.16),
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+      ),
+    );
+
+    final padding = EdgeInsets.fromLTRB(
+      16 * scopeScale,
+      4 * scopeScale,
+      16 * scopeScale,
+      2 * scopeScale,
+    );
+
+    // 折叠态：只保留进度条，点击卡片展开完整占用信息。
+    if (!expanded.value) {
+      return Padding(
+        padding: padding,
+        child: Tooltip(
+          message:
+              '${context.l10n.aiContextUsage}: ${(usageRatio * 100).round()}%',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => expanded.value = true,
+            child: Container(
+              decoration: surfaceDecoration,
+              padding: EdgeInsets.symmetric(
+                horizontal: 10 * scopeScale,
+                vertical: 7 * scopeScale,
+              ),
+              child: progressBar,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: padding,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => expanded.value = false,
+        child: Container(
+          decoration: surfaceDecoration,
+          padding: EdgeInsets.symmetric(
+            horizontal: 10 * scopeScale,
+            vertical: 6 * scopeScale,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                Row(
+                  children: [
+                    Icon(
+                      isWarning
+                          ? Icons.warning_amber_rounded
+                          : Icons.data_usage_rounded,
+                      size: 15 * scopeScale,
+                      color: color,
+                    ),
+                    SizedBox(width: 6 * scopeScale),
+                    Expanded(
+                      child: Text(
+                        '${context.l10n.aiContextUsage}: ${(usageRatio * 100).round()}%  '
+                        '${stats.estimatedTokens}/${stats.tokenBudget}  '
+                        '${context.l10n.aiContextMemoryEntries}: ${stats.memoryEntryCount}',
+                        style: TextStyle(
+                          color: isWarning
+                              ? AppColors.warning
+                              : context.colorScheme.onSurfaceVariant,
+                          fontSize: 11 * scopeScale,
+                          fontWeight: isWarning
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(
+                      Icons.expand_less_rounded,
+                      size: 15 * scopeScale,
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                SizedBox(height: 4 * scopeScale),
+                progressBar,
+                if (isWarning)
+                  Padding(
+                    padding: EdgeInsets.only(top: 3 * scopeScale),
+                    child: Text(
+                      context.l10n.aiContextHighWatermarkAlert,
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 10 * scopeScale,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+    );
+  }
+}
+
 class _ContextSheet extends StatelessWidget {
   const _ContextSheet({required this.chatState});
 
@@ -688,6 +862,9 @@ class _ContextSheet extends StatelessWidget {
               _ContextInfoCard(
                 title: context.l10n.aiContextBudget,
                 rows: [
+                  '${context.l10n.aiContextUsage}: ${(stats.usageRatio * 100).round()}%',
+                  '${context.l10n.aiContextHighWatermark}: ${stats.highWatermarkReached ? context.l10n.aiContextHighWatermarkReached : context.l10n.aiContextHighWatermarkNotReached}',
+                  '${context.l10n.aiContextMemoryEntries}: ${stats.memoryEntryCount}',
                   '${context.l10n.aiContextBudget}: ${stats.estimatedTokens}/${stats.tokenBudget}',
                   '${context.l10n.aiContextRemaining}: ${stats.remainingTokens}',
                   '${context.l10n.aiContextLayers}: ${layers.isEmpty ? '-' : layers}',

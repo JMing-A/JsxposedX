@@ -51,7 +51,7 @@ class AiConfigQueryDatasource {
 
     final models = <AiModelDto>[
       for (final model in rawModels)
-        if (model is Map<String, dynamic>) AiModelDto.fromJson(model),
+        if (model is Map<String, dynamic>) AiModelDto.fromModelListJson(model),
     ];
     await _storage.setString(
       cacheKey,
@@ -64,8 +64,13 @@ class AiConfigQueryDatasource {
     final spec = getBuiltinAiConfigSpecById(id) ?? defaultBuiltinAiConfigSpec;
     final builtinApiKey = await _storage.getString(spec.apiKeyStorageKey);
     final overrideConfig = await _readBuiltinConfigOverride(spec.id);
-    return (overrideConfig ?? _builtinConfigDto(spec)).copyWith(
+    final resolved = (overrideConfig ?? _builtinConfigDto(spec)).copyWith(
       apiKey: builtinApiKey,
+    );
+    // 老版本落盘的历史域名在此升级。读取路径保持无副作用：只做纯函数转换，
+    // 不在读取时回写存储，避免写入失败反过来让读取方（如 aiStatus）报错。
+    return resolved.copyWith(
+      apiUrl: normalizeBuiltinAiConfigUrl(resolved.apiUrl),
     );
   }
 
@@ -83,12 +88,21 @@ class AiConfigQueryDatasource {
     if (configStr.isNotEmpty) {
       try {
         final config = AiConfigDto.fromJson(jsonDecode(configStr));
+        if (isRetiredBuiltinAiConfigId(config.id)) {
+          await _storage.remove(_currentConfigStorageKey);
+          await _storage.remove('ai_builtin_api_key_${config.id}');
+          await _storage.remove('$_builtinConfigOverrideKeyPrefix${config.id}');
+          return getBuiltinConfig();
+        }
         if (isBuiltinAiConfigId(config.id)) {
           final builtinConfig = await getBuiltinConfig(config.id);
+          // 内置服务的历史域名同步升级，避免当前配置仍指向旧地址。
+          // 同样只做纯转换，不在读取路径回写存储。
+          final upgradedUrl = normalizeBuiltinAiConfigUrl(config.apiUrl);
           return config.copyWith(
             name: config.name.isNotEmpty ? config.name : builtinConfig.name,
             apiUrl: config.apiUrl.isNotEmpty
-                ? config.apiUrl
+                ? upgradedUrl
                 : builtinConfig.apiUrl,
             apiKey: builtinConfig.apiKey.isNotEmpty
                 ? builtinConfig.apiKey
@@ -159,7 +173,7 @@ class AiConfigQueryDatasource {
       }
       return <AiModelDto>[
         for (final item in jsonList)
-          if (item is Map<String, dynamic>) AiModelDto.fromJson(item),
+          if (item is Map<String, dynamic>) AiModelDto.fromModelListJson(item),
       ];
     } catch (_) {
       return const <AiModelDto>[];
@@ -167,10 +181,13 @@ class AiConfigQueryDatasource {
   }
 
   Options _buildModelsRequestOptions(AiConfigDto config) {
+    final isAnthropic = config.apiType == 'anthropic';
     return Options(
       headers: <String, dynamic>{
-        if (config.apiKey.isNotEmpty)
+        if (config.apiKey.isNotEmpty && !isAnthropic)
           'Authorization': 'Bearer ${config.apiKey}',
+        if (config.apiKey.isNotEmpty && isAnthropic) 'x-api-key': config.apiKey,
+        if (isAnthropic) 'anthropic-version': '2023-06-01',
         'Content-Type': 'application/json',
       },
     );

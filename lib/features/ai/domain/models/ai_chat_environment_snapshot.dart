@@ -1,5 +1,6 @@
 import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tool_executor_contract.dart';
 import 'package:JsxposedX/features/ai/domain/contracts/ai_chat_tools_spec.dart';
+import 'package:JsxposedX/features/ai/domain/models/ai_tool_definition.dart';
 import 'package:JsxposedX/features/ai/domain/models/ai_session_init_state.dart';
 
 class AiChatEnvironmentSnapshot {
@@ -11,6 +12,7 @@ class AiChatEnvironmentSnapshot {
     this.error,
     this.toolsSpec,
     this.toolExecutor,
+    this.toolDefinitions = const [],
   });
 
   final String scopeId;
@@ -20,6 +22,7 @@ class AiChatEnvironmentSnapshot {
   final String? error;
   final AiChatToolsSpec? toolsSpec;
   final AiChatToolExecutorContract? toolExecutor;
+  final List<AiToolDefinition> toolDefinitions;
 
   factory AiChatEnvironmentSnapshot.ready({
     required String scopeId,
@@ -27,6 +30,7 @@ class AiChatEnvironmentSnapshot {
     required String systemPrompt,
     AiChatToolsSpec? toolsSpec,
     AiChatToolExecutorContract? toolExecutor,
+    List<AiToolDefinition> toolDefinitions = const [],
   }) {
     return AiChatEnvironmentSnapshot(
       scopeId: scopeId,
@@ -35,6 +39,7 @@ class AiChatEnvironmentSnapshot {
       sessionInitState: AiSessionInitState.ready,
       toolsSpec: toolsSpec,
       toolExecutor: toolExecutor,
+      toolDefinitions: toolDefinitions,
     );
   }
 

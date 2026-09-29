@@ -37,6 +37,10 @@ class MemoryTool(private val context: Context) {
     private val iconCache = MemoryToolIconCache(context)
     private val helperManager = MemoryToolHelperManager(context)
     private val daemonClient = MemoryToolDaemonClient(helperManager)
+
+    fun close() {
+        daemonClient.close()
+    }
     private val processCacheLock = Any()
     private val processCommandLock = Any()
     private val rootAccessCacheLock = Any()

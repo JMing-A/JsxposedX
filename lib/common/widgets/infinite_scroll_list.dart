@@ -184,6 +184,16 @@ class InfiniteScrollList<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return _LoadMoreGate(
+      itemCount: items.length,
+      isLoading: isLoading,
+      hasMore: hasMore,
+      onLoadMore: onLoadMore,
+      builder: (requestLoadMore) => _build(context, requestLoadMore),
+    );
+  }
+
+  Widget _build(BuildContext context, VoidCallback requestLoadMore) {
     if (_isIndependent) {
       // 独立模式：返回完整的滚动方案
       // 初始加载状态
@@ -206,9 +216,9 @@ class InfiniteScrollList<T> extends StatelessWidget {
             )
           // 列表/网格内容
           else if (_isGrid)
-            _buildGridView(context)
+            _buildGridView(context, requestLoadMore)
           else
-            _buildListView(context),
+            _buildListView(context, requestLoadMore),
         ],
       );
 
@@ -221,15 +231,15 @@ class InfiniteScrollList<T> extends StatelessWidget {
     } else {
       // Sliver 模式：直接返回 Sliver widget
       if (_isGrid) {
-        return _buildGridView(context);
+        return _buildGridView(context, requestLoadMore);
       } else {
-        return _buildListView(context);
+        return _buildListView(context, requestLoadMore);
       }
     }
   }
 
   /// 构建列表视图
-  Widget _buildListView(BuildContext context) {
+  Widget _buildListView(BuildContext context, VoidCallback requestLoadMore) {
     if (items.isEmpty) {
       if (isLoading) {
         return const SliverFillRemaining(child: Center(child: Loading()));
@@ -249,7 +259,7 @@ class InfiniteScrollList<T> extends StatelessWidget {
           // 触发加载更多
           final loadTriggerIndex = items.length - loadMoreOffset;
           if (index == loadTriggerIndex && hasMore && !isLoading) {
-            Future.microtask(onLoadMore);
+            requestLoadMore();
           }
 
           // 渲染列表项
@@ -293,7 +303,7 @@ class InfiniteScrollList<T> extends StatelessWidget {
   }
 
   /// 构建网格视图
-  Widget _buildGridView(BuildContext context) {
+  Widget _buildGridView(BuildContext context, VoidCallback requestLoadMore) {
     if (items.isEmpty) {
       if (isLoading) {
         return const SliverFillRemaining(child: Center(child: Loading()));
@@ -320,7 +330,7 @@ class InfiniteScrollList<T> extends StatelessWidget {
               // 触发加载更多
               final loadTriggerIndex = items.length - loadMoreOffset;
               if (index == loadTriggerIndex && hasMore && !isLoading) {
-                Future.microtask(onLoadMore);
+                requestLoadMore();
               }
 
               return itemBuilder(context, items[index]);
@@ -396,53 +406,102 @@ class InfiniteScrollListBox<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: padding,
-      itemCount: items.length + (isLoading || !hasMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        // 触发加载更多
-        final loadTriggerIndex = items.length - loadMoreOffset;
-        if (index == loadTriggerIndex && hasMore && !isLoading) {
-          Future.microtask(onLoadMore);
-        }
+    return _LoadMoreGate(
+      itemCount: items.length,
+      isLoading: isLoading,
+      hasMore: hasMore,
+      onLoadMore: onLoadMore,
+      builder: (requestLoadMore) => ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: padding,
+        itemCount: items.length + (isLoading || !hasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          // 触发加载更多
+          final loadTriggerIndex = items.length - loadMoreOffset;
+          if (index == loadTriggerIndex && hasMore && !isLoading) {
+            requestLoadMore();
+          }
 
-        // 渲染列表项
-        if (index < items.length) {
-          final item = items[index];
-          return Column(
-            children: [
-              itemBuilder(context, item),
-              if (showDivider && index < items.length - 1)
-                dividerBuilder?.call() ?? const Divider(height: 1),
-            ],
-          );
-        }
+          // 渲染列表项
+          if (index < items.length) {
+            final item = items[index];
+            return Column(
+              children: [
+                itemBuilder(context, item),
+                if (showDivider && index < items.length - 1)
+                  dividerBuilder?.call() ?? const Divider(height: 1),
+              ],
+            );
+          }
 
-        // 加载指示器
-        if (isLoading) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: Loading()),
-          );
-        }
+          // 加载指示器
+          if (isLoading) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: Loading()),
+            );
+          }
 
-        // 加载完成提示
-        if (!hasMore && items.isNotEmpty) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Text(
-                completeMessage ?? 'Loaded all ${items.length} items',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          // 加载完成提示
+          if (!hasMore && items.isNotEmpty) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  completeMessage ?? 'Loaded all ${items.length} items',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
               ),
-            ),
-          );
-        }
+            );
+          }
 
-        return const SizedBox.shrink();
-      },
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
+}
+
+class _LoadMoreGate extends StatefulWidget {
+  const _LoadMoreGate({
+    required this.itemCount,
+    required this.isLoading,
+    required this.hasMore,
+    required this.onLoadMore,
+    required this.builder,
+  });
+
+  final int itemCount;
+  final bool isLoading;
+  final bool hasMore;
+  final VoidCallback onLoadMore;
+  final Widget Function(VoidCallback requestLoadMore) builder;
+
+  @override
+  State<_LoadMoreGate> createState() => _LoadMoreGateState();
+}
+
+class _LoadMoreGateState extends State<_LoadMoreGate> {
+  bool _requested = false;
+
+  @override
+  void didUpdateWidget(covariant _LoadMoreGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.itemCount != oldWidget.itemCount ||
+        widget.hasMore != oldWidget.hasMore) {
+      _requested = false;
+    }
+  }
+
+  void _requestLoadMore() {
+    if (_requested || widget.isLoading || !widget.hasMore) {
+      return;
+    }
+    _requested = true;
+    Future.microtask(widget.onLoadMore);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(_requestLoadMore);
 }

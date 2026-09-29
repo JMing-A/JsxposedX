@@ -1,4 +1,4 @@
-﻿// lib/core/utils/file_picker_util.dart
+// lib/core/utils/file_picker_util.dart
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -89,6 +89,20 @@ class FilePickerUtil {
 
   static Future<PickedFileData?> pickApk() async {
     return pickFile(type: FileType.custom, allowedExtensions: ['apk']);
+  }
+
+  /// 通过悬浮窗代理保存文件。悬浮窗是独立引擎，`FilePicker.platform.saveFile`
+  /// 依赖宿主 Activity，故改走原生 SAF 代理。
+  ///
+  /// 返回保存后的展示路径（URI 或文件名），用户取消或失败时返回 null。
+  static Future<String?> saveFileWithOverlayProxy({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    return _overlayPickerChannel.invokeMethod<String>('saveFile', {
+      'name': fileName,
+      'bytes': bytes,
+    });
   }
 
   static Future<PickedFileData?> _pickWithOverlayProxy({

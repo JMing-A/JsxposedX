@@ -647,6 +647,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiContextBudget => '上下文预算';
 
   @override
+  String get aiContextUsage => '占用率';
+
+  @override
+  String get aiContextMemoryEntries => '记忆条目';
+
+  @override
+  String get aiContextHighWatermark => '高水位';
+
+  @override
+  String get aiContextHighWatermarkReached => '已触发';
+
+  @override
+  String get aiContextHighWatermarkNotReached => '未触发';
+
+  @override
+  String get aiContextHighWatermarkAlert => '上下文接近容量上限，已自动压缩历史摘要';
+
+  @override
   String get aiContextRemaining => '剩余预算';
 
   @override
@@ -818,18 +836,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiBubbleAnswerTitle => '回答内容';
 
   @override
-  String get aiAnalyzeManifest => '分析 Manifest';
-
-  @override
-  String get aiHardeningDetection => '加固检测';
-
-  @override
-  String get aiExportInterfaces => '导出接口';
-
-  @override
-  String get aiFindHookPoints => '寻找 Hook 点';
-
-  @override
   String get aiTestConnecting => '正在测试连接...';
 
   @override
@@ -854,6 +860,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String aiShowMoreMessages(Object count) {
     return '显示更早的消息 ($count)';
   }
+
+  @override
+  String get aiSearchInConversation => '搜索当前会话';
+
+  @override
+  String get aiSearchMessagesHint => '搜索消息内容...';
+
+  @override
+  String get aiSearchNoResults => '没有找到匹配的消息';
+
+  @override
+  String aiSearchResultCount(int count) {
+    return '$count 条匹配';
+  }
+
+  @override
+  String get aiSearchRoleUser => '我';
+
+  @override
+  String get aiSearchRoleAssistant => 'AI';
+
+  @override
+  String get aiSearchRoleSystem => '系统';
+
+  @override
+  String get aiSearchRoleTool => '工具';
+
+  @override
+  String get aiSearchMessageNotFound => '该消息不在当前已加载的会话中';
 
   @override
   String aiToolUnknown(String toolName) {
@@ -1029,33 +1064,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aiApiKeyNotConfigured => 'API Key 未配置';
 
   @override
-  String get aiPadiModelLabel => '模型';
-
-  @override
-  String get aiPadiReasoningLabel => '思考深度';
-
-  @override
-  String get aiPadiEffortNone => '极低';
-
-  @override
-  String get aiPadiEffortLow => '低';
-
-  @override
-  String get aiPadiEffortMedium => '中';
-
-  @override
-  String get aiPadiEffortHigh => '高';
-
-  @override
-  String get aiPadiEffortXHigh => '极高';
-
-  @override
-  String get aiPadiOptionsExpand => '展开';
-
-  @override
-  String get aiPadiOptionsCollapse => '收起';
-
-  @override
   String aiCurrentStatus(String status) {
     return '当前状态：$status';
   }
@@ -1075,7 +1083,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoScroll => '自动滚屏';
 
   @override
-  String get clearPanel => '清空面板';
+  String get clearPanel => '清空视图';
+
+  @override
+  String get consoleClearViewTooltip => '仅清空当前视图，已持久化的日志不受影响';
 
   @override
   String get noLogs => '暂无日志';
@@ -1085,6 +1096,110 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get logcatFullscreen => '全屏';
+
+  @override
+  String get consoleSourceSession => '会话';
+
+  @override
+  String get consoleSourceFrida => 'Frida';
+
+  @override
+  String get consoleSourceXposed => 'Xposed';
+
+  @override
+  String get consoleSourceApp => '应用';
+
+  @override
+  String get consoleSourceCore => '核心';
+
+  @override
+  String get consoleSourceSystem => '系统';
+
+  @override
+  String get consoleLevelDebug => '调试';
+
+  @override
+  String get consoleLevelInfo => '信息';
+
+  @override
+  String get consoleLevelWarn => '警告';
+
+  @override
+  String get consoleLevelError => '错误';
+
+  @override
+  String get consoleAll => '全部';
+
+  @override
+  String get consoleHistory => '持久化脚本日志';
+
+  @override
+  String get consolePauseOutput => '暂停输出';
+
+  @override
+  String get consoleResumeOutput => '继续输出';
+
+  @override
+  String get consoleActions => '控制台操作';
+
+  @override
+  String get consoleCopyVisible => '复制可见日志';
+
+  @override
+  String get consoleExportVisible => '导出可见日志';
+
+  @override
+  String consoleCopied(Object count) {
+    return '已复制 $count 条日志';
+  }
+
+  @override
+  String consoleCopiedTruncated(Object count, Object total) {
+    return '日志过多，已复制最近 $count 条（共 $total 条），完整内容请用导出';
+  }
+
+  @override
+  String get consoleRegexSearch => '正则检索';
+
+  @override
+  String get consoleCaseSensitive => '区分大小写';
+
+  @override
+  String get consoleExpandStack => '展开堆栈';
+
+  @override
+  String get consoleCollapseStack => '收起堆栈';
+
+  @override
+  String get consoleExportDialogTitle => '导出控制台日志';
+
+  @override
+  String get consoleNoHistory => '暂无持久化脚本日志';
+
+  @override
+  String get consoleLiveBelow => '以下为实时输出';
+
+  @override
+  String get consoleLoadOlder => '加载更早日志';
+
+  @override
+  String get consoleLogCopied => '日志已复制';
+
+  @override
+  String get consoleDeleteHistory => '删除该会话历史日志';
+
+  @override
+  String get consoleDeleteHistoryConfirmTitle => '删除历史日志？';
+
+  @override
+  String get consoleDeleteHistoryConfirmMessage =>
+      '将永久删除当前会话已持久化的脚本日志，该操作不可撤销。';
+
+  @override
+  String get consoleDeleteHistoryDone => '已删除该会话的历史日志';
+
+  @override
+  String get consoleDeleteHistoryUnavailable => '当前会话没有关联的持久化记录';
 
   @override
   String get apiManual => '手册';
@@ -1516,6 +1631,69 @@ class AppLocalizationsZh extends AppLocalizations {
   String aiScriptSavedTo(String target, String name) {
     return '已保存到 $target: $name';
   }
+
+  @override
+  String get runScript => '运行';
+
+  @override
+  String aiScriptRunning(String target, String name) {
+    return '已启用 $target 脚本: $name';
+  }
+
+  @override
+  String get exportConversation => '导出会话';
+
+  @override
+  String get exportingConversation => '正在导出会话...';
+
+  @override
+  String conversationExported(String path) {
+    return '会话已导出到 $path';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return '导出失败: $error';
+  }
+
+  @override
+  String get exportFormat => '导出格式';
+
+  @override
+  String get exportOptions => '导出选项';
+
+  @override
+  String get includeToolCalls => '包含工具调用';
+
+  @override
+  String get includeToolCallsDesc => '导出 AI 调用的工具和参数';
+
+  @override
+  String get includeThinking => '包含思考过程';
+
+  @override
+  String get includeThinkingDesc => '导出 AI 的推理和思考内容';
+
+  @override
+  String get preview => '预览';
+
+  @override
+  String get previewTruncated => '预览内容已截断';
+
+  @override
+  String get copyToClipboard => '复制';
+
+  @override
+  String get copiedToClipboard => '已复制到剪贴板';
+
+  @override
+  String get share => '分享';
+
+  @override
+  String get conversationExport => '会话导出';
+
+  @override
+  String get exportToFile => '保存文件';
 
   @override
   String aiScriptSaveFailed(String error) {

@@ -4,6 +4,129 @@ Frida 是一个强大的动态插桩工具，JsXposed_X 集成了 Frida 并提�
 
 ---
 
+# 零、脚本编写规范（生成脚本前必读）
+
+以下为硬性要求。违反任意一条，脚本都无法正常运行或被校验拒绝。
+
+## 0.1 只用本文档列出的 `Fx.*` API
+
+禁止出现原生 Frida API（校验会直接拒绝）：
+
+| 禁止写法 | 正确写法 |
+|---|---|
+| `Java.perform(function(){...})` | 不写。引擎加载脚本时已自动包在 `Java.perform` 内 |
+| `Java.use("com.a.B")` | `Fx.use("com.a.B")` |
+| `Java.use(cls).m.overload(...).implementation = fn` | `Fx.use(cls).hook("m", [...], {...})` |
+| `Java.cast(obj, Java.use(cls))` | `Fx.wrap(obj).cast(cls)` |
+
+本文档中查不到的 API 一律视为不存在。
+
+## 0.2 脚本顶层直接写语句
+
+**不要**自己包 `Java.perform`，也不要等待延迟执行。加载器已把脚本整体置于 Java 上下文中：
+
+```javascript
+// 正确：顶层直接写
+Fx.use("com.example.Target").hook("checkVip", [], {
+  after: function(retval, args, thisObj) {
+    try {
+      return true;
+    } catch (e) {
+      console.log("[Fx] 异常: " + e);
+    }
+  }
+});
+```
+
+## 0.3 Hook 回调签名是 `(args, thisObj)`，不是 `param`
+
+`Fx` 与 `Jx` 不同：**没有** `param` 对象，参数按形参传入：
+
+| 回调 | 签名 | 说明 |
+|---|---|---|
+| `before` | `function(args, thisObj)` | `args` 是参数数组，可用 `args[0] = x` 改参 |
+| `after` | `function(retval, args, thisObj)` | `retval` 是原返回值 |
+| `replace` | `function(args, thisObj)` | `return` 值即方法返回值，原方法不再执行 |
+
+```javascript
+Fx.use("com.example.Target").hook("checkVip", [], {
+  before: function(args, thisObj) { console.log("[Fx] 调用，参数: " + args[0]); },
+  after:  function(retval, args, thisObj) { console.log("[Fx] 返回: " + retval); }
+});
+```
+
+## 0.4 `after` 返回假值不会生效
+
+`after` 的返回值只有在**真值**（truthy）时才会替换原返回值：
+
+```javascript
+// 想改成 true —— 可以
+after: function(retval, args, thisObj) { return true; }
+
+// 想改成 false —— 这样写无效！false 是假值，会保留原返回值
+after: function(retval, args, thisObj) { return false; }   // 错误
+
+// 正确做法一：用 returnConst
+Fx.use(cls).returnConst("isVip", [], false);
+
+// 正确做法二：用 replace
+Fx.use(cls).replace("isVip", [], function(args, thisObj) { return false; });
+```
+
+## 0.5 参数类型数组必传
+
+第二个参数是 Java 参数类型数组，无参方法传 `[]`：
+
+```javascript
+Fx.use(cls).hook("isVip", [], { ... });                             // 无参
+Fx.use(cls).hook("setFlag", ["int", "java.lang.String"], { ... });  // (int, String)
+```
+
+只传 `[]` 时匹配该方法的第一个重载；方法有多个重载且需精确匹配时，必须写全类型。
+
+## 0.6 每个回调都要 try-catch
+
+```javascript
+after: function(retval, args, thisObj) {
+  try {
+    console.log("[Fx] 原返回值: " + retval);
+  } catch (e) {
+    console.log("[Fx] 异常: " + e);
+  }
+}
+```
+
+## 0.7 日志统一用 `console.log` / `Fx.log`
+
+日志 tag 为 `JsxposedX-Frida`，在脚本日志面板中可见。
+
+## 0.8 最小可用骨架
+
+```javascript
+// 目标：让 com.example.Target#checkVip() 恒返回 true
+Fx.use("com.example.Target").hook("checkVip", [], {
+  before: function(args, thisObj) {
+    console.log("[Fx] checkVip 被调用");
+  },
+  after: function(retval, args, thisObj) {
+    try {
+      console.log("[Fx] 原返回值: " + retval);
+      return true;
+    } catch (e) {
+      console.log("[Fx] 异常: " + e);
+    }
+  }
+});
+```
+
+一行固定返回值可用简写：
+
+```javascript
+Fx.use("com.example.Target").returnConst("checkVip", [], true);
+```
+
+---
+
 # 一、Frida 原生 API
 
 这些是 Frida 的核心 API，功能强大且灵活。

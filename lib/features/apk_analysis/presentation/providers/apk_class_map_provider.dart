@@ -20,13 +20,17 @@ class FlowNode {
   final String label;
   final String type;
 
-  const FlowNode({required this.id, required this.label, this.type = 'default'});
+  const FlowNode({
+    required this.id,
+    required this.label,
+    this.type = 'default',
+  });
 
   factory FlowNode.fromJson(Map<String, dynamic> j) => FlowNode(
-        id: j['id']?.toString() ?? '',
-        label: j['label']?.toString() ?? '',
-        type: j['type']?.toString() ?? 'default',
-      );
+    id: j['id']?.toString() ?? '',
+    label: j['label']?.toString() ?? '',
+    type: j['type']?.toString() ?? 'default',
+  );
 
   Map<String, dynamic> toJson() => {'id': id, 'label': label, 'type': type};
 }
@@ -39,10 +43,10 @@ class FlowEdge {
   const FlowEdge({required this.from, required this.to, this.label = ''});
 
   factory FlowEdge.fromJson(Map<String, dynamic> j) => FlowEdge(
-        from: j['from']?.toString() ?? '',
-        to: j['to']?.toString() ?? '',
-        label: j['label']?.toString() ?? '',
-      );
+    from: j['from']?.toString() ?? '',
+    to: j['to']?.toString() ?? '',
+    label: j['label']?.toString() ?? '',
+  );
 
   Map<String, dynamic> toJson() => {'from': from, 'to': to, 'label': label};
 }
@@ -60,27 +64,31 @@ class ClassFlowData {
     this.rawError,
   });
 
-  factory ClassFlowData.fromJson(Map<String, dynamic> json, String fallbackName) =>
-      ClassFlowData(
-        className: json['className']?.toString() ?? fallbackName,
-        nodes: (json['nodes'] as List?)
-                ?.map((e) => FlowNode.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            [],
-        edges: (json['edges'] as List?)
-                ?.map((e) => FlowEdge.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            [],
-      );
+  factory ClassFlowData.fromJson(
+    Map<String, dynamic> json,
+    String fallbackName,
+  ) => ClassFlowData(
+    className: json['className']?.toString() ?? fallbackName,
+    nodes:
+        (json['nodes'] as List?)
+            ?.map((e) => FlowNode.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    edges:
+        (json['edges'] as List?)
+            ?.map((e) => FlowEdge.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+  );
 
   factory ClassFlowData.error(String className, String error) =>
       ClassFlowData(className: className, rawError: error);
 
   Map<String, dynamic> toJson() => {
-        'className': className,
-        'nodes': nodes.map((e) => e.toJson()).toList(),
-        'edges': edges.map((e) => e.toJson()).toList(),
-      };
+    'className': className,
+    'nodes': nodes.map((e) => e.toJson()).toList(),
+    'edges': edges.map((e) => e.toJson()).toList(),
+  };
 }
 
 @riverpod
@@ -143,15 +151,12 @@ Future<ClassFlowData> apkClassMap(
       '}\n'
       'Keep nodes <= 20, be concise. Code:\n';
 
-  final truncatedCode =
-      code.length > 5000 ? '${code.substring(0, 5000)}...' : code;
+  final truncatedCode = code.length > 5000
+      ? '${code.substring(0, 5000)}...'
+      : code;
 
   final messages = [
-    AiMessage(
-      id: const Uuid().v4(),
-      role: 'system',
-      content: systemPrompt,
-    ),
+    AiMessage(id: const Uuid().v4(), role: 'system', content: systemPrompt),
     AiMessage(
       id: const Uuid().v4(),
       role: 'user',
@@ -160,8 +165,8 @@ Future<ClassFlowData> apkClassMap(
   ];
 
   final stream = ref
-      .read(aiChatRuntimeRepositoryProvider)
-      .getChatStream(config: config, messages: messages);
+      .read(aiChatRuntimeQueryProvider)
+      .stream(config: config, messages: messages);
 
   final buffer = StringBuffer();
   await for (final chunk in stream) {
@@ -177,7 +182,11 @@ Future<ClassFlowData> apkClassMap(
         : raw;
     final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
     final result = ClassFlowData.fromJson(decoded, className);
-    await storage.setString(key, jsonEncode(result.toJson()), space: _kMapSpace);
+    await storage.setString(
+      key,
+      jsonEncode(result.toJson()),
+      space: _kMapSpace,
+    );
     return result;
   } catch (e) {
     return ClassFlowData.error(className, 'Parse error: $e\n\nRaw: $raw');

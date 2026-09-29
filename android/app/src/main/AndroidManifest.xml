@@ -1,4 +1,4 @@
-﻿<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.jsxposed.x">
 
@@ -72,6 +72,14 @@
         </activity>
         <activity
             android:name=".core.bridge.file_picker_native.OverlayFilePickerProxyActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:finishOnTaskLaunch="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/OverlayPickerProxyTheme" />
+        <activity
+            android:name=".core.bridge.file_picker_native.OverlayFileSaveProxyActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:finishOnTaskLaunch="true"

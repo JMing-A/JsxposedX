@@ -335,28 +335,55 @@ object FridaSugar {
                 return Process.getCurrentThreadId();
             };
 
-            // ========== 统一日志：重写 console，走 LogX 规范 ==========
+            // ========== 统一日志：结构化输出 ==========
             var _TAG = "JsxposedX-Frida";
+            var _AndroidLog = Java.use("android.util.Log");
+
+            function _encode(value) {
+                try { return encodeURIComponent(String(value)); }
+                catch (_) { return "<unserializable>"; }
+            }
+
+            function _formatValue(value) {
+                if (value && value.stack) {
+                    return String(value.message || value) + "\\n--STACK--\\n" + String(value.stack);
+                }
+                if (value !== null && typeof value === "object") {
+                    try { return JSON.stringify(value); }
+                    catch (_) { return String(value); }
+                }
+                return String(value);
+            }
+
+            Fx._logWithScript = function(scriptName, runId, level, args) {
+                var values = Array.prototype.slice.call(args || []);
+                var msg = values.map(_formatValue).join(" ");
+                var marker = "JXCONSOLE|v2|frida|" + _encode(runId || "") + "|" +
+                    _encode(scriptName || "<unknown>") + "|" + level + "|" + _encode(msg);
+                var priority = level === "E" ? 6 : (level === "W" ? 5 : (level === "D" ? 3 : 4));
+                _AndroidLog.println(priority, _TAG, marker);
+            };
 
             Fx.log = function(msg) {
-                Java.use("android.util.Log").d(_TAG, String(msg));
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "I", arguments);
             };
             Fx.logError = function(msg) {
-                Java.use("android.util.Log").e(_TAG, String(msg));
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "E", arguments);
             };
 
-            // 重写 console，统一 tag
+            // 保留全局 console，同时允许生成器为每个脚本绑定脚本名。
             console.log = function() {
-                var msg = Array.prototype.slice.call(arguments).join(" ");
-                Java.use("android.util.Log").d(_TAG, msg);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "I", arguments);
+            };
+            console.info = console.log;
+            console.debug = function() {
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "D", arguments);
             };
             console.warn = function() {
-                var msg = Array.prototype.slice.call(arguments).join(" ");
-                Java.use("android.util.Log").w(_TAG, msg);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "W", arguments);
             };
             console.error = function() {
-                var msg = Array.prototype.slice.call(arguments).join(" ");
-                Java.use("android.util.Log").e(_TAG, msg);
+                Fx._logWithScript(Fx._activeScript || "<unknown>", "", "E", arguments);
             };
 
             // ========== 内部工具：自动类型转换 ==========

@@ -1693,9 +1693,9 @@ String _buildPendingInteractionProgress(
 }) {
   final normalizedDescription = description.trim();
   if (normalizedDescription.isEmpty) {
-    return title;
+    return '⏳ $title';
   }
-  return '$title\n$normalizedDescription';
+  return '⏳ $title\n$normalizedDescription';
 }
 
 Future<String> _buildProcessSummary(

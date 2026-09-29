@@ -129,7 +129,7 @@ class MemoryToolResultSelectionDialog extends HookWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: canConfirm
-                          ? () => onConfirm(parsedLimit!)
+                          ? () => onConfirm(parsedLimit)
                           : null,
                       child: Text(context.l10n.save),
                     ),

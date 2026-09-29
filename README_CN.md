@@ -136,7 +136,7 @@ AI 输出内容基于模型自动生成，可能存在误差、遗漏、不准�
 - `android/app/src/main/kotlin/com/jsxposed/x/`：共享 Android 代码、Hook 核心、原生 bridge 实现
 - `android/app/src/api100/`：`api100` 壳、入口类与模块资源
 - `android/app/src/api101/`：`api101` 壳、入口类与模块资源
-- `.buildScript/`：代码生成与 Debug 安装的共享 PowerShell 脚本
+- `.buildScript/`：Windows PowerShell 与 macOS/Linux Shell 代码生成、Debug 安装脚本
 - `.idea/runConfigurations/`：共享 IDE 运行配置
 
 ## 共享 IDE 运行配置
@@ -145,12 +145,12 @@ AI 输出内容基于模型自动生成，可能存在误差、遗漏、不准�
 
 拉取仓库后，JetBrains IDE 可以加载这些共享运行配置：
 
-- `watch_pigeons` -> 执行 `.buildScript/pigen_watch.ps1`
+- `watch_pigeons` -> Windows 执行 `.buildScript/pigen_watch.ps1`，macOS/Linux 执行 `.buildScript/pigen_watch.sh`
 - `build_for_xposed_type` -> 执行 `.buildScript/run_install_debug.ps1 -SkipAttach`
 
 ## Pigeon 代码生成
 
-`.buildScript/pigen_watch.ps1` 会监听 `lib/pigeons/**/*.dart`，并且：
+`.buildScript/pigen_watch.ps1` 和 `.buildScript/pigen_watch.sh` 会监听 `lib/pigeons/**/*.dart`，并且：
 
 - 生成 Dart bridge 文件到 `lib/generated`
 - 生成 Kotlin bridge 文件到 `android/app/src/main/kotlin/...`
@@ -162,15 +162,28 @@ AI 输出内容基于模型自动生成，可能存在误差、遗漏、不准�
 .\.buildScript\pigen_watch.ps1
 ```
 
+macOS/Linux：
+
+```bash
+./.buildScript/pigen_watch.sh
+```
+
+只生成一次、不启动监听：
+
+```bash
+./.buildScript/pigen_watch.sh --once
+```
+
 ## Debug 安装脚本
 
-`.buildScript/run_install_debug.ps1` 是当前仓库里的 Debug 安装脚本。
+`.buildScript/run_install_debug.ps1` 和 `.buildScript/run_install_debug.sh` 是当前仓库里的 Debug 安装脚本。
 
 它会：
 
 - 默认执行 `:app:installDebug`，这个任务已映射到 `api100Debug`
 - 把 `pubspec.yaml` 里的 `versionName` 和 `versionCode` 同步到 `android/local.properties`
 - 从 `-DeviceId`、`ANDROID_SERIAL`、Android Studio 当前选中设备或单个已连接 `adb` 设备中解析目标设备
+- macOS 默认使用 JDK 17，并以 `--no-daemon` 构建，避免复用长期运行后内存耗尽的 Gradle daemon
 - 安装完成后等待一段时间，给包替换广播和 LSPosed 重扫留时间
 - 可以执行 force-stop、启动应用以及 `flutter attach`
 
@@ -178,6 +191,20 @@ AI 输出内容基于模型自动生成，可能存在误差、遗漏、不准�
 
 ```powershell
 .\.buildScript\run_install_debug.ps1
+```
+
+macOS/Linux：
+
+```bash
+./.buildScript/run_install_debug.sh
+```
+
+该命令默认依次完成 `:app:installDebug`、等待 LSPosed 重扫、冷启动应用和 `flutter attach`。它不是裸 `android/gradlew` 命令；直接运行不带任务的 `android/gradlew` 只会显示 Gradle 帮助，不会打包或安装。
+
+仅安装和启动、不自动 attach：
+
+```bash
+./.buildScript/run_install_debug.sh --skip-attach
 ```
 
 常用参数：
@@ -189,10 +216,29 @@ AI 输出内容基于模型自动生成，可能存在误差、遗漏、不准�
 .\.buildScript\run_install_debug.ps1 -GradleTask :app:installApi101Debug
 ```
 
+macOS/Linux 对应参数：
+
+```bash
+./.buildScript/run_install_debug.sh --skip-attach
+./.buildScript/run_install_debug.sh --skip-launch
+./.buildScript/run_install_debug.sh --device-id <serial>
+./.buildScript/run_install_debug.sh --java-home /path/to/jdk
+./.buildScript/run_install_debug.sh --gradle-task :app:installApi101Debug
+```
+
+指定设备和查看 Gradle 完整错误：
+
+```bash
+./.buildScript/run_install_debug.sh --device-id <serial> --skip-attach
+./.buildScript/run_install_debug.sh --skip-attach --gradle-arg --stacktrace
+```
+
+如果脚本在 `Installing app with Gradle task ...` 后停止，说明 Gradle 任务返回了非零退出码。脚本会同步显示 Gradle 输出，并将完整日志保存到 `build/logs/install-debug.log`；加上 `--gradle-arg --stacktrace` 可查看更完整的构建错误。
+
 补充说明：
 
 - `installDebug` / `assembleDebug` 默认仍然走 `api100`
-- 要安装 `api101` 壳，请显式传 `-GradleTask :app:installApi101Debug`
+- 要安装 `api101` 壳，请在 PowerShell 显式传 `-GradleTask :app:installApi101Debug`，或在 shell 中传 `--gradle-task :app:installApi101Debug`
 
 这个脚本用于 Xposed/LSPosed 的 Debug 安装流程，不是普通 Flutter hot reload 的替代品。
 
@@ -244,7 +290,7 @@ cd android
 - `.\gradlew.bat :app:assembleApi101Release`：直接从 Android Gradle 进入，适合只想拿对应 flavor 的 release APK
 - 对同一个 flavor 来说，这两种命令最终目标的 Android 产物是一致的，例如 `api100` 对应 `bundleApi100Release`
 
-`.buildScript/run_install_debug.ps1` 负责设备侧的安装、启动和 attach 流程。
+`.buildScript/run_install_debug.ps1` 和 `.buildScript/run_install_debug.sh` 负责设备侧的安装、启动和 attach 流程。
 
 ## Release 签名
 
@@ -263,10 +309,18 @@ flutter pub get
 flutter attach
 ```
 
+macOS/Linux：
+
+```bash
+flutter pub get
+./.buildScript/pigen_watch.sh --once
+./.buildScript/run_install_debug.sh --skip-attach
+flutter attach
+```
+
 安装完成后，再到设备侧做 LSPosed/Xposed 或 Zygisk/Frida 验证。
 
 ## 说明
 
-- 当前仓库里的共享脚本都是 PowerShell 脚本。
-- 如果不是 Windows 环境，就按相同步骤手动执行。
+- Windows 使用 `.ps1`，macOS/Linux 使用对应的 `.sh`，无需手动拆分打包、安装和启动步骤。
 - `flutter run` 仍然可以用于普通 Flutter 迭代，这个仓库另外保留了 Android/Xposed 的安装验证流程。

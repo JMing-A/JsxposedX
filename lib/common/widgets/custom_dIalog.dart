@@ -87,8 +87,13 @@ class CustomDialog extends StatelessWidget {
           ),
         );
 
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final backgroundColor = isDark
+            ? context.colorScheme.surfaceContainerHigh
+            : context.colorScheme.surface;
+        
         return Material(
-          color: context.colorScheme.surface,
+          color: backgroundColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),

@@ -32,7 +32,12 @@ class AppItem extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12.r),
-          child: Image.memory(app.icon, fit: BoxFit.cover),
+          child: Image.memory(
+            app.icon,
+            fit: BoxFit.cover,
+            cacheWidth: (48.w * MediaQuery.devicePixelRatioOf(context)).round(),
+            cacheHeight: (48.w * MediaQuery.devicePixelRatioOf(context)).round(),
+          ),
         ),
       ),
       title: Text(

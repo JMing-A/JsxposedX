@@ -660,6 +660,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiContextBudget => 'Context budget';
 
   @override
+  String get aiContextUsage => 'Usage';
+
+  @override
+  String get aiContextMemoryEntries => 'Memory entries';
+
+  @override
+  String get aiContextHighWatermark => 'High watermark';
+
+  @override
+  String get aiContextHighWatermarkReached => 'Reached';
+
+  @override
+  String get aiContextHighWatermarkNotReached => 'Not reached';
+
+  @override
+  String get aiContextHighWatermarkAlert =>
+      'Context is near its capacity limit; history was compacted automatically';
+
+  @override
   String get aiContextRemaining => 'Remaining budget';
 
   @override
@@ -834,18 +853,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiBubbleAnswerTitle => 'Answer';
 
   @override
-  String get aiAnalyzeManifest => 'Analyze Manifest';
-
-  @override
-  String get aiHardeningDetection => 'Hardening Detection';
-
-  @override
-  String get aiExportInterfaces => 'Export Interfaces';
-
-  @override
-  String get aiFindHookPoints => 'Find Hook Points';
-
-  @override
   String get aiTestConnecting => 'Testing connection...';
 
   @override
@@ -870,6 +877,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String aiShowMoreMessages(Object count) {
     return 'Show earlier messages ($count)';
   }
+
+  @override
+  String get aiSearchInConversation => 'Search in conversation';
+
+  @override
+  String get aiSearchMessagesHint => 'Search message content...';
+
+  @override
+  String get aiSearchNoResults => 'No matching messages';
+
+  @override
+  String aiSearchResultCount(int count) {
+    return '$count matches';
+  }
+
+  @override
+  String get aiSearchRoleUser => 'Me';
+
+  @override
+  String get aiSearchRoleAssistant => 'AI';
+
+  @override
+  String get aiSearchRoleSystem => 'System';
+
+  @override
+  String get aiSearchRoleTool => 'Tool';
+
+  @override
+  String get aiSearchMessageNotFound =>
+      'This message is not in the loaded conversation';
 
   @override
   String aiToolUnknown(String toolName) {
@@ -1046,33 +1083,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aiApiKeyNotConfigured => 'API Key not configured';
 
   @override
-  String get aiPadiModelLabel => 'Model';
-
-  @override
-  String get aiPadiReasoningLabel => 'Thinking';
-
-  @override
-  String get aiPadiEffortNone => 'Minimal';
-
-  @override
-  String get aiPadiEffortLow => 'Low';
-
-  @override
-  String get aiPadiEffortMedium => 'Medium';
-
-  @override
-  String get aiPadiEffortHigh => 'High';
-
-  @override
-  String get aiPadiEffortXHigh => 'Extreme';
-
-  @override
-  String get aiPadiOptionsExpand => 'Expand';
-
-  @override
-  String get aiPadiOptionsCollapse => 'Collapse';
-
-  @override
   String aiCurrentStatus(String status) {
     return 'Status: $status';
   }
@@ -1092,7 +1102,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoScroll => 'Auto Scroll';
 
   @override
-  String get clearPanel => 'Clear Panel';
+  String get clearPanel => 'Clear view';
+
+  @override
+  String get consoleClearViewTooltip =>
+      'Clears the current view only; persisted logs are kept';
 
   @override
   String get noLogs => 'No output yet';
@@ -1102,6 +1116,112 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logcatFullscreen => 'Fullscreen';
+
+  @override
+  String get consoleSourceSession => 'Session';
+
+  @override
+  String get consoleSourceFrida => 'Frida';
+
+  @override
+  String get consoleSourceXposed => 'Xposed';
+
+  @override
+  String get consoleSourceApp => 'App';
+
+  @override
+  String get consoleSourceCore => 'Core';
+
+  @override
+  String get consoleSourceSystem => 'System';
+
+  @override
+  String get consoleLevelDebug => 'Debug';
+
+  @override
+  String get consoleLevelInfo => 'Info';
+
+  @override
+  String get consoleLevelWarn => 'Warn';
+
+  @override
+  String get consoleLevelError => 'Error';
+
+  @override
+  String get consoleAll => 'All';
+
+  @override
+  String get consoleHistory => 'Persisted script logs';
+
+  @override
+  String get consolePauseOutput => 'Pause output';
+
+  @override
+  String get consoleResumeOutput => 'Resume output';
+
+  @override
+  String get consoleActions => 'Console actions';
+
+  @override
+  String get consoleCopyVisible => 'Copy visible logs';
+
+  @override
+  String get consoleExportVisible => 'Export visible logs';
+
+  @override
+  String consoleCopied(Object count) {
+    return '$count logs copied';
+  }
+
+  @override
+  String consoleCopiedTruncated(Object count, Object total) {
+    return 'Too many logs; copied the latest $count of $total. Use export for the full set.';
+  }
+
+  @override
+  String get consoleRegexSearch => 'Regex search';
+
+  @override
+  String get consoleCaseSensitive => 'Case sensitive';
+
+  @override
+  String get consoleExpandStack => 'Expand stack';
+
+  @override
+  String get consoleCollapseStack => 'Collapse stack';
+
+  @override
+  String get consoleExportDialogTitle => 'Export console logs';
+
+  @override
+  String get consoleNoHistory => 'No persisted script logs';
+
+  @override
+  String get consoleLiveBelow => 'Live output below';
+
+  @override
+  String get consoleLoadOlder => 'Load older logs';
+
+  @override
+  String get consoleLogCopied => 'Log copied';
+
+  @override
+  String get consoleDeleteHistory => 'Delete this conversation\'s logs';
+
+  @override
+  String get consoleDeleteHistoryConfirmTitle => 'Delete history logs?';
+
+  @override
+  String get consoleDeleteHistoryConfirmMessage =>
+      'Persisted script logs for this conversation will be permanently deleted. This cannot be undone.';
+
+  @override
+  String get consoleDeleteHistoryDone =>
+      'History logs deleted for this conversation';
+
+  @override
+  String get consoleDeleteHistoryUnavailable =>
+      'No persisted records are linked to this session';
 
   @override
   String get apiManual => 'Manual';
@@ -1538,6 +1658,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String aiScriptSavedTo(String target, String name) {
     return 'Saved to $target: $name';
   }
+
+  @override
+  String get runScript => 'Run';
+
+  @override
+  String aiScriptRunning(String target, String name) {
+    return '$target script enabled: $name';
+  }
+
+  @override
+  String get exportConversation => 'Export';
+
+  @override
+  String get exportingConversation => 'Exporting conversation...';
+
+  @override
+  String conversationExported(String path) {
+    return 'Conversation exported to $path';
+  }
+
+  @override
+  String exportFailed(String error) {
+    return 'Export failed: $error';
+  }
+
+  @override
+  String get exportFormat => 'Export Format';
+
+  @override
+  String get exportOptions => 'Export Options';
+
+  @override
+  String get includeToolCalls => 'Include Tool Calls';
+
+  @override
+  String get includeToolCallsDesc =>
+      'Export AI tool invocations and parameters';
+
+  @override
+  String get includeThinking => 'Include Thinking Process';
+
+  @override
+  String get includeThinkingDesc => 'Export AI reasoning and thought content';
+
+  @override
+  String get preview => 'Preview';
+
+  @override
+  String get previewTruncated => 'Preview content truncated';
+
+  @override
+  String get copyToClipboard => 'Copy';
+
+  @override
+  String get copiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String get share => 'Share';
+
+  @override
+  String get conversationExport => 'Conversation Export';
+
+  @override
+  String get exportToFile => 'Save File';
 
   @override
   String aiScriptSaveFailed(String error) {

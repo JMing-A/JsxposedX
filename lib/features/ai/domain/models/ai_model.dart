@@ -12,5 +12,7 @@ abstract class AiModel with _$AiModel {
     required int created,
     required String ownedBy,
     required List<String> supportedEndpointTypes,
+    int? contextTokens,
+    int? maxOutputTokens,
   }) = _AiModel;
 }

@@ -13,18 +13,20 @@ class JxBridgeManager(
     private val dispatcher: JxSingleThreadDispatcher,
 ) {
 
-    private val hookBridge = JxHookBridge(qjs, classLoader, dispatcher)
+    private val logBridge = JxLogBridge(qjs)
+    private val hookBridge = JxHookBridge(qjs, classLoader, dispatcher, logBridge)
     private val classBridge = JxClassBridge(qjs, classLoader)
     private val fieldBridge = JxFieldBridge(qjs, classLoader)
     private val methodBridge = JxMethodBridge(qjs, classLoader)
-    private val logBridge = JxLogBridge(qjs)
 
-    fun beginScriptScope(scriptKey: String) {
-        hookBridge.beginScriptScope(scriptKey)
+    fun beginScriptScope(scriptKey: String, runId: String) {
+        hookBridge.beginScriptScope(scriptKey, runId)
+        logBridge.beginScriptScope(scriptKey, runId)
     }
 
     fun endScriptScope() {
         hookBridge.endScriptScope()
+        logBridge.endScriptScope()
     }
 
     fun unhookScript(scriptKey: String): Int {
@@ -42,12 +44,27 @@ class JxBridgeManager(
         }
 
         // --- 1. 注入 LogBridge 模块 ---
-        jx.setProperty("log") { args -> 
+        jx.setProperty("log") { args ->
             logBridge.log(args?.get(0)?.toString() ?: "")
         }
-        jx.setProperty("logException") { args -> 
+        jx.setProperty("logException") { args ->
             logBridge.logException(args?.get(0)?.toString() ?: "")
         }
+
+        val console = qjs.createNewJSObject()
+        console.setProperty("log") { args ->
+            logBridge.log("I", args?.get(0)?.toString() ?: "")
+        }
+        console.setProperty("info") { args ->
+            logBridge.log("I", args?.get(0)?.toString() ?: "")
+        }
+        console.setProperty("warn") { args ->
+            logBridge.log("W", args?.get(0)?.toString() ?: "")
+        }
+        console.setProperty("error") { args ->
+            logBridge.log("E", args?.get(0)?.toString() ?: "")
+        }
+        globalObj.setProperty("console", console)
 
         // --- 2. 注入 ClassBridge 模块 ---
         jx.setProperty("findClass") { args ->

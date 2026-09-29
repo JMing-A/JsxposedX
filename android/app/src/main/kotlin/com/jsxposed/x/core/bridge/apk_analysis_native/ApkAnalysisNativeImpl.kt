@@ -178,5 +178,6 @@ class ApkAnalysisNativeImpl(val context: Context, internal val sharedSession: Ap
     // 清理资源
     fun cleanup() {
         scope.cancel()
+        apkAnalysis.clearCaches()
     }
 }

@@ -41,6 +41,12 @@ class MainActivity : FlutterActivity() {
         pendingLsposedCheck?.let { mainHandler.removeCallbacks(it) }
     }
 
+    override fun onDestroy() {
+        pendingLsposedCheck?.let { mainHandler.removeCallbacks(it) }
+        NativeProvider.dispose()
+        super.onDestroy()
+    }
+
     private fun scheduleOneTimeLsposedCheck() {
         pendingLsposedCheck?.let { mainHandler.removeCallbacks(it) }
         val task = Runnable {
@@ -58,4 +64,3 @@ class MainActivity : FlutterActivity() {
         mainHandler.postDelayed(task, 3500L)
     }
 }
-

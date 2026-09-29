@@ -1346,6 +1346,42 @@ abstract class AppLocalizations {
   /// **'上下文预算'**
   String get aiContextBudget;
 
+  /// No description provided for @aiContextUsage.
+  ///
+  /// In zh, this message translates to:
+  /// **'占用率'**
+  String get aiContextUsage;
+
+  /// No description provided for @aiContextMemoryEntries.
+  ///
+  /// In zh, this message translates to:
+  /// **'记忆条目'**
+  String get aiContextMemoryEntries;
+
+  /// No description provided for @aiContextHighWatermark.
+  ///
+  /// In zh, this message translates to:
+  /// **'高水位'**
+  String get aiContextHighWatermark;
+
+  /// No description provided for @aiContextHighWatermarkReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'已触发'**
+  String get aiContextHighWatermarkReached;
+
+  /// No description provided for @aiContextHighWatermarkNotReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'未触发'**
+  String get aiContextHighWatermarkNotReached;
+
+  /// No description provided for @aiContextHighWatermarkAlert.
+  ///
+  /// In zh, this message translates to:
+  /// **'上下文接近容量上限，已自动压缩历史摘要'**
+  String get aiContextHighWatermarkAlert;
+
   /// No description provided for @aiContextRemaining.
   ///
   /// In zh, this message translates to:
@@ -1688,30 +1724,6 @@ abstract class AppLocalizations {
   /// **'回答内容'**
   String get aiBubbleAnswerTitle;
 
-  /// No description provided for @aiAnalyzeManifest.
-  ///
-  /// In zh, this message translates to:
-  /// **'分析 Manifest'**
-  String get aiAnalyzeManifest;
-
-  /// No description provided for @aiHardeningDetection.
-  ///
-  /// In zh, this message translates to:
-  /// **'加固检测'**
-  String get aiHardeningDetection;
-
-  /// No description provided for @aiExportInterfaces.
-  ///
-  /// In zh, this message translates to:
-  /// **'导出接口'**
-  String get aiExportInterfaces;
-
-  /// No description provided for @aiFindHookPoints.
-  ///
-  /// In zh, this message translates to:
-  /// **'寻找 Hook 点'**
-  String get aiFindHookPoints;
-
   /// No description provided for @aiTestConnecting.
   ///
   /// In zh, this message translates to:
@@ -1747,6 +1759,60 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'显示更早的消息 ({count})'**
   String aiShowMoreMessages(Object count);
+
+  /// No description provided for @aiSearchInConversation.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索当前会话'**
+  String get aiSearchInConversation;
+
+  /// No description provided for @aiSearchMessagesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索消息内容...'**
+  String get aiSearchMessagesHint;
+
+  /// No description provided for @aiSearchNoResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有找到匹配的消息'**
+  String get aiSearchNoResults;
+
+  /// No description provided for @aiSearchResultCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条匹配'**
+  String aiSearchResultCount(int count);
+
+  /// No description provided for @aiSearchRoleUser.
+  ///
+  /// In zh, this message translates to:
+  /// **'我'**
+  String get aiSearchRoleUser;
+
+  /// No description provided for @aiSearchRoleAssistant.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI'**
+  String get aiSearchRoleAssistant;
+
+  /// No description provided for @aiSearchRoleSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统'**
+  String get aiSearchRoleSystem;
+
+  /// No description provided for @aiSearchRoleTool.
+  ///
+  /// In zh, this message translates to:
+  /// **'工具'**
+  String get aiSearchRoleTool;
+
+  /// No description provided for @aiSearchMessageNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'该消息不在当前已加载的会话中'**
+  String get aiSearchMessageNotFound;
 
   /// No description provided for @aiToolUnknown.
   ///
@@ -2078,60 +2144,6 @@ abstract class AppLocalizations {
   /// **'API Key 未配置'**
   String get aiApiKeyNotConfigured;
 
-  /// No description provided for @aiPadiModelLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'模型'**
-  String get aiPadiModelLabel;
-
-  /// No description provided for @aiPadiReasoningLabel.
-  ///
-  /// In zh, this message translates to:
-  /// **'思考深度'**
-  String get aiPadiReasoningLabel;
-
-  /// No description provided for @aiPadiEffortNone.
-  ///
-  /// In zh, this message translates to:
-  /// **'极低'**
-  String get aiPadiEffortNone;
-
-  /// No description provided for @aiPadiEffortLow.
-  ///
-  /// In zh, this message translates to:
-  /// **'低'**
-  String get aiPadiEffortLow;
-
-  /// No description provided for @aiPadiEffortMedium.
-  ///
-  /// In zh, this message translates to:
-  /// **'中'**
-  String get aiPadiEffortMedium;
-
-  /// No description provided for @aiPadiEffortHigh.
-  ///
-  /// In zh, this message translates to:
-  /// **'高'**
-  String get aiPadiEffortHigh;
-
-  /// No description provided for @aiPadiEffortXHigh.
-  ///
-  /// In zh, this message translates to:
-  /// **'极高'**
-  String get aiPadiEffortXHigh;
-
-  /// No description provided for @aiPadiOptionsExpand.
-  ///
-  /// In zh, this message translates to:
-  /// **'展开'**
-  String get aiPadiOptionsExpand;
-
-  /// No description provided for @aiPadiOptionsCollapse.
-  ///
-  /// In zh, this message translates to:
-  /// **'收起'**
-  String get aiPadiOptionsCollapse;
-
   /// No description provided for @aiCurrentStatus.
   ///
   /// In zh, this message translates to:
@@ -2165,8 +2177,14 @@ abstract class AppLocalizations {
   /// No description provided for @clearPanel.
   ///
   /// In zh, this message translates to:
-  /// **'清空面板'**
+  /// **'清空视图'**
   String get clearPanel;
+
+  /// No description provided for @consoleClearViewTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅清空当前视图，已持久化的日志不受影响'**
+  String get consoleClearViewTooltip;
 
   /// No description provided for @noLogs.
   ///
@@ -2185,6 +2203,204 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'全屏'**
   String get logcatFullscreen;
+
+  /// No description provided for @consoleSourceSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话'**
+  String get consoleSourceSession;
+
+  /// No description provided for @consoleSourceFrida.
+  ///
+  /// In zh, this message translates to:
+  /// **'Frida'**
+  String get consoleSourceFrida;
+
+  /// No description provided for @consoleSourceXposed.
+  ///
+  /// In zh, this message translates to:
+  /// **'Xposed'**
+  String get consoleSourceXposed;
+
+  /// No description provided for @consoleSourceApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get consoleSourceApp;
+
+  /// No description provided for @consoleSourceCore.
+  ///
+  /// In zh, this message translates to:
+  /// **'核心'**
+  String get consoleSourceCore;
+
+  /// No description provided for @consoleSourceSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统'**
+  String get consoleSourceSystem;
+
+  /// No description provided for @consoleLevelDebug.
+  ///
+  /// In zh, this message translates to:
+  /// **'调试'**
+  String get consoleLevelDebug;
+
+  /// No description provided for @consoleLevelInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'信息'**
+  String get consoleLevelInfo;
+
+  /// No description provided for @consoleLevelWarn.
+  ///
+  /// In zh, this message translates to:
+  /// **'警告'**
+  String get consoleLevelWarn;
+
+  /// No description provided for @consoleLevelError.
+  ///
+  /// In zh, this message translates to:
+  /// **'错误'**
+  String get consoleLevelError;
+
+  /// No description provided for @consoleAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get consoleAll;
+
+  /// No description provided for @consoleHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'持久化脚本日志'**
+  String get consoleHistory;
+
+  /// No description provided for @consolePauseOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停输出'**
+  String get consolePauseOutput;
+
+  /// No description provided for @consoleResumeOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续输出'**
+  String get consoleResumeOutput;
+
+  /// No description provided for @consoleActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'控制台操作'**
+  String get consoleActions;
+
+  /// No description provided for @consoleCopyVisible.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制可见日志'**
+  String get consoleCopyVisible;
+
+  /// No description provided for @consoleExportVisible.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出可见日志'**
+  String get consoleExportVisible;
+
+  /// No description provided for @consoleCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制 {count} 条日志'**
+  String consoleCopied(Object count);
+
+  /// No description provided for @consoleCopiedTruncated.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志过多，已复制最近 {count} 条（共 {total} 条），完整内容请用导出'**
+  String consoleCopiedTruncated(Object count, Object total);
+
+  /// No description provided for @consoleRegexSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'正则检索'**
+  String get consoleRegexSearch;
+
+  /// No description provided for @consoleCaseSensitive.
+  ///
+  /// In zh, this message translates to:
+  /// **'区分大小写'**
+  String get consoleCaseSensitive;
+
+  /// No description provided for @consoleExpandStack.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开堆栈'**
+  String get consoleExpandStack;
+
+  /// No description provided for @consoleCollapseStack.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起堆栈'**
+  String get consoleCollapseStack;
+
+  /// No description provided for @consoleExportDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出控制台日志'**
+  String get consoleExportDialogTitle;
+
+  /// No description provided for @consoleNoHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无持久化脚本日志'**
+  String get consoleNoHistory;
+
+  /// No description provided for @consoleLiveBelow.
+  ///
+  /// In zh, this message translates to:
+  /// **'以下为实时输出'**
+  String get consoleLiveBelow;
+
+  /// No description provided for @consoleLoadOlder.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更早日志'**
+  String get consoleLoadOlder;
+
+  /// No description provided for @consoleLogCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志已复制'**
+  String get consoleLogCopied;
+
+  /// No description provided for @consoleDeleteHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除该会话历史日志'**
+  String get consoleDeleteHistory;
+
+  /// No description provided for @consoleDeleteHistoryConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除历史日志？'**
+  String get consoleDeleteHistoryConfirmTitle;
+
+  /// No description provided for @consoleDeleteHistoryConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'将永久删除当前会话已持久化的脚本日志，该操作不可撤销。'**
+  String get consoleDeleteHistoryConfirmMessage;
+
+  /// No description provided for @consoleDeleteHistoryDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除该会话的历史日志'**
+  String get consoleDeleteHistoryDone;
+
+  /// No description provided for @consoleDeleteHistoryUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前会话没有关联的持久化记录'**
+  String get consoleDeleteHistoryUnavailable;
 
   /// No description provided for @apiManual.
   ///
@@ -3043,6 +3259,120 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已保存到 {target}: {name}'**
   String aiScriptSavedTo(String target, String name);
+
+  /// 运行脚本按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'运行'**
+  String get runScript;
+
+  /// AI 脚本运行成功提示
+  ///
+  /// In zh, this message translates to:
+  /// **'已启用 {target} 脚本: {name}'**
+  String aiScriptRunning(String target, String name);
+
+  /// 导出会话按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'导出会话'**
+  String get exportConversation;
+
+  /// 导出会话中的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'正在导出会话...'**
+  String get exportingConversation;
+
+  /// 会话导出成功提示
+  ///
+  /// In zh, this message translates to:
+  /// **'会话已导出到 {path}'**
+  String conversationExported(String path);
+
+  /// 导出失败提示
+  ///
+  /// In zh, this message translates to:
+  /// **'导出失败: {error}'**
+  String exportFailed(String error);
+
+  /// 导出格式标签
+  ///
+  /// In zh, this message translates to:
+  /// **'导出格式'**
+  String get exportFormat;
+
+  /// 导出选项标签
+  ///
+  /// In zh, this message translates to:
+  /// **'导出选项'**
+  String get exportOptions;
+
+  /// 包含工具调用选项
+  ///
+  /// In zh, this message translates to:
+  /// **'包含工具调用'**
+  String get includeToolCalls;
+
+  /// 包含工具调用描述
+  ///
+  /// In zh, this message translates to:
+  /// **'导出 AI 调用的工具和参数'**
+  String get includeToolCallsDesc;
+
+  /// 包含思考过程选项
+  ///
+  /// In zh, this message translates to:
+  /// **'包含思考过程'**
+  String get includeThinking;
+
+  /// 包含思考过程描述
+  ///
+  /// In zh, this message translates to:
+  /// **'导出 AI 的推理和思考内容'**
+  String get includeThinkingDesc;
+
+  /// 预览按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get preview;
+
+  /// 预览截断提示
+  ///
+  /// In zh, this message translates to:
+  /// **'预览内容已截断'**
+  String get previewTruncated;
+
+  /// 复制到剪贴板按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'复制'**
+  String get copyToClipboard;
+
+  /// 复制成功提示
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制到剪贴板'**
+  String get copiedToClipboard;
+
+  /// 分享按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'分享'**
+  String get share;
+
+  /// 会话导出标题
+  ///
+  /// In zh, this message translates to:
+  /// **'会话导出'**
+  String get conversationExport;
+
+  /// 导出到文件按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'保存文件'**
+  String get exportToFile;
 
   /// AI 气泡保存脚本失败提示
   ///

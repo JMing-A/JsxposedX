@@ -60,18 +60,25 @@ class AuditLog {
 
 @HostApi()
 abstract class ProjectNative {
+  @async
   void initProject();
 
+  @async
   bool projectExists(String packageName);
 
+  @async
   void createProject(String packageName);
 
+  @async
   void deleteProject(String packageName);
 
+  @async
   List<AppInfo> getProjects();
 
+  @async
   List<String> getFridaScripts(String packageName);
 
+  @async
   void createFridaScript(
     String packageName,
     String content,
@@ -79,8 +86,10 @@ abstract class ProjectNative {
     bool append,
   );
 
+  @async
   String readFridaScript(String packageName, String localPath);
 
+  @async
   void deleteFridaScript(String packageName, String scriptName);
   @async
   void importFridaScripts(String packageName, List<String> localPaths);
@@ -88,8 +97,10 @@ abstract class ProjectNative {
   @async
   void bundleFridaHookJs(String packageName);
 
+  @async
   List<String> getJsScripts(String packageName);
 
+  @async
   void createJsScript(
     String packageName,
     String content,
@@ -97,8 +108,10 @@ abstract class ProjectNative {
     bool append,
   );
 
+  @async
   String readJsScript(String packageName, String localPath);
 
+  @async
   void deleteJsScript(String packageName, String localPath);
 
   @async

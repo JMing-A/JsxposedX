@@ -417,14 +417,11 @@ class FridaProjectPage extends HookConsumerWidget {
                   }
 
                   final scriptPath = filtered[index - 1];
-                  final statusAsync = ref.watch(
-                    getFridaScriptStatusProvider(
-                      packageName: packageName,
-                      localPath: scriptPath,
-                    ),
-                  );
-                  return statusAsync.when(
-                    data: (enabled) {
+                  return _FridaScriptStatusRow(
+                    key: ValueKey(scriptPath),
+                    packageName: packageName,
+                    scriptPath: scriptPath,
+                    builder: (context, rowRef, enabled) {
                       final name = PathUtils.getName(path: scriptPath);
                       return fridaStatusAsync.when(
                         data: (fridaStatus) {
@@ -432,7 +429,7 @@ class FridaProjectPage extends HookConsumerWidget {
                           if (!moduleReady) {
                             return _buildScriptTile(
                               context,
-                              ref,
+                              rowRef,
                               scriptPath: scriptPath,
                               name: name,
                               enabled: enabled,
@@ -444,7 +441,7 @@ class FridaProjectPage extends HookConsumerWidget {
                           return fridaTargetAsync.when(
                             data: (masterEnabled) => _buildScriptTile(
                               context,
-                              ref,
+                              rowRef,
                               scriptPath: scriptPath,
                               name: name,
                               enabled: enabled,
@@ -453,7 +450,7 @@ class FridaProjectPage extends HookConsumerWidget {
                             ),
                             error: (_, __) => _buildScriptTile(
                               context,
-                              ref,
+                              rowRef,
                               scriptPath: scriptPath,
                               name: name,
                               enabled: enabled,
@@ -465,7 +462,7 @@ class FridaProjectPage extends HookConsumerWidget {
                         },
                         error: (_, __) => _buildScriptTile(
                           context,
-                          ref,
+                          rowRef,
                           scriptPath: scriptPath,
                           name: name,
                           enabled: enabled,
@@ -475,8 +472,6 @@ class FridaProjectPage extends HookConsumerWidget {
                         loading: () => const Loading(),
                       );
                     },
-                    error: (error, _) => Text(error.toString()),
-                    loading: () => const Loading(),
                   );
                 },
               );
@@ -498,6 +493,35 @@ class FridaProjectPage extends HookConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FridaScriptStatusRow extends ConsumerWidget {
+  const _FridaScriptStatusRow({
+    super.key,
+    required this.packageName,
+    required this.scriptPath,
+    required this.builder,
+  });
+
+  final String packageName;
+  final String scriptPath;
+  final Widget Function(BuildContext context, WidgetRef ref, bool enabled)
+  builder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statusAsync = ref.watch(
+      getFridaScriptStatusProvider(
+        packageName: packageName,
+        localPath: scriptPath,
+      ),
+    );
+    return statusAsync.when(
+      data: (enabled) => builder(context, ref, enabled),
+      error: (error, _) => Text(error.toString()),
+      loading: () => const Loading(),
     );
   }
 }

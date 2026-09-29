@@ -121,6 +121,7 @@ private:
     struct SearchTaskRuntime {
         uint64_t generation = 0;
         std::chrono::steady_clock::time_point started_at{};
+        std::chrono::steady_clock::time_point last_progress_published_at{};
         std::shared_ptr<std::atomic_bool> cancel_flag;
         SearchTaskStateView view;
     };
@@ -128,6 +129,7 @@ private:
     struct PointerTaskRuntime {
         uint64_t generation = 0;
         std::chrono::steady_clock::time_point started_at{};
+        std::chrono::steady_clock::time_point last_progress_published_at{};
         std::shared_ptr<std::atomic_bool> cancel_flag;
         PointerScanTaskStateView view;
     };

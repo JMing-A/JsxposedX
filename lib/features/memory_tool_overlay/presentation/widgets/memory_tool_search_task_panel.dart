@@ -147,7 +147,6 @@ class MemoryToolSearchTaskPanel extends StatelessWidget {
 
 class _MemoryToolTaskMetricChip extends StatelessWidget {
   const _MemoryToolTaskMetricChip({
-    super.key,
     required this.label,
     required this.value,
   });

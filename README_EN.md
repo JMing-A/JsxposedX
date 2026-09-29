@@ -142,7 +142,7 @@ Flutter side.
   implementations
 - `android/app/src/api100/`: `api100` shell, entry classes, and module resources
 - `android/app/src/api101/`: `api101` shell, entry classes, and module resources
-- `.buildScript/`: shared PowerShell scripts for code generation and debug install
+- `.buildScript/`: PowerShell scripts for Windows and shell scripts for macOS/Linux code generation and debug install
 - `.idea/runConfigurations/`: shared IDE run configurations
 
 ## Shared IDE Run Configurations
@@ -151,12 +151,12 @@ This repository commits `.idea/runConfigurations/`.
 
 After cloning, JetBrains IDEs can load these shared run configurations:
 
-- `watch_pigeons` -> runs `.buildScript/pigen_watch.ps1`
+- `watch_pigeons` -> runs `.buildScript/pigen_watch.ps1` on Windows or `.buildScript/pigen_watch.sh` on macOS/Linux
 - `build_for_xposed_type` -> runs `.buildScript/run_install_debug.ps1 -SkipAttach`
 
 ## Pigeon Code Generation
 
-`.buildScript/pigen_watch.ps1` watches `lib/pigeons/**/*.dart` and:
+`.buildScript/pigen_watch.ps1` and `.buildScript/pigen_watch.sh` watch `lib/pigeons/**/*.dart` and:
 
 - generates Dart bridge files into `lib/generated`
 - generates Kotlin bridge files under `android/app/src/main/kotlin/...`
@@ -168,9 +168,21 @@ Run it from the repository root:
 .\.buildScript\pigen_watch.ps1
 ```
 
+On macOS/Linux:
+
+```bash
+./.buildScript/pigen_watch.sh
+```
+
+To generate once without starting the watcher:
+
+```bash
+./.buildScript/pigen_watch.sh --once
+```
+
 ## Debug Install Script
 
-`.buildScript/run_install_debug.ps1` is the debug install script in this repository.
+`.buildScript/run_install_debug.ps1` and `.buildScript/run_install_debug.sh` are the debug install scripts in this repository.
 
 It:
 
@@ -178,6 +190,7 @@ It:
 - syncs `versionName` and `versionCode` from `pubspec.yaml` into `android/local.properties`
 - resolves the target device from `-DeviceId`, `ANDROID_SERIAL`, the Android Studio selected device,
   or a single connected `adb` device
+- uses JDK 17 and `--no-daemon` on macOS to avoid reusing a long-running, exhausted Gradle daemon
 - waits after install for package replacement broadcasts and LSPosed rescan
 - can force-stop the app, launch it, and run `flutter attach`
 
@@ -185,6 +198,20 @@ Run it from the repository root:
 
 ```powershell
 .\.buildScript\run_install_debug.ps1
+```
+
+On macOS/Linux:
+
+```bash
+./.buildScript/run_install_debug.sh
+```
+
+This runs `:app:installDebug`, waits for the LSPosed rescan, cold-launches the app, and starts `flutter attach`. Running `android/gradlew` without a task only shows Gradle help; it does not build or install the app.
+
+To install and launch without attaching automatically:
+
+```bash
+./.buildScript/run_install_debug.sh --skip-attach
 ```
 
 Useful switches:
@@ -196,10 +223,29 @@ Useful switches:
 .\.buildScript\run_install_debug.ps1 -GradleTask :app:installApi101Debug
 ```
 
+Equivalent macOS/Linux options:
+
+```bash
+./.buildScript/run_install_debug.sh --skip-attach
+./.buildScript/run_install_debug.sh --skip-launch
+./.buildScript/run_install_debug.sh --device-id <serial>
+./.buildScript/run_install_debug.sh --java-home /path/to/jdk
+./.buildScript/run_install_debug.sh --gradle-task :app:installApi101Debug
+```
+
+Select a device or show a full Gradle failure trace with:
+
+```bash
+./.buildScript/run_install_debug.sh --device-id <serial> --skip-attach
+./.buildScript/run_install_debug.sh --skip-attach --gradle-arg --stacktrace
+```
+
+If the script stops after `Installing app with Gradle task ...`, the Gradle task returned a non-zero exit code. The script streams Gradle output and saves the complete log to `build/logs/install-debug.log`; add `--gradle-arg --stacktrace` for a more detailed build failure.
+
 Extra notes:
 
 - `installDebug` / `assembleDebug` still target `api100` by default
-- install the `api101` shell explicitly with `-GradleTask :app:installApi101Debug`
+- install the `api101` shell explicitly with `-GradleTask :app:installApi101Debug` in PowerShell or `--gradle-task :app:installApi101Debug` in a shell
 
 This script is used for the Xposed/LSPosed debug install flow. It is not a replacement for normal
 Flutter hot reload.
@@ -253,8 +299,8 @@ Difference between the two command styles:
 - `.\gradlew.bat :app:assembleApi101Release`: enters directly through Android Gradle when you specifically want the matching release APK
 - For the same flavor, both approaches target the same Android variant output, for example `api100` maps to `bundleApi100Release`
 
-`.buildScript/run_install_debug.ps1` handles the install, launch, and attach flow for device-side
-verification.
+`.buildScript/run_install_debug.ps1` and `.buildScript/run_install_debug.sh` handle the install,
+launch, and attach flow for device-side verification.
 
 ## Release Signing
 
@@ -273,12 +319,21 @@ flutter pub get
 flutter attach
 ```
 
+On macOS/Linux:
+
+```bash
+flutter pub get
+./.buildScript/pigen_watch.sh --once
+./.buildScript/run_install_debug.sh --skip-attach
+flutter attach
+```
+
 After installation, continue verification on the device in the LSPosed/Xposed or Zygisk/Frida
 environment.
 
 ## Notes
 
-- The shared scripts in this repository are PowerShell scripts.
-- If you do not use Windows, follow the same steps manually.
+- Use `.ps1` scripts on Windows and the corresponding `.sh` scripts on macOS/Linux; the build,
+  install, and launch steps do not need to be run manually.
 - `flutter run` is still available for normal Flutter iteration, while this repository also keeps an
   Android/Xposed install flow for module verification.

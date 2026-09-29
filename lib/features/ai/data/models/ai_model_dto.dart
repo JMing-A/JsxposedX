@@ -16,10 +16,33 @@ abstract class AiModelDto with _$AiModelDto {
     @JsonKey(name: "supported_endpoint_types")
     @Default([])
     List<String> supportedEndpointTypes,
+    @JsonKey(name: 'context_length') int? contextTokens,
+    @JsonKey(name: 'max_output_tokens') int? maxOutputTokens,
   }) = _AiModelDto;
 
   factory AiModelDto.fromJson(Map<String, dynamic> json) =>
       _$AiModelDtoFromJson(json);
+
+  factory AiModelDto.fromModelListJson(Map<String, dynamic> json) {
+    final dto = AiModelDto.fromJson(json);
+    return dto.copyWith(
+      contextTokens:
+          dto.contextTokens ??
+          _firstInt(json, const [
+            'context_window',
+            'max_context_length',
+            'input_token_limit',
+            'context_tokens',
+          ]),
+      maxOutputTokens:
+          dto.maxOutputTokens ??
+          _firstInt(json, const [
+            'max_completion_tokens',
+            'output_token_limit',
+            'max_tokens',
+          ]),
+    );
+  }
 
   AiModel toEntity() {
     return AiModel(
@@ -28,6 +51,22 @@ abstract class AiModelDto with _$AiModelDto {
       created: created,
       ownedBy: ownedBy,
       supportedEndpointTypes: supportedEndpointTypes,
+      contextTokens: contextTokens,
+      maxOutputTokens: maxOutputTokens,
     );
   }
+}
+
+int? _firstInt(Map<String, dynamic> json, List<String> keys) {
+  for (final key in keys) {
+    final value = json[key];
+    final parsed = switch (value) {
+      int number => number,
+      num number => number.toInt(),
+      String text => int.tryParse(text),
+      _ => null,
+    };
+    if (parsed != null && parsed > 0) return parsed;
+  }
+  return null;
 }

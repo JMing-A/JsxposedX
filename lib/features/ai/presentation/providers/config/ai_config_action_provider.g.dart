@@ -72,7 +72,7 @@ final class AiConfigActionProvider
         argument: null,
         retry: null,
         name: r'aiConfigActionProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -93,7 +93,7 @@ final class AiConfigActionProvider
   }
 }
 
-String _$aiConfigActionHash() => r'9225f6300e7cee3cb15e83c14134e2cfe6b340bc';
+String _$aiConfigActionHash() => r'dc878c1080b3495fd504bc95ae458741ace230af';
 
 /// 保存 AI 配置 Action Provider
 

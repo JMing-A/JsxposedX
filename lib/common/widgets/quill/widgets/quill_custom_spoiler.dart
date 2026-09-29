@@ -43,7 +43,6 @@ class _SpoilerBoxState extends State<_SpoilerBox>
   bool _revealed = false;
   late AnimationController _controller;
   late Animation<double> _blurAnimation;
-  late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
@@ -54,9 +53,6 @@ class _SpoilerBoxState extends State<_SpoilerBox>
     );
     _blurAnimation = Tween<double>(begin: 8.0, end: 0.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
   }
 

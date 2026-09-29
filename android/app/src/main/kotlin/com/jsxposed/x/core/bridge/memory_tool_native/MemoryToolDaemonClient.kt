@@ -4,11 +4,16 @@ import android.net.LocalSocket
 import android.net.LocalSocketAddress
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.Closeable
+import java.util.concurrent.atomic.AtomicLong
 
 class MemoryToolDaemonClient(
     private val helperManager: MemoryToolHelperManager
-) {
+) : Closeable {
     companion object {
+        private const val SOCKET_TIMEOUT_MS = 15_000
         private const val METHOD_PING = "ping"
         private const val METHOD_GET_MEMORY_REGIONS = "getMemoryRegions"
         private const val METHOD_GET_SEARCH_SESSION_STATE = "getSearchSessionState"
@@ -61,6 +66,7 @@ class MemoryToolDaemonClient(
         ): JSONObject {
             val socket = LocalSocket()
             socket.connect(LocalSocketAddress(socketName, LocalSocketAddress.Namespace.ABSTRACT))
+            socket.soTimeout = SOCKET_TIMEOUT_MS
             socket.use { localSocket ->
                 val writer = localSocket.outputStream.bufferedWriter()
                 val reader = localSocket.inputStream.bufferedReader()
@@ -100,6 +106,18 @@ class MemoryToolDaemonClient(
             return bytes.joinToString(separator = "") { byte ->
                 "%02x".format(byte.toInt() and 0xFF)
             }
+        }
+    }
+
+    private val connectionLock = Any()
+    private val requestId = AtomicLong(0)
+    private var socket: LocalSocket? = null
+    private var reader: BufferedReader? = null
+    private var writer: BufferedWriter? = null
+
+    override fun close() {
+        synchronized(connectionLock) {
+            closeConnectionLocked()
         }
     }
 
@@ -761,11 +779,71 @@ class MemoryToolDaemonClient(
     }
 
     private fun sendOrThrow(method: String, params: JSONObject?): JSONObject {
-        val response = sendRequest(helperManager.socketName(), method, params)
+        val response = synchronized(connectionLock) {
+            var lastError: Exception? = null
+            repeat(2) { attempt ->
+                try {
+                    ensureConnectionLocked()
+                    val currentRequestId = requestId.incrementAndGet()
+                    val request = JSONObject().apply {
+                        put("requestId", currentRequestId)
+                        put("method", method)
+                        if (params != null) put("params", params)
+                    }
+                    writer!!.apply {
+                        write(request.toString())
+                        newLine()
+                        flush()
+                    }
+                    val responseText = reader!!.readLine()
+                        ?: throw IllegalStateException("Empty response from memory helper.")
+                    val candidate = JSONObject(responseText)
+                    check(candidate.optLong("requestId", -1L) == currentRequestId) {
+                        "Mismatched response from memory helper."
+                    }
+                    return@synchronized candidate
+                } catch (error: Exception) {
+                    lastError = error
+                    closeConnectionLocked()
+                    helperManager.invalidateDaemonState()
+                    if (attempt == 0) helperManager.ensureDaemon()
+                }
+            }
+            throw lastError ?: IllegalStateException("Memory helper request failed.")
+        }
         if (!response.optBoolean("ok", false)) {
             throw IllegalStateException(response.optString("error", "Unknown memory helper error."))
         }
         return response
+    }
+
+    private fun ensureConnectionLocked() {
+        if (socket != null && reader != null && writer != null) return
+        val nextSocket = LocalSocket()
+        try {
+            nextSocket.connect(
+                LocalSocketAddress(
+                    helperManager.socketName(),
+                    LocalSocketAddress.Namespace.ABSTRACT,
+                ),
+            )
+            nextSocket.soTimeout = SOCKET_TIMEOUT_MS
+            socket = nextSocket
+            reader = nextSocket.inputStream.bufferedReader()
+            writer = nextSocket.outputStream.bufferedWriter()
+        } catch (error: Exception) {
+            kotlin.runCatching { nextSocket.close() }
+            throw error
+        }
+    }
+
+    private fun closeConnectionLocked() {
+        kotlin.runCatching { reader?.close() }
+        kotlin.runCatching { writer?.close() }
+        kotlin.runCatching { socket?.close() }
+        reader = null
+        writer = null
+        socket = null
     }
 
     private fun buildSearchValueJson(value: SearchValue): JSONObject {

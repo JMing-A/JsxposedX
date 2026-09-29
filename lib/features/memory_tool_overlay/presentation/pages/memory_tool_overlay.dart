@@ -4,6 +4,7 @@ import 'package:JsxposedX/common/pages/toast.dart';
 import 'package:JsxposedX/common/widgets/overlay_window/overlay_window.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/ai_overlay/ai_overlay.dart';
+import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/ai_overlay_ui_state_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_action_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/providers/memory_breakpoint_provider.dart';
 import 'package:JsxposedX/features/memory_tool_overlay/presentation/pages/tabs/memory_tool_browse_tab.dart';
@@ -61,9 +62,78 @@ class MemoryToolOverlay extends HookConsumerWidget {
         (state) => state.payload.isPanel && !state.isTransitioningToPanel,
       ),
     );
+    final isAiOverlayExpanded = ref.watch(
+      aiOverlayUiStateControllerProvider.select((state) => state.isExpanded),
+    );
+    final shouldMonitorTasks =
+        selectedProcess != null && (isPanelVisible || isAiOverlayExpanded);
+    final searchTaskState = !shouldMonitorTasks
+        ? null
+        : ref.watch(getSearchTaskStateProvider).value;
+    final pointerTaskState = !shouldMonitorTasks
+        ? null
+        : ref.watch(getPointerScanTaskStateProvider).value;
+    final autoChaseState = !shouldMonitorTasks
+        ? null
+        : ref.watch(getPointerAutoChaseStateProvider).value;
+    final hasRunningSearchTask =
+        searchTaskState?.status == SearchTaskStatus.running;
+    final hasRunningPointerTask =
+        pointerTaskState?.status == SearchTaskStatus.running;
+    final isAutoChaseRunning = autoChaseState?.isRunning == true;
     final mediaQuery = MediaQuery.of(context);
     final isPortrait = mediaQuery.orientation == Orientation.portrait;
     final portraitTopInset = isPortrait ? mediaQuery.padding.top : 0.0;
+
+    useEffect(
+      () {
+        if ((!isPanelVisible && !isAiOverlayExpanded) ||
+            selectedProcess == null) {
+          return null;
+        }
+
+        var tick = 0;
+        final timer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+          if (hasRunningSearchTask) {
+            ref.invalidate(getSearchTaskStateProvider);
+          }
+
+          if (hasRunningPointerTask) {
+            ref.invalidate(getPointerScanTaskStateProvider);
+            ref.invalidate(getPointerScanSessionStateProvider);
+          }
+
+          if (isAutoChaseRunning) {
+            ref.invalidate(getPointerAutoChaseStateProvider);
+          }
+
+          tick += 1;
+          if (!isPanelVisible || tabController.index != 3 || tick.isOdd) {
+            return;
+          }
+          final pid = selectedProcess.pid;
+          final breakpoints = ref
+              .read(getMemoryBreakpointsProvider(pid: pid))
+              .asData
+              ?.value;
+          ref.invalidate(getMemoryBreakpointsProvider(pid: pid));
+          if (breakpoints?.isNotEmpty ?? false) {
+            ref.invalidate(getMemoryBreakpointStateProvider(pid: pid));
+            ref.invalidate(getMemoryBreakpointHitsProvider(pid: pid));
+          }
+        });
+        return timer.cancel;
+      },
+      [
+        isPanelVisible,
+        isAiOverlayExpanded,
+        hasRunningSearchTask,
+        hasRunningPointerTask,
+        isAutoChaseRunning,
+        selectedProcess?.pid,
+        tabController,
+      ],
+    );
 
     void openProcessPicker() {
       ref.invalidate(

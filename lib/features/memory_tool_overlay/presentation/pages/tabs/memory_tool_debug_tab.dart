@@ -128,18 +128,6 @@ class MemoryToolDebugTab extends HookConsumerWidget {
       if (pid == null) {
         return null;
       }
-      final timer = Timer.periodic(const Duration(milliseconds: 700), (_) {
-        ref.invalidate(getMemoryBreakpointStateProvider(pid: pid));
-        ref.invalidate(getMemoryBreakpointsProvider(pid: pid));
-        ref.invalidate(getMemoryBreakpointHitsProvider(pid: pid));
-      });
-      return timer.cancel;
-    }, [pid]);
-
-    useEffect(() {
-      if (pid == null) {
-        return null;
-      }
       if (breakpoints.isEmpty) {
         if (selectedBreakpointId != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {

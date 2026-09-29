@@ -17,7 +17,9 @@ namespace memory_tool {
 
 namespace {
 
-constexpr size_t kHardFreezeYieldEveryPasses = 64;
+constexpr size_t kMaxScanWorkers = 4;
+constexpr auto kProgressPublishInterval = std::chrono::milliseconds(100);
+constexpr auto kFreezeWriteInterval = std::chrono::milliseconds(16);
 constexpr size_t kPointerBatchEntryCount = 4096;
 constexpr size_t kPointerProgressFlushEntryCount = kPointerBatchEntryCount * 8;
 constexpr size_t kPointerScanSlabBytes = 256 * 1024;
@@ -172,7 +174,9 @@ size_t ResolveFirstScanWorkerCount(size_t region_count) {
     }
 
     const unsigned int hardware_workers = std::thread::hardware_concurrency();
-    const size_t preferred_workers = hardware_workers == 0 ? 4U : hardware_workers;
+    const size_t preferred_workers = std::min<size_t>(
+        hardware_workers == 0 ? kMaxScanWorkers : hardware_workers,
+        kMaxScanWorkers);
     return std::max<size_t>(1, std::min(region_count, preferred_workers));
 }
 
@@ -182,7 +186,9 @@ size_t ResolvePointerScanWorkerCount(uint64_t total_region_bytes, size_t region_
     }
 
     const unsigned int hardware_workers = std::thread::hardware_concurrency();
-    const size_t preferred_workers = hardware_workers == 0 ? 4U : hardware_workers;
+    const size_t preferred_workers = std::min<size_t>(
+        hardware_workers == 0 ? kMaxScanWorkers : hardware_workers,
+        kMaxScanWorkers);
     const uint64_t target_bytes_per_worker = 32ULL * 1024ULL * 1024ULL;
     const size_t byte_limited_workers = std::max<size_t>(
         1,
@@ -2357,7 +2363,6 @@ void MemoryToolEngine::NotifyFreezeWorkerLocked() {
 
 void MemoryToolEngine::FreezeWorkerLoop() {
     std::unordered_map<int, std::unique_ptr<ProcessMemoryReader>> readers_by_pid;
-    size_t pass_count = 0;
     while (true) {
         std::vector<FrozenWriteEntry> snapshot;
         {
@@ -2413,10 +2418,9 @@ void MemoryToolEngine::FreezeWorkerLoop() {
             continue;
         }
 
-        ++pass_count;
-        if (pass_count >= kHardFreezeYieldEveryPasses) {
-            pass_count = 0;
-            std::this_thread::yield();
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            freeze_condition_.wait_for(lock, kFreezeWriteInterval);
         }
     }
 }
@@ -2576,6 +2580,12 @@ bool MemoryToolEngine::UpdateTaskProgress(uint64_t generation, const SearchScanP
         return false;
     }
 
+    const auto now = std::chrono::steady_clock::now();
+    if (task_.last_progress_published_at != std::chrono::steady_clock::time_point{} &&
+        now - task_.last_progress_published_at < kProgressPublishInterval) {
+        return true;
+    }
+
     task_.view.processed_region_count = progress.processed_region_count;
     task_.view.total_region_count = progress.total_region_count;
     task_.view.processed_entry_count = progress.processed_entry_count;
@@ -2584,6 +2594,7 @@ bool MemoryToolEngine::UpdateTaskProgress(uint64_t generation, const SearchScanP
     task_.view.total_byte_count = progress.total_byte_count;
     task_.view.result_count = progress.result_count;
     task_.view.elapsed_milliseconds = ElapsedMilliseconds(task_.started_at);
+    task_.last_progress_published_at = now;
     return true;
 }
 
@@ -2599,6 +2610,12 @@ bool MemoryToolEngine::UpdatePointerTaskProgress(
         return false;
     }
 
+    const auto now = std::chrono::steady_clock::now();
+    if (pointer_task_.last_progress_published_at != std::chrono::steady_clock::time_point{} &&
+        now - pointer_task_.last_progress_published_at < kProgressPublishInterval) {
+        return true;
+    }
+
     pointer_task_.view.processed_region_count = progress_view.processed_region_count;
     pointer_task_.view.total_region_count = progress_view.total_region_count;
     pointer_task_.view.processed_entry_count = progress_view.processed_entry_count;
@@ -2607,6 +2624,7 @@ bool MemoryToolEngine::UpdatePointerTaskProgress(
     pointer_task_.view.total_byte_count = progress_view.total_byte_count;
     pointer_task_.view.result_count = progress_view.result_count;
     pointer_task_.view.elapsed_milliseconds = ElapsedMilliseconds(pointer_task_.started_at);
+    pointer_task_.last_progress_published_at = now;
     return true;
 }
 

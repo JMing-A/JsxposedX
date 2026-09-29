@@ -1,4 +1,4 @@
-﻿{
+{
   "@@locale": "zh",
   "appName": "JSXPOSEDX",
   "@appName": {
@@ -475,6 +475,12 @@
   "aiContext": "上下文",
   "aiContextTitle": "上下文",
   "aiContextBudget": "上下文预算",
+  "aiContextUsage": "占用率",
+  "aiContextMemoryEntries": "记忆条目",
+  "aiContextHighWatermark": "高水位",
+  "aiContextHighWatermarkReached": "已触发",
+  "aiContextHighWatermarkNotReached": "未触发",
+  "aiContextHighWatermarkAlert": "上下文接近容量上限，已自动压缩历史摘要",
   "aiContextRemaining": "剩余预算",
   "aiContextLayers": "装配层",
   "aiContextRecentRounds": "最近原始轮次",
@@ -532,16 +538,24 @@
   "aiBubbleAssistantTextTitle": "AI 回复",
   "aiBubbleThinkingTitle": "思考过程",
   "aiBubbleAnswerTitle": "回答内容",
-  "aiAnalyzeManifest": "分析 Manifest",
-  "aiHardeningDetection": "加固检测",
-  "aiExportInterfaces": "导出接口",
-  "aiFindHookPoints": "寻找 Hook 点",
   "aiTestConnecting": "正在测试连接...",
   "aiTestSuccess": "测试成功！收到回复: \n{result}",
   "aiTestFailed": "测试失败: {error}",
   "aiSavingAndTesting": "正在保存并测试连通性...",
   "aiSaveFailed": "配置保存失败（连接测试未通过）: \n{error}",
   "aiShowMoreMessages": "显示更早的消息 ({count})",
+  "aiSearchInConversation": "搜索当前会话",
+  "aiSearchMessagesHint": "搜索消息内容...",
+  "aiSearchNoResults": "没有找到匹配的消息",
+  "aiSearchResultCount": "{count} 条匹配",
+  "@aiSearchResultCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "aiSearchRoleUser": "我",
+  "aiSearchRoleAssistant": "AI",
+  "aiSearchRoleSystem": "系统",
+  "aiSearchRoleTool": "工具",
+  "aiSearchMessageNotFound": "该消息不在当前已加载的会话中",
   "aiToolUnknown": "未知工具: {toolName}",
   "@aiToolUnknown": {
     "placeholders": { "toolName": { "type": "String" } }
@@ -606,15 +620,6 @@
   "aiBuyCardSecret": "购买卡密",
   "aiApiKeyConfigured": "API Key 已配置",
   "aiApiKeyNotConfigured": "API Key 未配置",
-  "aiPadiModelLabel": "模型",
-  "aiPadiReasoningLabel": "思考深度",
-  "aiPadiEffortNone": "极低",
-  "aiPadiEffortLow": "低",
-  "aiPadiEffortMedium": "中",
-  "aiPadiEffortHigh": "高",
-  "aiPadiEffortXHigh": "极高",
-  "aiPadiOptionsExpand": "展开",
-  "aiPadiOptionsCollapse": "收起",
   "aiCurrentStatus": "当前状态：{status}",
   "@aiCurrentStatus": {
     "placeholders": {
@@ -630,10 +635,44 @@
   "terminal": "控制台",
   "terminalFilterHint": "二次过滤...",
   "autoScroll": "自动滚屏",
-  "clearPanel": "清空面板",
+  "clearPanel": "清空视图",
+  "consoleClearViewTooltip": "仅清空当前视图，已持久化的日志不受影响",
   "noLogs": "暂无日志",
   "noLogsFiltered": "过滤后无匹配",
   "logcatFullscreen": "全屏",
+  "consoleSourceSession": "会话",
+  "consoleSourceFrida": "Frida",
+  "consoleSourceXposed": "Xposed",
+  "consoleSourceApp": "应用",
+  "consoleSourceCore": "核心",
+  "consoleSourceSystem": "系统",
+  "consoleLevelDebug": "调试",
+  "consoleLevelInfo": "信息",
+  "consoleLevelWarn": "警告",
+  "consoleLevelError": "错误",
+  "consoleAll": "全部",
+  "consoleHistory": "持久化脚本日志",
+  "consolePauseOutput": "暂停输出",
+  "consoleResumeOutput": "继续输出",
+  "consoleActions": "控制台操作",
+  "consoleCopyVisible": "复制可见日志",
+  "consoleExportVisible": "导出可见日志",
+  "consoleCopied": "已复制 {count} 条日志",
+  "consoleCopiedTruncated": "日志过多，已复制最近 {count} 条（共 {total} 条），完整内容请用导出",
+  "consoleRegexSearch": "正则检索",
+  "consoleCaseSensitive": "区分大小写",
+  "consoleExpandStack": "展开堆栈",
+  "consoleCollapseStack": "收起堆栈",
+  "consoleExportDialogTitle": "导出控制台日志",
+  "consoleNoHistory": "暂无持久化脚本日志",
+  "consoleLiveBelow": "以下为实时输出",
+  "consoleLoadOlder": "加载更早日志",
+  "consoleLogCopied": "日志已复制",
+  "consoleDeleteHistory": "删除该会话历史日志",
+  "consoleDeleteHistoryConfirmTitle": "删除历史日志？",
+  "consoleDeleteHistoryConfirmMessage": "将永久删除当前会话已持久化的脚本日志，该操作不可撤销。",
+  "consoleDeleteHistoryDone": "已删除该会话的历史日志",
+  "consoleDeleteHistoryUnavailable": "当前会话没有关联的持久化记录",
   "apiManual": "手册",
   "aiApiManualTitle": "API AI 助手",
   "aiApiManualSubtitle": "向我提问 JsxposedX API 用法",
@@ -790,6 +829,100 @@
         "type": "String"
       }
     }
+  },
+  "runScript": "运行",
+  "@runScript": {
+    "description": "运行脚本按钮"
+  },
+  "aiScriptRunning": "已启用 {target} 脚本: {name}",
+  "@aiScriptRunning": {
+    "description": "AI 脚本运行成功提示",
+    "placeholders": {
+      "target": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "exportConversation": "导出会话",
+  "@exportConversation": {
+    "description": "导出会话按钮"
+  },
+  "exportingConversation": "正在导出会话...",
+  "@exportingConversation": {
+    "description": "导出会话中的提示"
+  },
+  "conversationExported": "会话已导出到 {path}",
+  "@conversationExported": {
+    "description": "会话导出成功提示",
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFailed": "导出失败: {error}",
+  "@exportFailed": {
+    "description": "导出失败提示",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "exportFormat": "导出格式",
+  "@exportFormat": {
+    "description": "导出格式标签"
+  },
+  "exportOptions": "导出选项",
+  "@exportOptions": {
+    "description": "导出选项标签"
+  },
+  "includeToolCalls": "包含工具调用",
+  "@includeToolCalls": {
+    "description": "包含工具调用选项"
+  },
+  "includeToolCallsDesc": "导出 AI 调用的工具和参数",
+  "@includeToolCallsDesc": {
+    "description": "包含工具调用描述"
+  },
+  "includeThinking": "包含思考过程",
+  "@includeThinking": {
+    "description": "包含思考过程选项"
+  },
+  "includeThinkingDesc": "导出 AI 的推理和思考内容",
+  "@includeThinkingDesc": {
+    "description": "包含思考过程描述"
+  },
+  "preview": "预览",
+  "@preview": {
+    "description": "预览按钮"
+  },
+  "previewTruncated": "预览内容已截断",
+  "@previewTruncated": {
+    "description": "预览截断提示"
+  },
+  "copyToClipboard": "复制",
+  "@copyToClipboard": {
+    "description": "复制到剪贴板按钮"
+  },
+  "copiedToClipboard": "已复制到剪贴板",
+  "@copiedToClipboard": {
+    "description": "复制成功提示"
+  },
+  "share": "分享",
+  "@share": {
+    "description": "分享按钮"
+  },
+  "conversationExport": "会话导出",
+  "@conversationExport": {
+    "description": "会话导出标题"
+  },
+  "exportToFile": "保存文件",
+  "@exportToFile": {
+    "description": "导出到文件按钮"
   },
   "aiScriptSaveFailed": "保存失败: {error}",
   "@aiScriptSaveFailed": {

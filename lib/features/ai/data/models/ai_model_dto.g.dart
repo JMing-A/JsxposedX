@@ -16,6 +16,8 @@ _AiModelDto _$AiModelDtoFromJson(Map<String, dynamic> json) => _AiModelDto(
           ?.map((e) => e as String)
           .toList() ??
       const [],
+  contextTokens: (json['context_length'] as num?)?.toInt(),
+  maxOutputTokens: (json['max_output_tokens'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$AiModelDtoToJson(_AiModelDto instance) =>
@@ -25,4 +27,6 @@ Map<String, dynamic> _$AiModelDtoToJson(_AiModelDto instance) =>
       'created': instance.created,
       'owned_by': instance.ownedBy,
       'supported_endpoint_types': instance.supportedEndpointTypes,
+      'context_length': instance.contextTokens,
+      'max_output_tokens': instance.maxOutputTokens,
     };
