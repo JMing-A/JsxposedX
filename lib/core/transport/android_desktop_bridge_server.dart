@@ -10,6 +10,35 @@ import 'package:JsxposedX/generated/pinia.g.dart';
 import 'package:JsxposedX/generated/project.g.dart';
 import 'package:JsxposedX/generated/status_management.g.dart';
 
+/// 控制台能力的设备侧宿主。手机端 `logcatProvider` 是唯一真源，
+/// 传输层只做转发，这里以接口注入避免反向依赖 Riverpod 与页面逻辑。
+abstract interface class DesktopConsoleHost {
+  /// 读取控制台当前状态（运行/暂停/自动滚动/搜索/会话/计数）
+  Future<Map<String, dynamic>> getState();
+
+  Future<void> setPaused(bool paused);
+
+  Future<void> setAutoScroll(bool autoScroll);
+
+  Future<void> setSearch(String query);
+
+  Future<void> clear();
+
+  Future<void> start(String packageName);
+
+  Future<void> stop();
+
+  /// 历史日志分页，cursor 为上一页最后一条的 (timestamp, id)
+  Future<Map<String, dynamic>> queryLogs({
+    required String conversationId,
+    String? before,
+    int? beforeId,
+    int limit,
+  });
+
+  Future<void> deleteHistory(String conversationId);
+}
+
 class AndroidDesktopBridgeServer {
   AndroidDesktopBridgeServer._();
 
@@ -34,6 +63,9 @@ class AndroidDesktopBridgeServer {
     required bool restartApp,
   })?
   scriptRunner;
+
+  /// 控制台能力宿主，与 [scriptRunner] 同理由应用层注入
+  DesktopConsoleHost? consoleHost;
 
   bool get isRunning => _server != null;
   bool get hasClient => clientCount.value > 0;
@@ -213,6 +245,39 @@ class AndroidDesktopBridgeServer {
         return _toggleScript(request.params);
       case JsxposedMethod.scriptRun:
         return _runScript(request.params);
+      case JsxposedMethod.consoleGetState:
+        return _consoleHost().getState();
+      case JsxposedMethod.consoleSetPaused:
+        await _consoleHost().setPaused(_requireBool(request.params, 'paused'));
+        return {'paused': _requireBool(request.params, 'paused')};
+      case JsxposedMethod.consoleSetAutoScroll:
+        final autoScroll = _requireBool(request.params, 'autoScroll');
+        await _consoleHost().setAutoScroll(autoScroll);
+        return {'autoScroll': autoScroll};
+      case JsxposedMethod.consoleSetSearch:
+        await _consoleHost().setSearch(request.params?['query'] as String? ?? '');
+        return {'query': request.params?['query'] as String? ?? ''};
+      case JsxposedMethod.consoleClear:
+        await _consoleHost().clear();
+        return {'cleared': true};
+      case JsxposedMethod.consoleStart:
+        await _consoleHost().start(_requireString(request.params, 'packageName'));
+        return {'started': true};
+      case JsxposedMethod.consoleStop:
+        await _consoleHost().stop();
+        return {'stopped': true};
+      case JsxposedMethod.logQuery:
+        return _consoleHost().queryLogs(
+          conversationId: _requireString(request.params, 'conversationId'),
+          before: request.params?['before'] as String?,
+          beforeId: (request.params?['beforeId'] as num?)?.toInt(),
+          limit: (request.params?['limit'] as num?)?.toInt() ?? 100,
+        );
+      case JsxposedMethod.logDeleteHistory:
+        await _consoleHost().deleteHistory(
+          _requireString(request.params, 'conversationId'),
+        );
+        return {'deleted': true};
       case JsxposedMethod.requestCancel:
         return {'cancelled': request.params?['requestId']};
       default:
@@ -494,12 +559,33 @@ class AndroidDesktopBridgeServer {
     return null;
   }
 
+  /// 控制台宿主未注入时统一抛能力不可用，与脚本运行回调保持一致
+  DesktopConsoleHost _consoleHost() {
+    final host = consoleHost;
+    if (host == null) {
+      throw const _ProtocolException(
+        JsxposedErrorCode.capabilityUnavailable,
+        'Console host is not available on this device',
+      );
+    }
+    return host;
+  }
+
   static String _requireString(Map<String, dynamic>? params, String key) {
     final value = params?[key];
     if (value is String && value.isNotEmpty) return value;
     throw _ProtocolException(
       JsxposedErrorCode.invalidParams,
       'Missing required string parameter: $key',
+    );
+  }
+
+  static bool _requireBool(Map<String, dynamic>? params, String key) {
+    final value = params?[key];
+    if (value is bool) return value;
+    throw _ProtocolException(
+      JsxposedErrorCode.invalidParams,
+      'Missing required bool parameter: $key',
     );
   }
 

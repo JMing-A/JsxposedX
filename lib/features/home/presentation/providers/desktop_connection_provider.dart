@@ -547,6 +547,74 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
     );
   }
 
+  /// 读取控制台状态。手机端 logcatProvider 是唯一真源，PC 端不自行维护。
+  Future<Map<String, dynamic>> getConsoleState() async {
+    final response = await request(JsxposedMethod.consoleGetState);
+    return _resultMap(response);
+  }
+
+  Future<void> setConsolePaused(bool paused) async {
+    await request(JsxposedMethod.consoleSetPaused, params: {'paused': paused});
+  }
+
+  Future<void> setConsoleAutoScroll(bool autoScroll) async {
+    await request(
+      JsxposedMethod.consoleSetAutoScroll,
+      params: {'autoScroll': autoScroll},
+    );
+  }
+
+  Future<void> setConsoleSearch(String query) async {
+    await request(JsxposedMethod.consoleSetSearch, params: {'query': query});
+  }
+
+  Future<void> clearConsole() async {
+    await request(JsxposedMethod.consoleClear);
+  }
+
+  Future<void> startConsole(String packageName) async {
+    await request(
+      JsxposedMethod.consoleStart,
+      params: {'packageName': packageName},
+    );
+  }
+
+  Future<void> stopConsole() async {
+    await request(JsxposedMethod.consoleStop);
+  }
+
+  /// 历史日志分页。before/beforeId 取自上一页最后一条记录，作为游标。
+  Future<List<Map<String, dynamic>>> queryLogs({
+    required String conversationId,
+    String? before,
+    int? beforeId,
+    int limit = 100,
+  }) async {
+    final response = await request(
+      JsxposedMethod.logQuery,
+      params: {
+        'conversationId': conversationId,
+        if (before != null) 'before': before,
+        if (beforeId != null) 'beforeId': beforeId,
+        'limit': limit,
+      },
+    );
+    final result = _resultMap(response);
+    final logs = result['logs'];
+    if (logs is! List) return const [];
+    return [
+      for (final log in logs)
+        if (log is Map) log.cast<String, dynamic>(),
+    ];
+  }
+
+  Future<void> deleteConsoleHistory(String conversationId) async {
+    await request(
+      JsxposedMethod.logDeleteHistory,
+      params: {'conversationId': conversationId},
+    );
+  }
+
   List<T> _listFromResponse<T>(
     JsxposedMessage response,
     T Function(Map<String, dynamic>) fromJson,

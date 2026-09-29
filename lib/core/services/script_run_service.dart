@@ -17,6 +17,22 @@ class ScriptRunService {
 
   final ProviderContainer _container;
 
+  /// 运行期间长期持有的 `logcatProvider` 订阅。PC 端触发运行时手机端日志
+  /// 面板通常未挂载，provider 是 autoDispose 的会被回收并连带停掉日志采集
+  /// 进程，导致 PC 端收不到任何日志。保活只在停止运行或 PC 全部断开时释放。
+  static ProviderSubscription<Object?>? _runKeepAlive;
+
+  /// 持有保活订阅；已在保活时复用，避免重复订阅。
+  static void holdRunKeepAlive(ProviderContainer container) {
+    _runKeepAlive ??= container.listen(logcatProvider, (_, _) {});
+  }
+
+  /// 释放保活订阅：停止运行、再次运行或 PC 全部断开时调用。
+  static void releaseRunKeepAlive() {
+    _runKeepAlive?.close();
+    _runKeepAlive = null;
+  }
+
   Future<void> run({
     required String packageName,
     required String source,
@@ -25,48 +41,44 @@ class ScriptRunService {
   }) async {
     final scriptName = PathUtils.getName(path: localPath);
     // logcatProvider 是 autoDispose 的，PC 端触发时手机端日志面板并未挂载，
-    // 必须显式持有一个订阅，否则 notifier 会在异步间隙中被回收
-    final keepAlive = _container.listen(logcatProvider, (_, _) {});
-    try {
-      final console = _container.read(logcatProvider.notifier);
-      console.configureSession(source, scriptName);
+    // 必须长期持有订阅；此前的临时订阅会在 run 返回时释放，采集进程随之被杀
+    holdRunKeepAlive(_container);
+    final console = _container.read(logcatProvider.notifier);
+    console.configureSession(source, scriptName);
 
-      final logs = _container.read(scriptLogRepositoryProvider);
-      final conversationId = 'standalone:$packageName:$source:$scriptName';
-      final runId = const Uuid().v4();
-      final startedAt = DateTime.now().toUtc();
-      await logs.startRun(
-        runId: runId,
-        conversationId: conversationId,
-        source: source,
-        scriptName: scriptName,
-        startedAt: startedAt,
+    final logs = _container.read(scriptLogRepositoryProvider);
+    final conversationId = 'standalone:$packageName:$source:$scriptName';
+    final runId = const Uuid().v4();
+    final startedAt = DateTime.now().toUtc();
+    await logs.startRun(
+      runId: runId,
+      conversationId: conversationId,
+      source: source,
+      scriptName: scriptName,
+      startedAt: startedAt,
+    );
+    await PiniaNative().setString(
+      key: 'jx_script_run_context_${packageName}_${source}_$scriptName',
+      value: jsonEncode({
+        'runId': runId,
+        'conversationId': conversationId,
+        'source': source,
+        'scriptName': scriptName,
+        'startedAt': startedAt.toIso8601String(),
+      }),
+    );
+
+    // Frida 的 hook.js 必须先于日志监听生成，Xposed 侧由原生写入脚本时已刷新快照
+    if (source == JsxposedScriptSource.frida) {
+      await _container.read(
+        bundleFridaHookJsProvider(packageName: packageName).future,
       );
-      await PiniaNative().setString(
-        key: 'jx_script_run_context_${packageName}_${source}_$scriptName',
-        value: jsonEncode({
-          'runId': runId,
-          'conversationId': conversationId,
-          'source': source,
-          'scriptName': scriptName,
-          'startedAt': startedAt.toIso8601String(),
-        }),
-      );
+    }
+    await console.start(packageName);
 
-      // Frida 的 hook.js 必须先于日志监听生成，Xposed 侧由原生写入脚本时已刷新快照
-      if (source == JsxposedScriptSource.frida) {
-        await _container.read(
-          bundleFridaHookJsProvider(packageName: packageName).future,
-        );
-      }
-      await console.start(packageName);
-
-      if (restartApp) {
-        // 应用需在注入挂载完成后重启，才能带上新的 hook 生效
-        await AppNative().openAppX(packageName);
-      }
-    } finally {
-      keepAlive.close();
+    if (restartApp) {
+      // 应用需在注入挂载完成后重启，才能带上新的 hook 生效
+      await AppNative().openAppX(packageName);
     }
   }
 }

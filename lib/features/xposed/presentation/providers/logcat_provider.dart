@@ -153,6 +153,26 @@ class Logcat extends _$Logcat {
 
   bool get isAutoScroll => _isAutoScroll;
 
+  /// PC 端控制台状态全部来源于此，手机端为唯一真源。
+  /// 无客户端连接时 broadcast 内部直接返回，避免无谓序列化。
+  void _broadcastState() {
+    if (_isDisposed) return;
+    AndroidDesktopBridgeServer.instance.broadcast(
+      JsxposedEvent.consoleState,
+      {
+        'isRunning': isRunning,
+        'isStarting': _isStarting,
+        'isPaused': _isPaused,
+        'autoScroll': _isAutoScroll,
+        'searchQuery': _searchQuery,
+        'sessionId': _sessionId,
+        'sessionConversationId': _sessionConversationId,
+        'targetPackage': _targetPackage,
+        'entryCount': state.length,
+      },
+    );
+  }
+
   /// 结构化脚本日志广播流。
   ///
   /// 该流在 UI 过滤、暂停、清屏之前发出，供持久化 recorder 独立消费，
@@ -174,6 +194,7 @@ class Logcat extends _$Logcat {
     _isAutoScroll = value;
     // This is a low-frequency UI action; notify consumers without mutating entries.
     state = List<LogcatEntry>.unmodifiable(state);
+    _broadcastState();
   }
 
   void setPaused(bool value) {
@@ -208,6 +229,7 @@ class Logcat extends _$Logcat {
       _flushPending();
     }
     state = List<LogcatEntry>.unmodifiable(state);
+    _broadcastState();
   }
 
   void setSearchQuery(String query) {
@@ -215,6 +237,7 @@ class Logcat extends _$Logcat {
     _searchQuery = query;
     // Search changes are user-driven and infrequent compared with log events.
     state = List<LogcatEntry>.unmodifiable(state);
+    _broadcastState();
   }
 
   void configureSession(
@@ -465,6 +488,7 @@ class Logcat extends _$Logcat {
       if (generation == _processGeneration) {
         _isStarting = false;
       }
+      _broadcastState();
     }
   }
 
@@ -472,6 +496,7 @@ class Logcat extends _$Logcat {
     _flushPending();
     unawaited(_flushScriptLogs());
     _stopProcess();
+    _broadcastState();
   }
 
   Future<void> flushPersistedLogs() => _flushAllScriptLogs();
@@ -483,6 +508,7 @@ class Logcat extends _$Logcat {
     _flushTimer?.cancel();
     _flushTimer = null;
     if (state.isNotEmpty) state = const [];
+    _broadcastState();
   }
 
   void addSessionEvent({

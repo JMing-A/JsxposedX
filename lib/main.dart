@@ -6,6 +6,7 @@ import 'package:JsxposedX/core/providers/locale_provider.dart';
 import 'package:JsxposedX/core/transport/android_desktop_bridge_server.dart';
 import 'package:JsxposedX/core/providers/theme_provider.dart';
 import 'package:JsxposedX/core/routes/app_router.dart';
+import 'package:JsxposedX/core/services/desktop_console_service.dart';
 import 'package:JsxposedX/core/services/script_run_service.dart';
 import 'package:JsxposedX/features/home/presentation/pages/desktop_app.dart';
 import 'package:JsxposedX/features/overlay_window/presentation/pages/overlay_sub_app.dart';
@@ -67,6 +68,11 @@ class _MainAppState extends ConsumerState<MainApp> {
           localPath: localPath,
           restartApp: restartApp,
         );
+    // 控制台能力同样交给应用层：手机端 logcatProvider 是唯一真源，
+    // PC 端仅通过协议转发操作并接收状态回推。
+    AndroidDesktopBridgeServer.instance.consoleHost = DesktopConsoleService(
+      container,
+    );
   }
 
   @override

@@ -22,12 +22,26 @@ abstract final class JsxposedMethod {
   static const scriptDelete = 'script.delete';
   static const scriptToggle = 'script.toggle';
   static const scriptRun = 'script.run';
+
+  static const consoleGetState = 'console.get_state';
+  static const consoleSetPaused = 'console.set_paused';
+  static const consoleSetAutoScroll = 'console.set_autoscroll';
+  static const consoleSetSearch = 'console.set_search';
+  static const consoleClear = 'console.clear';
+  static const consoleStart = 'console.start';
+  static const consoleStop = 'console.stop';
+
+  static const logQuery = 'log.query';
+  static const logDeleteHistory = 'log.delete_history';
 }
 
 /// 协议事件名，设备侧主动推送给 PC 侧
 abstract final class JsxposedEvent {
   /// 控制台日志条目，payload 为 LogcatEntry 的 JSON 形式
   static const logEntry = 'log.entry';
+
+  /// 控制台状态变更（运行/暂停/自动滚动/搜索/会话/计数），设备侧为唯一真源
+  static const consoleState = 'console.state';
 }
 
 /// 脚本来源，对应手机端 Frida 与 Xposed 两套脚本目录
