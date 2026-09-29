@@ -218,8 +218,23 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
   }
 
   void selectAdbDevice(String serial) {
-    if (state.isConnecting || state.isConnected) return;
+    if (state.isConnecting) return;
     state = state.copyWith(selectedAdbSerial: serial, clearError: true);
+  }
+
+  /// 切换到另一台设备：断开当前连接后重新连接目标设备
+  Future<void> switchAdbDevice(String serial) async {
+    if (state.isConnecting) return;
+    if (state.selectedAdbSerial == serial && state.isConnected) return;
+    await _close();
+    state = state.copyWith(
+      status: DesktopConnectionStatus.disconnected,
+      selectedAdbSerial: serial,
+      clearError: true,
+      clearDeviceInfo: true,
+      clearCapabilities: true,
+    );
+    await connectAdb();
   }
 
   Future<AdbCommandResult> pairAdb(String address, String pairingCode) async {

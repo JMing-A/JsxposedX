@@ -1038,6 +1038,83 @@ class _ConnectionToolButton extends StatelessWidget {
   }
 }
 
+class _AdbDeviceTile extends StatelessWidget {
+  const _AdbDeviceTile({
+    required this.device,
+    required this.selected,
+    required this.busy,
+    required this.onTap,
+  });
+
+  final DesktopAdbDevice device;
+  final bool selected;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    final authorized = device.isAuthorized;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: selected ? colors.primaryContainer : colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(6),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: busy ? null : onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  authorized ? Icons.phone_android : Icons.phonelink_lock,
+                  size: 17,
+                  color: authorized ? colors.primary : colors.outline,
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        device.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        authorized
+                            ? device.serial
+                            : context.l10n.desktopConnectionDeviceUnauthorized,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: authorized
+                              ? colors.onSurfaceVariant
+                              : colors.error,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (selected)
+                  Icon(Icons.check_circle, size: 17, color: colors.primary),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ConnectionStatusRow extends StatelessWidget {
   const _ConnectionStatusRow({required this.color, required this.text});
 
@@ -1125,14 +1202,6 @@ class _ConnectionPanel extends HookConsumerWidget {
                   ),
                 ),
               ),
-              if (mode.value == _DesktopConnectionMode.adb)
-                _ConnectionToolButton(
-                  tooltip: l10n.desktopConnectionRefresh,
-                  icon: Icons.refresh,
-                  onPressed: connection.isConnecting
-                      ? null
-                      : notifier.scanAdbDevices,
-                ),
             ],
           ),
           const SizedBox(height: 10),
@@ -1169,73 +1238,80 @@ class _ConnectionPanel extends HookConsumerWidget {
             ),
           ),
           const SizedBox(height: 10),
-          if (!connection.isConnected) ...[
-            if (mode.value == _DesktopConnectionMode.adb) ...[
-              OutlinedButton.icon(
-                onPressed: connection.isConnecting
-                    ? null
-                    : () => _showAdbSettingsDialog(context, notifier),
-                icon: const Icon(Icons.settings_ethernet, size: 17),
-                label: Text(l10n.desktopConnectionConfigureAdb),
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                key: ValueKey(connection.selectedAdbSerial),
-                initialValue: connection.selectedAdbSerial,
-                isExpanded: true,
-                items: connection.adbDevices
+          if (mode.value == _DesktopConnectionMode.adb) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.desktopDeviceListTitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                _ConnectionToolButton(
+                  tooltip: l10n.desktopConnectionRefresh,
+                  icon: Icons.refresh,
+                  onPressed: connection.isConnecting
+                      ? null
+                      : notifier.scanAdbDevices,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (connection.adbDevices.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  l10n.desktopDeviceListEmpty,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              )
+            else
+              Column(
+                children: connection.adbDevices
                     .map(
-                      (device) => DropdownMenuItem(
-                        value: device.serial,
-                        enabled: device.isAuthorized,
-                        child: Text(
-                          device.displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                      (device) => _AdbDeviceTile(
+                        device: device,
+                        selected: device.serial == connection.selectedAdbSerial,
+                        busy: connection.isConnecting,
+                        onTap: () => notifier.switchAdbDevice(device.serial),
                       ),
                     )
                     .toList(),
-                onChanged: connection.isConnecting
-                    ? null
-                    : (serial) {
-                        if (serial != null) notifier.selectAdbDevice(serial);
-                      },
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.smartphone, size: 18),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 38),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 11,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
+              ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: connection.isConnecting
+                  ? null
+                  : () => _showAdbSettingsDialog(context, notifier),
+              icon: const Icon(Icons.settings_ethernet, size: 17),
+              label: Text(l10n.desktopConnectionConfigureAdb),
+            ),
+          ] else
+            TextField(
+              enabled: !connection.isConnecting,
+              onChanged: (value) => wifiAddress.value = value,
+              style: const TextStyle(fontSize: 12),
+              decoration: InputDecoration(
+                hintText: l10n.desktopConnectionAddressHint,
+                prefixIcon: const Icon(Icons.link, size: 18),
+                prefixIconConstraints: const BoxConstraints(minWidth: 38),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 11,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(6),
                 ),
               ),
-            ] else
-              TextField(
-                enabled: !connection.isConnecting,
-                onChanged: (value) => wifiAddress.value = value,
-                style: const TextStyle(fontSize: 12),
-                decoration: InputDecoration(
-                  hintText: l10n.desktopConnectionAddressHint,
-                  prefixIcon: const Icon(Icons.link, size: 18),
-                  prefixIconConstraints: const BoxConstraints(minWidth: 38),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 11,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 10),
-          ],
+            ),
+          const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
             decoration: BoxDecoration(

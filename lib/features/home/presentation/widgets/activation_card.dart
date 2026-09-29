@@ -10,11 +10,23 @@ class ActivationCard extends StatelessWidget {
   final bool isAI;
   final String? subTitle;
 
+  /// 覆盖右侧状态胶囊文案，默认使用「已激活/未激活」
+  final String? statusText;
+
+  /// 覆盖左侧图标，默认按 [title] 推断
+  final IconData? statusIcon;
+
+  /// 覆盖主色，默认按 [title] 推断
+  final Color? accentColor;
+
   const ActivationCard({
     super.key,
     required this.isActivated,
     required this.title,
     this.subTitle,
+    this.statusText,
+    this.statusIcon,
+    this.accentColor,
   }) : isAI = false;
 
   const ActivationCard.ai({
@@ -22,18 +34,20 @@ class ActivationCard extends StatelessWidget {
     required this.isActivated,
     required this.title,
     this.subTitle,
-  }) : isAI = true;
+  }) : isAI = true,
+       statusText = null,
+       statusIcon = null,
+       accentColor = null;
 
   @override
   Widget build(BuildContext context) {
     if (!isAI) {
-      final accentColor = _accentColor(context);
-      final statusText = isActivated
-          ? context.l10n.activated
-          : context.l10n.notActivated;
-      final subtitleText = subTitle == null
-          ? statusText
-          : '$statusText ($subTitle)';
+      final accent = accentColor ?? _accentColor(context);
+      final status =
+          statusText ??
+          (isActivated ? context.l10n.activated : context.l10n.notActivated);
+      final subtitleText = subTitle == null ? status : '$status ($subTitle)';
+      final icon = statusIcon ?? _statusIcon();
 
       return Container(
         margin: EdgeInsets.symmetric(horizontal: 10.w),
@@ -42,7 +56,7 @@ class ActivationCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: context.isDark ? const Color(0xFF1C1C1E) : Colors.white,
           borderRadius: BorderRadius.circular(16.r),
-          border: Border.all(color: accentColor.withValues(alpha: 0.18)),
+          border: Border.all(color: accent.withValues(alpha: 0.18)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(
@@ -59,15 +73,13 @@ class ActivationCard extends StatelessWidget {
               width: 46.w,
               height: 46.w,
               decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: isActivated ? 0.16 : 0.10),
+                color: accent.withValues(alpha: isActivated ? 0.16 : 0.10),
                 borderRadius: BorderRadius.circular(14.r),
               ),
               child: Icon(
-                _statusIcon(),
+                icon,
                 size: 23.sp,
-                color: isActivated
-                    ? accentColor
-                    : accentColor.withValues(alpha: 0.72),
+                color: isActivated ? accent : accent.withValues(alpha: 0.72),
               ),
             ),
             SizedBox(width: 14.w),
@@ -96,17 +108,17 @@ class ActivationCard extends StatelessWidget {
                           vertical: 5.h,
                         ),
                         decoration: BoxDecoration(
-                          color: accentColor.withValues(
+                          color: accent.withValues(
                             alpha: isActivated ? 0.16 : 0.10,
                           ),
                           borderRadius: BorderRadius.circular(999.r),
                         ),
                         child: Text(
-                          statusText,
+                          status,
                           style: TextStyle(
                             fontSize: 11.sp,
                             fontWeight: FontWeight.w700,
-                            color: accentColor,
+                            color: accent,
                           ),
                         ),
                       ),

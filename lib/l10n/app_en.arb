@@ -60,6 +60,23 @@
   "@desktopConnectionConnected": {
     "description": "PC - device connection status - connected"
   },
+  "homeDesktopCardTitle": "PC Connection",
+  "@homeDesktopCardTitle": {
+    "description": "Phone - home tab - PC connection card title"
+  },
+  "homeDesktopCardDisconnected": "Waiting for desktop connection",
+  "@homeDesktopCardDisconnected": {
+    "description": "Phone - home tab - no desktop connection"
+  },
+  "homeDesktopCardDeviceCount": "{count} device(s)",
+  "@homeDesktopCardDeviceCount": {
+    "description": "Phone - home tab - connected desktop device count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "desktopConnectionConnecting": "Connecting…",
   "@desktopConnectionConnecting": {
     "description": "PC - device connection status - connecting"
@@ -104,6 +121,14 @@
   "desktopConnectionDeviceUnauthorized": "Device unauthorized. Allow USB debugging on the phone.",
   "@desktopConnectionDeviceUnauthorized": {
     "description": "PC - unauthorized ADB device message"
+  },
+  "desktopDeviceListTitle": "Devices",
+  "@desktopDeviceListTitle": {
+    "description": "PC - device list title"
+  },
+  "desktopDeviceListEmpty": "No devices found. Connect a phone or tap refresh.",
+  "@desktopDeviceListEmpty": {
+    "description": "PC - empty device list message"
   },
   "desktopConnectionPairAddressHint": "Pairing address, e.g. 192.168.1.2:37099",
   "@desktopConnectionPairAddressHint": {

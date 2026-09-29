@@ -50,6 +50,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopConnectionConnected => '已连接';
 
   @override
+  String get homeDesktopCardTitle => '电脑连接';
+
+  @override
+  String get homeDesktopCardDisconnected => '等待电脑端连接';
+
+  @override
+  String homeDesktopCardDeviceCount(int count) {
+    return '$count 台设备';
+  }
+
+  @override
   String get desktopConnectionConnecting => '连接中…';
 
   @override
@@ -80,6 +91,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get desktopConnectionDeviceUnauthorized => '设备未授权，请在手机上允许 USB 调试';
+
+  @override
+  String get desktopDeviceListTitle => '设备列表';
+
+  @override
+  String get desktopDeviceListEmpty => '未发现设备，请连接手机或点击刷新';
 
   @override
   String get desktopConnectionPairAddressHint => '配对地址，例如 192.168.1.2:37099';

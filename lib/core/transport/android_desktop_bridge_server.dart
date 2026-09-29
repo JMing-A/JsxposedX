@@ -5,6 +5,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:JsxposedX/core/transport/jsxposed_protocol.dart';
+import 'package:JsxposedX/generated/status_management.g.dart';
 
 class AndroidDesktopBridgeServer {
   AndroidDesktopBridgeServer._();
@@ -13,9 +14,16 @@ class AndroidDesktopBridgeServer {
 
   HttpServer? _server;
   final Set<WebSocket> _clients = {};
+  final StatusManagementNative _statusManagement = StatusManagementNative();
   Map<String, dynamic>? _deviceInfo;
 
+  /// 当前已连接的 PC 客户端数量，供手机端界面展示电脑连接状态
+  final ValueNotifier<int> clientCount = ValueNotifier<int>(0);
+
   bool get isRunning => _server != null;
+  bool get hasClient => clientCount.value > 0;
+
+  void _syncClientCount() => clientCount.value = _clients.length;
 
   Future<void> start() async {
     if (kIsWeb || !Platform.isAndroid || isRunning) return;
@@ -37,6 +45,7 @@ class AndroidDesktopBridgeServer {
   Future<void> stop() async {
     final clients = _clients.toList();
     _clients.clear();
+    _syncClientCount();
     for (final client in clients) {
       await client.close();
     }
@@ -56,10 +65,17 @@ class AndroidDesktopBridgeServer {
       try {
         final socket = await WebSocketTransformer.upgrade(request);
         _clients.add(socket);
+        _syncClientCount();
         socket.listen(
           (data) => _handleMessage(socket, data),
-          onDone: () => _clients.remove(socket),
-          onError: (_) => _clients.remove(socket),
+          onDone: () {
+            _clients.remove(socket);
+            _syncClientCount();
+          },
+          onError: (_) {
+            _clients.remove(socket);
+            _syncClientCount();
+          },
           cancelOnError: true,
         );
       } catch (error) {
@@ -142,19 +158,7 @@ class AndroidDesktopBridgeServer {
       case 'device.get_info':
         return Map<String, dynamic>.from(_deviceInfo ?? const {});
       case 'device.get_capabilities':
-        return {
-          'deviceId': _deviceInfo?['deviceId'],
-          'protocolVersion': jsxposedProtocolVersion,
-          'platform': 'android',
-          'capabilities': {
-            'xposed': {'available': false, 'framework': null},
-            'frida': {'available': false, 'version': null, 'mode': null},
-            'root': false,
-            'memory': true,
-            'shell': true,
-            'screenshot': true,
-          },
-        };
+        return _loadCapabilities();
       case 'device.get_health':
         return {
           'status': 'ready',
@@ -173,6 +177,36 @@ class AndroidDesktopBridgeServer {
     }
   }
 
+  Future<Map<String, dynamic>> _loadCapabilities() async {
+    final results = await Future.wait<dynamic>([
+      _readCapability<bool>(_statusManagement.isHook, false),
+      _readCapability<bool>(_statusManagement.isRoot, false),
+      _readCapability<FridaStatusData>(
+        _statusManagement.isFrida,
+        FridaStatusData(status: false, type: -1),
+      ),
+    ]);
+    final isHook = results[0] as bool;
+    final isRoot = results[1] as bool;
+    final frida = results[2] as FridaStatusData;
+    return buildDesktopBridgeCapabilities(
+      deviceId: _deviceInfo?['deviceId'] as String?,
+      isHook: isHook,
+      isRoot: isRoot,
+      isFridaReady: frida.status,
+      fridaType: frida.type,
+    );
+  }
+
+  Future<T> _readCapability<T>(Future<T> Function() read, T fallback) async {
+    try {
+      return await read();
+    } catch (error) {
+      debugPrint('Desktop bridge capability check failed: $error');
+      return fallback;
+    }
+  }
+
   Future<Map<String, dynamic>> _loadDeviceInfo() async {
     final info = await DeviceInfoPlugin().androidInfo;
     return {
@@ -185,6 +219,38 @@ class AndroidDesktopBridgeServer {
       'manufacturer': info.manufacturer,
     };
   }
+}
+
+@visibleForTesting
+Map<String, dynamic> buildDesktopBridgeCapabilities({
+  required String? deviceId,
+  required bool isHook,
+  required bool isRoot,
+  required bool isFridaReady,
+  required int fridaType,
+}) {
+  return {
+    'deviceId': deviceId,
+    'protocolVersion': jsxposedProtocolVersion,
+    'platform': 'android',
+    'capabilities': {
+      'xposed': {'available': isHook, 'framework': isHook ? 'LSPosed' : null},
+      'frida': {
+        'available': isFridaReady,
+        'installed': fridaType >= 0,
+        'mode': fridaType == 1 ? 'zygisk' : null,
+        'state': switch (fridaType) {
+          1 => 'ready',
+          0 => 'installed',
+          _ => 'unavailable',
+        },
+      },
+      'root': isRoot,
+      'memory': isRoot,
+      'shell': isRoot,
+      'screenshot': true,
+    },
+  };
 }
 
 class _ProtocolException implements Exception {

@@ -176,6 +176,24 @@ abstract class AppLocalizations {
   /// **'已连接'**
   String get desktopConnectionConnected;
 
+  /// 手机端-首页-电脑连接卡片标题
+  ///
+  /// In zh, this message translates to:
+  /// **'电脑连接'**
+  String get homeDesktopCardTitle;
+
+  /// 手机端-首页-未连接电脑端
+  ///
+  /// In zh, this message translates to:
+  /// **'等待电脑端连接'**
+  String get homeDesktopCardDisconnected;
+
+  /// 手机端-首页-已连接电脑端设备数量
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 台设备'**
+  String homeDesktopCardDeviceCount(int count);
+
   /// PC 端-设备连接状态-连接中
   ///
   /// In zh, this message translates to:
@@ -235,6 +253,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'设备未授权，请在手机上允许 USB 调试'**
   String get desktopConnectionDeviceUnauthorized;
+
+  /// PC 端-设备列表标题
+  ///
+  /// In zh, this message translates to:
+  /// **'设备列表'**
+  String get desktopDeviceListTitle;
+
+  /// PC 端-设备列表为空提示
+  ///
+  /// In zh, this message translates to:
+  /// **'未发现设备，请连接手机或点击刷新'**
+  String get desktopDeviceListEmpty;
 
   /// PC 端-ADB 无线配对地址输入提示
   ///

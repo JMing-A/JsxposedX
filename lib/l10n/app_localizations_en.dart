@@ -52,6 +52,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopConnectionConnected => 'Connected';
 
   @override
+  String get homeDesktopCardTitle => 'PC Connection';
+
+  @override
+  String get homeDesktopCardDisconnected => 'Waiting for desktop connection';
+
+  @override
+  String homeDesktopCardDeviceCount(int count) {
+    return '$count device(s)';
+  }
+
+  @override
   String get desktopConnectionConnecting => 'Connecting…';
 
   @override
@@ -83,6 +94,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get desktopConnectionDeviceUnauthorized =>
       'Device unauthorized. Allow USB debugging on the phone.';
+
+  @override
+  String get desktopDeviceListTitle => 'Devices';
+
+  @override
+  String get desktopDeviceListEmpty =>
+      'No devices found. Connect a phone or tap refresh.';
 
   @override
   String get desktopConnectionPairAddressHint =>

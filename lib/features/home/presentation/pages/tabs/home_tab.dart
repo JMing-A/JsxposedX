@@ -4,6 +4,7 @@ import 'package:JsxposedX/common/widgets/loading.dart';
 import 'package:JsxposedX/common/widgets/ref_error.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/providers/status_management_provider.dart';
+import 'package:JsxposedX/core/transport/android_desktop_bridge_server.dart';
 import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/runtime/ai_chat_runtime_provider.dart';
 import 'package:JsxposedX/features/frida/presentation/providers/frida_query_provider.dart';
@@ -127,6 +128,26 @@ class HomeTab extends HookConsumerWidget {
                 error: (error, stack) =>
                     RefError(onRetry: () => ref.invalidate(isFridaProvider)),
                 loading: () => const Loading(),
+              ),
+              SizedBox(height: 8.h),
+              ValueListenableBuilder<int>(
+                valueListenable:
+                    AndroidDesktopBridgeServer.instance.clientCount,
+                builder: (context, count, _) {
+                  final connected = count > 0;
+                  return ActivationCard(
+                    isActivated: connected,
+                    title: context.l10n.homeDesktopCardTitle,
+                    statusText: connected
+                        ? context.l10n.desktopConnectionConnected
+                        : context.l10n.desktopConnectionDisconnected,
+                    statusIcon: Icons.laptop_mac_rounded,
+                    accentColor: connected ? const Color(0xFF38B26D) : null,
+                    subTitle: connected
+                        ? context.l10n.homeDesktopCardDeviceCount(count)
+                        : context.l10n.homeDesktopCardDisconnected,
+                  );
+                },
               ),
               SizedBox(height: 12.h),
               InfoCard(),

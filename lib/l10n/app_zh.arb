@@ -60,6 +60,23 @@
   "@desktopConnectionConnected": {
     "description": "PC 端-设备连接状态-已连接"
   },
+  "homeDesktopCardTitle": "电脑连接",
+  "@homeDesktopCardTitle": {
+    "description": "手机端-首页-电脑连接卡片标题"
+  },
+  "homeDesktopCardDisconnected": "等待电脑端连接",
+  "@homeDesktopCardDisconnected": {
+    "description": "手机端-首页-未连接电脑端"
+  },
+  "homeDesktopCardDeviceCount": "{count} 台设备",
+  "@homeDesktopCardDeviceCount": {
+    "description": "手机端-首页-已连接电脑端设备数量",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "desktopConnectionConnecting": "连接中…",
   "@desktopConnectionConnecting": {
     "description": "PC 端-设备连接状态-连接中"
@@ -104,6 +121,14 @@
   "desktopConnectionDeviceUnauthorized": "设备未授权，请在手机上允许 USB 调试",
   "@desktopConnectionDeviceUnauthorized": {
     "description": "PC 端-ADB 设备未授权提示"
+  },
+  "desktopDeviceListTitle": "设备列表",
+  "@desktopDeviceListTitle": {
+    "description": "PC 端-设备列表标题"
+  },
+  "desktopDeviceListEmpty": "未发现设备，请连接手机或点击刷新",
+  "@desktopDeviceListEmpty": {
+    "description": "PC 端-设备列表为空提示"
   },
   "desktopConnectionPairAddressHint": "配对地址，例如 192.168.1.2:37099",
   "@desktopConnectionPairAddressHint": {
