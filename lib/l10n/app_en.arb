@@ -201,28 +201,22 @@
   "desktopExplorerFridaScripts": "Frida scripts",
   "desktopExplorerXposedScripts": "Xposed scripts",
   "desktopExplorerNoScripts": "No scripts yet",
-  "desktopEditorRunScript": "Run script",
-  "desktopEditorSaveScript": "Save to device",
-  "desktopEditorSaved": "Saved to device",
+  "desktopEditorSaveAndRun": "Save and run (Ctrl/Cmd+S)",
+  "desktopEditorRunning": "Saved and running on device",
+  "desktopEditorRestartApp": "Restart app",
   "desktopEditorUntitled": "No script selected",
   "desktopEditorLoadFailed": "Failed to read script",
   "desktopEditorCreateScript": "Create or open a local script",
   "desktopEditorConnectDevice": "Connect a device to start",
   "desktopEditorDescription": "Scripts stay on PC and sync to the selected device for execution.",
   "desktopOutputTitle": "OUTPUT",
-  "desktopOutputEmpty": "Run output and device events will appear here.",
+  "desktopOutputEmpty": "Runtime logs will appear here in real time.",
   "desktopOutputRequestCompleted": "Request {requestId} completed",
   "@desktopOutputRequestCompleted": {
     "placeholders": {"requestId": {"type": "String"}}
   },
-  "desktopOutputEvent": "[{sequence}] {event}",
-  "@desktopOutputEvent": {
-    "placeholders": {
-      "sequence": {"type": "String"},
-      "event": {"type": "String"}
-    }
-  },
-  "desktopOutputEventFallback": "event",
+  "desktopOutputExpand": "Expand output panel",
+  "desktopOutputCollapse": "Collapse output panel",
   "desktopStatusNoDevice": "No device",
   "desktopStatusConnecting": "Connecting…",
   "desktopStatusDeviceInfo": "API {api} · {abi}",

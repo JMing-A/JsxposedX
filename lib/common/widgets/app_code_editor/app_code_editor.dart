@@ -35,6 +35,9 @@ class AppCodeEditor extends HookWidget {
   final String? readOnlyToolbarLabel;
   final double? readOnlyMaxHeight;
 
+  /// 是否显示底部符号工具栏。桌面端用物理键盘，不需要符号输入栏。
+  final bool showToolbar;
+
   const AppCodeEditor({
     super.key,
     required this.controller,
@@ -51,6 +54,7 @@ class AppCodeEditor extends HookWidget {
     this.decorateReadOnly = true,
     this.readOnlyToolbarLabel,
     this.readOnlyMaxHeight,
+    this.showToolbar = true,
   });
 
   @override
@@ -253,7 +257,7 @@ class AppCodeEditor extends HookWidget {
             ),
           ),
 
-          if (!readOnly)
+          if (!readOnly && showToolbar)
             // 编辑模式的工具栏 (底部)
             AppCodeEditorToolbar(controller: controller),
         ],

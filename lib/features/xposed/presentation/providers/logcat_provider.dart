@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:JsxposedX/core/transport/android_desktop_bridge_server.dart';
+import 'package:JsxposedX/core/transport/jsxposed_protocol.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/xposed/domain/services/jxconsole_log_protocol.dart';
@@ -82,6 +84,22 @@ class LogcatEntry {
     ].join('\n');
     searchText = searchTextRaw.toLowerCase();
   }
+
+  /// 供桌面端桥接推送的序列化形式，字段与手机端控制台展示保持一致
+  Map<String, dynamic> toJson() => {
+    'rawLine': rawLine,
+    'level': level,
+    'tag': tag,
+    'message': message,
+    'timestamp': timestamp,
+    'source': source,
+    'scriptName': scriptName,
+    'runId': runId,
+    'sessionId': sessionId,
+    'pid': pid,
+    'tid': tid,
+    'stackTrace': stackTrace,
+  };
 }
 
 @riverpod
@@ -539,6 +557,13 @@ class Logcat extends _$Logcat {
     if (_pendingEntries.isEmpty || _isDisposed) return;
     final pending = List<LogcatEntry>.from(_pendingEntries, growable: false);
     _pendingEntries.clear();
+    // PC 端控制台镜像手机端可见日志；无客户端连接时 broadcast 内部直接返回
+    for (final entry in pending) {
+      AndroidDesktopBridgeServer.instance.broadcast(
+        JsxposedEvent.logEntry,
+        entry.toJson(),
+      );
+    }
     final combined = <LogcatEntry>[...state, ...pending];
     final start = combined.length > _maxEntries
         ? combined.length - _maxEntries

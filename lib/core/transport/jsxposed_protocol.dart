@@ -21,6 +21,13 @@ abstract final class JsxposedMethod {
   static const scriptWrite = 'script.write';
   static const scriptDelete = 'script.delete';
   static const scriptToggle = 'script.toggle';
+  static const scriptRun = 'script.run';
+}
+
+/// 协议事件名，设备侧主动推送给 PC 侧
+abstract final class JsxposedEvent {
+  /// 控制台日志条目，payload 为 LogcatEntry 的 JSON 形式
+  static const logEntry = 'log.entry';
 }
 
 /// 脚本来源，对应手机端 Frida 与 Xposed 两套脚本目录

@@ -186,13 +186,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopExplorerNoScripts => '暂无脚本';
 
   @override
-  String get desktopEditorRunScript => '运行脚本';
+  String get desktopEditorSaveAndRun => '保存并运行（Ctrl/Cmd+S）';
 
   @override
-  String get desktopEditorSaveScript => '保存到设备';
+  String get desktopEditorRunning => '已保存并在设备上运行';
 
   @override
-  String get desktopEditorSaved => '已保存到设备';
+  String get desktopEditorRestartApp => '重启应用';
 
   @override
   String get desktopEditorUntitled => '未选择脚本';
@@ -213,7 +213,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopOutputTitle => '输出';
 
   @override
-  String get desktopOutputEmpty => '运行输出和设备事件将显示在此处。';
+  String get desktopOutputEmpty => '运行日志将实时显示在此处。';
 
   @override
   String desktopOutputRequestCompleted(String requestId) {
@@ -221,12 +221,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String desktopOutputEvent(String sequence, String event) {
-    return '[$sequence] $event';
-  }
+  String get desktopOutputExpand => '展开输出面板';
 
   @override
-  String get desktopOutputEventFallback => '事件';
+  String get desktopOutputCollapse => '收起输出面板';
 
   @override
   String get desktopStatusNoDevice => '未连接设备';

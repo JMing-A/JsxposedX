@@ -6,11 +6,15 @@ import 'package:JsxposedX/core/utils/procedure_utils.dart';
 import 'package:JsxposedX/features/home/presentation/providers/check_query_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_connection_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_locale_provider.dart';
+import 'package:JsxposedX/features/home/presentation/providers/desktop_logs_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_theme_provider.dart';
 import 'package:JsxposedX/features/home/presentation/utils/update_check_helper.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/notice_bottom_sheet.dart';
 import 'package:JsxposedX/features/home/presentation/widgets/update_check_dialog.dart';
+import 'package:JsxposedX/features/frida/presentation/constants/frida_prompts.dart';
+import 'package:JsxposedX/features/xposed/presentation/constants/jsxposed_prompts.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:re_editor/re_editor.dart';
@@ -406,7 +410,6 @@ class _DesktopWorkbenchView extends HookConsumerWidget {
                     ),
                     if (constraints.maxHeight >= 40)
                       _RunOutputPanel(
-                        connection: connection,
                         expanded: showExpandedOutput,
                         onToggle: () =>
                             outputExpanded.value = !outputExpanded.value,
@@ -903,13 +906,26 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
   DesktopScriptSelection? _loaded;
   CodeLineEditingController? _controller;
   bool _loading = false;
-  bool _saving = false;
+  bool _running = false;
+
+  /// Frida 脚本保存后是否重启目标应用。Xposed 必须重启才能生效，故不参与开关。
+  bool _restartApp = false;
   String? _error;
+
+  static final _fridaPrompts = buildFridaPromptsBuilder();
+  static final _xposedPrompts = buildJsxposedPromptsBuilder();
 
   @override
   void dispose() {
     _controller?.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // build 只负责渲染，选中变化用 listen 处理，避免在 build 期间 setState
+    _syncSelection(ref.read(_selectedScriptProvider));
   }
 
   /// 切换选中脚本时重新从手机端拉取内容，本地未保存的修改会被覆盖
@@ -938,11 +954,12 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
         )
         .then((content) {
           if (!mounted || _loaded != selection) return;
-          _controller?.dispose();
+          final previous = _controller;
           setState(() {
             _controller = CodeLineEditingController.fromText(content);
             _loading = false;
           });
+          previous?.dispose();
         })
         .catchError((Object error) {
           if (!mounted || _loaded != selection) return;
@@ -953,77 +970,111 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
         });
   }
 
-  Future<void> _save() async {
+  /// Ctrl/Cmd+S 与运行按钮共用：保存到手机端并触发注入。
+  /// Xposed 侧恒为重启应用，Frida 侧由用户开关决定。
+  Future<void> _saveAndRun() async {
     final selection = _loaded;
     final controller = _controller;
     if (selection == null || controller == null) return;
-    setState(() => _saving = true);
+    setState(() => _running = true);
     final messenger = ScaffoldMessenger.of(context);
-    final savedMessage = context.l10n.desktopEditorSaved;
+    final isFrida = selection.source == JsxposedScriptSource.frida;
+    final runningMessage = context.l10n.desktopEditorRunning;
     try {
       await ref
           .read(desktopConnectionProvider.notifier)
-          .writeScript(
+          .runScript(
             packageName: selection.packageName,
             source: selection.source,
             localPath: selection.localPath,
             content: controller.text,
+            restartApp: isFrida ? _restartApp : true,
           );
-      messenger.showSnackBar(SnackBar(content: Text(savedMessage)));
+      messenger.showSnackBar(SnackBar(content: Text(runningMessage)));
     } catch (error) {
       messenger.showSnackBar(SnackBar(content: Text('$error')));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _running = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colorScheme;
-    _syncSelection(ref.watch(_selectedScriptProvider));
+    // 选中变化通过 listen 处理，build 只做渲染，避免每次重建都重新加载脚本
+    ref.listen(_selectedScriptProvider, (_, next) => _syncSelection(next));
     final selection = _loaded;
 
-    return Column(
-      children: [
-        Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          color: colors.surfaceContainerLow,
-          child: Row(
-            children: [
-              const Icon(Icons.code, size: 18),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  selection?.name ?? context.l10n.desktopEditorUntitled,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (selection != null) ...[
-                IconButton(
-                  tooltip: context.l10n.desktopEditorSaveScript,
-                  visualDensity: VisualDensity.compact,
-                  onPressed: _saving || _loading ? null : _save,
-                  icon: _saving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined, size: 18),
-                ),
-                IconButton(
-                  tooltip: context.l10n.desktopEditorRunScript,
-                  visualDensity: VisualDensity.compact,
-                  onPressed: null,
-                  icon: const Icon(Icons.play_arrow, size: 18),
-                ),
-              ],
-            ],
-          ),
+    return CallbackShortcuts(
+      bindings: {
+        // Mac 用 Cmd+S，Windows/Linux 用 Ctrl+S，与手机端「保存并运行」等价
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): _saveAndRun,
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true):
+            _saveAndRun,
+      },
+      child: Focus(
+        autofocus: true,
+        child: Column(
+          children: [
+            _buildEditorToolbar(colors, selection),
+            Expanded(child: _buildBody(colors, selection)),
+          ],
         ),
-        Expanded(child: _buildBody(colors, selection)),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildEditorToolbar(
+    ColorScheme colors,
+    DesktopScriptSelection? selection,
+  ) {
+    final isFrida = selection?.source == JsxposedScriptSource.frida;
+    final busy = _running || _loading;
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      color: colors.surfaceContainerLow,
+      child: Row(
+        children: [
+          const Icon(Icons.code, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              selection?.name ?? context.l10n.desktopEditorUntitled,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (selection != null) ...[
+            // Frida 无需重启即可热更新，是否重启交给用户决定
+            if (isFrida) ...[
+              Text(
+                context.l10n.desktopEditorRestartApp,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(width: 4),
+              Switch(
+                value: _restartApp,
+                onChanged: busy
+                    ? null
+                    : (value) => setState(() => _restartApp = value),
+              ),
+              const SizedBox(width: 4),
+            ],
+            IconButton(
+              tooltip: context.l10n.desktopEditorSaveAndRun,
+              visualDensity: VisualDensity.compact,
+              onPressed: busy ? null : _saveAndRun,
+              icon: _running
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.play_arrow, size: 18),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1059,6 +1110,12 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
         controller: _controller!,
         language: 'javascript',
         readOnly: false,
+        // 与手机端共用同一套内置代码提示
+        promptsBuilder: selection.source == JsxposedScriptSource.frida
+            ? _fridaPrompts
+            : _xposedPrompts,
+        // 桌面端使用物理键盘，不需要符号输入栏
+        showToolbar: false,
       ),
     );
   }
@@ -1096,45 +1153,129 @@ class _EditorEmptyState extends StatelessWidget {
   }
 }
 
-class _RunOutputPanel extends StatelessWidget {
-  const _RunOutputPanel({
-    required this.connection,
-    required this.expanded,
-    required this.onToggle,
-  });
+class _RunOutputPanel extends ConsumerStatefulWidget {
+  const _RunOutputPanel({required this.expanded, required this.onToggle});
 
-  final DesktopConnectionState connection;
   final bool expanded;
   final VoidCallback onToggle;
 
   @override
+  ConsumerState<_RunOutputPanel> createState() => _RunOutputPanelState();
+}
+
+class _RunOutputPanelState extends ConsumerState<_RunOutputPanel> {
+  /// 复制的日志条数上限，与手机端控制台保持一致
+  static const _maxCopyEntries = 5000;
+
+  final _scrollController = ScrollController();
+  String? _levelFilter;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _copyEntry(DesktopLogEntry entry) {
+    Clipboard.setData(ClipboardData(text: _formatEntry(entry)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.l10n.consoleLogCopied)));
+  }
+
+  Future<void> _copyVisible(List<DesktopLogEntry> entries) async {
+    final truncated = entries.length > _maxCopyEntries;
+    final source = truncated
+        ? entries.sublist(entries.length - _maxCopyEntries)
+        : entries;
+    await Clipboard.setData(
+      ClipboardData(text: source.map(_formatEntry).join('\n')),
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          truncated
+              ? context.l10n.consoleCopiedTruncated(
+                  source.length,
+                  entries.length,
+                )
+              : context.l10n.consoleCopied(source.length),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colorScheme;
-    final response = connection.lastResponse;
+    final logs = ref.watch(desktopLogsProvider);
+    final filtered = _levelFilter == null
+        ? logs
+        : logs.where((entry) => entry.level == _levelFilter).toList();
+
     final header = SizedBox(
       height: 40,
-      child: InkWell(
-        onTap: onToggle,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            children: [
-              const Icon(Icons.terminal, size: 17),
-              const SizedBox(width: 8),
-              Text(context.l10n.desktopOutputTitle),
-              const Spacer(),
-              if (connection.events.isNotEmpty)
-                Text(
-                  '${connection.events.length}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colors.onSurfaceVariant,
-                  ),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 12, right: 4),
+        child: Row(
+          children: [
+            InkWell(
+              onTap: widget.onToggle,
+              child: Row(
+                children: [
+                  const Icon(Icons.terminal, size: 17),
+                  const SizedBox(width: 8),
+                  Text(context.l10n.desktopOutputTitle),
+                  const SizedBox(width: 8),
+                  if (logs.isNotEmpty)
+                    Text(
+                      _levelFilter == null
+                          ? '${logs.length}'
+                          : '${filtered.length}/${logs.length}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            for (final level in const ['E', 'W', 'I', 'D'])
+              _LevelFilterChip(
+                level: level,
+                selected: _levelFilter == level,
+                onTap: () => setState(
+                  () => _levelFilter = _levelFilter == level ? null : level,
                 ),
-              const SizedBox(width: 8),
-              Icon(expanded ? Icons.expand_more : Icons.expand_less, size: 18),
-            ],
-          ),
+              ),
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: context.l10n.consoleCopyVisible,
+              iconSize: 17,
+              onPressed: filtered.isEmpty ? null : () => _copyVisible(filtered),
+              icon: const Icon(Icons.copy_all_outlined),
+            ),
+            IconButton(
+              tooltip: context.l10n.clearPanel,
+              iconSize: 17,
+              onPressed: logs.isEmpty
+                  ? null
+                  : () => ref.read(desktopLogsProvider.notifier).clear(),
+              icon: const Icon(Icons.delete_sweep_outlined),
+            ),
+            IconButton(
+              tooltip: widget.expanded
+                  ? context.l10n.desktopOutputCollapse
+                  : context.l10n.desktopOutputExpand,
+              iconSize: 18,
+              onPressed: widget.onToggle,
+              icon: Icon(
+                widget.expanded ? Icons.expand_more : Icons.expand_less,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1143,7 +1284,7 @@ class _RunOutputPanel extends StatelessWidget {
       border: Border(top: BorderSide(color: colors.outlineVariant)),
     );
 
-    if (!expanded) {
+    if (!widget.expanded) {
       return DecoratedBox(decoration: decoration, child: header);
     }
 
@@ -1154,13 +1295,15 @@ class _RunOutputPanel extends StatelessWidget {
         children: [
           header,
           Expanded(
-            child: response == null && connection.events.isEmpty
+            child: filtered.isEmpty
                 ? Align(
                     alignment: Alignment.topLeft,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       child: Text(
-                        context.l10n.desktopOutputEmpty,
+                        logs.isEmpty
+                            ? context.l10n.desktopOutputEmpty
+                            : context.l10n.noLogsFiltered,
                         style: TextStyle(
                           fontSize: 12,
                           color: colors.onSurfaceVariant,
@@ -1168,49 +1311,236 @@ class _RunOutputPanel extends StatelessWidget {
                       ),
                     ),
                   )
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    children: [
-                      if (response != null)
-                        Text(
-                          response.isSuccess
-                              ? context.l10n.desktopOutputRequestCompleted(
-                                  response.id ?? '-',
-                                )
-                              : '${response.error!.code}: ${response.error!.message}',
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            color: response.isSuccess
-                                ? colors.onSurface
-                                : colors.error,
-                          ),
-                        ),
-                      ...connection.events.reversed
-                          .take(20)
-                          .map(
-                            (event) => Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                context.l10n.desktopOutputEvent(
-                                  '${event.sequence ?? '-'}',
-                                  event.event ??
-                                      context.l10n.desktopOutputEventFallback,
-                                ),
-                                style: const TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                    ],
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) => _LogEntryRow(
+                      entry: filtered[index],
+                      onCopy: () => _copyEntry(filtered[index]),
+                    ),
                   ),
           ),
         ],
       ),
     );
   }
+}
+
+class _LevelFilterChip extends StatelessWidget {
+  const _LevelFilterChip({
+    required this.level,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String level;
+  final bool selected;
+  final VoidCallback onTap;
+
+  Color get _color => switch (level) {
+    'E' => const Color(0xFFEF5350),
+    'W' => const Color(0xFFFFA726),
+    'D' => const Color(0xFF42A5F5),
+    _ => const Color(0xFF90A4AE),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          decoration: BoxDecoration(
+            color: _color.withValues(alpha: selected ? 0.28 : 0.12),
+            borderRadius: BorderRadius.circular(4),
+            border: selected
+                ? Border.all(color: _color.withValues(alpha: 0.7), width: 0.8)
+                : null,
+          ),
+          child: Text(
+            level,
+            style: TextStyle(
+              fontSize: 10,
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w600,
+              color: _color,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LogEntryRow extends StatefulWidget {
+  const _LogEntryRow({required this.entry, required this.onCopy});
+
+  final DesktopLogEntry entry;
+  final VoidCallback onCopy;
+
+  @override
+  State<_LogEntryRow> createState() => _LogEntryRowState();
+}
+
+class _LogEntryRowState extends State<_LogEntryRow> {
+  bool _stackExpanded = false;
+
+  DesktopLogEntry get entry => widget.entry;
+
+  Color get _levelColor => switch (entry.level) {
+    'E' || 'F' => const Color(0xFFEF5350),
+    'W' => const Color(0xFFFFA726),
+    'D' => const Color(0xFF42A5F5),
+    _ => const Color(0xFFB0BEC5),
+  };
+
+  Color get _sourceColor => switch (entry.source) {
+    'frida' => const Color(0xFFFFB74D),
+    'xposed' => const Color(0xFF81C784),
+    'app' => const Color(0xFF64B5F6),
+    'framework' => const Color(0xFFBA68C8),
+    _ => const Color(0xFF90A4AE),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final timeDisplay = entry.timestamp.length > 6
+        ? entry.timestamp.substring(6)
+        : '';
+    final meta = [
+      entry.source.toUpperCase(),
+      if (entry.scriptName.isNotEmpty) entry.scriptName,
+      if (entry.tag.isNotEmpty) entry.tag,
+    ].join('  ·  ');
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 16,
+            height: 16,
+            margin: const EdgeInsets.only(top: 2),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: _levelColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: Text(
+              entry.level,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.bold,
+                color: _levelColor,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        meta,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: _sourceColor.withValues(alpha: 0.85),
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (timeDisplay.isNotEmpty)
+                      Text(
+                        timeDisplay,
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: Colors.grey[700],
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                  ],
+                ),
+                SelectableText(
+                  entry.displayText,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 11.5,
+                    color: entry.level == 'E' || entry.level == 'F'
+                        ? const Color(0xFFEF9A9A)
+                        : entry.level == 'W'
+                        ? const Color(0xFFFFCC80)
+                        : Colors.white70,
+                    height: 1.35,
+                  ),
+                ),
+                if (entry.stackTrace.isNotEmpty)
+                  GestureDetector(
+                    onTap: () =>
+                        setState(() => _stackExpanded = !_stackExpanded),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.stackTrace,
+                          maxLines: _stackExpanded ? null : 5,
+                          overflow: _stackExpanded
+                              ? TextOverflow.visible
+                              : TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 10,
+                            color: Color(0xFFEF9A9A),
+                            height: 1.3,
+                          ),
+                        ),
+                        Text(
+                          _stackExpanded
+                              ? context.l10n.consoleCollapseStack
+                              : context.l10n.consoleExpandStack,
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.blue[300],
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: context.l10n.consoleLogCopied,
+            iconSize: 14,
+            visualDensity: VisualDensity.compact,
+            onPressed: widget.onCopy,
+            icon: Icon(Icons.copy_rounded, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatEntry(DesktopLogEntry entry) {
+  final buffer = StringBuffer();
+  if (entry.timestamp.isNotEmpty) buffer.write('${entry.timestamp} ');
+  buffer.write('${entry.level} [${entry.source.toUpperCase()}]');
+  if (entry.scriptName.isNotEmpty) buffer.write('[${entry.scriptName}]');
+  if (entry.pid.isNotEmpty) buffer.write('[pid:${entry.pid}]');
+  buffer.write(' ${entry.displayText}');
+  if (entry.stackTrace.isNotEmpty) buffer.write('\n${entry.stackTrace}');
+  return buffer.toString();
 }
 
 /// 侧边栏导航项数据

@@ -194,13 +194,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopExplorerNoScripts => 'No scripts yet';
 
   @override
-  String get desktopEditorRunScript => 'Run script';
+  String get desktopEditorSaveAndRun => 'Save and run (Ctrl/Cmd+S)';
 
   @override
-  String get desktopEditorSaveScript => 'Save to device';
+  String get desktopEditorRunning => 'Saved and running on device';
 
   @override
-  String get desktopEditorSaved => 'Saved to device';
+  String get desktopEditorRestartApp => 'Restart app';
 
   @override
   String get desktopEditorUntitled => 'No script selected';
@@ -223,7 +223,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopOutputEmpty =>
-      'Run output and device events will appear here.';
+      'Runtime logs will appear here in real time.';
 
   @override
   String desktopOutputRequestCompleted(String requestId) {
@@ -231,12 +231,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String desktopOutputEvent(String sequence, String event) {
-    return '[$sequence] $event';
-  }
+  String get desktopOutputExpand => 'Expand output panel';
 
   @override
-  String get desktopOutputEventFallback => 'event';
+  String get desktopOutputCollapse => 'Collapse output panel';
 
   @override
   String get desktopStatusNoDevice => 'No device';

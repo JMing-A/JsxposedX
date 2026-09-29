@@ -434,23 +434,23 @@ abstract class AppLocalizations {
   /// **'暂无脚本'**
   String get desktopExplorerNoScripts;
 
-  /// No description provided for @desktopEditorRunScript.
+  /// No description provided for @desktopEditorSaveAndRun.
   ///
   /// In zh, this message translates to:
-  /// **'运行脚本'**
-  String get desktopEditorRunScript;
+  /// **'保存并运行（Ctrl/Cmd+S）'**
+  String get desktopEditorSaveAndRun;
 
-  /// No description provided for @desktopEditorSaveScript.
+  /// No description provided for @desktopEditorRunning.
   ///
   /// In zh, this message translates to:
-  /// **'保存到设备'**
-  String get desktopEditorSaveScript;
+  /// **'已保存并在设备上运行'**
+  String get desktopEditorRunning;
 
-  /// No description provided for @desktopEditorSaved.
+  /// No description provided for @desktopEditorRestartApp.
   ///
   /// In zh, this message translates to:
-  /// **'已保存到设备'**
-  String get desktopEditorSaved;
+  /// **'重启应用'**
+  String get desktopEditorRestartApp;
 
   /// No description provided for @desktopEditorUntitled.
   ///
@@ -491,7 +491,7 @@ abstract class AppLocalizations {
   /// No description provided for @desktopOutputEmpty.
   ///
   /// In zh, this message translates to:
-  /// **'运行输出和设备事件将显示在此处。'**
+  /// **'运行日志将实时显示在此处。'**
   String get desktopOutputEmpty;
 
   /// No description provided for @desktopOutputRequestCompleted.
@@ -500,17 +500,17 @@ abstract class AppLocalizations {
   /// **'请求 {requestId} 已完成'**
   String desktopOutputRequestCompleted(String requestId);
 
-  /// No description provided for @desktopOutputEvent.
+  /// No description provided for @desktopOutputExpand.
   ///
   /// In zh, this message translates to:
-  /// **'[{sequence}] {event}'**
-  String desktopOutputEvent(String sequence, String event);
+  /// **'展开输出面板'**
+  String get desktopOutputExpand;
 
-  /// No description provided for @desktopOutputEventFallback.
+  /// No description provided for @desktopOutputCollapse.
   ///
   /// In zh, this message translates to:
-  /// **'事件'**
-  String get desktopOutputEventFallback;
+  /// **'收起输出面板'**
+  String get desktopOutputCollapse;
 
   /// No description provided for @desktopStatusNoDevice.
   ///

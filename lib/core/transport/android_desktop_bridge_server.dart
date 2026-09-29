@@ -25,10 +25,37 @@ class AndroidDesktopBridgeServer {
   /// 当前已连接的 PC 客户端数量，供手机端界面展示电脑连接状态
   final ValueNotifier<int> clientCount = ValueNotifier<int>(0);
 
+  /// 运行脚本要拉日志、建运行记录、必要时拉起重启应用，属于应用层职责。
+  /// 这里以回调注入，避免传输层反向依赖 Riverpod 与页面逻辑。
+  Future<void> Function({
+    required String packageName,
+    required String source,
+    required String localPath,
+    required bool restartApp,
+  })?
+  scriptRunner;
+
   bool get isRunning => _server != null;
   bool get hasClient => clientCount.value > 0;
 
   void _syncClientCount() => clientCount.value = _clients.length;
+
+  /// 主动向所有已连接的 PC 客户端推送事件帧（如控制台日志）
+  void broadcast(String event, dynamic payload) {
+    if (_clients.isEmpty) return;
+    final message = JsxposedMessage.event(
+      event: event,
+      payload: payload,
+      deviceId: _deviceInfo?['deviceId'] as String?,
+    ).encode();
+    for (final client in _clients) {
+      try {
+        client.add(message);
+      } catch (error) {
+        debugPrint('Desktop bridge broadcast failed: $error');
+      }
+    }
+  }
 
   Future<void> start() async {
     if (kIsWeb || !Platform.isAndroid || isRunning) return;
@@ -184,6 +211,8 @@ class AndroidDesktopBridgeServer {
         return _deleteScript(request.params);
       case JsxposedMethod.scriptToggle:
         return _toggleScript(request.params);
+      case JsxposedMethod.scriptRun:
+        return _runScript(request.params);
       case JsxposedMethod.requestCancel:
         return {'cancelled': request.params?['requestId']};
       default:
@@ -269,7 +298,22 @@ class AndroidDesktopBridgeServer {
     final paths = await _scriptNames(packageName, source);
     // 已存在的脚本沿用设备上的真实路径，否则视为新建，取传入值的文件名
     final found = _findScriptPath(paths, localPath);
-    final fileName = PathUtils.getName(path: found ?? localPath);
+    await _writeScriptContent(packageName, source, found ?? localPath, content);
+    return {
+      'packageName': packageName,
+      'source': source,
+      'localPath': found ?? localPath,
+    };
+  }
+
+  /// 写入脚本内容并按来源刷新手机端快照 / hook 打包
+  Future<void> _writeScriptContent(
+    String packageName,
+    String source,
+    String localPath,
+    String content,
+  ) async {
+    final fileName = PathUtils.getName(path: localPath);
     if (source == JsxposedScriptSource.frida) {
       await _projectNative.createFridaScript(
         packageName,
@@ -289,11 +333,6 @@ class AndroidDesktopBridgeServer {
     if (source == JsxposedScriptSource.frida) {
       await _projectNative.bundleFridaHookJs(packageName);
     }
-    return {
-      'packageName': packageName,
-      'source': source,
-      'localPath': found ?? localPath,
-    };
   }
 
   Future<Map<String, dynamic>> _deleteScript(
@@ -356,6 +395,41 @@ class AndroidDesktopBridgeServer {
       await _projectNative.bundleFridaHookJs(packageName);
     }
     return {'enabled': enabled};
+  }
+
+  /// 保存并运行：先落盘再用应用层回调完成注入，
+  /// restartApp 仅在 Frida 场景有意义（Xposed 必须重启应用才能生效）
+  Future<Map<String, dynamic>> _runScript(Map<String, dynamic>? params) async {
+    final packageName = _requireString(params, 'packageName');
+    final source = _requireScriptSource(params);
+    final localPath = _requireString(params, 'localPath');
+    final content = _requireString(params, 'content');
+    final restartApp = params?['restartApp'] as bool? ?? false;
+
+    final paths = await _scriptNames(packageName, source);
+    final found = _findScriptPath(paths, localPath);
+    if (found == null) {
+      throw _ProtocolException(
+        JsxposedErrorCode.scriptNotFound,
+        'Script not found: $localPath',
+      );
+    }
+    await _writeScriptContent(packageName, source, found, content);
+
+    final runner = scriptRunner;
+    if (runner == null) {
+      throw const _ProtocolException(
+        JsxposedErrorCode.capabilityUnavailable,
+        'Script runner is not available on this device',
+      );
+    }
+    await runner(
+      packageName: packageName,
+      source: source,
+      localPath: found,
+      restartApp: restartApp,
+    );
+    return {'ran': true, 'restartApp': restartApp};
   }
 
   Future<List<String>> _scriptNames(String packageName, String source) {

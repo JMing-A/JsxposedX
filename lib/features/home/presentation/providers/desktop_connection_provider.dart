@@ -139,8 +139,7 @@ class DesktopConnectionState {
     this.deviceInfo,
     this.capabilities,
     this.lastResponse,
-    List<JsxposedMessage>? events = const [],
-  }) : _events = events;
+  });
 
   final DesktopConnectionStatus status;
   final String address;
@@ -150,9 +149,6 @@ class DesktopConnectionState {
   final DesktopDeviceInfo? deviceInfo;
   final DesktopDeviceCapabilities? capabilities;
   final JsxposedMessage? lastResponse;
-  final List<JsxposedMessage>? _events;
-
-  List<JsxposedMessage> get events => _events ?? const [];
 
   bool get isConnected => status == DesktopConnectionStatus.connected;
   bool get isConnecting => status == DesktopConnectionStatus.connecting;
@@ -170,7 +166,6 @@ class DesktopConnectionState {
     DesktopDeviceCapabilities? capabilities,
     bool clearCapabilities = false,
     JsxposedMessage? lastResponse,
-    List<JsxposedMessage>? events,
   }) {
     return DesktopConnectionState(
       status: status ?? this.status,
@@ -185,7 +180,6 @@ class DesktopConnectionState {
           ? null
           : (capabilities ?? this.capabilities),
       lastResponse: lastResponse ?? this.lastResponse,
-      events: events ?? this.events,
     );
   }
 }
@@ -532,6 +526,27 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
     );
   }
 
+  /// 保存并运行：内容先落到手机端，再由手机端完成注入。
+  /// restartApp 仅对 Frida 有意义，Xposed 侧恒为 true。
+  Future<void> runScript({
+    required String packageName,
+    required String source,
+    required String localPath,
+    required String content,
+    required bool restartApp,
+  }) async {
+    await request(
+      JsxposedMethod.scriptRun,
+      params: {
+        'packageName': packageName,
+        'source': source,
+        'localPath': localPath,
+        'content': content,
+        'restartApp': restartApp,
+      },
+    );
+  }
+
   List<T> _listFromResponse<T>(
     JsxposedMessage response,
     T Function(Map<String, dynamic>) fromJson,
@@ -601,14 +616,9 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
         _pendingRequests.remove(message.id)?.complete(message);
         return;
       }
+      // 事件一律通过 events 流分发，避免高频日志触发整棵工作台重建
       if (message.isEvent) {
         _eventController.add(message);
-        final updatedEvents = [...state.events, message];
-        state = state.copyWith(
-          events: updatedEvents.length > 100
-              ? updatedEvents.sublist(updatedEvents.length - 100)
-              : updatedEvents,
-        );
       }
     } catch (error) {
       state = state.copyWith(error: 'Invalid protocol message: $error');
