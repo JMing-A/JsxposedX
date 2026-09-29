@@ -1,5 +1,7 @@
 import 'package:JsxposedX/common/widgets/app_bottom_sheet.dart';
+import 'package:JsxposedX/common/widgets/app_code_editor.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
+import 'package:JsxposedX/core/transport/jsxposed_protocol.dart';
 import 'package:JsxposedX/core/utils/procedure_utils.dart';
 import 'package:JsxposedX/features/home/presentation/providers/check_query_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_connection_provider.dart';
@@ -11,6 +13,7 @@ import 'package:JsxposedX/features/home/presentation/widgets/update_check_dialog
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:re_editor/re_editor.dart';
 
 /// PC 端主页面（壳子）
 ///
@@ -464,49 +467,397 @@ Future<void> _showDeviceDetails(
   );
 }
 
-class _ProjectExplorer extends StatelessWidget {
+/// 资源管理器与编辑器共享的脚本选择状态
+@immutable
+class DesktopScriptSelection {
+  const DesktopScriptSelection({
+    required this.packageName,
+    required this.source,
+    required this.localPath,
+    required this.name,
+  });
+
+  final String packageName;
+  final String source;
+  final String localPath;
+  final String name;
+
+  @override
+  bool operator ==(Object other) =>
+      other is DesktopScriptSelection &&
+      other.packageName == packageName &&
+      other.source == source &&
+      other.localPath == localPath;
+
+  @override
+  int get hashCode => Object.hash(packageName, source, localPath);
+}
+
+class _SelectedScriptNotifier extends Notifier<DesktopScriptSelection?> {
+  @override
+  DesktopScriptSelection? build() => null;
+
+  set selection(DesktopScriptSelection? value) => state = value;
+}
+
+final _selectedScriptProvider =
+    NotifierProvider<_SelectedScriptNotifier, DesktopScriptSelection?>(
+      _SelectedScriptNotifier.new,
+    );
+
+class _ProjectExplorer extends ConsumerWidget {
   const _ProjectExplorer();
 
   @override
-  Widget build(BuildContext context) {
-    final colors = context.colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(desktopConnectionProvider);
+    final revision = ref
+        .watch(desktopConnectionProvider.notifier)
+        .contextRevision;
+    final selected = ref.watch(_selectedScriptProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.l10n.desktopExplorerTitle,
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                tooltip: context.l10n.desktopExplorerNewScript,
-                onPressed: null,
-                icon: const Icon(Icons.note_add_outlined, size: 18),
-              ),
-            ],
-          ),
-        ),
-        ListTile(
-          dense: true,
-          leading: const Icon(Icons.folder_open_outlined, size: 19),
-          title: Text(context.l10n.desktopExplorerLocalScripts),
-          textColor: colors.onSurface,
-        ),
-        const Spacer(),
-        Padding(
-          padding: const EdgeInsets.all(12),
           child: Text(
-            context.l10n.desktopExplorerDescription,
-            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+            context.l10n.desktopExplorerTitle,
+            style: Theme.of(context).textTheme.labelSmall,
           ),
+        ),
+        Expanded(
+          child: !connection.isConnected
+              ? _ExplorerPlaceholder(
+                  icon: Icons.link_off,
+                  message: context.l10n.desktopEditorConnectDevice,
+                )
+              : ValueListenableBuilder<int>(
+                  valueListenable: revision,
+                  builder: (context, _, _) => _ProjectTree(
+                    connection: connection,
+                    selected: selected,
+                    onSelect: (selection) =>
+                        ref.read(_selectedScriptProvider.notifier).selection =
+                            selection,
+                  ),
+                ),
         ),
       ],
+    );
+  }
+}
+
+class _ExplorerPlaceholder extends StatelessWidget {
+  const _ExplorerPlaceholder({required this.icon, required this.message});
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          Icon(icon, size: 32, color: colors.outline),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 项目（包名目录）二级树，脚本按 Frida / Xposed 分组
+class _ProjectTree extends ConsumerStatefulWidget {
+  const _ProjectTree({
+    required this.connection,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final DesktopConnectionState connection;
+  final DesktopScriptSelection? selected;
+  final ValueChanged<DesktopScriptSelection> onSelect;
+
+  @override
+  ConsumerState<_ProjectTree> createState() => _ProjectTreeState();
+}
+
+class _ProjectTreeState extends ConsumerState<_ProjectTree> {
+  late Future<_ExplorerData> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<_ExplorerData> _load() async {
+    final notifier = ref.read(desktopConnectionProvider.notifier);
+    final projects = await notifier.listProjects();
+    final scripts = <String, Map<String, List<DesktopScript>>>{};
+    for (final project in projects) {
+      final bySource = <String, List<DesktopScript>>{};
+      for (final source in JsxposedScriptSource.values) {
+        bySource[source] = await notifier.listScripts(
+          packageName: project.packageName,
+          source: source,
+        );
+      }
+      scripts[project.packageName] = bySource;
+    }
+    return _ExplorerData(projects: projects, scripts: scripts);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_ExplorerData>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _ExplorerPlaceholder(
+            icon: Icons.error_outline,
+            message: '${snapshot.error}',
+          );
+        }
+        if (!snapshot.hasData) {
+          return const Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
+        final data = snapshot.data!;
+        if (data.projects.isEmpty) {
+          return _ExplorerPlaceholder(
+            icon: Icons.folder_off_outlined,
+            message: context.l10n.desktopExplorerDescription,
+          );
+        }
+        return ListView(
+          children: [
+            for (final project in data.projects)
+              _ProjectNode(
+                project: project,
+                scripts: data.scripts[project.packageName] ?? const {},
+                selected: widget.selected,
+                onSelect: widget.onSelect,
+                onChanged: () => setState(() => _future = _load()),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ExplorerData {
+  const _ExplorerData({required this.projects, required this.scripts});
+
+  final List<DesktopProject> projects;
+  final Map<String, Map<String, List<DesktopScript>>> scripts;
+}
+
+class _ProjectNode extends ConsumerStatefulWidget {
+  const _ProjectNode({
+    required this.project,
+    required this.scripts,
+    required this.selected,
+    required this.onSelect,
+    required this.onChanged,
+  });
+
+  final DesktopProject project;
+  final Map<String, List<DesktopScript>> scripts;
+  final DesktopScriptSelection? selected;
+  final ValueChanged<DesktopScriptSelection> onSelect;
+  final VoidCallback onChanged;
+
+  @override
+  ConsumerState<_ProjectNode> createState() => _ProjectNodeState();
+}
+
+class _ProjectNodeState extends ConsumerState<_ProjectNode> {
+  bool _expanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    final project = widget.project;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          dense: true,
+          visualDensity: VisualDensity.compact,
+          leading: Icon(
+            _expanded ? Icons.expand_more : Icons.chevron_right,
+            size: 18,
+          ),
+          title: Text(
+            project.name.isEmpty ? project.packageName : project.name,
+            style: const TextStyle(fontSize: 13),
+          ),
+          subtitle: Text(
+            project.packageName,
+            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+          ),
+          onTap: () => setState(() => _expanded = !_expanded),
+        ),
+        if (_expanded)
+          for (final entry in widget.scripts.entries)
+            _ScriptGroup(
+              packageName: project.packageName,
+              source: entry.key,
+              scripts: entry.value,
+              selected: widget.selected,
+              onSelect: widget.onSelect,
+              onChanged: widget.onChanged,
+            ),
+      ],
+    );
+  }
+}
+
+class _ScriptGroup extends StatelessWidget {
+  const _ScriptGroup({
+    required this.packageName,
+    required this.source,
+    required this.scripts,
+    required this.selected,
+    required this.onSelect,
+    required this.onChanged,
+  });
+
+  final String packageName;
+  final String source;
+  final List<DesktopScript> scripts;
+  final DesktopScriptSelection? selected;
+  final ValueChanged<DesktopScriptSelection> onSelect;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    final label = source == JsxposedScriptSource.frida
+        ? context.l10n.desktopExplorerFridaScripts
+        : context.l10n.desktopExplorerXposedScripts;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(34, 6, 12, 2),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+        ),
+        if (scripts.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(34, 2, 12, 2),
+            child: Text(
+              context.l10n.desktopExplorerNoScripts,
+              style: TextStyle(fontSize: 11, color: colors.outline),
+            ),
+          ),
+        for (final script in scripts)
+          _ScriptNode(
+            packageName: packageName,
+            source: source,
+            script: script,
+            active:
+                selected?.packageName == packageName &&
+                selected?.source == source &&
+                selected?.localPath == script.localPath,
+            onSelect: onSelect,
+            onChanged: onChanged,
+          ),
+      ],
+    );
+  }
+}
+
+class _ScriptNode extends ConsumerWidget {
+  const _ScriptNode({
+    required this.packageName,
+    required this.source,
+    required this.script,
+    required this.active,
+    required this.onSelect,
+    required this.onChanged,
+  });
+
+  final String packageName;
+  final String source;
+  final DesktopScript script;
+  final bool active;
+  final ValueChanged<DesktopScriptSelection> onSelect;
+  final VoidCallback onChanged;
+
+  Future<void> _toggle(
+    WidgetRef ref,
+    BuildContext context,
+    bool enabled,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref
+          .read(desktopConnectionProvider.notifier)
+          .toggleScript(
+            packageName: packageName,
+            source: source,
+            localPath: script.localPath,
+            enabled: enabled,
+          );
+      onChanged();
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colorScheme;
+    return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      contentPadding: const EdgeInsets.only(left: 30, right: 8),
+      selected: active,
+      selectedTileColor: colors.primary.withValues(alpha: 0.10),
+      leading: Icon(
+        Icons.description_outlined,
+        size: 16,
+        color: script.enabled ? colors.primary : colors.outline,
+      ),
+      title: Text(script.name, style: const TextStyle(fontSize: 12)),
+      trailing: SizedBox(
+        height: 24,
+        child: Switch(
+          value: script.enabled,
+          onChanged: (value) => _toggle(ref, context, value),
+        ),
+      ),
+      onTap: () => onSelect(
+        DesktopScriptSelection(
+          packageName: packageName,
+          source: source,
+          localPath: script.localPath,
+          name: script.name,
+        ),
+      ),
     );
   }
 }
@@ -539,14 +890,99 @@ class _CapabilityRow extends StatelessWidget {
   }
 }
 
-class _EditorWorkspace extends StatelessWidget {
+class _EditorWorkspace extends ConsumerStatefulWidget {
   const _EditorWorkspace({required this.connected});
 
   final bool connected;
 
   @override
+  ConsumerState<_EditorWorkspace> createState() => _EditorWorkspaceState();
+}
+
+class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
+  DesktopScriptSelection? _loaded;
+  CodeLineEditingController? _controller;
+  bool _loading = false;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  /// 切换选中脚本时重新从手机端拉取内容，本地未保存的修改会被覆盖
+  void _syncSelection(DesktopScriptSelection? selection) {
+    if (selection == _loaded) return;
+    if (selection == null) {
+      setState(() {
+        _loaded = null;
+        _controller?.dispose();
+        _controller = null;
+        _error = null;
+      });
+      return;
+    }
+    setState(() {
+      _loaded = selection;
+      _loading = true;
+      _error = null;
+    });
+    final notifier = ref.read(desktopConnectionProvider.notifier);
+    notifier
+        .readScript(
+          packageName: selection.packageName,
+          source: selection.source,
+          localPath: selection.localPath,
+        )
+        .then((content) {
+          if (!mounted || _loaded != selection) return;
+          _controller?.dispose();
+          setState(() {
+            _controller = CodeLineEditingController.fromText(content);
+            _loading = false;
+          });
+        })
+        .catchError((Object error) {
+          if (!mounted || _loaded != selection) return;
+          setState(() {
+            _loading = false;
+            _error = '$error';
+          });
+        });
+  }
+
+  Future<void> _save() async {
+    final selection = _loaded;
+    final controller = _controller;
+    if (selection == null || controller == null) return;
+    setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final savedMessage = context.l10n.desktopEditorSaved;
+    try {
+      await ref
+          .read(desktopConnectionProvider.notifier)
+          .writeScript(
+            packageName: selection.packageName,
+            source: selection.source,
+            localPath: selection.localPath,
+            content: controller.text,
+          );
+      messenger.showSnackBar(SnackBar(content: Text(savedMessage)));
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colorScheme;
+    _syncSelection(ref.watch(_selectedScriptProvider));
+    final selection = _loaded;
+
     return Column(
       children: [
         Container(
@@ -557,43 +993,105 @@ class _EditorWorkspace extends StatelessWidget {
             children: [
               const Icon(Icons.code, size: 18),
               const SizedBox(width: 8),
-              const Text('untitled.js'),
-              const Spacer(),
-              IconButton(
-                tooltip: context.l10n.desktopEditorRunScript,
-                visualDensity: VisualDensity.compact,
-                onPressed: connected ? () {} : null,
-                icon: const Icon(Icons.play_arrow, size: 18),
+              Expanded(
+                child: Text(
+                  selection?.name ?? context.l10n.desktopEditorUntitled,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              if (selection != null) ...[
+                IconButton(
+                  tooltip: context.l10n.desktopEditorSaveScript,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _saving || _loading ? null : _save,
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined, size: 18),
+                ),
+                IconButton(
+                  tooltip: context.l10n.desktopEditorRunScript,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: null,
+                  icon: const Icon(Icons.play_arrow, size: 18),
+                ),
+              ],
             ],
           ),
         ),
-        Expanded(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.code_outlined, size: 48, color: colors.outline),
-                const SizedBox(height: 12),
-                Text(
-                  connected
-                      ? context.l10n.desktopEditorCreateScript
-                      : context.l10n.desktopEditorConnectDevice,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  context.l10n.desktopEditorDescription,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        Expanded(child: _buildBody(colors, selection)),
       ],
+    );
+  }
+
+  Widget _buildBody(ColorScheme colors, DesktopScriptSelection? selection) {
+    if (selection == null) {
+      return _EditorEmptyState(
+        icon: Icons.code_outlined,
+        title: widget.connected
+            ? context.l10n.desktopEditorCreateScript
+            : context.l10n.desktopEditorConnectDevice,
+        description: context.l10n.desktopEditorDescription,
+      );
+    }
+    if (_loading) {
+      return const Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    if (_error != null) {
+      return _EditorEmptyState(
+        icon: Icons.error_outline,
+        title: context.l10n.desktopEditorLoadFailed,
+        description: _error!,
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: AppCodeEditor(
+        controller: _controller!,
+        language: 'javascript',
+        readOnly: false,
+      ),
+    );
+  }
+}
+
+class _EditorEmptyState extends StatelessWidget {
+  const _EditorEmptyState({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 48, color: colors.outline),
+          const SizedBox(height: 12),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(
+            description,
+            style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
 }

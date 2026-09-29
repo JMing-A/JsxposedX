@@ -185,7 +185,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'Scripts are stored locally and run on the selected device.';
 
   @override
+  String get desktopExplorerFridaScripts => 'Frida scripts';
+
+  @override
+  String get desktopExplorerXposedScripts => 'Xposed scripts';
+
+  @override
+  String get desktopExplorerNoScripts => 'No scripts yet';
+
+  @override
   String get desktopEditorRunScript => 'Run script';
+
+  @override
+  String get desktopEditorSaveScript => 'Save to device';
+
+  @override
+  String get desktopEditorSaved => 'Saved to device';
+
+  @override
+  String get desktopEditorUntitled => 'No script selected';
+
+  @override
+  String get desktopEditorLoadFailed => 'Failed to read script';
 
   @override
   String get desktopEditorCreateScript => 'Create or open a local script';

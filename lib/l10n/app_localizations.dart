@@ -416,11 +416,53 @@ abstract class AppLocalizations {
   /// **'脚本保存在电脑本地，并在所选设备上运行。'**
   String get desktopExplorerDescription;
 
+  /// No description provided for @desktopExplorerFridaScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'Frida 脚本'**
+  String get desktopExplorerFridaScripts;
+
+  /// No description provided for @desktopExplorerXposedScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'Xposed 脚本'**
+  String get desktopExplorerXposedScripts;
+
+  /// No description provided for @desktopExplorerNoScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无脚本'**
+  String get desktopExplorerNoScripts;
+
   /// No description provided for @desktopEditorRunScript.
   ///
   /// In zh, this message translates to:
   /// **'运行脚本'**
   String get desktopEditorRunScript;
+
+  /// No description provided for @desktopEditorSaveScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存到设备'**
+  String get desktopEditorSaveScript;
+
+  /// No description provided for @desktopEditorSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存到设备'**
+  String get desktopEditorSaved;
+
+  /// No description provided for @desktopEditorUntitled.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择脚本'**
+  String get desktopEditorUntitled;
+
+  /// No description provided for @desktopEditorLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本读取失败'**
+  String get desktopEditorLoadFailed;
 
   /// No description provided for @desktopEditorCreateScript.
   ///

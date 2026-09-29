@@ -177,7 +177,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopExplorerDescription => '脚本保存在电脑本地，并在所选设备上运行。';
 
   @override
+  String get desktopExplorerFridaScripts => 'Frida 脚本';
+
+  @override
+  String get desktopExplorerXposedScripts => 'Xposed 脚本';
+
+  @override
+  String get desktopExplorerNoScripts => '暂无脚本';
+
+  @override
   String get desktopEditorRunScript => '运行脚本';
+
+  @override
+  String get desktopEditorSaveScript => '保存到设备';
+
+  @override
+  String get desktopEditorSaved => '已保存到设备';
+
+  @override
+  String get desktopEditorUntitled => '未选择脚本';
+
+  @override
+  String get desktopEditorLoadFailed => '脚本读取失败';
 
   @override
   String get desktopEditorCreateScript => '新建或打开本地脚本';

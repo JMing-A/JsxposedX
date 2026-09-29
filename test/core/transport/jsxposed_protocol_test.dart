@@ -55,4 +55,16 @@ void main() {
       expect(decoded.error?.retryable, isFalse);
     });
   });
+
+  group('script source', () {
+    test('accepts the two sources the device exposes', () {
+      expect(JsxposedScriptSource.isValid('frida'), isTrue);
+      expect(JsxposedScriptSource.isValid('xposed'), isTrue);
+    });
+
+    test('rejects unknown sources', () {
+      expect(JsxposedScriptSource.isValid('other'), isFalse);
+      expect(JsxposedScriptSource.isValid(''), isFalse);
+    });
+  });
 }

@@ -88,6 +88,47 @@ class AdbCommandResult {
 }
 
 @immutable
+class DesktopProject {
+  const DesktopProject({
+    required this.packageName,
+    required this.name,
+    this.versionName,
+    this.versionCode,
+  });
+
+  final String packageName;
+  final String name;
+  final String? versionName;
+  final int? versionCode;
+
+  factory DesktopProject.fromJson(Map<String, dynamic> json) => DesktopProject(
+    packageName: json['packageName'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    versionName: json['versionName'] as String?,
+    versionCode: (json['versionCode'] as num?)?.toInt(),
+  );
+}
+
+@immutable
+class DesktopScript {
+  const DesktopScript({
+    required this.localPath,
+    required this.name,
+    required this.enabled,
+  });
+
+  final String localPath;
+  final String name;
+  final bool enabled;
+
+  factory DesktopScript.fromJson(Map<String, dynamic> json) => DesktopScript(
+    localPath: json['localPath'] as String? ?? '',
+    name: json['name'] as String? ?? json['localPath'] as String? ?? '',
+    enabled: json['enabled'] as bool? ?? false,
+  );
+}
+
+@immutable
 class DesktopConnectionState {
   const DesktopConnectionState({
     this.status = DesktopConnectionStatus.disconnected,
@@ -165,11 +206,15 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
   Stream<JsxposedMessage> get events => _eventController.stream;
   final _eventController = StreamController<JsxposedMessage>.broadcast();
 
+  /// 连接上下文发生变化时自增，供 PC 端脚本树重新拉取
+  final ValueNotifier<int> contextRevision = ValueNotifier<int>(0);
+
   @override
   DesktopConnectionState build() {
     ref.onDispose(() {
       unawaited(_close());
       unawaited(_eventController.close());
+      contextRevision.dispose();
     });
     return const DesktopConnectionState();
   }
@@ -377,6 +422,7 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
       _heartbeatTimer = Timer.periodic(const Duration(seconds: 15), (_) {
         unawaited(_sendHeartbeat());
       });
+      contextRevision.value++;
     } catch (error) {
       await _close();
       _handleError(error.toString());
@@ -400,6 +446,112 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
       capabilities: _capabilitiesFromResponse(capabilitiesResponse),
       lastResponse: capabilitiesResponse,
     );
+  }
+
+  /// 拉取手机端项目列表（项目即包名目录）
+  Future<List<DesktopProject>> listProjects() async {
+    final response = await request(JsxposedMethod.projectList);
+    return _listFromResponse(response, DesktopProject.fromJson);
+  }
+
+  /// 拉取指定项目下的脚本，source 取 frida / xposed
+  Future<List<DesktopScript>> listScripts({
+    required String packageName,
+    required String source,
+  }) async {
+    final response = await request(
+      JsxposedMethod.scriptList,
+      params: {'packageName': packageName, 'source': source},
+    );
+    return _listFromResponse(response, DesktopScript.fromJson);
+  }
+
+  Future<String> readScript({
+    required String packageName,
+    required String source,
+    required String localPath,
+  }) async {
+    final response = await request(
+      JsxposedMethod.scriptRead,
+      params: {
+        'packageName': packageName,
+        'source': source,
+        'localPath': localPath,
+      },
+    );
+    final result = _resultMap(response);
+    return result['content'] as String? ?? '';
+  }
+
+  Future<void> writeScript({
+    required String packageName,
+    required String source,
+    required String localPath,
+    required String content,
+  }) async {
+    await request(
+      JsxposedMethod.scriptWrite,
+      params: {
+        'packageName': packageName,
+        'source': source,
+        'localPath': localPath,
+        'content': content,
+      },
+    );
+  }
+
+  Future<void> deleteScript({
+    required String packageName,
+    required String source,
+    required String localPath,
+  }) async {
+    await request(
+      JsxposedMethod.scriptDelete,
+      params: {
+        'packageName': packageName,
+        'source': source,
+        'localPath': localPath,
+      },
+    );
+  }
+
+  Future<void> toggleScript({
+    required String packageName,
+    required String source,
+    required String localPath,
+    required bool enabled,
+  }) async {
+    await request(
+      JsxposedMethod.scriptToggle,
+      params: {
+        'packageName': packageName,
+        'source': source,
+        'localPath': localPath,
+        'enabled': enabled,
+      },
+    );
+  }
+
+  List<T> _listFromResponse<T>(
+    JsxposedMessage response,
+    T Function(Map<String, dynamic>) fromJson,
+  ) {
+    final result = _resultMap(response);
+    final key = result.containsKey('projects') ? 'projects' : 'scripts';
+    final raw = result[key];
+    if (raw is! List) return const [];
+    return [
+      for (final item in raw)
+        if (item is Map) fromJson(item.cast<String, dynamic>()),
+    ];
+  }
+
+  Map<String, dynamic> _resultMap(JsxposedMessage response) {
+    if (!response.isSuccess) {
+      throw StateError(response.error?.message ?? 'Request failed');
+    }
+    final result = response.result;
+    return result is Map ? result.cast<String, dynamic>() : const {};
   }
 
   Future<JsxposedMessage> request(
@@ -488,6 +640,7 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
   Future<void> disconnect() async {
     await _close();
     state = state.copyWith(status: DesktopConnectionStatus.disconnected);
+    contextRevision.value++;
   }
 
   void _handleClosed() {
@@ -499,6 +652,7 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
       clearDeviceInfo: true,
       clearCapabilities: true,
     );
+    contextRevision.value++;
   }
 
   void _handleError(String message) {
@@ -511,6 +665,7 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
       clearDeviceInfo: true,
       clearCapabilities: true,
     );
+    contextRevision.value++;
   }
 
   void _failPendingRequests(String message) {

@@ -5,6 +5,9 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:JsxposedX/core/transport/jsxposed_protocol.dart';
+import 'package:JsxposedX/core/utils/path_utils.dart';
+import 'package:JsxposedX/generated/pinia.g.dart';
+import 'package:JsxposedX/generated/project.g.dart';
 import 'package:JsxposedX/generated/status_management.g.dart';
 
 class AndroidDesktopBridgeServer {
@@ -15,6 +18,8 @@ class AndroidDesktopBridgeServer {
   HttpServer? _server;
   final Set<WebSocket> _clients = {};
   final StatusManagementNative _statusManagement = StatusManagementNative();
+  final ProjectNative _projectNative = ProjectNative();
+  final PiniaNative _piniaNative = PiniaNative();
   Map<String, dynamic>? _deviceInfo;
 
   /// 当前已连接的 PC 客户端数量，供手机端界面展示电脑连接状态
@@ -140,11 +145,11 @@ class AndroidDesktopBridgeServer {
 
   Future<Map<String, dynamic>> _route(JsxposedMessage request) async {
     switch (request.method) {
-      case 'handshake':
+      case JsxposedMethod.handshake:
         final requestedVersion = request.params?['protocolVersion'];
         if (requestedVersion != jsxposedProtocolVersion) {
           throw const _ProtocolException(
-            'PROTOCOL_VERSION_UNSUPPORTED',
+            JsxposedErrorCode.protocolVersionUnsupported,
             'Unsupported protocol version',
           );
         }
@@ -153,28 +158,286 @@ class AndroidDesktopBridgeServer {
           'server': 'JsxposedX Android',
           'deviceId': _deviceInfo?['deviceId'],
         };
-      case 'heartbeat':
+      case JsxposedMethod.heartbeat:
         return {'timestamp': DateTime.now().toUtc().toIso8601String()};
-      case 'device.get_info':
+      case JsxposedMethod.deviceGetInfo:
         return Map<String, dynamic>.from(_deviceInfo ?? const {});
-      case 'device.get_capabilities':
+      case JsxposedMethod.deviceGetCapabilities:
         return _loadCapabilities();
-      case 'device.get_health':
+      case JsxposedMethod.deviceGetHealth:
         return {
           'status': 'ready',
           'connectedClients': _clients.length,
           'timestamp': DateTime.now().toUtc().toIso8601String(),
         };
-      case 'device.subscribe_events':
+      case JsxposedMethod.deviceSubscribeEvents:
         return {'subscribed': true};
-      case 'request.cancel':
+      case JsxposedMethod.projectList:
+        return _listProjects();
+      case JsxposedMethod.scriptList:
+        return _listScripts(request.params);
+      case JsxposedMethod.scriptRead:
+        return _readScript(request.params);
+      case JsxposedMethod.scriptWrite:
+        return _writeScript(request.params);
+      case JsxposedMethod.scriptDelete:
+        return _deleteScript(request.params);
+      case JsxposedMethod.scriptToggle:
+        return _toggleScript(request.params);
+      case JsxposedMethod.requestCancel:
         return {'cancelled': request.params?['requestId']};
       default:
         throw _ProtocolException(
-          'CAPABILITY_UNAVAILABLE',
+          JsxposedErrorCode.capabilityUnavailable,
           'Unsupported method: ${request.method}',
         );
     }
+  }
+
+  /// 项目即手机端以包名命名的脚本目录，脚本本体与启停状态都由手机端维护
+  Future<Map<String, dynamic>> _listProjects() async {
+    final projects = await _projectNative.getProjects();
+    return {
+      'projects': [
+        for (final project in projects)
+          {
+            'packageName': project.packageName,
+            'name': project.name,
+            'versionName': project.versionName,
+            'versionCode': project.versionCode,
+          },
+      ],
+    };
+  }
+
+  Future<Map<String, dynamic>> _listScripts(
+    Map<String, dynamic>? params,
+  ) async {
+    final packageName = _requireString(params, 'packageName');
+    final source = _requireScriptSource(params);
+    final paths = await _scriptNames(packageName, source);
+    final scripts = <Map<String, dynamic>>[];
+    for (final path in paths) {
+      scripts.add({
+        'localPath': path,
+        'name': _displayName(path, source),
+        // 手机端启停键按完整路径写入，这里必须保持一致
+        'enabled': await _readScriptEnabled(packageName, source, path),
+      });
+    }
+    return {'packageName': packageName, 'source': source, 'scripts': scripts};
+  }
+
+  Future<Map<String, dynamic>> _readScript(Map<String, dynamic>? params) async {
+    final packageName = _requireString(params, 'packageName');
+    final source = _requireScriptSource(params);
+    final localPath = _requireString(params, 'localPath');
+    final paths = await _scriptNames(packageName, source);
+    final found = _findScriptPath(paths, localPath);
+    if (found == null) {
+      throw _ProtocolException(
+        JsxposedErrorCode.scriptNotFound,
+        'Script not found: $localPath',
+      );
+    }
+    final content = await _readScriptContent(
+      packageName,
+      source,
+      PathUtils.getName(path: found),
+    );
+    return {
+      'packageName': packageName,
+      'source': source,
+      'localPath': found,
+      'content': content,
+    };
+  }
+
+  Future<Map<String, dynamic>> _writeScript(
+    Map<String, dynamic>? params,
+  ) async {
+    final packageName = _requireString(params, 'packageName');
+    final source = _requireScriptSource(params);
+    final localPath = _requireString(params, 'localPath');
+    final content = params?['content'];
+    if (content is! String) {
+      throw const _ProtocolException(
+        JsxposedErrorCode.invalidParams,
+        'Missing required string parameter: content',
+      );
+    }
+    final paths = await _scriptNames(packageName, source);
+    // 已存在的脚本沿用设备上的真实路径，否则视为新建，取传入值的文件名
+    final found = _findScriptPath(paths, localPath);
+    final fileName = PathUtils.getName(path: found ?? localPath);
+    if (source == JsxposedScriptSource.frida) {
+      await _projectNative.createFridaScript(
+        packageName,
+        content,
+        fileName,
+        false,
+      );
+    } else {
+      await _projectNative.createJsScript(
+        packageName,
+        content,
+        fileName,
+        false,
+      );
+    }
+    // 手机端 Xposed 快照由原生 createJsScript 内部刷新，Frida hook.js 需重新打包
+    if (source == JsxposedScriptSource.frida) {
+      await _projectNative.bundleFridaHookJs(packageName);
+    }
+    return {
+      'packageName': packageName,
+      'source': source,
+      'localPath': found ?? localPath,
+    };
+  }
+
+  Future<Map<String, dynamic>> _deleteScript(
+    Map<String, dynamic>? params,
+  ) async {
+    final packageName = _requireString(params, 'packageName');
+    final source = _requireScriptSource(params);
+    final localPath = _requireString(params, 'localPath');
+    final paths = await _scriptNames(packageName, source);
+    final found = _findScriptPath(paths, localPath);
+    if (found == null) {
+      throw _ProtocolException(
+        JsxposedErrorCode.scriptNotFound,
+        'Script not found: $localPath',
+      );
+    }
+    if (source == JsxposedScriptSource.frida) {
+      await _projectNative.deleteFridaScript(
+        packageName,
+        PathUtils.getName(path: found),
+      );
+    } else {
+      await _projectNative.deleteJsScript(
+        packageName,
+        PathUtils.getName(path: found),
+      );
+    }
+    await _piniaNative.remove(
+      key: _scriptStatusKey(packageName, source, found),
+    );
+    return {'deleted': true};
+  }
+
+  Future<Map<String, dynamic>> _toggleScript(
+    Map<String, dynamic>? params,
+  ) async {
+    final packageName = _requireString(params, 'packageName');
+    final source = _requireScriptSource(params);
+    final localPath = _requireString(params, 'localPath');
+    final enabled = params?['enabled'];
+    if (enabled is! bool) {
+      throw const _ProtocolException(
+        JsxposedErrorCode.invalidParams,
+        'Missing required bool parameter: enabled',
+      );
+    }
+    final paths = await _scriptNames(packageName, source);
+    final found = _findScriptPath(paths, localPath);
+    if (found == null) {
+      throw _ProtocolException(
+        JsxposedErrorCode.scriptNotFound,
+        'Script not found: $localPath',
+      );
+    }
+    await _piniaNative.setBool(
+      key: _scriptStatusKey(packageName, source, found),
+      value: enabled,
+    );
+    if (source == JsxposedScriptSource.frida) {
+      await _projectNative.bundleFridaHookJs(packageName);
+    }
+    return {'enabled': enabled};
+  }
+
+  Future<List<String>> _scriptNames(String packageName, String source) {
+    return source == JsxposedScriptSource.frida
+        ? _projectNative.getFridaScripts(packageName)
+        : _projectNative.getJsScripts(packageName);
+  }
+
+  Future<String> _readScriptContent(
+    String packageName,
+    String source,
+    String localPath,
+  ) {
+    // 原生读写接口只接受文件名并自行拼接项目目录，
+    // 这里再兜底一次，避免上游漏传文件名时拼出重复目录
+    final fileName = PathUtils.getName(path: localPath);
+    return source == JsxposedScriptSource.frida
+        ? _projectNative.readFridaScript(packageName, fileName)
+        : _projectNative.readJsScript(packageName, fileName);
+  }
+
+  Future<bool> _readScriptEnabled(
+    String packageName,
+    String source,
+    String localPath,
+  ) {
+    return _piniaNative.getBool(
+      key: _scriptStatusKey(packageName, source, localPath),
+      defaultValue: false,
+    );
+  }
+
+  static String _scriptStatusKey(
+    String packageName,
+    String source,
+    String localPath,
+  ) {
+    final prefix = source == JsxposedScriptSource.frida
+        ? 'frida_check_status'
+        : 'xposed_check_status';
+    return '${prefix}_${packageName}_$localPath';
+  }
+
+  /// Xposed 脚本名带 `[visual]`/`[tradition]` 前缀，展示时去掉
+  static String _displayName(String localPath, String source) {
+    final fileName = PathUtils.getName(path: localPath);
+    return source == JsxposedScriptSource.xposed
+        ? PathUtils.getName(path: fileName, isXposedScript: true)
+        : fileName;
+  }
+
+  static bool _samePath(String a, String b) =>
+      PathUtils.getName(path: a) == PathUtils.getName(path: b);
+
+  /// 列表接口返回完整路径（也是启停键的一部分），
+  /// 而原生读写/删除接口只接受文件名并自行拼接目录，
+  /// 因此按文件名匹配出设备上的真实完整路径，避免拼出重复目录。
+  static String? _findScriptPath(List<String> paths, String localPath) {
+    for (final path in paths) {
+      if (_samePath(path, localPath)) return path;
+    }
+    return null;
+  }
+
+  static String _requireString(Map<String, dynamic>? params, String key) {
+    final value = params?[key];
+    if (value is String && value.isNotEmpty) return value;
+    throw _ProtocolException(
+      JsxposedErrorCode.invalidParams,
+      'Missing required string parameter: $key',
+    );
+  }
+
+  static String _requireScriptSource(Map<String, dynamic>? params) {
+    final source = _requireString(params, 'source');
+    if (!JsxposedScriptSource.isValid(source)) {
+      throw _ProtocolException(
+        JsxposedErrorCode.invalidParams,
+        'Unsupported script source: $source',
+      );
+    }
+    return source;
   }
 
   Future<Map<String, dynamic>> _loadCapabilities() async {
