@@ -86,8 +86,13 @@ if [[ "$tag_exists" == true && "$FORCE" != true ]]; then
 fi
 
 printf 'Releasing %s (pubspec version %s)\n' "$tag" "$app_version"
-printf '  git tag %s %s\n' "${tag_exists:+(-f) }" "$tag"
-printf '  git push origin %s%s\n' "$tag" "$([[ "$tag_exists" == true ]] && printf ' --force' || true)"
+if [[ "$tag_exists" == true ]]; then
+  printf '  git tag -f %s\n' "$tag"
+  printf '  git push --force origin %s\n' "$tag"
+else
+  printf '  git tag %s\n' "$tag"
+  printf '  git push origin %s\n' "$tag"
+fi
 
 if [[ "$DRY_RUN" == true ]]; then
   printf '\n[dry-run] nothing was executed\n'
@@ -103,4 +108,8 @@ else
 fi
 
 printf '\nTag %s pushed. GitHub Actions is now building:\n' "$tag"
-printf '  https://github.com/$(git remote get-url origin | sed -E "s#.*[:/]([^/]+/[^/]+?)(\\.git)?$#\\1#")\n'
+repo_url="$(git remote get-url origin)"
+repo_url="${repo_url#git@github.com:}"
+repo_url="${repo_url#https://github.com/}"
+repo_url="${repo_url%.git}"
+printf '  https://github.com/%s/actions\n' "$repo_url"
