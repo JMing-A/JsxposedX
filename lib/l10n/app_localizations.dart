@@ -392,11 +392,11 @@ abstract class AppLocalizations {
   /// **'沐雪 AI'**
   String get desktopSettingsCommunityForum;
 
-  /// No description provided for @desktopSettingsVisitForum.
+  /// No description provided for @desktopSettingsOfficialMirror.
   ///
   /// In zh, this message translates to:
-  /// **'进入论坛'**
-  String get desktopSettingsVisitForum;
+  /// **'官方中转站'**
+  String get desktopSettingsOfficialMirror;
 
   /// No description provided for @desktopSettingsJoinDiscord.
   ///

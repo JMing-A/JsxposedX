@@ -163,7 +163,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopSettingsCommunityForum => '沐雪 AI';
 
   @override
-  String get desktopSettingsVisitForum => '进入论坛';
+  String get desktopSettingsOfficialMirror => '官方中转站';
 
   @override
   String get desktopSettingsJoinDiscord => '加入 Discord';

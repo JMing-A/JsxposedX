@@ -171,7 +171,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSettingsCommunityForum => 'Muxue AI';
 
   @override
-  String get desktopSettingsVisitForum => 'Visit Forum';
+  String get desktopSettingsOfficialMirror => 'Official Mirror';
 
   @override
   String get desktopSettingsJoinDiscord => 'Join Discord';

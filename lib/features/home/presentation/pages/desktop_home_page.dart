@@ -415,7 +415,7 @@ class _DesktopSettingsView extends HookConsumerWidget {
             Divider(height: 1, color: colorScheme.outlineVariant),
             ListTile(
               leading: const Icon(Icons.forum_outlined),
-              title: Text(l10n.desktopSettingsVisitForum),
+              title: Text(l10n.desktopSettingsOfficialMirror),
               subtitle: const Text(_promoForumHost),
               trailing: const Icon(Icons.open_in_new),
               onTap: () => UrlHelper.openUrlInBrowser(url: _promoForumUrl),
@@ -478,8 +478,9 @@ class _DesktopSettingsView extends HookConsumerWidget {
             ListTile(
               leading: const Icon(Icons.qr_code_rounded),
               title: Text(l10n.desktopSettingsWechat),
-              trailing: const Icon(Icons.open_in_new),
-              onTap: () => UrlHelper.openUrlInBrowser(url: _promoWechatUrl),
+              trailing: const Icon(Icons.chevron_right),
+              // 与手机端一致，弹窗展示公众号二维码
+              onTap: () => _showWechatDialog(context),
             ),
           ],
         ),
@@ -513,6 +514,29 @@ class _DesktopSettingsView extends HookConsumerWidget {
       ),
     ];
   }
+
+  /// 与手机端一致，弹窗展示公众号二维码
+  Future<void> _showWechatDialog(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.l10n.desktopSettingsWechat),
+        content: SizedBox(
+          width: 380,
+          child: AspectRatio(
+            aspectRatio: 1885 / 624,
+            child: Image.asset(AssetsConstants.wx, fit: BoxFit.contain),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(context.l10n.cancel),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// PC 端设置页的引流外链，与手机端设置保持一致
@@ -523,7 +547,6 @@ const String _promoQqGroupUrl =
     'https://qun.qq.com/universal-share/share?ac=1&authKey=CoeFZQRhWhCHjLTPhZC%2BVcCSkHb431ulekylEVq8Cy9g%2FF9nNwzaak3lrpzPmez4&busi_data=eyJncm91cENvZGUiOiIzMzUwNDc4MzQiLCJ0b2tlbiI6IjhkekxXRklPcU9nNCtLbnhQM3FjeWFOT3VnTW5SY2E2ZVNYL25Fdjc5dlI1a1ZVMTlsYUtwbzNRblo2R01xOXMiLCJ1aW4iOiIzMTEzMTQzNjY2In0%3D&data=_T2_0SMUSubLMt0YcN1MGZJF9zB2cR1tByzZ7-nin-3yDQ_QIxc9UfAHGCD4I5pkd1bunaTW6aZqZ3NmHeepJg&svctype=4&tempid=h5_group_info';
 const String _promoTargetRangeUrl =
     'https://pan.xunlei.com/s/VOodpELVGUCsmDw41eT_cxBaA1?pwd=2x75';
-const String _promoWechatUrl = 'https://jsxposed.org';
 const String _promoProjectUrl = 'https://jsxposed.org';
 const String _promoRepositoryUrl = 'https://github.com/dugongzi/JsxposedX';
 
