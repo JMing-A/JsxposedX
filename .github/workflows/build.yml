@@ -78,7 +78,7 @@ jobs:
           else
             flavors="api100 api101"
             types="debug"
-            desktop="false"
+            desktop="true"
           fi
 
           include="[]"
