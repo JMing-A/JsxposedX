@@ -132,6 +132,9 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # 默认值含已废弃的 `tools` 包，会导致 sdkmanager 失败
+          packages: 'platform-tools'
 
       - name: Install CMake 3.22.1
         run: sdkmanager --install "cmake;3.22.1"
@@ -229,7 +232,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config libgtk-3-dev \
-            liblzma-dev libstdc++-12-dev
+            liblzma-dev libstdc++-12-dev \
+            libsecret-1-dev libjsoncpp-dev
 
       - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
         uses: subosito/flutter-action@v2
