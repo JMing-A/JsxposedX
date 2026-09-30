@@ -18,8 +18,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-const String _forumHost = 'muxue.pro';
-const String _forumUrl = 'https://muxue.pro';
+const String _forumHost = 'muxueai.pro';
+const String _forumUrl = 'https://muxueai.pro';
 const String _discordUrl = 'https://discord.gg/sUHbq6jHeZ';
 const String _facebookUrl =
     'https://www.facebook.com/share/16nAHDLhAp/?mibextid=wwXIfr';

@@ -29,99 +29,99 @@ on:
           - debug
           - release
           - both
+      build_desktop:
+        description: 'Also build desktop packages'
+        required: true
+        default: true
+        type: boolean
 
 env:
   FLUTTER_VERSION: '3.41.9'
   JAVA_VERSION: '17'
+  # LIEF 预编译库只提供 arm64-v8a / armeabi-v7a，x86 系列产物不含原生工具库
+  ANDROID_TARGET_PLATFORMS: 'android-arm,android-arm64'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  matrix:
+  resolve:
     name: Resolve build matrix
     runs-on: ubuntu-latest
     outputs:
-      include: ${{ steps.compute.outputs.include }}
+      android_matrix: ${{ steps.compute.outputs.include }}
+      desktop: ${{ steps.compute.outputs.desktop }}
     steps:
       - id: compute
-        shell: pwsh
+        shell: bash
         run: |
-          $event   = '${{ github.event_name }}'
-          $ref     = '${{ github.ref }}'
-          $inFlav  = '${{ github.event.inputs.flavor }}'
-          $inType  = '${{ github.event.inputs.build_type }}'
-          $isTag   = $ref.StartsWith('refs/tags/V')
+          set -euo pipefail
+          event="${{ github.event_name }}"
+          ref="${{ github.ref }}"
+          in_flavor="${{ github.event.inputs.flavor }}"
+          in_type="${{ github.event.inputs.build_type }}"
+          in_desktop="${{ github.event.inputs.build_desktop }}"
 
-          switch ($event) {
-            'workflow_dispatch' {
-              $flavors = if ($inFlav -eq 'both') { @('api100','api101') } else { @($inFlav) }
-              $types   = if ($inType -eq 'both') { @('debug','release') } else { @($inType) }
-            }
-            'pull_request' {
-              $flavors = @('api100','api101')
-              $types   = @('debug')
-            }
-            'push' {
-              if ($isTag) {
-                $flavors = @('api100','api101')
-                $types   = @('release')
-              } else {
-                $flavors = @('api100','api101')
-                $types   = @('debug')
-              }
-            }
-            default {
-              $flavors = @('api100')
-              $types   = @('debug')
-            }
-          }
+          if [[ "$event" == "workflow_dispatch" ]]; then
+            flavors=$([[ "$in_flavor" == "both" ]] && echo "api100 api101" || echo "$in_flavor")
+            types=$([[ "$in_type" == "both" ]] && echo "debug release" || echo "$in_type")
+            desktop="$in_desktop"
+          elif [[ "$event" == "pull_request" ]]; then
+            flavors="api100 api101"
+            types="debug"
+            desktop="false"
+          elif [[ "$ref" == refs/tags/V* ]]; then
+            flavors="api100 api101"
+            types="release"
+            desktop="true"
+          else
+            flavors="api100 api101"
+            types="debug"
+            desktop="true"
+          fi
 
-          $include = @()
-          foreach ($f in $flavors) {
-            foreach ($t in $types) {
-              $include += [ordered]@{ flavor = $f; build_type = $t }
-            }
-          }
-          $json = ConvertTo-Json -Compress -Depth 4 -InputObject @($include)
-          "include=$json" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          Write-Host "Resolved matrix: $json"
+          include="[]"
+          for f in $flavors; do
+            for t in $types; do
+              include=$(echo "$include" | jq -c --arg f "$f" --arg t "$t" '. + [{flavor: $f, build_type: $t}]')
+            done
+          done
 
-  build:
-    name: Build ${{ matrix.flavor }} ${{ matrix.build_type }}
-    needs: matrix
+          echo "include=$include" >> "$GITHUB_OUTPUT"
+          echo "desktop=$desktop" >> "$GITHUB_OUTPUT"
+          echo "Resolved matrix: $include (desktop=$desktop)"
+
+  android:
+    name: Android ${{ matrix.flavor }} ${{ matrix.build_type }}
+    needs: resolve
     runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.matrix.outputs.include) }}
+        include: ${{ fromJson(needs.resolve.outputs.android_matrix) }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Disable Aliyun maven mirrors (CI workspace only)
-        shell: pwsh
+      # CI 走海外官方源，移除仅用于本地加速的阿里云镜像
+      - name: Strip Aliyun maven mirrors
+        shell: bash
         run: |
-          $files = @(
-            'android/build.gradle.kts',
-            'android/settings.gradle.kts'
-          )
-          foreach ($file in $files) {
-            if (-not (Test-Path $file)) { continue }
-            $content = Get-Content -Raw -Path $file
-            $cleaned = [regex]::Replace(
-              $content,
-              '(?ms)\s*maven\s*\{\s*url\s*=\s*uri\(\s*"https://maven\.aliyun\.com/[^"]*"\s*\)\s*\}',
-              ''
-            )
-            Set-Content -Path $file -Value $cleaned -NoNewline -Encoding UTF8
-            Write-Host "Stripped aliyun mirrors from $file"
-          }
-          $remaining = Select-String -Path $files -Pattern 'aliyun' -SimpleMatch
-          if ($remaining) {
-            Write-Error "Aliyun references still present after strip:"
-            $remaining | ForEach-Object { Write-Error "  $($_.Path):$($_.LineNumber)  $($_.Line.Trim())" }
+          set -euo pipefail
+          for file in android/build.gradle.kts android/settings.gradle.kts; do
+            [[ -f "$file" ]] || continue
+            perl -0pi -e 's/\n\s*maven\s*\{\s*url\s*=\s*uri\(\s*"https:\/\/maven\.aliyun\.com\/[^"]*"\s*\)\s*\}//g' "$file"
+            echo "Stripped aliyun mirrors from $file"
+          done
+          if grep -rn "aliyun" android/build.gradle.kts android/settings.gradle.kts; then
+            echo "::error::Aliyun references still present after strip"
             exit 1
-          }
-          Write-Host "OK - no aliyun references remain."
+          fi
 
       - name: Setup JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
@@ -129,6 +129,15 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
           cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # 默认值含已废弃的 `tools` 包，会导致 sdkmanager 失败
+          packages: 'platform-tools'
+
+      - name: Install CMake 3.22.1
+        run: sdkmanager --install "cmake;3.22.1"
 
       - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
         uses: subosito/flutter-action@v2
@@ -138,29 +147,169 @@ jobs:
           cache: true
 
       - name: flutter pub get
-        shell: pwsh
         run: flutter pub get
 
-      - name: Pigeon codegen (one-shot)
-        shell: pwsh
-        run: ./.buildScript/pigen_watch.ps1 -Once
+      - name: Pigeon codegen
+        run: ./.buildScript/pigen_watch.sh --once
+
+      # 使用仓库内 keystore 签名，保证与历史发布包签名一致（无需卸载重装）
+      - name: Configure release signing
+        if: matrix.build_type == 'release'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEYSTORE_BASE64:-}" ]]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set, release APK will be UNSIGNED"
+            exit 0
+          fi
+
+          # key.properties 由 Java Properties 以 ISO-8859-1 读取，
+          # 非 ASCII 的 keyAlias 必须转成 \uXXXX，否则会乱码导致找不到别名
+          unicode_escape() {
+            python3 -c 'import sys; print(sys.stdin.read().rstrip("\n").encode("unicode_escape").decode("ascii"))'
+          }
+
+          echo "$KEYSTORE_BASE64" | base64 -d > android/jsxposed.jks
+          {
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=$(unicode_escape <<< "$KEY_ALIAS")"
+            echo "storeFile=jsxposed.jks"
+          } > android/key.properties
 
       - name: Build APK (${{ matrix.flavor }} / ${{ matrix.build_type }})
-        shell: pwsh
-        run: flutter build apk --flavor ${{ matrix.flavor }} --${{ matrix.build_type }}
+        run: |
+          flutter build apk \
+            --flavor ${{ matrix.flavor }} \
+            --${{ matrix.build_type }} \
+            --target-platform ${{ env.ANDROID_TARGET_PLATFORMS }}
+
+      - name: Show APK outputs
+        run: ls -lh build/app/outputs/flutter-apk/
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-${{ matrix.flavor }}-${{ matrix.build_type }}
-          path: build/app/outputs/flutter-apk/app-${{ matrix.flavor }}-${{ matrix.build_type }}.apk
+          name: android-${{ matrix.flavor }}-${{ matrix.build_type }}
+          path: build/app/outputs/flutter-apk/*.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Stop Gradle daemon (release cache locks before post-job save)
+      - name: Stop Gradle daemon
         if: always()
-        shell: bash
+        run: (cd android && bash ./gradlew --stop) || true
+
+  desktop:
+    name: Desktop ${{ matrix.platform }}
+    needs: resolve
+    if: needs.resolve.outputs.desktop == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: windows-latest
+            platform: windows
+          - os: macos-latest
+            platform: macos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'linux'
         run: |
-          if [ -f android/gradlew ]; then
-            (cd android && bash ./gradlew --stop) || true
-          fi
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev \
+            liblzma-dev libstdc++-12-dev \
+            libsecret-1-dev libjsoncpp-dev
+
+      - name: Setup Flutter ${{ env.FLUTTER_VERSION }}
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: flutter pub get
+        run: flutter pub get
+
+      - name: Build Linux
+        if: matrix.platform == 'linux'
+        run: flutter build linux --release
+
+      - name: Build Windows
+        if: matrix.platform == 'windows'
+        run: flutter build windows --release
+
+      - name: Build macOS
+        if: matrix.platform == 'macos'
+        run: flutter build macos --release
+
+      - name: Package Linux (tar.gz)
+        if: matrix.platform == 'linux'
+        run: |
+          tar -czf JsxposedX-linux-x64.tar.gz -C build/linux/x64/release/bundle .
+
+      - name: Package Windows (zip)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath JsxposedX-windows-x64.zip
+
+      - name: Package macOS (dmg)
+        if: matrix.platform == 'macos'
+        run: |
+          hdiutil create \
+            -volname "JsxposedX" \
+            -srcfolder "build/macos/Build/Products/Release/JsxposedX.app" \
+            -ov -format UDZO \
+            JsxposedX-macos.dmg
+
+      - name: Upload desktop package
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          path: |
+            JsxposedX-linux-x64.tar.gz
+            JsxposedX-windows-x64.zip
+            JsxposedX-macos.dmg
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/V')
+    needs: [android, desktop]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten artifacts
+        run: |
+          mkdir -p dist
+          find artifacts -type f \( -name '*.apk' -o -name '*.zip' -o -name '*.dmg' -o -name '*.tar.gz' \) -exec cp {} dist/ \;
+          ls -lh dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          draft: false
+          generate_release_notes: true

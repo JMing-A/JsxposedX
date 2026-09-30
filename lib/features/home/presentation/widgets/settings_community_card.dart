@@ -1,4 +1,4 @@
-﻿import 'package:JsxposedX/common/widgets/cache_image.dart';
+import 'package:JsxposedX/common/widgets/cache_image.dart';
 import 'package:JsxposedX/core/constants/assets_constants.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:flutter/material.dart';
@@ -119,7 +119,7 @@ class SettingsCommunityCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                context.isChinese ? "沐雪社区" : "MuxuePro",
+                                context.isChinese ? "沐雪 AI" : "Muxue AI",
                                 style: context.textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.w800,
                                   height: 1.15,

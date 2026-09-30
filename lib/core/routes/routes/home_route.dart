@@ -2,6 +2,7 @@ import 'package:JsxposedX/common/pages/splash_page.dart';
 import 'package:JsxposedX/core/models/app_info.dart';
 import 'package:JsxposedX/features/ai/presentation/pages/ai_reverse_page.dart';
 import 'package:JsxposedX/features/ai/presentation/pages/file_viewer_page.dart';
+import 'package:JsxposedX/features/home/presentation/pages/desktop_home_page.dart';
 import 'package:JsxposedX/features/home/presentation/pages/tabs/repository_tab/pages/script_detail_page.dart';
 import 'package:JsxposedX/features/so_analysis/presentation/pages/so_analysis_page.dart';
 import 'package:JsxposedX/features/home/presentation/pages/home_page.dart';
@@ -23,7 +24,7 @@ class HomeRoute {
   HomeRoute._();
 
   static const splash = '/';
-
+  static const desktop = '/desktop';
   static const home = '/home';
 
   static const quickFunctions = '/quickFunctions';
@@ -82,7 +83,14 @@ List<GoRoute> homeRoutes = [
     path: HomeRoute.splash,
     builder: (context, state) => const SplashPage(),
   ),
-  GoRoute(path: HomeRoute.home, builder: (context, state) => const HomePage()),
+  GoRoute(
+    path: HomeRoute.desktop,
+    builder: (context, state) => const DesktopHomePage(),
+  ),
+  GoRoute(
+    path: HomeRoute.home,
+    builder: (context, state) => const HomePage(),
+  ),
   GoRoute(
     path: HomeRoute.quickFunctions,
     builder: (context, state) {

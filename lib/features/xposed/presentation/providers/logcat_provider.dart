@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:JsxposedX/core/transport/android_desktop_bridge_server.dart';
+import 'package:JsxposedX/core/transport/jsxposed_protocol.dart';
 import 'package:JsxposedX/features/ai/domain/repositories/script_log_repository.dart';
 import 'package:JsxposedX/features/ai/presentation/providers/system/ai_system_providers.dart';
 import 'package:JsxposedX/features/xposed/domain/services/jxconsole_log_protocol.dart';
@@ -82,6 +84,22 @@ class LogcatEntry {
     ].join('\n');
     searchText = searchTextRaw.toLowerCase();
   }
+
+  /// 供桌面端桥接推送的序列化形式，字段与手机端控制台展示保持一致
+  Map<String, dynamic> toJson() => {
+    'rawLine': rawLine,
+    'level': level,
+    'tag': tag,
+    'message': message,
+    'timestamp': timestamp,
+    'source': source,
+    'scriptName': scriptName,
+    'runId': runId,
+    'sessionId': sessionId,
+    'pid': pid,
+    'tid': tid,
+    'stackTrace': stackTrace,
+  };
 }
 
 @riverpod
@@ -135,6 +153,26 @@ class Logcat extends _$Logcat {
 
   bool get isAutoScroll => _isAutoScroll;
 
+  /// PC 端控制台状态全部来源于此，手机端为唯一真源。
+  /// 无客户端连接时 broadcast 内部直接返回，避免无谓序列化。
+  void _broadcastState() {
+    if (_isDisposed) return;
+    AndroidDesktopBridgeServer.instance.broadcast(
+      JsxposedEvent.consoleState,
+      {
+        'isRunning': isRunning,
+        'isStarting': _isStarting,
+        'isPaused': _isPaused,
+        'autoScroll': _isAutoScroll,
+        'searchQuery': _searchQuery,
+        'sessionId': _sessionId,
+        'sessionConversationId': _sessionConversationId,
+        'targetPackage': _targetPackage,
+        'entryCount': state.length,
+      },
+    );
+  }
+
   /// 结构化脚本日志广播流。
   ///
   /// 该流在 UI 过滤、暂停、清屏之前发出，供持久化 recorder 独立消费，
@@ -156,6 +194,7 @@ class Logcat extends _$Logcat {
     _isAutoScroll = value;
     // This is a low-frequency UI action; notify consumers without mutating entries.
     state = List<LogcatEntry>.unmodifiable(state);
+    _broadcastState();
   }
 
   void setPaused(bool value) {
@@ -190,6 +229,7 @@ class Logcat extends _$Logcat {
       _flushPending();
     }
     state = List<LogcatEntry>.unmodifiable(state);
+    _broadcastState();
   }
 
   void setSearchQuery(String query) {
@@ -197,6 +237,7 @@ class Logcat extends _$Logcat {
     _searchQuery = query;
     // Search changes are user-driven and infrequent compared with log events.
     state = List<LogcatEntry>.unmodifiable(state);
+    _broadcastState();
   }
 
   void configureSession(
@@ -447,6 +488,7 @@ class Logcat extends _$Logcat {
       if (generation == _processGeneration) {
         _isStarting = false;
       }
+      _broadcastState();
     }
   }
 
@@ -454,6 +496,7 @@ class Logcat extends _$Logcat {
     _flushPending();
     unawaited(_flushScriptLogs());
     _stopProcess();
+    _broadcastState();
   }
 
   Future<void> flushPersistedLogs() => _flushAllScriptLogs();
@@ -465,6 +508,7 @@ class Logcat extends _$Logcat {
     _flushTimer?.cancel();
     _flushTimer = null;
     if (state.isNotEmpty) state = const [];
+    _broadcastState();
   }
 
   void addSessionEvent({
@@ -539,6 +583,13 @@ class Logcat extends _$Logcat {
     if (_pendingEntries.isEmpty || _isDisposed) return;
     final pending = List<LogcatEntry>.from(_pendingEntries, growable: false);
     _pendingEntries.clear();
+    // PC 端控制台镜像手机端可见日志；无客户端连接时 broadcast 内部直接返回
+    for (final entry in pending) {
+      AndroidDesktopBridgeServer.instance.broadcast(
+        JsxposedEvent.logEntry,
+        entry.toJson(),
+      );
+    }
     final combined = <LogcatEntry>[...state, ...pending];
     final start = combined.length > _maxEntries
         ? combined.length - _maxEntries

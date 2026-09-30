@@ -12,6 +12,307 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appName => 'JSXPOSEDX';
 
   @override
+  String get desktopNavDeviceConnection => '设备连接';
+
+  @override
+  String get desktopNavWorkbench => '工作台';
+
+  @override
+  String get desktopNavSettings => '设置';
+
+  @override
+  String get desktopThemeSwitchToLight => '浅色模式';
+
+  @override
+  String get desktopThemeSwitchToDark => '深色模式';
+
+  @override
+  String get desktopFeatureTodo => '功能待实现';
+
+  @override
+  String get desktopUpdateCheck => '检查更新';
+
+  @override
+  String get desktopUpdateCheckDescription => '检查 JsxposedX 是否有新版本';
+
+  @override
+  String desktopCurrentVersion(String version, String buildNumber) {
+    return '当前版本 $version ($buildNumber)';
+  }
+
+  @override
+  String get desktopUpdateLatest => '当前已是最新版本';
+
+  @override
+  String get desktopUpdateCheckFailed => '检查更新失败，请稍后重试';
+
+  @override
+  String get desktopConnectionConnected => '已连接';
+
+  @override
+  String get homeDesktopCardTitle => '电脑连接';
+
+  @override
+  String get homeDesktopCardDisconnected => '等待电脑端连接';
+
+  @override
+  String homeDesktopCardDeviceCount(int count) {
+    return '$count 台设备';
+  }
+
+  @override
+  String get desktopConnectionConnecting => '连接中…';
+
+  @override
+  String get desktopConnectionDisconnected => '未连接';
+
+  @override
+  String desktopConnectionAdbActive(String device) {
+    return '已通过 ADB 连接 $device';
+  }
+
+  @override
+  String get desktopConnectionConnect => '连接';
+
+  @override
+  String get desktopConnectionDisconnect => '断开';
+
+  @override
+  String get desktopConnectionAddressHint => '手机端地址';
+
+  @override
+  String get desktopConnectionAdb => 'ADB';
+
+  @override
+  String get desktopConnectionWifi => 'Wi-Fi';
+
+  @override
+  String get desktopConnectionRefresh => '刷新设备';
+
+  @override
+  String get desktopConnectionDeviceUnauthorized => '设备未授权，请在手机上允许 USB 调试';
+
+  @override
+  String get desktopDeviceListTitle => '设备列表';
+
+  @override
+  String get desktopDeviceListEmpty => '未发现设备，请连接手机或点击刷新';
+
+  @override
+  String get desktopConnectionPairAddressHint => '配对地址，例如 192.168.1.2:37099';
+
+  @override
+  String get desktopConnectionPairCodeHint => '配对码';
+
+  @override
+  String get desktopConnectionPair => '配对';
+
+  @override
+  String get desktopConnectionAdbAddressHint => '连接地址，例如 192.168.1.2:5555';
+
+  @override
+  String get desktopConnectionAdbConnect => '连接 ADB';
+
+  @override
+  String get desktopConnectionAdbSettings => 'ADB 设置';
+
+  @override
+  String get desktopConnectionConfigureAdb => '配置 ADB 配对与无线连接';
+
+  @override
+  String get desktopConnectionConnectAdb => '通过 ADB 连接';
+
+  @override
+  String get desktopConnectionConnectWifi => '通过 Wi-Fi 连接';
+
+  @override
+  String get desktopConnectionPairSection => '无线调试配对';
+
+  @override
+  String get desktopConnectionWirelessSection => '无线连接';
+
+  @override
+  String get desktopConnectionPairNextStep =>
+      '配对成功。配对不会让设备直接出现在列表中，请在手机无线调试页面查看“IP 地址和端口”，填入下方连接地址后点击“连接 ADB”。注意：连接端口通常与配对端口不同。';
+
+  @override
+  String get desktopSettingsAppearance => '外观';
+
+  @override
+  String get desktopSettingsColorTheme => '颜色主题';
+
+  @override
+  String get desktopSettingsThemeDark => '深色';
+
+  @override
+  String get desktopSettingsThemeLight => '浅色';
+
+  @override
+  String get desktopSettingsDisplayLanguage => '显示语言';
+
+  @override
+  String get desktopSettingsApplication => '应用';
+
+  @override
+  String get desktopSettingsCommunity => '社区';
+
+  @override
+  String get desktopSettingsCommunityDescription => '获取教程与社区支持';
+
+  @override
+  String get desktopSettingsCommunityForum => '沐雪 AI';
+
+  @override
+  String get desktopSettingsOfficialMirror => '官方中转站';
+
+  @override
+  String get desktopSettingsJoinDiscord => '加入 Discord';
+
+  @override
+  String get desktopSettingsJoinQQGroup => '加入 QQ 群';
+
+  @override
+  String get desktopSettingsTargetRange => '靶场';
+
+  @override
+  String get desktopSettingsFollowAuthor => '关注作者';
+
+  @override
+  String get desktopSettingsMorePlatforms => '查看更多平台';
+
+  @override
+  String get desktopSettingsAbout => '关于';
+
+  @override
+  String get desktopSettingsOfficialSite => '官网';
+
+  @override
+  String get desktopSettingsOfficialSiteHint => '获取最新教程';
+
+  @override
+  String get desktopSettingsRepository => '仓库';
+
+  @override
+  String get desktopSettingsWechat => '微信公众号';
+
+  @override
+  String get desktopDeviceDefaultName => 'Android 设备';
+
+  @override
+  String desktopDeviceSummary(String manufacturer, String api, String abi) {
+    return '$manufacturer · API $api · $abi';
+  }
+
+  @override
+  String get desktopDeviceCapabilities => '设备能力';
+
+  @override
+  String get desktopExplorerTitle => '资源管理器';
+
+  @override
+  String get desktopExplorerNewScript => '新建脚本';
+
+  @override
+  String get desktopExplorerLocalScripts => '本地脚本';
+
+  @override
+  String get desktopExplorerDescription => '脚本保存在电脑本地，并在所选设备上运行。';
+
+  @override
+  String get desktopExplorerFridaScripts => 'Frida 脚本';
+
+  @override
+  String get desktopExplorerXposedScripts => 'Xposed 脚本';
+
+  @override
+  String get desktopExplorerNoScripts => '暂无脚本';
+
+  @override
+  String get desktopEditorSaveAndRun => '保存并运行（Ctrl/Cmd+S）';
+
+  @override
+  String get desktopEditorRunning => '已保存并在设备上运行';
+
+  @override
+  String get desktopEditorRestartApp => '保存后重启目标应用';
+
+  @override
+  String get desktopEditorRunScript => '在设备上运行此脚本';
+
+  @override
+  String get desktopEditorOptions => '脚本设置';
+
+  @override
+  String get desktopEditorUntitled => '未选择脚本';
+
+  @override
+  String get desktopEditorLoadFailed => '脚本读取失败';
+
+  @override
+  String get desktopEditorCreateScript => '新建或打开本地脚本';
+
+  @override
+  String get desktopEditorConnectDevice => '连接设备后开始';
+
+  @override
+  String get desktopEditorDescription => '脚本保留在电脑中，并同步到所选设备执行。';
+
+  @override
+  String get desktopOutputTitle => '输出';
+
+  @override
+  String get desktopOutputEmpty => '运行日志将实时显示在此处。';
+
+  @override
+  String desktopOutputRequestCompleted(String requestId) {
+    return '请求 $requestId 已完成';
+  }
+
+  @override
+  String get desktopOutputExpand => '展开输出面板';
+
+  @override
+  String get desktopOutputCollapse => '收起输出面板';
+
+  @override
+  String get desktopShellHint => '输入 shell 命令，↑ 切换历史';
+
+  @override
+  String get desktopShellSuTooltip => '以 su（root）执行';
+
+  @override
+  String get desktopShellRunTooltip => '执行命令';
+
+  @override
+  String get desktopShellStatusNoDevice => '未连接设备，无法执行命令';
+
+  @override
+  String get desktopShellDisconnected => '与设备的连接已断开';
+
+  @override
+  String get desktopShellSessionClosed => '会话已结束';
+
+  @override
+  String get desktopConsoleLogs => '日志';
+
+  @override
+  String get desktopConsoleTerminal => '终端';
+
+  @override
+  String get desktopStatusNoDevice => '未连接设备';
+
+  @override
+  String get desktopStatusQuickConnect => '刷新并自动连接';
+
+  @override
+  String get desktopStatusConnecting => '连接中…';
+
+  @override
+  String desktopStatusDeviceInfo(String api, String abi) {
+    return 'API $api · $abi';
+  }
+
+  @override
   String get appSubtitle => '基于 Xposed Frida 的跨平台Hook调试工具';
 
   @override
@@ -196,7 +497,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get forum => '论坛';
 
   @override
-  String get visitForum => '进入论坛';
+  String get visitForum => '进入沐雪 AI';
 
   @override
   String get joinDiscord => '加入 Discord';

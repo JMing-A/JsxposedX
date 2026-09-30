@@ -12,6 +12,319 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appName => 'JSXPOSEDX';
 
   @override
+  String get desktopNavDeviceConnection => 'Device Connection';
+
+  @override
+  String get desktopNavWorkbench => 'Workbench';
+
+  @override
+  String get desktopNavSettings => 'Settings';
+
+  @override
+  String get desktopThemeSwitchToLight => 'Light Mode';
+
+  @override
+  String get desktopThemeSwitchToDark => 'Dark Mode';
+
+  @override
+  String get desktopFeatureTodo => 'Feature coming soon';
+
+  @override
+  String get desktopUpdateCheck => 'Check for Updates';
+
+  @override
+  String get desktopUpdateCheckDescription =>
+      'Check whether a new JsxposedX version is available';
+
+  @override
+  String desktopCurrentVersion(String version, String buildNumber) {
+    return 'Current version $version ($buildNumber)';
+  }
+
+  @override
+  String get desktopUpdateLatest => 'You\'re up to date';
+
+  @override
+  String get desktopUpdateCheckFailed =>
+      'Failed to check for updates. Try again later.';
+
+  @override
+  String get desktopConnectionConnected => 'Connected';
+
+  @override
+  String get homeDesktopCardTitle => 'PC Connection';
+
+  @override
+  String get homeDesktopCardDisconnected => 'Waiting for desktop connection';
+
+  @override
+  String homeDesktopCardDeviceCount(int count) {
+    return '$count device(s)';
+  }
+
+  @override
+  String get desktopConnectionConnecting => 'Connecting…';
+
+  @override
+  String get desktopConnectionDisconnected => 'Disconnected';
+
+  @override
+  String desktopConnectionAdbActive(String device) {
+    return 'Connected to $device via ADB';
+  }
+
+  @override
+  String get desktopConnectionConnect => 'Connect';
+
+  @override
+  String get desktopConnectionDisconnect => 'Disconnect';
+
+  @override
+  String get desktopConnectionAddressHint => 'Phone address';
+
+  @override
+  String get desktopConnectionAdb => 'ADB';
+
+  @override
+  String get desktopConnectionWifi => 'Wi-Fi';
+
+  @override
+  String get desktopConnectionRefresh => 'Refresh devices';
+
+  @override
+  String get desktopConnectionDeviceUnauthorized =>
+      'Device unauthorized. Allow USB debugging on the phone.';
+
+  @override
+  String get desktopDeviceListTitle => 'Devices';
+
+  @override
+  String get desktopDeviceListEmpty =>
+      'No devices found. Connect a phone or tap refresh.';
+
+  @override
+  String get desktopConnectionPairAddressHint =>
+      'Pairing address, e.g. 192.168.1.2:37099';
+
+  @override
+  String get desktopConnectionPairCodeHint => 'Pairing code';
+
+  @override
+  String get desktopConnectionPair => 'Pair';
+
+  @override
+  String get desktopConnectionAdbAddressHint =>
+      'Connection address, e.g. 192.168.1.2:5555';
+
+  @override
+  String get desktopConnectionAdbConnect => 'Connect ADB';
+
+  @override
+  String get desktopConnectionAdbSettings => 'ADB Settings';
+
+  @override
+  String get desktopConnectionConfigureAdb =>
+      'Configure ADB Pairing & Wireless';
+
+  @override
+  String get desktopConnectionConnectAdb => 'Connect via ADB';
+
+  @override
+  String get desktopConnectionConnectWifi => 'Connect via Wi-Fi';
+
+  @override
+  String get desktopConnectionPairSection => 'Wireless Debugging Pairing';
+
+  @override
+  String get desktopConnectionWirelessSection => 'Wireless Connection';
+
+  @override
+  String get desktopConnectionPairNextStep =>
+      'Pairing succeeded. Pairing alone does not add the device to the list. Find the IP address and port on the phone\'s Wireless debugging screen, enter it below, then select Connect ADB. The connection port is usually different from the pairing port.';
+
+  @override
+  String get desktopSettingsAppearance => 'Appearance';
+
+  @override
+  String get desktopSettingsColorTheme => 'Color theme';
+
+  @override
+  String get desktopSettingsThemeDark => 'Dark';
+
+  @override
+  String get desktopSettingsThemeLight => 'Light';
+
+  @override
+  String get desktopSettingsDisplayLanguage => 'Display language';
+
+  @override
+  String get desktopSettingsApplication => 'Application';
+
+  @override
+  String get desktopSettingsCommunity => 'Community';
+
+  @override
+  String get desktopSettingsCommunityDescription =>
+      'Get tutorials and community support';
+
+  @override
+  String get desktopSettingsCommunityForum => 'Muxue AI';
+
+  @override
+  String get desktopSettingsOfficialMirror => 'Official Mirror';
+
+  @override
+  String get desktopSettingsJoinDiscord => 'Join Discord';
+
+  @override
+  String get desktopSettingsJoinQQGroup => 'Join QQ Group';
+
+  @override
+  String get desktopSettingsTargetRange => 'Target Range';
+
+  @override
+  String get desktopSettingsFollowAuthor => 'Follow the Author';
+
+  @override
+  String get desktopSettingsMorePlatforms => 'More platforms';
+
+  @override
+  String get desktopSettingsAbout => 'About';
+
+  @override
+  String get desktopSettingsOfficialSite => 'Site';
+
+  @override
+  String get desktopSettingsOfficialSiteHint => 'Latest tutorials';
+
+  @override
+  String get desktopSettingsRepository => 'Repository';
+
+  @override
+  String get desktopSettingsWechat => 'WeChat Channel';
+
+  @override
+  String get desktopDeviceDefaultName => 'Android device';
+
+  @override
+  String desktopDeviceSummary(String manufacturer, String api, String abi) {
+    return '$manufacturer · API $api · $abi';
+  }
+
+  @override
+  String get desktopDeviceCapabilities => 'Capabilities';
+
+  @override
+  String get desktopExplorerTitle => 'EXPLORER';
+
+  @override
+  String get desktopExplorerNewScript => 'New script';
+
+  @override
+  String get desktopExplorerLocalScripts => 'Local scripts';
+
+  @override
+  String get desktopExplorerDescription =>
+      'Scripts are stored locally and run on the selected device.';
+
+  @override
+  String get desktopExplorerFridaScripts => 'Frida scripts';
+
+  @override
+  String get desktopExplorerXposedScripts => 'Xposed scripts';
+
+  @override
+  String get desktopExplorerNoScripts => 'No scripts yet';
+
+  @override
+  String get desktopEditorSaveAndRun => 'Save and run (Ctrl/Cmd+S)';
+
+  @override
+  String get desktopEditorRunning => 'Saved and running on device';
+
+  @override
+  String get desktopEditorRestartApp => 'Restart the target app after saving';
+
+  @override
+  String get desktopEditorRunScript => 'Run this script on device';
+
+  @override
+  String get desktopEditorOptions => 'Script settings';
+
+  @override
+  String get desktopEditorUntitled => 'No script selected';
+
+  @override
+  String get desktopEditorLoadFailed => 'Failed to read script';
+
+  @override
+  String get desktopEditorCreateScript => 'Create or open a local script';
+
+  @override
+  String get desktopEditorConnectDevice => 'Connect a device to start';
+
+  @override
+  String get desktopEditorDescription =>
+      'Scripts stay on PC and sync to the selected device for execution.';
+
+  @override
+  String get desktopOutputTitle => 'OUTPUT';
+
+  @override
+  String get desktopOutputEmpty =>
+      'Runtime logs will appear here in real time.';
+
+  @override
+  String desktopOutputRequestCompleted(String requestId) {
+    return 'Request $requestId completed';
+  }
+
+  @override
+  String get desktopOutputExpand => 'Expand output panel';
+
+  @override
+  String get desktopOutputCollapse => 'Collapse output panel';
+
+  @override
+  String get desktopShellHint => 'Enter shell command… (↑ for history)';
+
+  @override
+  String get desktopShellSuTooltip => 'Run with su (root)';
+
+  @override
+  String get desktopShellRunTooltip => 'Run command';
+
+  @override
+  String get desktopShellStatusNoDevice =>
+      'No device connected, cannot run command';
+
+  @override
+  String get desktopShellDisconnected => 'Connection to device lost';
+
+  @override
+  String get desktopShellSessionClosed => 'Session closed';
+
+  @override
+  String get desktopConsoleLogs => 'Logs';
+
+  @override
+  String get desktopConsoleTerminal => 'Terminal';
+
+  @override
+  String get desktopStatusNoDevice => 'No device';
+
+  @override
+  String get desktopStatusQuickConnect => 'Refresh and auto-connect';
+
+  @override
+  String get desktopStatusConnecting => 'Connecting…';
+
+  @override
+  String desktopStatusDeviceInfo(String api, String abi) {
+    return 'API $api · $abi';
+  }
+
+  @override
   String get appSubtitle =>
       'Cross-platform Hook debugging tool based on Xposed Frida';
 
@@ -199,7 +512,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forum => 'Forum';
 
   @override
-  String get visitForum => 'Visit Forum';
+  String get visitForum => 'Visit Muxue AI';
 
   @override
   String get joinDiscord => 'Join Discord';

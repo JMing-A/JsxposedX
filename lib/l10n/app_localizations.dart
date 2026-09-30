@@ -104,6 +104,582 @@ abstract class AppLocalizations {
   /// **'JSXPOSEDX'**
   String get appName;
 
+  /// PC 端侧边栏-设备连接
+  ///
+  /// In zh, this message translates to:
+  /// **'设备连接'**
+  String get desktopNavDeviceConnection;
+
+  /// PC 端侧边栏-工作台
+  ///
+  /// In zh, this message translates to:
+  /// **'工作台'**
+  String get desktopNavWorkbench;
+
+  /// PC 端侧边栏-设置
+  ///
+  /// In zh, this message translates to:
+  /// **'设置'**
+  String get desktopNavSettings;
+
+  /// PC 端-切换到浅色模式
+  ///
+  /// In zh, this message translates to:
+  /// **'浅色模式'**
+  String get desktopThemeSwitchToLight;
+
+  /// PC 端-切换到深色模式
+  ///
+  /// In zh, this message translates to:
+  /// **'深色模式'**
+  String get desktopThemeSwitchToDark;
+
+  /// PC 端-功能待实现占位
+  ///
+  /// In zh, this message translates to:
+  /// **'功能待实现'**
+  String get desktopFeatureTodo;
+
+  /// PC 端-手动检查更新
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新'**
+  String get desktopUpdateCheck;
+
+  /// PC 端-检查更新设置项说明
+  ///
+  /// In zh, this message translates to:
+  /// **'检查 JsxposedX 是否有新版本'**
+  String get desktopUpdateCheckDescription;
+
+  /// PC 端-显示与手机版统一的当前版本
+  ///
+  /// In zh, this message translates to:
+  /// **'当前版本 {version} ({buildNumber})'**
+  String desktopCurrentVersion(String version, String buildNumber);
+
+  /// PC 端-没有可用更新提示
+  ///
+  /// In zh, this message translates to:
+  /// **'当前已是最新版本'**
+  String get desktopUpdateLatest;
+
+  /// PC 端-检查更新失败提示
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新失败，请稍后重试'**
+  String get desktopUpdateCheckFailed;
+
+  /// PC 端-设备连接状态-已连接
+  ///
+  /// In zh, this message translates to:
+  /// **'已连接'**
+  String get desktopConnectionConnected;
+
+  /// 手机端-首页-电脑连接卡片标题
+  ///
+  /// In zh, this message translates to:
+  /// **'电脑连接'**
+  String get homeDesktopCardTitle;
+
+  /// 手机端-首页-未连接电脑端
+  ///
+  /// In zh, this message translates to:
+  /// **'等待电脑端连接'**
+  String get homeDesktopCardDisconnected;
+
+  /// 手机端-首页-已连接电脑端设备数量
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 台设备'**
+  String homeDesktopCardDeviceCount(int count);
+
+  /// PC 端-设备连接状态-连接中
+  ///
+  /// In zh, this message translates to:
+  /// **'连接中…'**
+  String get desktopConnectionConnecting;
+
+  /// PC 端-设备未连接状态
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接'**
+  String get desktopConnectionDisconnected;
+
+  /// PC 端-通过 ADB 完成应用连接
+  ///
+  /// In zh, this message translates to:
+  /// **'已通过 ADB 连接 {device}'**
+  String desktopConnectionAdbActive(String device);
+
+  /// PC 端-设备连接按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'连接'**
+  String get desktopConnectionConnect;
+
+  /// PC 端-设备断开按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'断开'**
+  String get desktopConnectionDisconnect;
+
+  /// PC 端-设备连接地址输入提示
+  ///
+  /// In zh, this message translates to:
+  /// **'手机端地址'**
+  String get desktopConnectionAddressHint;
+
+  /// PC 端-通过 ADB 端口转发连接
+  ///
+  /// In zh, this message translates to:
+  /// **'ADB'**
+  String get desktopConnectionAdb;
+
+  /// PC 端-通过 Wi-Fi 地址连接
+  ///
+  /// In zh, this message translates to:
+  /// **'Wi-Fi'**
+  String get desktopConnectionWifi;
+
+  /// PC 端-刷新 ADB 设备列表
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新设备'**
+  String get desktopConnectionRefresh;
+
+  /// PC 端-ADB 设备未授权提示
+  ///
+  /// In zh, this message translates to:
+  /// **'设备未授权，请在手机上允许 USB 调试'**
+  String get desktopConnectionDeviceUnauthorized;
+
+  /// PC 端-设备列表标题
+  ///
+  /// In zh, this message translates to:
+  /// **'设备列表'**
+  String get desktopDeviceListTitle;
+
+  /// PC 端-设备列表为空提示
+  ///
+  /// In zh, this message translates to:
+  /// **'未发现设备，请连接手机或点击刷新'**
+  String get desktopDeviceListEmpty;
+
+  /// PC 端-ADB 无线配对地址输入提示
+  ///
+  /// In zh, this message translates to:
+  /// **'配对地址，例如 192.168.1.2:37099'**
+  String get desktopConnectionPairAddressHint;
+
+  /// PC 端-ADB 无线配对码输入提示
+  ///
+  /// In zh, this message translates to:
+  /// **'配对码'**
+  String get desktopConnectionPairCodeHint;
+
+  /// PC 端-执行 ADB 无线配对
+  ///
+  /// In zh, this message translates to:
+  /// **'配对'**
+  String get desktopConnectionPair;
+
+  /// PC 端-ADB 无线连接地址输入提示
+  ///
+  /// In zh, this message translates to:
+  /// **'连接地址，例如 192.168.1.2:5555'**
+  String get desktopConnectionAdbAddressHint;
+
+  /// PC 端-执行 ADB 无线连接
+  ///
+  /// In zh, this message translates to:
+  /// **'连接 ADB'**
+  String get desktopConnectionAdbConnect;
+
+  /// PC 端-打开 ADB 配对和无线连接设置
+  ///
+  /// In zh, this message translates to:
+  /// **'ADB 设置'**
+  String get desktopConnectionAdbSettings;
+
+  /// PC 端-打开 ADB 配置入口
+  ///
+  /// In zh, this message translates to:
+  /// **'配置 ADB 配对与无线连接'**
+  String get desktopConnectionConfigureAdb;
+
+  /// PC 端-通过 ADB 完成设备连接
+  ///
+  /// In zh, this message translates to:
+  /// **'通过 ADB 连接'**
+  String get desktopConnectionConnectAdb;
+
+  /// PC 端-通过 Wi-Fi 连接手机服务
+  ///
+  /// In zh, this message translates to:
+  /// **'通过 Wi-Fi 连接'**
+  String get desktopConnectionConnectWifi;
+
+  /// PC 端-ADB 配对设置分组标题
+  ///
+  /// In zh, this message translates to:
+  /// **'无线调试配对'**
+  String get desktopConnectionPairSection;
+
+  /// PC 端-ADB 无线连接设置分组标题
+  ///
+  /// In zh, this message translates to:
+  /// **'无线连接'**
+  String get desktopConnectionWirelessSection;
+
+  /// PC 端-ADB 配对成功后的下一步提示
+  ///
+  /// In zh, this message translates to:
+  /// **'配对成功。配对不会让设备直接出现在列表中，请在手机无线调试页面查看“IP 地址和端口”，填入下方连接地址后点击“连接 ADB”。注意：连接端口通常与配对端口不同。'**
+  String get desktopConnectionPairNextStep;
+
+  /// No description provided for @desktopSettingsAppearance.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观'**
+  String get desktopSettingsAppearance;
+
+  /// No description provided for @desktopSettingsColorTheme.
+  ///
+  /// In zh, this message translates to:
+  /// **'颜色主题'**
+  String get desktopSettingsColorTheme;
+
+  /// No description provided for @desktopSettingsThemeDark.
+  ///
+  /// In zh, this message translates to:
+  /// **'深色'**
+  String get desktopSettingsThemeDark;
+
+  /// No description provided for @desktopSettingsThemeLight.
+  ///
+  /// In zh, this message translates to:
+  /// **'浅色'**
+  String get desktopSettingsThemeLight;
+
+  /// No description provided for @desktopSettingsDisplayLanguage.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示语言'**
+  String get desktopSettingsDisplayLanguage;
+
+  /// No description provided for @desktopSettingsApplication.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get desktopSettingsApplication;
+
+  /// No description provided for @desktopSettingsCommunity.
+  ///
+  /// In zh, this message translates to:
+  /// **'社区'**
+  String get desktopSettingsCommunity;
+
+  /// No description provided for @desktopSettingsCommunityDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取教程与社区支持'**
+  String get desktopSettingsCommunityDescription;
+
+  /// No description provided for @desktopSettingsCommunityForum.
+  ///
+  /// In zh, this message translates to:
+  /// **'沐雪 AI'**
+  String get desktopSettingsCommunityForum;
+
+  /// No description provided for @desktopSettingsOfficialMirror.
+  ///
+  /// In zh, this message translates to:
+  /// **'官方中转站'**
+  String get desktopSettingsOfficialMirror;
+
+  /// No description provided for @desktopSettingsJoinDiscord.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入 Discord'**
+  String get desktopSettingsJoinDiscord;
+
+  /// No description provided for @desktopSettingsJoinQQGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入 QQ 群'**
+  String get desktopSettingsJoinQQGroup;
+
+  /// No description provided for @desktopSettingsTargetRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'靶场'**
+  String get desktopSettingsTargetRange;
+
+  /// No description provided for @desktopSettingsFollowAuthor.
+  ///
+  /// In zh, this message translates to:
+  /// **'关注作者'**
+  String get desktopSettingsFollowAuthor;
+
+  /// No description provided for @desktopSettingsMorePlatforms.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看更多平台'**
+  String get desktopSettingsMorePlatforms;
+
+  /// No description provided for @desktopSettingsAbout.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于'**
+  String get desktopSettingsAbout;
+
+  /// No description provided for @desktopSettingsOfficialSite.
+  ///
+  /// In zh, this message translates to:
+  /// **'官网'**
+  String get desktopSettingsOfficialSite;
+
+  /// No description provided for @desktopSettingsOfficialSiteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取最新教程'**
+  String get desktopSettingsOfficialSiteHint;
+
+  /// No description provided for @desktopSettingsRepository.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库'**
+  String get desktopSettingsRepository;
+
+  /// No description provided for @desktopSettingsWechat.
+  ///
+  /// In zh, this message translates to:
+  /// **'微信公众号'**
+  String get desktopSettingsWechat;
+
+  /// No description provided for @desktopDeviceDefaultName.
+  ///
+  /// In zh, this message translates to:
+  /// **'Android 设备'**
+  String get desktopDeviceDefaultName;
+
+  /// No description provided for @desktopDeviceSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'{manufacturer} · API {api} · {abi}'**
+  String desktopDeviceSummary(String manufacturer, String api, String abi);
+
+  /// No description provided for @desktopDeviceCapabilities.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备能力'**
+  String get desktopDeviceCapabilities;
+
+  /// No description provided for @desktopExplorerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'资源管理器'**
+  String get desktopExplorerTitle;
+
+  /// No description provided for @desktopExplorerNewScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建脚本'**
+  String get desktopExplorerNewScript;
+
+  /// No description provided for @desktopExplorerLocalScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地脚本'**
+  String get desktopExplorerLocalScripts;
+
+  /// No description provided for @desktopExplorerDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本保存在电脑本地，并在所选设备上运行。'**
+  String get desktopExplorerDescription;
+
+  /// No description provided for @desktopExplorerFridaScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'Frida 脚本'**
+  String get desktopExplorerFridaScripts;
+
+  /// No description provided for @desktopExplorerXposedScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'Xposed 脚本'**
+  String get desktopExplorerXposedScripts;
+
+  /// No description provided for @desktopExplorerNoScripts.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无脚本'**
+  String get desktopExplorerNoScripts;
+
+  /// No description provided for @desktopEditorSaveAndRun.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存并运行（Ctrl/Cmd+S）'**
+  String get desktopEditorSaveAndRun;
+
+  /// No description provided for @desktopEditorRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存并在设备上运行'**
+  String get desktopEditorRunning;
+
+  /// No description provided for @desktopEditorRestartApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存后重启目标应用'**
+  String get desktopEditorRestartApp;
+
+  /// No description provided for @desktopEditorRunScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'在设备上运行此脚本'**
+  String get desktopEditorRunScript;
+
+  /// No description provided for @desktopEditorOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本设置'**
+  String get desktopEditorOptions;
+
+  /// No description provided for @desktopEditorUntitled.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择脚本'**
+  String get desktopEditorUntitled;
+
+  /// No description provided for @desktopEditorLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本读取失败'**
+  String get desktopEditorLoadFailed;
+
+  /// No description provided for @desktopEditorCreateScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建或打开本地脚本'**
+  String get desktopEditorCreateScript;
+
+  /// No description provided for @desktopEditorConnectDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接设备后开始'**
+  String get desktopEditorConnectDevice;
+
+  /// No description provided for @desktopEditorDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本保留在电脑中，并同步到所选设备执行。'**
+  String get desktopEditorDescription;
+
+  /// No description provided for @desktopOutputTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'输出'**
+  String get desktopOutputTitle;
+
+  /// No description provided for @desktopOutputEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行日志将实时显示在此处。'**
+  String get desktopOutputEmpty;
+
+  /// No description provided for @desktopOutputRequestCompleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求 {requestId} 已完成'**
+  String desktopOutputRequestCompleted(String requestId);
+
+  /// No description provided for @desktopOutputExpand.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开输出面板'**
+  String get desktopOutputExpand;
+
+  /// No description provided for @desktopOutputCollapse.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起输出面板'**
+  String get desktopOutputCollapse;
+
+  /// No description provided for @desktopShellHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入 shell 命令，↑ 切换历史'**
+  String get desktopShellHint;
+
+  /// No description provided for @desktopShellSuTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'以 su（root）执行'**
+  String get desktopShellSuTooltip;
+
+  /// No description provided for @desktopShellRunTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行命令'**
+  String get desktopShellRunTooltip;
+
+  /// No description provided for @desktopShellStatusNoDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接设备，无法执行命令'**
+  String get desktopShellStatusNoDevice;
+
+  /// No description provided for @desktopShellDisconnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'与设备的连接已断开'**
+  String get desktopShellDisconnected;
+
+  /// No description provided for @desktopShellSessionClosed.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话已结束'**
+  String get desktopShellSessionClosed;
+
+  /// No description provided for @desktopConsoleLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志'**
+  String get desktopConsoleLogs;
+
+  /// No description provided for @desktopConsoleTerminal.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端'**
+  String get desktopConsoleTerminal;
+
+  /// No description provided for @desktopStatusNoDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接设备'**
+  String get desktopStatusNoDevice;
+
+  /// No description provided for @desktopStatusQuickConnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新并自动连接'**
+  String get desktopStatusQuickConnect;
+
+  /// No description provided for @desktopStatusConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接中…'**
+  String get desktopStatusConnecting;
+
+  /// No description provided for @desktopStatusDeviceInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'API {api} · {abi}'**
+  String desktopStatusDeviceInfo(String api, String abi);
+
   /// 应用副标题
   ///
   /// In zh, this message translates to:
@@ -464,10 +1040,10 @@ abstract class AppLocalizations {
   /// **'论坛'**
   String get forum;
 
-  /// 进入论坛按钮
+  /// 进入沐雪 AI 按钮
   ///
   /// In zh, this message translates to:
-  /// **'进入论坛'**
+  /// **'进入沐雪 AI'**
   String get visitForum;
 
   /// 加入 Discord 按钮

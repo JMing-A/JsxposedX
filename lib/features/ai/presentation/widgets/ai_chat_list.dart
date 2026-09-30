@@ -1103,6 +1103,17 @@ class _AssistantMessageWithIcon extends StatelessWidget {
   }
 }
 
+/// 空会话问候里展示的模型品牌，与文案一一对应
+const List<(AiBrand, String)> _emptyStateBrands = <(AiBrand, String)>[
+  (AiBrand.openai, 'ChatGPT'),
+  (AiBrand.claude, 'Claude'),
+  (AiBrand.glm, 'GLM'),
+  (AiBrand.deepseek, 'DeepSeek'),
+  (AiBrand.moonshot, 'Kimi'),
+  (AiBrand.gemini, 'Gemini'),
+  (AiBrand.qwen, '千问'),
+];
+
 class _EmptyChatState extends StatelessWidget {
   const _EmptyChatState({
     required this.isCompact,
@@ -1200,6 +1211,55 @@ class _EmptyChatState extends StatelessWidget {
                   ),
                 ),
               ],
+              SizedBox(height: (isCompact ? 6 : 8) * scopeScale),
+              Text(
+                context.isZh
+                    ? '支持 ChatGPT、Claude、GLM、DeepSeek、Kimi、Gemini、千问等模型'
+                    : 'Supports ChatGPT, Claude, GLM, DeepSeek, Kimi, Gemini, Qwen and more',
+                style: TextStyle(
+                  fontSize: (isCompact ? 12 : 13) * scopeScale,
+                  height: 1.35,
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              SizedBox(height: (isCompact ? 8 : 10) * scopeScale),
+              Wrap(
+                spacing: (isCompact ? 6 : 8) * scopeScale,
+                runSpacing: (isCompact ? 6 : 8) * scopeScale,
+                children: [
+                  for (final (brand, label) in _emptyStateBrands)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: (isCompact ? 6 : 8) * scopeScale,
+                        vertical: (isCompact ? 4 : 5) * scopeScale,
+                      ),
+                      decoration: BoxDecoration(
+                        color: context.colorScheme.onSurface.withValues(
+                          alpha: 0.06,
+                        ),
+                        borderRadius: BorderRadius.circular(20 * scopeScale),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          AiBrandIcon(
+                            brand: brand,
+                            size: isCompact ? 14 : 16,
+                          ),
+                          SizedBox(width: 4 * scopeScale),
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: (isCompact ? 11 : 12) * scopeScale,
+                              fontWeight: FontWeight.w600,
+                              color: context.colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
               SizedBox(height: (isCompact ? 10 : 12) * scopeScale),
               OutlinedButton(
                 onPressed: () {

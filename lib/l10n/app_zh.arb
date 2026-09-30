@@ -4,6 +4,253 @@
   "@appName": {
     "description": "应用名称"
   },
+  "desktopNavDeviceConnection": "设备连接",
+  "@desktopNavDeviceConnection": {
+    "description": "PC 端侧边栏-设备连接"
+  },
+  "desktopNavWorkbench": "工作台",
+  "@desktopNavWorkbench": {
+    "description": "PC 端侧边栏-工作台"
+  },
+  "desktopNavSettings": "设置",
+  "@desktopNavSettings": {
+    "description": "PC 端侧边栏-设置"
+  },
+  "desktopThemeSwitchToLight": "浅色模式",
+  "@desktopThemeSwitchToLight": {
+    "description": "PC 端-切换到浅色模式"
+  },
+  "desktopThemeSwitchToDark": "深色模式",
+  "@desktopThemeSwitchToDark": {
+    "description": "PC 端-切换到深色模式"
+  },
+  "desktopFeatureTodo": "功能待实现",
+  "@desktopFeatureTodo": {
+    "description": "PC 端-功能待实现占位"
+  },
+  "desktopUpdateCheck": "检查更新",
+  "@desktopUpdateCheck": {
+    "description": "PC 端-手动检查更新"
+  },
+  "desktopUpdateCheckDescription": "检查 JsxposedX 是否有新版本",
+  "@desktopUpdateCheckDescription": {
+    "description": "PC 端-检查更新设置项说明"
+  },
+  "desktopCurrentVersion": "当前版本 {version} ({buildNumber})",
+  "@desktopCurrentVersion": {
+    "description": "PC 端-显示与手机版统一的当前版本",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopUpdateLatest": "当前已是最新版本",
+  "@desktopUpdateLatest": {
+    "description": "PC 端-没有可用更新提示"
+  },
+  "desktopUpdateCheckFailed": "检查更新失败，请稍后重试",
+  "@desktopUpdateCheckFailed": {
+    "description": "PC 端-检查更新失败提示"
+  },
+  "desktopConnectionConnected": "已连接",
+  "@desktopConnectionConnected": {
+    "description": "PC 端-设备连接状态-已连接"
+  },
+  "homeDesktopCardTitle": "电脑连接",
+  "@homeDesktopCardTitle": {
+    "description": "手机端-首页-电脑连接卡片标题"
+  },
+  "homeDesktopCardDisconnected": "等待电脑端连接",
+  "@homeDesktopCardDisconnected": {
+    "description": "手机端-首页-未连接电脑端"
+  },
+  "homeDesktopCardDeviceCount": "{count} 台设备",
+  "@homeDesktopCardDeviceCount": {
+    "description": "手机端-首页-已连接电脑端设备数量",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "desktopConnectionConnecting": "连接中…",
+  "@desktopConnectionConnecting": {
+    "description": "PC 端-设备连接状态-连接中"
+  },
+  "desktopConnectionDisconnected": "未连接",
+  "@desktopConnectionDisconnected": {
+    "description": "PC 端-设备未连接状态"
+  },
+  "desktopConnectionAdbActive": "已通过 ADB 连接 {device}",
+  "@desktopConnectionAdbActive": {
+    "description": "PC 端-通过 ADB 完成应用连接",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopConnectionConnect": "连接",
+  "@desktopConnectionConnect": {
+    "description": "PC 端-设备连接按钮"
+  },
+  "desktopConnectionDisconnect": "断开",
+  "@desktopConnectionDisconnect": {
+    "description": "PC 端-设备断开按钮"
+  },
+  "desktopConnectionAddressHint": "手机端地址",
+  "@desktopConnectionAddressHint": {
+    "description": "PC 端-设备连接地址输入提示"
+  },
+  "desktopConnectionAdb": "ADB",
+  "@desktopConnectionAdb": {
+    "description": "PC 端-通过 ADB 端口转发连接"
+  },
+  "desktopConnectionWifi": "Wi-Fi",
+  "@desktopConnectionWifi": {
+    "description": "PC 端-通过 Wi-Fi 地址连接"
+  },
+  "desktopConnectionRefresh": "刷新设备",
+  "@desktopConnectionRefresh": {
+    "description": "PC 端-刷新 ADB 设备列表"
+  },
+  "desktopConnectionDeviceUnauthorized": "设备未授权，请在手机上允许 USB 调试",
+  "@desktopConnectionDeviceUnauthorized": {
+    "description": "PC 端-ADB 设备未授权提示"
+  },
+  "desktopDeviceListTitle": "设备列表",
+  "@desktopDeviceListTitle": {
+    "description": "PC 端-设备列表标题"
+  },
+  "desktopDeviceListEmpty": "未发现设备，请连接手机或点击刷新",
+  "@desktopDeviceListEmpty": {
+    "description": "PC 端-设备列表为空提示"
+  },
+  "desktopConnectionPairAddressHint": "配对地址，例如 192.168.1.2:37099",
+  "@desktopConnectionPairAddressHint": {
+    "description": "PC 端-ADB 无线配对地址输入提示"
+  },
+  "desktopConnectionPairCodeHint": "配对码",
+  "@desktopConnectionPairCodeHint": {
+    "description": "PC 端-ADB 无线配对码输入提示"
+  },
+  "desktopConnectionPair": "配对",
+  "@desktopConnectionPair": {
+    "description": "PC 端-执行 ADB 无线配对"
+  },
+  "desktopConnectionAdbAddressHint": "连接地址，例如 192.168.1.2:5555",
+  "@desktopConnectionAdbAddressHint": {
+    "description": "PC 端-ADB 无线连接地址输入提示"
+  },
+  "desktopConnectionAdbConnect": "连接 ADB",
+  "@desktopConnectionAdbConnect": {
+    "description": "PC 端-执行 ADB 无线连接"
+  },
+  "desktopConnectionAdbSettings": "ADB 设置",
+  "@desktopConnectionAdbSettings": {
+    "description": "PC 端-打开 ADB 配对和无线连接设置"
+  },
+  "desktopConnectionConfigureAdb": "配置 ADB 配对与无线连接",
+  "@desktopConnectionConfigureAdb": {
+    "description": "PC 端-打开 ADB 配置入口"
+  },
+  "desktopConnectionConnectAdb": "通过 ADB 连接",
+  "@desktopConnectionConnectAdb": {
+    "description": "PC 端-通过 ADB 完成设备连接"
+  },
+  "desktopConnectionConnectWifi": "通过 Wi-Fi 连接",
+  "@desktopConnectionConnectWifi": {
+    "description": "PC 端-通过 Wi-Fi 连接手机服务"
+  },
+  "desktopConnectionPairSection": "无线调试配对",
+  "@desktopConnectionPairSection": {
+    "description": "PC 端-ADB 配对设置分组标题"
+  },
+  "desktopConnectionWirelessSection": "无线连接",
+  "@desktopConnectionWirelessSection": {
+    "description": "PC 端-ADB 无线连接设置分组标题"
+  },
+  "desktopConnectionPairNextStep": "配对成功。配对不会让设备直接出现在列表中，请在手机无线调试页面查看“IP 地址和端口”，填入下方连接地址后点击“连接 ADB”。注意：连接端口通常与配对端口不同。",
+  "@desktopConnectionPairNextStep": {
+    "description": "PC 端-ADB 配对成功后的下一步提示"
+  },
+  "desktopSettingsAppearance": "外观",
+  "desktopSettingsColorTheme": "颜色主题",
+  "desktopSettingsThemeDark": "深色",
+  "desktopSettingsThemeLight": "浅色",
+  "desktopSettingsDisplayLanguage": "显示语言",
+  "desktopSettingsApplication": "应用",
+  "desktopSettingsCommunity": "社区",
+  "desktopSettingsCommunityDescription": "获取教程与社区支持",
+  "desktopSettingsCommunityForum": "沐雪 AI",
+  "desktopSettingsOfficialMirror": "官方中转站",
+  "desktopSettingsJoinDiscord": "加入 Discord",
+  "desktopSettingsJoinQQGroup": "加入 QQ 群",
+  "desktopSettingsTargetRange": "靶场",
+  "desktopSettingsFollowAuthor": "关注作者",
+  "desktopSettingsMorePlatforms": "查看更多平台",
+  "desktopSettingsAbout": "关于",
+  "desktopSettingsOfficialSite": "官网",
+  "desktopSettingsOfficialSiteHint": "获取最新教程",
+  "desktopSettingsRepository": "仓库",
+  "desktopSettingsWechat": "微信公众号",
+  "desktopDeviceDefaultName": "Android 设备",
+  "desktopDeviceSummary": "{manufacturer} · API {api} · {abi}",
+  "@desktopDeviceSummary": {
+    "placeholders": {
+      "manufacturer": {"type": "String"},
+      "api": {"type": "String"},
+      "abi": {"type": "String"}
+    }
+  },
+  "desktopDeviceCapabilities": "设备能力",
+  "desktopExplorerTitle": "资源管理器",
+  "desktopExplorerNewScript": "新建脚本",
+  "desktopExplorerLocalScripts": "本地脚本",
+  "desktopExplorerDescription": "脚本保存在电脑本地，并在所选设备上运行。",
+  "desktopExplorerFridaScripts": "Frida 脚本",
+  "desktopExplorerXposedScripts": "Xposed 脚本",
+  "desktopExplorerNoScripts": "暂无脚本",
+  "desktopEditorSaveAndRun": "保存并运行（Ctrl/Cmd+S）",
+  "desktopEditorRunning": "已保存并在设备上运行",
+  "desktopEditorRestartApp": "保存后重启目标应用",
+  "desktopEditorRunScript": "在设备上运行此脚本",
+  "desktopEditorOptions": "脚本设置",
+  "desktopEditorUntitled": "未选择脚本",
+  "desktopEditorLoadFailed": "脚本读取失败",
+  "desktopEditorCreateScript": "新建或打开本地脚本",
+  "desktopEditorConnectDevice": "连接设备后开始",
+  "desktopEditorDescription": "脚本保留在电脑中，并同步到所选设备执行。",
+  "desktopOutputTitle": "输出",
+  "desktopOutputEmpty": "运行日志将实时显示在此处。",
+  "desktopOutputRequestCompleted": "请求 {requestId} 已完成",
+  "@desktopOutputRequestCompleted": {
+    "placeholders": {"requestId": {"type": "String"}}
+  },
+  "desktopOutputExpand": "展开输出面板",
+  "desktopOutputCollapse": "收起输出面板",
+  "desktopShellHint": "输入 shell 命令，↑ 切换历史",
+  "desktopShellSuTooltip": "以 su（root）执行",
+  "desktopShellRunTooltip": "执行命令",
+  "desktopShellStatusNoDevice": "未连接设备，无法执行命令",
+  "desktopShellDisconnected": "与设备的连接已断开",
+  "desktopShellSessionClosed": "会话已结束",
+  "desktopConsoleLogs": "日志",
+  "desktopConsoleTerminal": "终端",
+  "desktopStatusNoDevice": "未连接设备",
+  "desktopStatusQuickConnect": "刷新并自动连接",
+  "desktopStatusConnecting": "连接中…",
+  "desktopStatusDeviceInfo": "API {api} · {abi}",
+  "@desktopStatusDeviceInfo": {
+    "placeholders": {
+      "api": {"type": "String"},
+      "abi": {"type": "String"}
+    }
+  },
   "appSubtitle": "基于 Xposed Frida 的跨平台Hook调试工具",
   "@appSubtitle": {
     "description": "应用副标题"
@@ -244,9 +491,9 @@
   "@forum": {
     "description": "论坛"
   },
-  "visitForum": "进入论坛",
+  "visitForum": "进入沐雪 AI",
   "@visitForum": {
-    "description": "进入论坛按钮"
+    "description": "进入沐雪 AI 按钮"
   },
   "joinDiscord": "加入 Discord",
   "@joinDiscord": {

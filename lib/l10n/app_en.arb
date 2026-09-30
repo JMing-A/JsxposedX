@@ -4,6 +4,253 @@
   "@appName": {
     "description": "Application name"
   },
+  "desktopNavDeviceConnection": "Device Connection",
+  "@desktopNavDeviceConnection": {
+    "description": "PC sidebar - device connection"
+  },
+  "desktopNavWorkbench": "Workbench",
+  "@desktopNavWorkbench": {
+    "description": "PC sidebar - workbench"
+  },
+  "desktopNavSettings": "Settings",
+  "@desktopNavSettings": {
+    "description": "PC sidebar - settings"
+  },
+  "desktopThemeSwitchToLight": "Light Mode",
+  "@desktopThemeSwitchToLight": {
+    "description": "PC - switch to light mode"
+  },
+  "desktopThemeSwitchToDark": "Dark Mode",
+  "@desktopThemeSwitchToDark": {
+    "description": "PC - switch to dark mode"
+  },
+  "desktopFeatureTodo": "Feature coming soon",
+  "@desktopFeatureTodo": {
+    "description": "PC - feature placeholder"
+  },
+  "desktopUpdateCheck": "Check for Updates",
+  "@desktopUpdateCheck": {
+    "description": "PC - manually check for updates"
+  },
+  "desktopUpdateCheckDescription": "Check whether a new JsxposedX version is available",
+  "@desktopUpdateCheckDescription": {
+    "description": "PC - update setting description"
+  },
+  "desktopCurrentVersion": "Current version {version} ({buildNumber})",
+  "@desktopCurrentVersion": {
+    "description": "PC - show the version shared with mobile",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "buildNumber": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopUpdateLatest": "You're up to date",
+  "@desktopUpdateLatest": {
+    "description": "PC - no update available"
+  },
+  "desktopUpdateCheckFailed": "Failed to check for updates. Try again later.",
+  "@desktopUpdateCheckFailed": {
+    "description": "PC - update check failure"
+  },
+  "desktopConnectionConnected": "Connected",
+  "@desktopConnectionConnected": {
+    "description": "PC - device connection status - connected"
+  },
+  "homeDesktopCardTitle": "PC Connection",
+  "@homeDesktopCardTitle": {
+    "description": "Phone - home tab - PC connection card title"
+  },
+  "homeDesktopCardDisconnected": "Waiting for desktop connection",
+  "@homeDesktopCardDisconnected": {
+    "description": "Phone - home tab - no desktop connection"
+  },
+  "homeDesktopCardDeviceCount": "{count} device(s)",
+  "@homeDesktopCardDeviceCount": {
+    "description": "Phone - home tab - connected desktop device count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "desktopConnectionConnecting": "Connecting…",
+  "@desktopConnectionConnecting": {
+    "description": "PC - device connection status - connecting"
+  },
+  "desktopConnectionDisconnected": "Disconnected",
+  "@desktopConnectionDisconnected": {
+    "description": "PC - device connection status - disconnected"
+  },
+  "desktopConnectionAdbActive": "Connected to {device} via ADB",
+  "@desktopConnectionAdbActive": {
+    "description": "PC - app connection completed through ADB",
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopConnectionConnect": "Connect",
+  "@desktopConnectionConnect": {
+    "description": "PC - device connect button"
+  },
+  "desktopConnectionDisconnect": "Disconnect",
+  "@desktopConnectionDisconnect": {
+    "description": "PC - device disconnect button"
+  },
+  "desktopConnectionAddressHint": "Phone address",
+  "@desktopConnectionAddressHint": {
+    "description": "PC - device connection address hint"
+  },
+  "desktopConnectionAdb": "ADB",
+  "@desktopConnectionAdb": {
+    "description": "PC - connect through ADB port forwarding"
+  },
+  "desktopConnectionWifi": "Wi-Fi",
+  "@desktopConnectionWifi": {
+    "description": "PC - connect through Wi-Fi address"
+  },
+  "desktopConnectionRefresh": "Refresh devices",
+  "@desktopConnectionRefresh": {
+    "description": "PC - refresh ADB device list"
+  },
+  "desktopConnectionDeviceUnauthorized": "Device unauthorized. Allow USB debugging on the phone.",
+  "@desktopConnectionDeviceUnauthorized": {
+    "description": "PC - unauthorized ADB device message"
+  },
+  "desktopDeviceListTitle": "Devices",
+  "@desktopDeviceListTitle": {
+    "description": "PC - device list title"
+  },
+  "desktopDeviceListEmpty": "No devices found. Connect a phone or tap refresh.",
+  "@desktopDeviceListEmpty": {
+    "description": "PC - empty device list message"
+  },
+  "desktopConnectionPairAddressHint": "Pairing address, e.g. 192.168.1.2:37099",
+  "@desktopConnectionPairAddressHint": {
+    "description": "PC - ADB wireless pairing address hint"
+  },
+  "desktopConnectionPairCodeHint": "Pairing code",
+  "@desktopConnectionPairCodeHint": {
+    "description": "PC - ADB wireless pairing code hint"
+  },
+  "desktopConnectionPair": "Pair",
+  "@desktopConnectionPair": {
+    "description": "PC - run ADB wireless pairing"
+  },
+  "desktopConnectionAdbAddressHint": "Connection address, e.g. 192.168.1.2:5555",
+  "@desktopConnectionAdbAddressHint": {
+    "description": "PC - ADB wireless connection address hint"
+  },
+  "desktopConnectionAdbConnect": "Connect ADB",
+  "@desktopConnectionAdbConnect": {
+    "description": "PC - run ADB wireless connection"
+  },
+  "desktopConnectionAdbSettings": "ADB Settings",
+  "@desktopConnectionAdbSettings": {
+    "description": "PC - open ADB pairing and wireless connection settings"
+  },
+  "desktopConnectionConfigureAdb": "Configure ADB Pairing & Wireless",
+  "@desktopConnectionConfigureAdb": {
+    "description": "PC - open ADB configuration"
+  },
+  "desktopConnectionConnectAdb": "Connect via ADB",
+  "@desktopConnectionConnectAdb": {
+    "description": "PC - complete device connection through ADB"
+  },
+  "desktopConnectionConnectWifi": "Connect via Wi-Fi",
+  "@desktopConnectionConnectWifi": {
+    "description": "PC - connect phone service through Wi-Fi"
+  },
+  "desktopConnectionPairSection": "Wireless Debugging Pairing",
+  "@desktopConnectionPairSection": {
+    "description": "PC - ADB pairing section title"
+  },
+  "desktopConnectionWirelessSection": "Wireless Connection",
+  "@desktopConnectionWirelessSection": {
+    "description": "PC - ADB wireless connection section title"
+  },
+  "desktopConnectionPairNextStep": "Pairing succeeded. Pairing alone does not add the device to the list. Find the IP address and port on the phone's Wireless debugging screen, enter it below, then select Connect ADB. The connection port is usually different from the pairing port.",
+  "@desktopConnectionPairNextStep": {
+    "description": "PC - next step after successful ADB pairing"
+  },
+  "desktopSettingsAppearance": "Appearance",
+  "desktopSettingsColorTheme": "Color theme",
+  "desktopSettingsThemeDark": "Dark",
+  "desktopSettingsThemeLight": "Light",
+  "desktopSettingsDisplayLanguage": "Display language",
+  "desktopSettingsApplication": "Application",
+  "desktopSettingsCommunity": "Community",
+  "desktopSettingsCommunityDescription": "Get tutorials and community support",
+  "desktopSettingsCommunityForum": "Muxue AI",
+  "desktopSettingsOfficialMirror": "Official Mirror",
+  "desktopSettingsJoinDiscord": "Join Discord",
+  "desktopSettingsJoinQQGroup": "Join QQ Group",
+  "desktopSettingsTargetRange": "Target Range",
+  "desktopSettingsFollowAuthor": "Follow the Author",
+  "desktopSettingsMorePlatforms": "More platforms",
+  "desktopSettingsAbout": "About",
+  "desktopSettingsOfficialSite": "Site",
+  "desktopSettingsOfficialSiteHint": "Latest tutorials",
+  "desktopSettingsRepository": "Repository",
+  "desktopSettingsWechat": "WeChat Channel",
+  "desktopDeviceDefaultName": "Android device",
+  "desktopDeviceSummary": "{manufacturer} · API {api} · {abi}",
+  "@desktopDeviceSummary": {
+    "placeholders": {
+      "manufacturer": {"type": "String"},
+      "api": {"type": "String"},
+      "abi": {"type": "String"}
+    }
+  },
+  "desktopDeviceCapabilities": "Capabilities",
+  "desktopExplorerTitle": "EXPLORER",
+  "desktopExplorerNewScript": "New script",
+  "desktopExplorerLocalScripts": "Local scripts",
+  "desktopExplorerDescription": "Scripts are stored locally and run on the selected device.",
+  "desktopExplorerFridaScripts": "Frida scripts",
+  "desktopExplorerXposedScripts": "Xposed scripts",
+  "desktopExplorerNoScripts": "No scripts yet",
+  "desktopEditorSaveAndRun": "Save and run (Ctrl/Cmd+S)",
+  "desktopEditorRunning": "Saved and running on device",
+  "desktopEditorRestartApp": "Restart the target app after saving",
+  "desktopEditorRunScript": "Run this script on device",
+  "desktopEditorOptions": "Script settings",
+  "desktopEditorUntitled": "No script selected",
+  "desktopEditorLoadFailed": "Failed to read script",
+  "desktopEditorCreateScript": "Create or open a local script",
+  "desktopEditorConnectDevice": "Connect a device to start",
+  "desktopEditorDescription": "Scripts stay on PC and sync to the selected device for execution.",
+  "desktopOutputTitle": "OUTPUT",
+  "desktopOutputEmpty": "Runtime logs will appear here in real time.",
+  "desktopOutputRequestCompleted": "Request {requestId} completed",
+  "@desktopOutputRequestCompleted": {
+    "placeholders": {"requestId": {"type": "String"}}
+  },
+  "desktopOutputExpand": "Expand output panel",
+  "desktopOutputCollapse": "Collapse output panel",
+  "desktopShellHint": "Enter shell command… (↑ for history)",
+  "desktopShellSuTooltip": "Run with su (root)",
+  "desktopShellRunTooltip": "Run command",
+  "desktopShellStatusNoDevice": "No device connected, cannot run command",
+  "desktopShellDisconnected": "Connection to device lost",
+  "desktopShellSessionClosed": "Session closed",
+  "desktopConsoleLogs": "Logs",
+  "desktopConsoleTerminal": "Terminal",
+  "desktopStatusNoDevice": "No device",
+  "desktopStatusQuickConnect": "Refresh and auto-connect",
+  "desktopStatusConnecting": "Connecting…",
+  "desktopStatusDeviceInfo": "API {api} · {abi}",
+  "@desktopStatusDeviceInfo": {
+    "placeholders": {
+      "api": {"type": "String"},
+      "abi": {"type": "String"}
+    }
+  },
   "appSubtitle": "Cross-platform Hook debugging tool based on Xposed Frida",
   "@appSubtitle": {
     "description": "Application subtitle"
@@ -244,9 +491,9 @@
   "@forum": {
     "description": "Forum"
   },
-  "visitForum": "Visit Forum",
+  "visitForum": "Visit Muxue AI",
   "@visitForum": {
-    "description": "Visit forum button"
+    "description": "Visit Muxue AI button"
   },
   "joinDiscord": "Join Discord",
   "@joinDiscord": {
