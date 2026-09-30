@@ -161,6 +161,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSettingsApplication => 'Application';
 
   @override
+  String get desktopSettingsCommunity => 'Community';
+
+  @override
+  String get desktopSettingsCommunityDescription =>
+      'Get tutorials and community support';
+
+  @override
+  String get desktopSettingsCommunityForum => 'Muxue AI';
+
+  @override
+  String get desktopSettingsVisitForum => 'Visit Forum';
+
+  @override
+  String get desktopSettingsJoinDiscord => 'Join Discord';
+
+  @override
+  String get desktopSettingsJoinQQGroup => 'Join QQ Group';
+
+  @override
+  String get desktopSettingsTargetRange => 'Target Range';
+
+  @override
+  String get desktopSettingsFollowAuthor => 'Follow the Author';
+
+  @override
+  String get desktopSettingsMorePlatforms => 'More platforms';
+
+  @override
+  String get desktopSettingsAbout => 'About';
+
+  @override
+  String get desktopSettingsOfficialSite => 'Site';
+
+  @override
+  String get desktopSettingsOfficialSiteHint => 'Latest tutorials';
+
+  @override
+  String get desktopSettingsRepository => 'Repository';
+
+  @override
+  String get desktopSettingsWechat => 'WeChat Channel';
+
+  @override
   String get desktopDeviceDefaultName => 'Android device';
 
   @override
@@ -200,7 +243,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopEditorRunning => 'Saved and running on device';
 
   @override
-  String get desktopEditorRestartApp => 'Restart app';
+  String get desktopEditorRestartApp => 'Restart the target app after saving';
+
+  @override
+  String get desktopEditorRunScript => 'Run this script on device';
+
+  @override
+  String get desktopEditorOptions => 'Script settings';
 
   @override
   String get desktopEditorUntitled => 'No script selected';
@@ -256,7 +305,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopShellSessionClosed => 'Session closed';
 
   @override
+  String get desktopConsoleLogs => 'Logs';
+
+  @override
+  String get desktopConsoleTerminal => 'Terminal';
+
+  @override
   String get desktopStatusNoDevice => 'No device';
+
+  @override
+  String get desktopStatusQuickConnect => 'Refresh and auto-connect';
 
   @override
   String get desktopStatusConnecting => 'Connecting…';
@@ -454,7 +512,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get forum => 'Forum';
 
   @override
-  String get visitForum => 'Visit Forum';
+  String get visitForum => 'Visit Muxue AI';
 
   @override
   String get joinDiscord => 'Join Discord';

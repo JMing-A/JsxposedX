@@ -184,6 +184,20 @@
   "desktopSettingsThemeLight": "浅色",
   "desktopSettingsDisplayLanguage": "显示语言",
   "desktopSettingsApplication": "应用",
+  "desktopSettingsCommunity": "社区",
+  "desktopSettingsCommunityDescription": "获取教程与社区支持",
+  "desktopSettingsCommunityForum": "沐雪 AI",
+  "desktopSettingsVisitForum": "进入论坛",
+  "desktopSettingsJoinDiscord": "加入 Discord",
+  "desktopSettingsJoinQQGroup": "加入 QQ 群",
+  "desktopSettingsTargetRange": "靶场",
+  "desktopSettingsFollowAuthor": "关注作者",
+  "desktopSettingsMorePlatforms": "查看更多平台",
+  "desktopSettingsAbout": "关于",
+  "desktopSettingsOfficialSite": "官网",
+  "desktopSettingsOfficialSiteHint": "获取最新教程",
+  "desktopSettingsRepository": "仓库",
+  "desktopSettingsWechat": "微信公众号",
   "desktopDeviceDefaultName": "Android 设备",
   "desktopDeviceSummary": "{manufacturer} · API {api} · {abi}",
   "@desktopDeviceSummary": {
@@ -203,7 +217,9 @@
   "desktopExplorerNoScripts": "暂无脚本",
   "desktopEditorSaveAndRun": "保存并运行（Ctrl/Cmd+S）",
   "desktopEditorRunning": "已保存并在设备上运行",
-  "desktopEditorRestartApp": "重启应用",
+  "desktopEditorRestartApp": "保存后重启目标应用",
+  "desktopEditorRunScript": "在设备上运行此脚本",
+  "desktopEditorOptions": "脚本设置",
   "desktopEditorUntitled": "未选择脚本",
   "desktopEditorLoadFailed": "脚本读取失败",
   "desktopEditorCreateScript": "新建或打开本地脚本",
@@ -223,7 +239,10 @@
   "desktopShellStatusNoDevice": "未连接设备，无法执行命令",
   "desktopShellDisconnected": "与设备的连接已断开",
   "desktopShellSessionClosed": "会话已结束",
+  "desktopConsoleLogs": "日志",
+  "desktopConsoleTerminal": "终端",
   "desktopStatusNoDevice": "未连接设备",
+  "desktopStatusQuickConnect": "刷新并自动连接",
   "desktopStatusConnecting": "连接中…",
   "desktopStatusDeviceInfo": "API {api} · {abi}",
   "@desktopStatusDeviceInfo": {
@@ -472,9 +491,9 @@
   "@forum": {
     "description": "论坛"
   },
-  "visitForum": "进入论坛",
+  "visitForum": "进入沐雪 AI",
   "@visitForum": {
-    "description": "进入论坛按钮"
+    "description": "进入沐雪 AI 按钮"
   },
   "joinDiscord": "加入 Discord",
   "@joinDiscord": {

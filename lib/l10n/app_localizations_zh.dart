@@ -154,6 +154,48 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopSettingsApplication => '应用';
 
   @override
+  String get desktopSettingsCommunity => '社区';
+
+  @override
+  String get desktopSettingsCommunityDescription => '获取教程与社区支持';
+
+  @override
+  String get desktopSettingsCommunityForum => '沐雪 AI';
+
+  @override
+  String get desktopSettingsVisitForum => '进入论坛';
+
+  @override
+  String get desktopSettingsJoinDiscord => '加入 Discord';
+
+  @override
+  String get desktopSettingsJoinQQGroup => '加入 QQ 群';
+
+  @override
+  String get desktopSettingsTargetRange => '靶场';
+
+  @override
+  String get desktopSettingsFollowAuthor => '关注作者';
+
+  @override
+  String get desktopSettingsMorePlatforms => '查看更多平台';
+
+  @override
+  String get desktopSettingsAbout => '关于';
+
+  @override
+  String get desktopSettingsOfficialSite => '官网';
+
+  @override
+  String get desktopSettingsOfficialSiteHint => '获取最新教程';
+
+  @override
+  String get desktopSettingsRepository => '仓库';
+
+  @override
+  String get desktopSettingsWechat => '微信公众号';
+
+  @override
   String get desktopDeviceDefaultName => 'Android 设备';
 
   @override
@@ -192,7 +234,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopEditorRunning => '已保存并在设备上运行';
 
   @override
-  String get desktopEditorRestartApp => '重启应用';
+  String get desktopEditorRestartApp => '保存后重启目标应用';
+
+  @override
+  String get desktopEditorRunScript => '在设备上运行此脚本';
+
+  @override
+  String get desktopEditorOptions => '脚本设置';
 
   @override
   String get desktopEditorUntitled => '未选择脚本';
@@ -245,7 +293,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopShellSessionClosed => '会话已结束';
 
   @override
+  String get desktopConsoleLogs => '日志';
+
+  @override
+  String get desktopConsoleTerminal => '终端';
+
+  @override
   String get desktopStatusNoDevice => '未连接设备';
+
+  @override
+  String get desktopStatusQuickConnect => '刷新并自动连接';
 
   @override
   String get desktopStatusConnecting => '连接中…';
@@ -440,7 +497,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get forum => '论坛';
 
   @override
-  String get visitForum => '进入论坛';
+  String get visitForum => '进入沐雪 AI';
 
   @override
   String get joinDiscord => '加入 Discord';

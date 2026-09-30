@@ -28,8 +28,8 @@ class ScriptDetailPage extends HookConsumerWidget {
                 command: MuxueCommand(
                   id: id,
                   description: context.isChinese
-                      ? "复制全文打开沐雪社区"
-                      : "Copy the full text to open the Muxue Forum",
+                      ? "复制全文打开沐雪 AI"
+                      : "Copy the full text to open Muxue AI",
                   type: MuxueCommandType.post,
                 ),
               ),

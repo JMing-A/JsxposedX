@@ -386,6 +386,26 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
     }
   }
 
+  /// 快捷刷新并自动连接：重新扫描设备后优先连回上次选中的设备，
+  /// 否则连接第一台已授权设备。
+  Future<void> quickConnectAdb() async {
+    if (state.isConnecting || state.isConnected) return;
+    await scanAdbDevices();
+    final authorized = state.adbDevices
+        .where((device) => device.isAuthorized)
+        .toList();
+    if (authorized.isEmpty) return;
+    final preferred = authorized
+        .where((device) => device.serial == state.selectedAdbSerial)
+        .firstOrNull;
+    final target = preferred ?? authorized.first;
+    state = state.copyWith(
+      selectedAdbSerial: target.serial,
+      clearError: true,
+    );
+    await connectAdb();
+  }
+
   /// 连接手机端，[address] 形如 ws://192.168.1.2:8765
   Future<void> connect(String address) async {
     if (state.isConnecting || state.isConnected) return;

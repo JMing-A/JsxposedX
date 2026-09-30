@@ -4,9 +4,12 @@ import 'dart:math' as math;
 
 import 'package:JsxposedX/common/widgets/app_bottom_sheet.dart';
 import 'package:JsxposedX/common/widgets/app_code_editor.dart';
+import 'package:JsxposedX/common/widgets/cache_image.dart';
+import 'package:JsxposedX/core/constants/assets_constants.dart';
 import 'package:JsxposedX/core/extensions/context_extensions.dart';
 import 'package:JsxposedX/core/transport/jsxposed_protocol.dart';
 import 'package:JsxposedX/core/utils/procedure_utils.dart';
+import 'package:JsxposedX/core/utils/url_helper.dart';
 import 'package:JsxposedX/features/home/presentation/providers/check_query_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_connection_provider.dart';
 import 'package:JsxposedX/features/home/presentation/providers/desktop_locale_provider.dart';
@@ -374,6 +377,8 @@ class _DesktopSettingsView extends HookConsumerWidget {
                     },
                   ),
                 ),
+                const SizedBox(height: 24),
+                ..._buildPromotionSections(context, colorScheme),
               ],
             ),
           ),
@@ -381,6 +386,186 @@ class _DesktopSettingsView extends HookConsumerWidget {
       ),
     );
   }
+
+  /// 社区 / 关注作者 / 关于，沿用手机端设置里的引流内容
+  List<Widget> _buildPromotionSections(
+    BuildContext context,
+    ColorScheme colorScheme,
+  ) {
+    final l10n = context.l10n;
+    return [
+      Text(l10n.desktopSettingsCommunity,
+          style: Theme.of(context).textTheme.titleSmall),
+      const SizedBox(height: 8),
+      Material(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          children: [
+            ListTile(
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CacheImage(imageUrl: AssetsConstants.muxue, size: 32),
+              ),
+              title: Text(l10n.desktopSettingsCommunityForum),
+              subtitle: Text(l10n.desktopSettingsCommunityDescription),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => UrlHelper.openUrlInBrowser(url: _promoForumUrl),
+            ),
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            ListTile(
+              leading: const Icon(Icons.forum_outlined),
+              title: Text(l10n.desktopSettingsVisitForum),
+              subtitle: const Text(_promoForumHost),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => UrlHelper.openUrlInBrowser(url: _promoForumUrl),
+            ),
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            ListTile(
+              leading: const Icon(Icons.chat_bubble_outline),
+              title: Text(l10n.desktopSettingsJoinDiscord),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => UrlHelper.openUrlInBrowser(url: _promoDiscordUrl),
+            ),
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            ListTile(
+              leading: const Icon(Icons.groups_outlined),
+              title: Text(l10n.desktopSettingsJoinQQGroup),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => UrlHelper.openUrlInBrowser(url: _promoQqGroupUrl),
+            ),
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            ListTile(
+              leading: const Icon(Icons.bug_report_outlined),
+              title: Text(l10n.desktopSettingsTargetRange),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => UrlHelper.openUrlInBrowser(url: _promoTargetRangeUrl),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 24),
+      Text(l10n.desktopSettingsFollowAuthor,
+          style: Theme.of(context).textTheme.titleSmall),
+      const SizedBox(height: 8),
+      Material(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          children: [
+            for (final link in _promoCreatorLinks) ...[
+              ListTile(
+                leading: SizedBox.square(
+                  dimension: 32,
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: CacheImage(
+                        imageUrl: link.iconUrl,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ),
+                title: Text(link.title),
+                subtitle: Text(l10n.desktopSettingsMorePlatforms),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => UrlHelper.openUrlInBrowser(url: link.url),
+              ),
+              Divider(height: 1, color: colorScheme.outlineVariant),
+            ],
+            ListTile(
+              leading: const Icon(Icons.qr_code_rounded),
+              title: Text(l10n.desktopSettingsWechat),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => UrlHelper.openUrlInBrowser(url: _promoWechatUrl),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 24),
+      Text(l10n.desktopSettingsAbout,
+          style: Theme.of(context).textTheme.titleSmall),
+      const SizedBox(height: 8),
+      Material(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        child: Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.public_outlined),
+              title: Text(l10n.desktopSettingsOfficialSite),
+              subtitle: Text(l10n.desktopSettingsOfficialSiteHint),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => UrlHelper.openUrlInBrowser(url: _promoProjectUrl),
+            ),
+            Divider(height: 1, color: colorScheme.outlineVariant),
+            ListTile(
+              leading: const Icon(Icons.code_rounded),
+              title: Text(l10n.desktopSettingsRepository),
+              subtitle: const Text('GitHub'),
+              trailing: const Icon(Icons.open_in_new),
+              onTap: () => UrlHelper.openUrlInBrowser(url: _promoRepositoryUrl),
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+}
+
+/// PC 端设置页的引流外链，与手机端设置保持一致
+const String _promoForumHost = 'muxueai.pro';
+const String _promoForumUrl = 'https://muxueai.pro';
+const String _promoDiscordUrl = 'https://discord.gg/sUHbq6jHeZ';
+const String _promoQqGroupUrl =
+    'https://qun.qq.com/universal-share/share?ac=1&authKey=CoeFZQRhWhCHjLTPhZC%2BVcCSkHb431ulekylEVq8Cy9g%2FF9nNwzaak3lrpzPmez4&busi_data=eyJncm91cENvZGUiOiIzMzUwNDc4MzQiLCJ0b2tlbiI6IjhkekxXRklPcU9nNCtLbnhQM3FjeWFOT3VnTW5SY2E2ZVNYL25Fdjc5dlI1a1ZVMTlsYUtwbzNRblo2R01xOXMiLCJ1aW4iOiIzMTEzMTQzNjY2In0%3D&data=_T2_0SMUSubLMt0YcN1MGZJF9zB2cR1tByzZ7-nin-3yDQ_QIxc9UfAHGCD4I5pkd1bunaTW6aZqZ3NmHeepJg&svctype=4&tempid=h5_group_info';
+const String _promoTargetRangeUrl =
+    'https://pan.xunlei.com/s/VOodpELVGUCsmDw41eT_cxBaA1?pwd=2x75';
+const String _promoWechatUrl = 'https://jsxposed.org';
+const String _promoProjectUrl = 'https://jsxposed.org';
+const String _promoRepositoryUrl = 'https://github.com/dugongzi/JsxposedX';
+
+const List<_PromoLink> _promoCreatorLinks = [
+  _PromoLink(
+    title: 'Facebook',
+    url: 'https://www.facebook.com/share/16nAHDLhAp/?mibextid=wwXIfr',
+    iconUrl: AssetsConstants.facebook,
+  ),
+  _PromoLink(
+    title: 'TikTok',
+    url: 'https://www.tiktok.com/@wanfengd?_r=1&_t=ZP-94YMtmcFzAN',
+    iconUrl: AssetsConstants.tiktok,
+  ),
+  _PromoLink(
+    title: '抖音',
+    url: 'https://v.douyin.com/hgm3ny4eehs/',
+    iconUrl: AssetsConstants.tiktok,
+  ),
+  _PromoLink(
+    title: '哔哩哔哩',
+    url: 'https://b23.tv/wIvEf06',
+    iconUrl: AssetsConstants.blbl,
+  ),
+  _PromoLink(
+    title: 'YouTube',
+    url:
+        'https://youtube.com/channel/UCXH3m2W67bwMDBsTRibagmw?si=i1kwAbgOMrY3gtKE',
+    iconUrl: AssetsConstants.youtube,
+  ),
+];
+
+class _PromoLink {
+  const _PromoLink({
+    required this.title,
+    required this.url,
+    required this.iconUrl,
+  });
+
+  final String title;
+  final String url;
+  final String iconUrl;
 }
 
 class _DesktopWorkbenchView extends HookConsumerWidget {
@@ -546,12 +731,17 @@ class DesktopScriptSelection {
     required this.source,
     required this.localPath,
     required this.name,
+    this.enabled = false,
   });
 
   final String packageName;
   final String source;
   final String localPath;
   final String name;
+
+  /// 打开时的启用状态，仅作编辑器开关的初值；
+  /// 不参与相等判断，避免切换开关导致重新拉取脚本。
+  final bool enabled;
 
   @override
   bool operator ==(Object other) =>
@@ -987,6 +1177,7 @@ class _ScriptNode extends StatelessWidget {
           source: source,
           localPath: script.localPath,
           name: script.name,
+          enabled: script.enabled,
         ),
       ),
     );
@@ -1155,6 +1346,10 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
 
   /// Frida 脚本保存后是否重启目标应用。Xposed 必须重启才能生效，故不参与开关。
   bool _restartApp = false;
+
+  /// 当前脚本在设备端的启用状态，开关切换后立即写入设备端
+  bool _scriptEnabled = false;
+  bool _togglingScript = false;
   String? _error;
 
   static final _fridaPrompts = buildFridaPromptsBuilder();
@@ -1182,11 +1377,13 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
         _controller?.dispose();
         _controller = null;
         _error = null;
+        _scriptEnabled = false;
       });
       return;
     }
     setState(() {
       _loaded = selection;
+      _scriptEnabled = selection.enabled;
       _loading = true;
       _error = null;
     });
@@ -1243,6 +1440,30 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
     }
   }
 
+  /// 切换当前脚本在设备端的启用状态，成功后刷新资源管理器里的状态
+  Future<void> _toggleScriptEnabled(bool enabled) async {
+    final selection = _loaded;
+    if (selection == null || _togglingScript) return;
+    setState(() => _togglingScript = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(desktopConnectionProvider.notifier);
+    try {
+      await notifier.toggleScript(
+        packageName: selection.packageName,
+        source: selection.source,
+        localPath: selection.localPath,
+        enabled: enabled,
+      );
+      if (!mounted) return;
+      setState(() => _scriptEnabled = enabled);
+      notifier.contextRevision.value++;
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => _togglingScript = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colorScheme;
@@ -1281,11 +1502,71 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
       color: colors.surfaceContainerLow,
       child: Row(
         children: [
-          // 选中 JS 脚本时显示对应文件图标，未选中时保留通用代码图标
-          if (selection == null)
-            const Icon(Icons.code, size: 18)
-          else
+          // 脚本选项菜单放在标签页最左侧，避免开关挤占标题栏
+          if (selection != null) ...[
+            PopupMenuButton<Never>(
+              tooltip: context.l10n.desktopEditorOptions,
+              icon: const Icon(Icons.tune, size: 18),
+              padding: EdgeInsets.zero,
+              splashRadius: 18,
+              itemBuilder: (context) => [
+                // 用开关直接呈现状态，一眼能看出脚本在设备上是开还是关；
+                // 不设 value，点开关不会收起菜单
+                PopupMenuItem<Never>(
+                  padding: const EdgeInsets.only(left: 14, right: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          context.l10n.desktopEditorRunScript,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: busy
+                                    ? colors.onSurfaceVariant
+                                    : colors.onSurface,
+                              ),
+                        ),
+                      ),
+                      Switch(
+                        value: _scriptEnabled,
+                        onChanged: busy || _togglingScript
+                            ? null
+                            : _toggleScriptEnabled,
+                      ),
+                    ],
+                  ),
+                ),
+                if (isFrida)
+                  PopupMenuItem<Never>(
+                    padding: const EdgeInsets.only(left: 14, right: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            context.l10n.desktopEditorRestartApp,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: busy
+                                      ? colors.onSurfaceVariant
+                                      : colors.onSurface,
+                                ),
+                          ),
+                        ),
+                        Switch(
+                          value: _restartApp,
+                          onChanged: busy
+                              ? null
+                              : (value) => setState(() => _restartApp = value),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 2),
             const _JsScriptIcon(),
+          ] else
+            const Icon(Icons.code, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1293,22 +1574,7 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (selection != null) ...[
-            // Frida 无需重启即可热更新，是否重启交给用户决定
-            if (isFrida) ...[
-              Text(
-                context.l10n.desktopEditorRestartApp,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(width: 4),
-              Switch(
-                value: _restartApp,
-                onChanged: busy
-                    ? null
-                    : (value) => setState(() => _restartApp = value),
-              ),
-              const SizedBox(width: 4),
-            ],
+          if (selection != null)
             IconButton(
               tooltip: context.l10n.desktopEditorSaveAndRun,
               visualDensity: VisualDensity.compact,
@@ -1321,7 +1587,6 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
                     )
                   : const Icon(Icons.play_arrow, size: 18),
             ),
-          ],
         ],
       ),
     );
@@ -2768,13 +3033,13 @@ class _ConsoleTabBar extends StatelessWidget {
     return Row(
       children: [
         tab(
-          label: '日志',
+          label: context.l10n.desktopConsoleLogs,
           icon: Icons.article_outlined,
           selected: !terminalSelected,
           onTap: onLogs,
         ),
         tab(
-          label: '终端',
+          label: context.l10n.desktopConsoleTerminal,
           icon: Icons.terminal,
           selected: terminalSelected,
           onTap: onTerminal,
@@ -3189,6 +3454,23 @@ class _DesktopStatusBar extends ConsumerWidget {
                             : colors.onSurfaceVariant,
                       ),
                     ),
+                    // 未连接时提供快捷刷新并自动连接
+                    if (!connected) ...[
+                      const SizedBox(width: 4),
+                      _ConnectionToolButton(
+                        tooltip: context.l10n.desktopStatusQuickConnect,
+                        icon: connection.isConnecting
+                            ? Icons.sync
+                            : Icons.refresh,
+                        size: 13,
+                        color: colors.onSurfaceVariant,
+                        onPressed: connection.isConnecting
+                            ? null
+                            : () => ref
+                                  .read(desktopConnectionProvider.notifier)
+                                  .quickConnectAdb(),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -3246,8 +3528,6 @@ Future<void> _showConnectionManager(BuildContext context) async {
     ),
   );
 }
-
-enum _DesktopConnectionMode { adb, wifi }
 
 Future<void> _showAdbSettingsDialog(
   BuildContext context,
@@ -3437,23 +3717,25 @@ class _ConnectionToolButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.color,
+    this.size = 32,
   });
 
   final String tooltip;
   final IconData icon;
   final VoidCallback? onPressed;
   final Color? color;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox.square(
-      dimension: 32,
+      dimension: size,
       child: IconButton(
         tooltip: tooltip,
         padding: EdgeInsets.zero,
         visualDensity: VisualDensity.compact,
         onPressed: onPressed,
-        icon: Icon(icon, size: 17, color: color),
+        icon: Icon(icon, size: size * 0.53, color: color),
       ),
     );
   }
@@ -3575,17 +3857,12 @@ class _ConnectionPanel extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(desktopConnectionProvider);
     final notifier = ref.read(desktopConnectionProvider.notifier);
-    final mode = useState(_DesktopConnectionMode.adb);
-    final wifiAddress = useState('');
     final colorScheme = context.colorScheme;
     final l10n = context.l10n;
 
     final selectedDevice = connection.adbDevices
         .where((device) => device.serial == connection.selectedAdbSerial)
         .firstOrNull;
-    final address = mode.value == _DesktopConnectionMode.adb
-        ? 'ws://127.0.0.1:8765'
-        : wifiAddress.value.trim();
 
     final statusColor = switch (connection.status) {
       DesktopConnectionStatus.connected => const Color(0xFF4CAF50),
@@ -3626,112 +3903,59 @@ class _ConnectionPanel extends HookConsumerWidget {
             ],
           ),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<_DesktopConnectionMode>(
-              segments: [
-                ButtonSegment(
-                  value: _DesktopConnectionMode.adb,
-                  label: Text(l10n.desktopConnectionAdb),
-                  icon: const Icon(Icons.usb, size: 16),
-                ),
-                ButtonSegment(
-                  value: _DesktopConnectionMode.wifi,
-                  label: Text(l10n.desktopConnectionWifi),
-                  icon: const Icon(Icons.wifi, size: 16),
-                ),
-              ],
-              selected: {mode.value},
-              onSelectionChanged: connection.isConnecting
-                  ? null
-                  : (selection) {
-                      notifier.clearError();
-                      mode.value = selection.first;
-                      if (mode.value == _DesktopConnectionMode.adb) {
-                        wifiAddress.value = '';
-                      }
-                    },
-              showSelectedIcon: false,
-              style: const ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          if (mode.value == _DesktopConnectionMode.adb) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l10n.desktopDeviceListTitle,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                _ConnectionToolButton(
-                  tooltip: l10n.desktopConnectionRefresh,
-                  icon: Icons.refresh,
-                  onPressed: connection.isConnecting
-                      ? null
-                      : notifier.scanAdbDevices,
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            if (connection.adbDevices.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+          Row(
+            children: [
+              Expanded(
                 child: Text(
-                  l10n.desktopDeviceListEmpty,
+                  l10n.desktopDeviceListTitle,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: colorScheme.onSurfaceVariant,
                   ),
                 ),
-              )
-            else
-              Column(
-                children: connection.adbDevices
-                    .map(
-                      (device) => _AdbDeviceTile(
-                        device: device,
-                        selected: device.serial == connection.selectedAdbSerial,
-                        busy: connection.isConnecting,
-                        onTap: () => notifier.switchAdbDevice(device.serial),
-                      ),
-                    )
-                    .toList(),
               ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: connection.isConnecting
-                  ? null
-                  : () => _showAdbSettingsDialog(context, notifier),
-              icon: const Icon(Icons.settings_ethernet, size: 17),
-              label: Text(l10n.desktopConnectionConfigureAdb),
-            ),
-          ] else
-            TextField(
-              enabled: !connection.isConnecting,
-              onChanged: (value) => wifiAddress.value = value,
-              style: const TextStyle(fontSize: 12),
-              decoration: InputDecoration(
-                hintText: l10n.desktopConnectionAddressHint,
-                prefixIcon: const Icon(Icons.link, size: 18),
-                prefixIconConstraints: const BoxConstraints(minWidth: 38),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 11,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
+              _ConnectionToolButton(
+                tooltip: l10n.desktopConnectionRefresh,
+                icon: Icons.refresh,
+                onPressed: connection.isConnecting
+                    ? null
+                    : notifier.scanAdbDevices,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          if (connection.adbDevices.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                l10n.desktopDeviceListEmpty,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.onSurfaceVariant,
                 ),
               ),
+            )
+          else
+            Column(
+              children: connection.adbDevices
+                  .map(
+                    (device) => _AdbDeviceTile(
+                      device: device,
+                      selected: device.serial == connection.selectedAdbSerial,
+                      busy: connection.isConnecting,
+                      onTap: () => notifier.switchAdbDevice(device.serial),
+                    ),
+                  )
+                  .toList(),
             ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: connection.isConnecting
+                ? null
+                : () => _showAdbSettingsDialog(context, notifier),
+            icon: const Icon(Icons.settings_ethernet, size: 17),
+            label: Text(l10n.desktopConnectionConfigureAdb),
+          ),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -3742,10 +3966,7 @@ class _ConnectionPanel extends HookConsumerWidget {
             ),
             child: _ConnectionStatusRow(
               color: statusColor,
-              text:
-                  mode.value == _DesktopConnectionMode.adb &&
-                      connection.isConnected &&
-                      selectedDevice != null
+              text: connection.isConnected && selectedDevice != null
                   ? l10n.desktopConnectionAdbActive(selectedDevice.displayName)
                   : statusText,
             ),
@@ -3819,30 +4040,19 @@ class _ConnectionPanel extends HookConsumerWidget {
                 : FilledButton.icon(
                     onPressed:
                         connection.isConnecting ||
-                            (mode.value == _DesktopConnectionMode.adb
-                                ? selectedDevice?.isAuthorized != true
-                                : address.isEmpty)
+                            selectedDevice?.isAuthorized != true
                         ? null
-                        : mode.value == _DesktopConnectionMode.adb
-                        ? notifier.connectAdb
-                        : () => notifier.connect(address),
+                        : notifier.connectAdb,
                     icon: connection.isConnecting
                         ? const SizedBox.square(
                             dimension: 15,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Icon(
-                            mode.value == _DesktopConnectionMode.adb
-                                ? Icons.phone_android
-                                : Icons.wifi,
-                            size: 17,
-                          ),
+                        : const Icon(Icons.phone_android, size: 17),
                     label: Text(
                       connection.isConnecting
                           ? l10n.desktopConnectionConnecting
-                          : mode.value == _DesktopConnectionMode.adb
-                          ? l10n.desktopConnectionConnectAdb
-                          : l10n.desktopConnectionConnectWifi,
+                          : l10n.desktopConnectionConnectAdb,
                     ),
                   ),
           ),

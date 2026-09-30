@@ -184,6 +184,20 @@
   "desktopSettingsThemeLight": "Light",
   "desktopSettingsDisplayLanguage": "Display language",
   "desktopSettingsApplication": "Application",
+  "desktopSettingsCommunity": "Community",
+  "desktopSettingsCommunityDescription": "Get tutorials and community support",
+  "desktopSettingsCommunityForum": "Muxue AI",
+  "desktopSettingsVisitForum": "Visit Forum",
+  "desktopSettingsJoinDiscord": "Join Discord",
+  "desktopSettingsJoinQQGroup": "Join QQ Group",
+  "desktopSettingsTargetRange": "Target Range",
+  "desktopSettingsFollowAuthor": "Follow the Author",
+  "desktopSettingsMorePlatforms": "More platforms",
+  "desktopSettingsAbout": "About",
+  "desktopSettingsOfficialSite": "Site",
+  "desktopSettingsOfficialSiteHint": "Latest tutorials",
+  "desktopSettingsRepository": "Repository",
+  "desktopSettingsWechat": "WeChat Channel",
   "desktopDeviceDefaultName": "Android device",
   "desktopDeviceSummary": "{manufacturer} · API {api} · {abi}",
   "@desktopDeviceSummary": {
@@ -203,7 +217,9 @@
   "desktopExplorerNoScripts": "No scripts yet",
   "desktopEditorSaveAndRun": "Save and run (Ctrl/Cmd+S)",
   "desktopEditorRunning": "Saved and running on device",
-  "desktopEditorRestartApp": "Restart app",
+  "desktopEditorRestartApp": "Restart the target app after saving",
+  "desktopEditorRunScript": "Run this script on device",
+  "desktopEditorOptions": "Script settings",
   "desktopEditorUntitled": "No script selected",
   "desktopEditorLoadFailed": "Failed to read script",
   "desktopEditorCreateScript": "Create or open a local script",
@@ -223,7 +239,10 @@
   "desktopShellStatusNoDevice": "No device connected, cannot run command",
   "desktopShellDisconnected": "Connection to device lost",
   "desktopShellSessionClosed": "Session closed",
+  "desktopConsoleLogs": "Logs",
+  "desktopConsoleTerminal": "Terminal",
   "desktopStatusNoDevice": "No device",
+  "desktopStatusQuickConnect": "Refresh and auto-connect",
   "desktopStatusConnecting": "Connecting…",
   "desktopStatusDeviceInfo": "API {api} · {abi}",
   "@desktopStatusDeviceInfo": {
@@ -472,9 +491,9 @@
   "@forum": {
     "description": "Forum"
   },
-  "visitForum": "Visit Forum",
+  "visitForum": "Visit Muxue AI",
   "@visitForum": {
-    "description": "Visit forum button"
+    "description": "Visit Muxue AI button"
   },
   "joinDiscord": "Join Discord",
   "@joinDiscord": {

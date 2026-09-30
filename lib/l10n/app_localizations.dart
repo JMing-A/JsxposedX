@@ -374,6 +374,90 @@ abstract class AppLocalizations {
   /// **'应用'**
   String get desktopSettingsApplication;
 
+  /// No description provided for @desktopSettingsCommunity.
+  ///
+  /// In zh, this message translates to:
+  /// **'社区'**
+  String get desktopSettingsCommunity;
+
+  /// No description provided for @desktopSettingsCommunityDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取教程与社区支持'**
+  String get desktopSettingsCommunityDescription;
+
+  /// No description provided for @desktopSettingsCommunityForum.
+  ///
+  /// In zh, this message translates to:
+  /// **'沐雪 AI'**
+  String get desktopSettingsCommunityForum;
+
+  /// No description provided for @desktopSettingsVisitForum.
+  ///
+  /// In zh, this message translates to:
+  /// **'进入论坛'**
+  String get desktopSettingsVisitForum;
+
+  /// No description provided for @desktopSettingsJoinDiscord.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入 Discord'**
+  String get desktopSettingsJoinDiscord;
+
+  /// No description provided for @desktopSettingsJoinQQGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入 QQ 群'**
+  String get desktopSettingsJoinQQGroup;
+
+  /// No description provided for @desktopSettingsTargetRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'靶场'**
+  String get desktopSettingsTargetRange;
+
+  /// No description provided for @desktopSettingsFollowAuthor.
+  ///
+  /// In zh, this message translates to:
+  /// **'关注作者'**
+  String get desktopSettingsFollowAuthor;
+
+  /// No description provided for @desktopSettingsMorePlatforms.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看更多平台'**
+  String get desktopSettingsMorePlatforms;
+
+  /// No description provided for @desktopSettingsAbout.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于'**
+  String get desktopSettingsAbout;
+
+  /// No description provided for @desktopSettingsOfficialSite.
+  ///
+  /// In zh, this message translates to:
+  /// **'官网'**
+  String get desktopSettingsOfficialSite;
+
+  /// No description provided for @desktopSettingsOfficialSiteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取最新教程'**
+  String get desktopSettingsOfficialSiteHint;
+
+  /// No description provided for @desktopSettingsRepository.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库'**
+  String get desktopSettingsRepository;
+
+  /// No description provided for @desktopSettingsWechat.
+  ///
+  /// In zh, this message translates to:
+  /// **'微信公众号'**
+  String get desktopSettingsWechat;
+
   /// No description provided for @desktopDeviceDefaultName.
   ///
   /// In zh, this message translates to:
@@ -449,8 +533,20 @@ abstract class AppLocalizations {
   /// No description provided for @desktopEditorRestartApp.
   ///
   /// In zh, this message translates to:
-  /// **'重启应用'**
+  /// **'保存后重启目标应用'**
   String get desktopEditorRestartApp;
+
+  /// No description provided for @desktopEditorRunScript.
+  ///
+  /// In zh, this message translates to:
+  /// **'在设备上运行此脚本'**
+  String get desktopEditorRunScript;
+
+  /// No description provided for @desktopEditorOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'脚本设置'**
+  String get desktopEditorOptions;
 
   /// No description provided for @desktopEditorUntitled.
   ///
@@ -548,11 +644,29 @@ abstract class AppLocalizations {
   /// **'会话已结束'**
   String get desktopShellSessionClosed;
 
+  /// No description provided for @desktopConsoleLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志'**
+  String get desktopConsoleLogs;
+
+  /// No description provided for @desktopConsoleTerminal.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端'**
+  String get desktopConsoleTerminal;
+
   /// No description provided for @desktopStatusNoDevice.
   ///
   /// In zh, this message translates to:
   /// **'未连接设备'**
   String get desktopStatusNoDevice;
+
+  /// No description provided for @desktopStatusQuickConnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新并自动连接'**
+  String get desktopStatusQuickConnect;
 
   /// No description provided for @desktopStatusConnecting.
   ///
@@ -926,10 +1040,10 @@ abstract class AppLocalizations {
   /// **'论坛'**
   String get forum;
 
-  /// 进入论坛按钮
+  /// 进入沐雪 AI 按钮
   ///
   /// In zh, this message translates to:
-  /// **'进入论坛'**
+  /// **'进入沐雪 AI'**
   String get visitForum;
 
   /// 加入 Discord 按钮
