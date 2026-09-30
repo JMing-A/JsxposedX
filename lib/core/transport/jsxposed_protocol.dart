@@ -23,6 +23,11 @@ abstract final class JsxposedMethod {
   static const scriptToggle = 'script.toggle';
   static const scriptRun = 'script.run';
 
+  static const shellExec = 'shell.exec';
+  static const shellOpen = 'shell.open';
+  static const shellWrite = 'shell.write';
+  static const shellClose = 'shell.close';
+
   static const consoleGetState = 'console.get_state';
   static const consoleSetPaused = 'console.set_paused';
   static const consoleSetAutoScroll = 'console.set_autoscroll';
@@ -42,6 +47,12 @@ abstract final class JsxposedEvent {
 
   /// 控制台状态变更（运行/暂停/自动滚动/搜索/会话/计数），设备侧为唯一真源
   static const consoleState = 'console.state';
+
+  /// 常驻 shell 会话输出，payload 为 {stream, data}
+  static const shellOutput = 'shell.output';
+
+  /// 常驻 shell 会话结束，payload 为 {exitCode}
+  static const shellExit = 'shell.exit';
 }
 
 /// 脚本来源，对应手机端 Frida 与 Xposed 两套脚本目录

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:JsxposedX/common/widgets/app_bottom_sheet.dart';
 import 'package:JsxposedX/common/widgets/app_code_editor.dart';
@@ -22,6 +23,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:re_editor/re_editor.dart';
+import 'package:xterm/xterm.dart';
 
 /// PC 端主页面（壳子）
 ///
@@ -384,11 +386,23 @@ class _DesktopSettingsView extends HookConsumerWidget {
 class _DesktopWorkbenchView extends HookConsumerWidget {
   const _DesktopWorkbenchView();
 
+  // 输出面板高度约束，交互对齐 VS Code：最小高度防止过度收缩，
+  // 拖拽上限为窗口高度减去编辑器最小可用空间。
+  static const _defaultOutputHeight = 240.0;
+  static const _minOutputHeight = 100.0;
+  static const _minEditorHeight = 140.0;
+
+  // 侧栏宽度约束，交互与输出面板一致：拖拽调宽、双击复位
+  static const _defaultSidebarWidth = 220.0;
+  static const _minSidebarWidth = 170.0;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(desktopConnectionProvider);
     final colors = context.colorScheme;
     final outputExpanded = useState(true);
+    final outputHeight = useState(_defaultOutputHeight);
+    final sidebarWidth = useState(_defaultSidebarWidth);
 
     // 连接建立后拉一次手机端控制台状态，保证暂停/自动滚动/搜索与手机端一致
     useEffect(() {
@@ -405,12 +419,38 @@ class _DesktopWorkbenchView extends HookConsumerWidget {
           final showProjectPane = constraints.maxWidth >= 700;
           final showExpandedOutput =
               outputExpanded.value && constraints.maxHeight >= 240;
+          // 拖拽上限：至少给编辑器留出最小空间；窗口太矮时退化为最小面板高度
+          final maxOutputHeight = math.max(
+            _minOutputHeight,
+            constraints.maxHeight - _minEditorHeight,
+          );
+          final panelHeight = showExpandedOutput
+              ? outputHeight.value.clamp(_minOutputHeight, maxOutputHeight)
+              : 39.0;
+          final maxSidebarWidth = math.max(
+            _minSidebarWidth,
+            constraints.maxWidth * 0.5,
+          );
+          final sideWidth = sidebarWidth.value.clamp(
+            _minSidebarWidth,
+            maxSidebarWidth,
+          );
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (showProjectPane) ...[
-                const SizedBox(width: 220, child: _ProjectExplorer()),
-                VerticalDivider(width: 1, color: colors.outlineVariant),
+                SizedBox(width: sideWidth, child: const _ProjectExplorer()),
+                _SidebarSash(
+                  width: sideWidth,
+                  minWidth: _minSidebarWidth,
+                  maxWidth: maxSidebarWidth,
+                  onResize: (value) =>
+                      sidebarWidth.value = value.clamp(
+                        _minSidebarWidth,
+                        maxSidebarWidth,
+                      ),
+                  onReset: () => sidebarWidth.value = _defaultSidebarWidth,
+                ),
               ],
               Expanded(
                 child: Column(
@@ -420,9 +460,22 @@ class _DesktopWorkbenchView extends HookConsumerWidget {
                         connected: connection.isConnected,
                       ),
                     ),
+                    if (showExpandedOutput)
+                      _PanelSash(
+                        height: panelHeight,
+                        minHeight: _minOutputHeight,
+                        maxHeight: maxOutputHeight,
+                        onResize: (value) =>
+                            outputHeight.value = value.clamp(
+                              _minOutputHeight,
+                              maxOutputHeight,
+                            ),
+                        onReset: () =>
+                            outputHeight.value = _defaultOutputHeight,
+                      ),
                     if (constraints.maxHeight >= 40)
                       SizedBox(
-                        height: showExpandedOutput ? 240 : 39,
+                        height: panelHeight,
                         child: _RunOutputPanel(
                           expanded: showExpandedOutput,
                           onToggle: () =>
@@ -611,6 +664,11 @@ class _ProjectTree extends ConsumerStatefulWidget {
 class _ProjectTreeState extends ConsumerState<_ProjectTree> {
   late Future<_ExplorerData> _future;
 
+  // 折叠状态提升到列表层：整棵树打平为行数据交给 ListView.builder 按需构建，
+  // key 分别为包名与「包名:来源」
+  final _collapsedProjects = <String>{};
+  final _collapsedGroups = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -661,27 +719,97 @@ class _ProjectTreeState extends ConsumerState<_ProjectTree> {
             message: context.l10n.desktopExplorerDescription,
           );
         }
-        return ListView(
-          children: [
-            for (final project in data.projects)
-              _ProjectNode(
-                project: project,
-                scripts: data.scripts[project.packageName] ?? const {},
-                selected: widget.selected,
-                onSelect: widget.onSelect,
-                onChanged: () {
-                  final future = _load();
-                  // 用块体赋值：箭头写法会把 Future 作为返回值交给 setState，
-                  // Flutter 检测到回调返回 Future 会抛断言
-                  setState(() {
-                    _future = future;
-                  });
-                },
-              ),
-          ],
+        final rows = _flatten(snapshot.data!);
+        // 懒加载：行 widget 由 itemBuilder 按可视范围按需构建，
+        // 大量脚本时只渲染屏幕内的列表项
+        return ListView.builder(
+          itemCount: rows.length,
+          itemBuilder: (context, index) {
+            final selected = widget.selected;
+            switch (rows[index]) {
+              case _ProjectRow(:final project):
+                return _ProjectNode(
+                  project: project,
+                  expanded: !_collapsedProjects.contains(project.packageName),
+                  onToggle: () => setState(() {
+                    if (_collapsedProjects.contains(project.packageName)) {
+                      _collapsedProjects.remove(project.packageName);
+                    } else {
+                      _collapsedProjects.add(project.packageName);
+                    }
+                  }),
+                );
+              case _GroupRow(:final project, :final source):
+                return _ScriptGroup(
+                  source: source,
+                  expanded: !_collapsedGroups.contains(
+                    '${project.packageName}:$source',
+                  ),
+                  onToggle: () => setState(() {
+                    final key = '${project.packageName}:$source';
+                    if (_collapsedGroups.contains(key)) {
+                      _collapsedGroups.remove(key);
+                    } else {
+                      _collapsedGroups.add(key);
+                    }
+                  }),
+                );
+              case _ScriptRow(:final project, :final source, :final script):
+                return _ScriptNode(
+                  packageName: project.packageName,
+                  source: source,
+                  script: script,
+                  active:
+                      selected?.packageName == project.packageName &&
+                      selected?.source == source &&
+                      selected?.localPath == script.localPath,
+                  onSelect: widget.onSelect,
+                );
+              case _GroupEmptyRow():
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(34, 2, 12, 2),
+                  child: Text(
+                    context.l10n.desktopExplorerNoScripts,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: context.colorScheme.outline,
+                    ),
+                  ),
+                );
+            }
+          },
         );
       },
     );
+  }
+
+  /// 把「项目 → 分组 → 脚本」树打平为行数据，折叠的子树直接跳过不产生行
+  List<_ExplorerRow> _flatten(_ExplorerData data) {
+    final rows = <_ExplorerRow>[];
+    for (final project in data.projects) {
+      rows.add(_ProjectRow(project));
+      if (_collapsedProjects.contains(project.packageName)) continue;
+      final bySource =
+          data.scripts[project.packageName] ??
+          const <String, List<DesktopScript>>{};
+      for (final source in JsxposedScriptSource.values) {
+        rows.add(_GroupRow(project, source));
+        if (_collapsedGroups.contains('${project.packageName}:$source')) {
+          continue;
+        }
+        final scripts = bySource[source] ?? const <DesktopScript>[];
+        if (scripts.isEmpty) {
+          rows.add(const _GroupEmptyRow());
+          continue;
+        }
+        for (final script in scripts) {
+          rows.add(
+            _ScriptRow(project: project, source: source, script: script),
+          );
+        }
+      }
+    }
+    return rows;
   }
 }
 
@@ -692,83 +820,99 @@ class _ExplorerData {
   final Map<String, Map<String, List<DesktopScript>>> scripts;
 }
 
-class _ProjectNode extends ConsumerStatefulWidget {
-  const _ProjectNode({
+/// 资源管理器打平后的行数据，供 ListView.builder 按需构建行 widget
+sealed class _ExplorerRow {
+  const _ExplorerRow();
+}
+
+class _ProjectRow extends _ExplorerRow {
+  const _ProjectRow(this.project);
+
+  final DesktopProject project;
+}
+
+class _GroupRow extends _ExplorerRow {
+  const _GroupRow(this.project, this.source);
+
+  final DesktopProject project;
+  final String source;
+}
+
+class _ScriptRow extends _ExplorerRow {
+  const _ScriptRow({
     required this.project,
-    required this.scripts,
-    required this.selected,
-    required this.onSelect,
-    required this.onChanged,
+    required this.source,
+    required this.script,
   });
 
   final DesktopProject project;
-  final Map<String, List<DesktopScript>> scripts;
-  final DesktopScriptSelection? selected;
-  final ValueChanged<DesktopScriptSelection> onSelect;
-  final VoidCallback onChanged;
-
-  @override
-  ConsumerState<_ProjectNode> createState() => _ProjectNodeState();
+  final String source;
+  final DesktopScript script;
 }
 
-class _ProjectNodeState extends ConsumerState<_ProjectNode> {
-  bool _expanded = true;
+class _GroupEmptyRow extends _ExplorerRow {
+  const _GroupEmptyRow();
+}
+
+class _ProjectNode extends StatelessWidget {
+  const _ProjectNode({
+    required this.project,
+    required this.expanded,
+    required this.onToggle,
+  });
+
+  final DesktopProject project;
+  final bool expanded;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colorScheme;
-    final project = widget.project;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ListTile(
-          dense: true,
-          visualDensity: VisualDensity.compact,
-          leading: Icon(
-            _expanded ? Icons.expand_more : Icons.chevron_right,
-            size: 18,
-          ),
-          title: Text(
-            project.name.isEmpty ? project.packageName : project.name,
-            style: const TextStyle(fontSize: 13),
-          ),
-          subtitle: Text(
-            project.packageName,
-            style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
-          ),
-          onTap: () => setState(() => _expanded = !_expanded),
+    final name = project.name.isEmpty ? project.packageName : project.name;
+    return ListTile(
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(expanded ? Icons.expand_more : Icons.chevron_right, size: 18),
+          const SizedBox(width: 6),
+          const _AppEntryIcon(),
+        ],
+      ),
+      title: Tooltip(
+        message: name,
+        child: Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13),
         ),
-        if (_expanded)
-          for (final entry in widget.scripts.entries)
-            _ScriptGroup(
-              packageName: project.packageName,
-              source: entry.key,
-              scripts: entry.value,
-              selected: widget.selected,
-              onSelect: widget.onSelect,
-              onChanged: widget.onChanged,
-            ),
-      ],
+      ),
+      subtitle: Tooltip(
+        message: project.packageName,
+        child: Text(
+          project.packageName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+        ),
+      ),
+      onTap: onToggle,
     );
   }
 }
 
 class _ScriptGroup extends StatelessWidget {
   const _ScriptGroup({
-    required this.packageName,
     required this.source,
-    required this.scripts,
-    required this.selected,
-    required this.onSelect,
-    required this.onChanged,
+    required this.expanded,
+    required this.onToggle,
   });
 
-  final String packageName;
   final String source;
-  final List<DesktopScript> scripts;
-  final DesktopScriptSelection? selected;
-  final ValueChanged<DesktopScriptSelection> onSelect;
-  final VoidCallback onChanged;
+  final bool expanded;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -776,53 +920,40 @@ class _ScriptGroup extends StatelessWidget {
     final label = source == JsxposedScriptSource.frida
         ? context.l10n.desktopExplorerFridaScripts
         : context.l10n.desktopExplorerXposedScripts;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(34, 6, 12, 2),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+    return InkWell(
+      onTap: onToggle,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 6, 12, 2),
+        child: Row(
+          children: [
+            Icon(
+              expanded ? Icons.expand_more : Icons.chevron_right,
+              size: 14,
               color: colors.onSurfaceVariant,
             ),
-          ),
-        ),
-        if (scripts.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(34, 2, 12, 2),
-            child: Text(
-              context.l10n.desktopExplorerNoScripts,
-              style: TextStyle(fontSize: 11, color: colors.outline),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colors.onSurfaceVariant,
+              ),
             ),
-          ),
-        for (final script in scripts)
-          _ScriptNode(
-            packageName: packageName,
-            source: source,
-            script: script,
-            active:
-                selected?.packageName == packageName &&
-                selected?.source == source &&
-                selected?.localPath == script.localPath,
-            onSelect: onSelect,
-            onChanged: onChanged,
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _ScriptNode extends ConsumerWidget {
+class _ScriptNode extends StatelessWidget {
   const _ScriptNode({
     required this.packageName,
     required this.source,
     required this.script,
     required this.active,
     required this.onSelect,
-    required this.onChanged,
   });
 
   final String packageName;
@@ -830,31 +961,9 @@ class _ScriptNode extends ConsumerWidget {
   final DesktopScript script;
   final bool active;
   final ValueChanged<DesktopScriptSelection> onSelect;
-  final VoidCallback onChanged;
-
-  Future<void> _toggle(
-    WidgetRef ref,
-    BuildContext context,
-    bool enabled,
-  ) async {
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await ref
-          .read(desktopConnectionProvider.notifier)
-          .toggleScript(
-            packageName: packageName,
-            source: source,
-            localPath: script.localPath,
-            enabled: enabled,
-          );
-      onChanged();
-    } catch (error) {
-      messenger.showSnackBar(SnackBar(content: Text('$error')));
-    }
-  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colors = context.colorScheme;
     return ListTile(
       dense: true,
@@ -862,17 +971,14 @@ class _ScriptNode extends ConsumerWidget {
       contentPadding: const EdgeInsets.only(left: 30, right: 8),
       selected: active,
       selectedTileColor: colors.primary.withValues(alpha: 0.10),
-      leading: Icon(
-        Icons.description_outlined,
-        size: 16,
-        color: script.enabled ? colors.primary : colors.outline,
-      ),
-      title: Text(script.name, style: const TextStyle(fontSize: 12)),
-      trailing: SizedBox(
-        height: 24,
-        child: Switch(
-          value: script.enabled,
-          onChanged: (value) => _toggle(ref, context, value),
+      leading: const _JsScriptIcon(),
+      title: Tooltip(
+        message: script.name,
+        child: Text(
+          script.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12),
         ),
       ),
       onTap: () => onSelect(
@@ -881,6 +987,123 @@ class _ScriptNode extends ConsumerWidget {
           source: source,
           localPath: script.localPath,
           name: script.name,
+        ),
+      ),
+    );
+  }
+}
+
+/// 侧栏与内容区之间的拖拽分隔条，交互对齐 VS Code：
+/// 悬停/拖拽时高亮，光标为左右调整尺寸，向右拖加宽侧栏，双击恢复默认宽度。
+class _SidebarSash extends StatefulWidget {
+  const _SidebarSash({
+    required this.width,
+    required this.minWidth,
+    required this.maxWidth,
+    required this.onResize,
+    required this.onReset,
+  });
+
+  final double width;
+  final double minWidth;
+  final double maxWidth;
+  final ValueChanged<double> onResize;
+  final VoidCallback onReset;
+
+  @override
+  State<_SidebarSash> createState() => _SidebarSashState();
+}
+
+class _SidebarSashState extends State<_SidebarSash> {
+  bool _active = false;
+  double? _dragStartX;
+  double? _dragStartWidth;
+
+  void _endDrag() {
+    setState(() {
+      _dragStartX = null;
+      _dragStartWidth = null;
+      _active = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    final highlight = colors.primary.withValues(alpha: 0.55);
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeLeftRight,
+      onEnter: (_) => setState(() => _active = true),
+      onExit: (_) => setState(() => _active = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: (details) {
+          _dragStartX = details.globalPosition.dx;
+          _dragStartWidth = widget.width;
+          setState(() => _active = true);
+        },
+        onHorizontalDragUpdate: (details) {
+          final startWidth = _dragStartWidth;
+          final startX = _dragStartX;
+          if (startWidth == null || startX == null) return;
+          widget.onResize(startWidth + details.globalPosition.dx - startX);
+        },
+        onHorizontalDragEnd: (_) => _endDrag(),
+        onHorizontalDragCancel: _endDrag,
+        onDoubleTap: widget.onReset,
+        child: SizedBox(
+          width: 5,
+          child: Center(
+            child: ColoredBox(
+              color: _active ? highlight : colors.outlineVariant,
+              child: const SizedBox(width: 1, height: double.infinity),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 应用条目的 app 图标：Android 机器人，仿 VS Code 文件图标主题的
+/// 彩色扁平字形风格（seti/Material Icon Theme 均为此路线）。
+class _AppEntryIcon extends StatelessWidget {
+  const _AppEntryIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(
+      Icons.android_outlined,
+      size: 15,
+      color: Color(0xFF3DDC84),
+    );
+  }
+}
+
+/// JS 脚本的文件图标：黄底「JS」方块，对齐 VS Code 文件图标主题中
+/// JavaScript 的经典样式。
+class _JsScriptIcon extends StatelessWidget {
+  const _JsScriptIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 15,
+      height: 15,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7DF1E),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: const Text(
+        'JS',
+        style: TextStyle(
+          fontSize: 7,
+          height: 1,
+          fontWeight: FontWeight.w800,
+          fontFamily: 'monospace',
+          letterSpacing: -0.5,
+          color: Color(0xFF1A1A1A),
         ),
       ),
     );
@@ -1058,7 +1281,11 @@ class _EditorWorkspaceState extends ConsumerState<_EditorWorkspace> {
       color: colors.surfaceContainerLow,
       child: Row(
         children: [
-          const Icon(Icons.code, size: 18),
+          // 选中 JS 脚本时显示对应文件图标，未选中时保留通用代码图标
+          if (selection == null)
+            const Icon(Icons.code, size: 18)
+          else
+            const _JsScriptIcon(),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1157,19 +1384,90 @@ class _EditorEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colorScheme;
+    // 面板拉高会压缩编辑器区，内容超出时可滚动，避免 RenderFlex 溢出条纹
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: colors.outline),
-          const SizedBox(height: 12),
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          Text(
-            description,
-            style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
-          ),
-        ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 48, color: colors.outline),
+            const SizedBox(height: 12),
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 6),
+            Text(
+              description,
+              style: TextStyle(fontSize: 13, color: colors.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 编辑器与输出面板之间的拖拽分隔条，交互对齐 VS Code：
+/// 平时不可见，悬停/拖拽时高亮，光标为上下调整尺寸，双击恢复默认高度。
+/// 分隔条位于面板顶部：向上拖增大面板、向下拖缩小面板，与 VS Code 同向。
+class _PanelSash extends StatefulWidget {
+  const _PanelSash({
+    required this.height,
+    required this.minHeight,
+    required this.maxHeight,
+    required this.onResize,
+    required this.onReset,
+  });
+
+  final double height;
+  final double minHeight;
+  final double maxHeight;
+  final ValueChanged<double> onResize;
+  final VoidCallback onReset;
+
+  @override
+  State<_PanelSash> createState() => _PanelSashState();
+}
+
+class _PanelSashState extends State<_PanelSash> {
+  bool _active = false;
+  double? _dragStartY;
+  double? _dragStartHeight;
+
+  void _endDrag() {
+    setState(() {
+      _dragStartY = null;
+      _dragStartHeight = null;
+      _active = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final highlight = context.colorScheme.primary.withValues(alpha: 0.55);
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeUpDown,
+      onEnter: (_) => setState(() => _active = true),
+      onExit: (_) => setState(() => _active = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onVerticalDragStart: (details) {
+          _dragStartY = details.globalPosition.dy;
+          _dragStartHeight = widget.height;
+          setState(() => _active = true);
+        },
+        onVerticalDragUpdate: (details) {
+          final startHeight = _dragStartHeight;
+          final startY = _dragStartY;
+          if (startHeight == null || startY == null) return;
+          widget.onResize(startHeight + startY - details.globalPosition.dy);
+        },
+        onVerticalDragEnd: (_) => _endDrag(),
+        onVerticalDragCancel: _endDrag,
+        onDoubleTap: widget.onReset,
+        child: SizedBox(
+          width: double.infinity,
+          height: 4,
+          child: ColoredBox(color: _active ? highlight : Colors.transparent),
+        ),
       ),
     );
   }
@@ -1192,18 +1490,77 @@ class _RunOutputPanelState extends ConsumerState<_RunOutputPanel> {
   /// 搜索输入的防抖时长，避免每次敲键都走一趟协议
   static const _searchDebounce = Duration(milliseconds: 200);
 
+  /// 会话哨兵：命令后追加该语句，用于判定本次输出结束并回传当前目录
+  static const _shellDoneCommand =
+      r'''printf '\n__JSXDONE__%s|%s\n' "$?" "$PWD"''';
+  static const _shellDoneMarker = '\n__JSXDONE__';
+
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
+  final _shellFocusNode = FocusNode();
+  final _shellHistory = <String>[];
+  late final Terminal _shellTerminal;
+  StreamSubscription<JsxposedMessage>? _shellEventsSub;
+  String _shellInput = "";
+  /// 命令行提示符里的主机名，连接设备后替换为设备型号
+  String _promptHost = 'device';
+  /// 常驻会话的当前目录，由哨兵回传，cd 之后提示符随之变化
+  String _shellCwd = '~';
+  /// 尚未写入终端的输出，用于跨分片识别哨兵行
+  String _shellPending = '';
+  bool _shellSessionOpen = false;
   Timer? _searchDebounceTimer;
+  int _shellHistoryIndex = -1;
+  bool _shellRunning = false;
   String? _sourceFilter;
   String? _levelFilter;
   bool _regexEnabled = false;
   bool _caseSensitive = false;
   bool _showHistory = false;
+  bool _showTerminal = false;
 
   @override
   void initState() {
     super.initState();
+    _shellTerminal = Terminal(
+      maxLines: 10000,
+      onOutput: _onShellInput,
+    );
+    _promptHost = _hostFromState(ref.read(desktopConnectionProvider));
+    _shellTerminal.write(_shellPrompt);
+    // 会话输出由设备端事件推送，这里只负责落到终端缓冲区
+    _shellEventsSub = ref
+        .read(desktopConnectionProvider.notifier)
+        .events
+        .listen(_onShellEvent);
+    // 终端跟随连接推送：掉线立即提示，设备切换后同步提示符
+    ref.listenManual(desktopConnectionProvider, (previous, next) {
+      final wasConnected = previous?.isConnected ?? false;
+      if (wasConnected && !next.isConnected) {
+        _promptHost = 'device';
+        // 会话随连接一起失效，重置目录并等待下次连接重建
+        _shellSessionOpen = false;
+        _shellCwd = '~';
+        _shellPending = '';
+        // 执行中的命令会因请求失败自行提示，这里只处理空闲时掉线
+        if (_shellRunning) return;
+        _shellInput = '';
+        if (!mounted) return;
+        _shellTerminal.write('\r\x1b[K');
+        _shellTerminal.write(
+          '${context.l10n.desktopShellDisconnected}\r\n',
+        );
+        _writeShellPrompt();
+        return;
+      }
+      final host = _hostFromState(next);
+      if (host == _promptHost) return;
+      _promptHost = host;
+      // 只有光标停在空提示符上时才重绘，避免打断正在输入或执行的命令
+      if (!mounted || _shellRunning || _shellInput.isNotEmpty) return;
+      _shellTerminal.write('\r\x1b[K');
+      _writeShellPrompt();
+    });
     // 自动滚动由手机端的 autoScroll 状态决定，这里只负责落到列表底部
     ref.listenManual(desktopLogsProvider, (previous, next) {
       if (!next.state.autoScroll || !mounted) return;
@@ -1220,7 +1577,9 @@ class _RunOutputPanelState extends ConsumerState<_RunOutputPanel> {
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
+    _shellEventsSub?.cancel();
     _searchController.dispose();
+    _shellFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -1239,6 +1598,190 @@ class _RunOutputPanelState extends ConsumerState<_RunOutputPanel> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(context.l10n.consoleLogCopied)));
+  }
+
+  /// 终端把键盘输入以原始序列回调过来，这里自行处理行编辑。
+  /// 回车执行、退格删字符、上下键翻历史，其余可见字符直接回显。
+  void _onShellInput(String data) {
+    var index = 0;
+    while (index < data.length) {
+      // 方向键等转义序列：\x1b[A 上、\x1b[B 下
+      if (data.startsWith('\x1b[A', index)) {
+        _navigateShellHistory(false);
+        index += 3;
+        continue;
+      }
+      if (data.startsWith('\x1b[B', index)) {
+        _navigateShellHistory(true);
+        index += 3;
+        continue;
+      }
+      final unit = data[index];
+      index++;
+      if (unit == '\r' || unit == '\n') {
+        _shellTerminal.write('\r\n');
+        _submitShellInput();
+        return;
+      }
+      if (unit == '\x7f' || unit == '\b') {
+        if (_shellInput.isNotEmpty) {
+          _shellInput = _shellInput.substring(0, _shellInput.length - 1);
+          _shellTerminal.write('\b \b');
+        }
+        continue;
+      }
+      // 其余控制字符忽略，避免污染命令行
+      if (unit.codeUnitAt(0) < 0x20) continue;
+      _shellInput += unit;
+      _shellTerminal.write(unit);
+    }
+  }
+
+  /// 上下键翻历史，整行替换（先擦掉当前输入再写回目标命令）
+  void _replaceShellInput(String next) {
+    for (var i = 0; i < _shellInput.length; i++) {
+      _shellTerminal.write('\b \b');
+    }
+    _shellInput = next;
+    _shellTerminal.write(next);
+  }
+
+  void _navigateShellHistory(bool forward) {
+    if (_shellHistory.isEmpty) return;
+    final next = forward ? _shellHistoryIndex + 1 : _shellHistoryIndex - 1;
+    if (next < -1 || next >= _shellHistory.length) return;
+    _shellHistoryIndex = next;
+    _replaceShellInput(next == -1 ? '' : _shellHistory[next]);
+  }
+
+  void _submitShellInput() {
+    final command = _shellInput.trim();
+    _shellInput = '';
+    if (command.isEmpty) {
+      _writeShellPrompt();
+      return;
+    }
+    unawaited(_runShellCommand(command));
+  }
+
+  String get _shellPrompt => 'root@$_promptHost:$_shellCwd# ';
+
+  /// 提示符主机名：优先设备型号，回退设备 ID，未连接时为 device
+  String _hostFromState(DesktopConnectionState state) {
+    final model = state.deviceInfo?.model?.trim();
+    if (model != null && model.isNotEmpty) {
+      return model.replaceAll(RegExp(r'\s+'), '-');
+    }
+    final deviceId = state.deviceInfo?.deviceId.trim();
+    if (deviceId != null && deviceId.isNotEmpty) return deviceId;
+    return 'device';
+  }
+
+  void _writeShellPrompt() {
+    _shellTerminal.write(_shellPrompt);
+  }
+
+  Future<void> _runShellCommand(String command) async {
+    if (_shellRunning) return;
+    if (_shellHistory.isEmpty || _shellHistory.last != command) {
+      _shellHistory.add(command);
+    }
+    _shellHistoryIndex = -1;
+    if (!ref.read(desktopConnectionProvider).isConnected) {
+      _shellTerminal.write('${context.l10n.desktopShellStatusNoDevice}\r\n');
+      _writeShellPrompt();
+      return;
+    }
+    _shellRunning = true;
+    final unavailableText = context.l10n.desktopShellDisconnected;
+    try {
+      if (!await _ensureShellSession()) {
+        throw StateError(unavailableText);
+      }
+      // 命令后追一条哨兵，用于判定本次输出结束并回报退出码与当前目录
+      await ref
+          .read(desktopConnectionProvider.notifier)
+          .writeShellSession('$command\n$_shellDoneCommand\n');
+    } catch (error) {
+      if (!mounted) return;
+      _shellRunning = false;
+      _shellTerminal.write('$error\r\n');
+      _writeShellPrompt();
+    }
+  }
+
+  /// 确保设备端存在常驻 shell 会话，首次使用时开启
+  Future<bool> _ensureShellSession() async {
+    if (_shellSessionOpen) return true;
+    final opened = await ref
+        .read(desktopConnectionProvider.notifier)
+        .openShellSession();
+    _shellSessionOpen = opened;
+    return opened;
+  }
+
+  /// 常驻会话的推送：输出落到终端，会话结束则复位状态
+  void _onShellEvent(JsxposedMessage message) {
+    switch (message.event) {
+      case JsxposedEvent.shellOutput:
+        final payload = message.result;
+        if (payload is! Map) return;
+        final data = payload['data'];
+        if (data is! String || data.isEmpty) return;
+        _handleShellOutput(data);
+      case JsxposedEvent.shellExit:
+        _shellSessionOpen = false;
+        _shellPending = '';
+        if (!mounted) return;
+        if (_shellRunning) {
+          _shellRunning = false;
+          _writeShellPrompt();
+        }
+        _shellTerminal.write(
+          '${context.l10n.desktopShellSessionClosed}\r\n',
+        );
+    }
+  }
+
+  /// 输出是分片到达的，先缓冲再按哨兵行切分，避免把哨兵写进终端
+  void _handleShellOutput(String data) {
+    _shellPending += data;
+    while (true) {
+      final marker = _shellPending.indexOf(_shellDoneMarker);
+      if (marker < 0) break;
+      final lineEnd = _shellPending.indexOf('\n', marker + 1);
+      // 哨兵行尚未收全，等下一片数据
+      if (lineEnd < 0) break;
+      final head = _shellPending.substring(0, marker);
+      final payload = _shellPending
+          .substring(marker + _shellDoneMarker.length, lineEnd)
+          .trim();
+      _shellPending = _shellPending.substring(lineEnd + 1);
+      if (head.isNotEmpty) {
+        _shellTerminal.write(head.replaceAll('\n', '\r\n'));
+      }
+      _settleShellCommand(payload);
+    }
+    if (_shellPending.isNotEmpty) {
+      _shellTerminal.write(_shellPending.replaceAll('\n', '\r\n'));
+      _shellPending = '';
+    }
+  }
+
+  /// 哨兵回传格式为「退出码|当前目录」
+  void _settleShellCommand(String payload) {
+    final separator = payload.indexOf('|');
+    final exitCode = separator < 0
+        ? payload
+        : payload.substring(0, separator);
+    final cwd = separator < 0 ? '' : payload.substring(separator + 1).trim();
+    if (cwd.isNotEmpty) _shellCwd = cwd;
+    _shellRunning = false;
+    if (!mounted) return;
+    if (exitCode != '0' && exitCode.isNotEmpty) {
+      _shellTerminal.write('exit $exitCode\r\n');
+    }
+    _writeShellPrompt();
   }
 
   @override
@@ -1284,56 +1827,70 @@ class _RunOutputPanelState extends ConsumerState<_RunOutputPanel> {
       ),
       child: Column(
         children: [
-          _ConsoleToolbar(
-            state: consoleState,
-            filteredCount: filtered.length,
-            totalCount: mirror.entries.length,
-            levelCounts: levelCounts,
-            regexEnabled: _regexEnabled,
-            caseSensitive: _caseSensitive,
-            regexValid: matcher.regexValid,
-            showHistory: _showHistory,
-            searchController: _searchController,
-            onSearchChanged: _onSearchChanged,
-            onToggleRegex: () => setState(() => _regexEnabled = !_regexEnabled),
-            onToggleCase: () =>
-                setState(() => _caseSensitive = !_caseSensitive),
-            onToggleAutoScroll: () => ref
-                .read(desktopLogsProvider.notifier)
-                .setAutoScroll(!consoleState.autoScroll),
-            onToggleHistory: () => setState(() {
-              _showHistory = !_showHistory;
-              if (_showHistory && mirror.historyLogs.isEmpty) {
-                ref.read(desktopLogsProvider.notifier).loadHistory();
-              }
-            }),
-            onTogglePause: () => ref
-                .read(desktopLogsProvider.notifier)
-                .setPaused(!consoleState.isPaused),
-            onCopyVisible: () => _copyVisible(filtered),
-            onExportVisible: () => _exportVisible(filtered),
-            onDeleteHistory: _deleteHistory,
-            onClear: () => ref.read(desktopLogsProvider.notifier).clear(),
-            expanded: widget.expanded,
-            onToggleExpanded: widget.onToggle,
+          _ConsoleTabBar(
+            terminalSelected: _showTerminal,
+            onLogs: () => setState(() => _showTerminal = false),
+            onTerminal: () => setState(() => _showTerminal = true),
           ),
           Divider(height: 1, thickness: 0.6, color: colors.outlineVariant),
-          _ConsoleFilterRow(
-            sourceFilter: _sourceFilter,
-            levelFilter: _levelFilter,
-            onSourceChanged: (value) => setState(() => _sourceFilter = value),
-            onLevelChanged: (value) => setState(() => _levelFilter = value),
-          ),
-          Divider(
-            height: 1,
-            thickness: 0.4,
-            color: colors.outlineVariant.withValues(alpha: 0.6),
-          ),
-          Expanded(
-            child: widget.expanded
-                ? list
-                : const SizedBox.shrink(),
-          ),
+          if (!_showTerminal) ...[
+            _ConsoleToolbar(
+              state: consoleState,
+              filteredCount: filtered.length,
+              totalCount: mirror.entries.length,
+              levelCounts: levelCounts,
+              regexEnabled: _regexEnabled,
+              caseSensitive: _caseSensitive,
+              regexValid: matcher.regexValid,
+              showHistory: _showHistory,
+              searchController: _searchController,
+              onSearchChanged: _onSearchChanged,
+              onToggleRegex: () => setState(() => _regexEnabled = !_regexEnabled),
+              onToggleCase: () =>
+                  setState(() => _caseSensitive = !_caseSensitive),
+              onToggleAutoScroll: () => ref
+                  .read(desktopLogsProvider.notifier)
+                  .setAutoScroll(!consoleState.autoScroll),
+              onToggleHistory: () => setState(() {
+                _showHistory = !_showHistory;
+                if (_showHistory && mirror.historyLogs.isEmpty) {
+                  ref.read(desktopLogsProvider.notifier).loadHistory();
+                }
+              }),
+              onTogglePause: () => ref
+                  .read(desktopLogsProvider.notifier)
+                  .setPaused(!consoleState.isPaused),
+              onCopyVisible: () => _copyVisible(filtered),
+              onExportVisible: () => _exportVisible(filtered),
+              onDeleteHistory: _deleteHistory,
+              onClear: () {
+                ref.read(desktopLogsProvider.notifier).clear();
+              },
+              expanded: widget.expanded,
+              onToggleExpanded: widget.onToggle,
+            ),
+            Divider(height: 1, thickness: 0.6, color: colors.outlineVariant),
+            _ConsoleFilterRow(
+              sourceFilter: _sourceFilter,
+              levelFilter: _levelFilter,
+              onSourceChanged: (value) => setState(() => _sourceFilter = value),
+              onLevelChanged: (value) => setState(() => _levelFilter = value),
+            ),
+            Divider(
+              height: 1,
+              thickness: 0.4,
+              color: colors.outlineVariant.withValues(alpha: 0.6),
+            ),
+            Expanded(
+              child: widget.expanded ? list : const SizedBox.shrink(),
+            ),
+          ] else
+            Expanded(
+              child: _ShellTerminal(
+                terminal: _shellTerminal,
+                focusNode: _shellFocusNode,
+              ),
+            ),
         ],
       ),
     );
@@ -2125,24 +2682,150 @@ class _ConsoleEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 面板拖到最小高度时内容区有限，可滚动避免 RenderFlex 溢出
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isFiltered ? Icons.filter_list_off : Icons.terminal_rounded,
-            size: 28,
-            color: context.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 12,
-              color: context.colorScheme.onSurfaceVariant,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isFiltered ? Icons.filter_list_off : Icons.terminal_rounded,
+              size: 28,
+              color: context.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              style: TextStyle(
+                fontSize: 12,
+                color: context.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConsoleTabBar extends StatelessWidget {
+  const _ConsoleTabBar({
+    required this.terminalSelected,
+    required this.onLogs,
+    required this.onTerminal,
+  });
+
+  final bool terminalSelected;
+  final VoidCallback onLogs;
+  final VoidCallback onTerminal;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colorScheme;
+    Widget tab({
+      required String label,
+      required IconData icon,
+      required bool selected,
+      required VoidCallback onTap,
+    }) {
+      return InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? colors.primary : Colors.transparent,
+                width: 2,
+              ),
             ),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: selected
+                    ? colors.primary
+                    : colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: selected ? colors.primary : colors.onSurfaceVariant,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        tab(
+          label: '日志',
+          icon: Icons.article_outlined,
+          selected: !terminalSelected,
+          onTap: onLogs,
+        ),
+        tab(
+          label: '终端',
+          icon: Icons.terminal,
+          selected: terminalSelected,
+          onTap: onTerminal,
+        ),
+      ],
+    );
+  }
+}
+
+/// 真正的终端视图：缓冲区、光标、滚动和按键都由 xterm 负责。
+class _ShellTerminal extends StatelessWidget {
+  const _ShellTerminal({required this.terminal, required this.focusNode});
+
+  final Terminal terminal;
+  final FocusNode focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFF0C0C0C),
+      child: TerminalView(
+        terminal,
+        focusNode: focusNode,
+        autofocus: true,
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        textStyle: const TerminalStyle(fontSize: 13, fontFamily: 'monospace'),
+        theme: const TerminalTheme(
+          cursor: Color(0xFFB8E986),
+          selection: Color(0x5533A6FF),
+          foreground: Color(0xFFD6D6D6),
+          background: Color(0xFF0C0C0C),
+          black: Color(0xFF1A1A1A),
+          red: Color(0xFFEF9A9A),
+          green: Color(0xFFB8E986),
+          yellow: Color(0xFFFFD54F),
+          blue: Color(0xFF82B1FF),
+          magenta: Color(0xFFCE93D8),
+          cyan: Color(0xFF80DEEA),
+          white: Color(0xFFD6D6D6),
+          brightBlack: Color(0xFF6B6B6B),
+          brightRed: Color(0xFFEF9A9A),
+          brightGreen: Color(0xFFB8E986),
+          brightYellow: Color(0xFFFFD54F),
+          brightBlue: Color(0xFF82B1FF),
+          brightMagenta: Color(0xFFCE93D8),
+          brightCyan: Color(0xFF80DEEA),
+          brightWhite: Color(0xFFFFFFFF),
+          searchHitBackground: Color(0xFFFFD54F),
+          searchHitBackgroundCurrent: Color(0xFFFFB300),
+          searchHitForeground: Color(0xFF111111),
+        ),
       ),
     );
   }

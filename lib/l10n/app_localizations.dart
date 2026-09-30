@@ -512,6 +512,42 @@ abstract class AppLocalizations {
   /// **'收起输出面板'**
   String get desktopOutputCollapse;
 
+  /// No description provided for @desktopShellHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入 shell 命令，↑ 切换历史'**
+  String get desktopShellHint;
+
+  /// No description provided for @desktopShellSuTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'以 su（root）执行'**
+  String get desktopShellSuTooltip;
+
+  /// No description provided for @desktopShellRunTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行命令'**
+  String get desktopShellRunTooltip;
+
+  /// No description provided for @desktopShellStatusNoDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接设备，无法执行命令'**
+  String get desktopShellStatusNoDevice;
+
+  /// No description provided for @desktopShellDisconnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'与设备的连接已断开'**
+  String get desktopShellDisconnected;
+
+  /// No description provided for @desktopShellSessionClosed.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话已结束'**
+  String get desktopShellSessionClosed;
+
   /// No description provided for @desktopStatusNoDevice.
   ///
   /// In zh, this message translates to:

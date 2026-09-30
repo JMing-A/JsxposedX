@@ -237,6 +237,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopOutputCollapse => 'Collapse output panel';
 
   @override
+  String get desktopShellHint => 'Enter shell command… (↑ for history)';
+
+  @override
+  String get desktopShellSuTooltip => 'Run with su (root)';
+
+  @override
+  String get desktopShellRunTooltip => 'Run command';
+
+  @override
+  String get desktopShellStatusNoDevice =>
+      'No device connected, cannot run command';
+
+  @override
+  String get desktopShellDisconnected => 'Connection to device lost';
+
+  @override
+  String get desktopShellSessionClosed => 'Session closed';
+
+  @override
   String get desktopStatusNoDevice => 'No device';
 
   @override

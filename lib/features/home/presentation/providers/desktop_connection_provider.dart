@@ -87,6 +87,20 @@ class AdbCommandResult {
   }
 }
 
+/// 设备端 shell 命令执行结果
+@immutable
+class DesktopShellResult {
+  const DesktopShellResult({
+    required this.exitCode,
+    required this.stdout,
+    required this.stderr,
+  });
+
+  final int exitCode;
+  final String stdout;
+  final String stderr;
+}
+
 @immutable
 class DesktopProject {
   const DesktopProject({
@@ -524,6 +538,48 @@ class DesktopConnectionNotifier extends Notifier<DesktopConnectionState> {
         'enabled': enabled,
       },
     );
+  }
+
+  /// 在设备端执行 shell 命令，默认以 su（root）运行
+  Future<DesktopShellResult> execShell({
+    required String command,
+    bool useSu = true,
+  }) async {
+    // 设备端 Process.run 自身 100s 超时，这里留出协议往返余量
+    final response = await request(
+      JsxposedMethod.shellExec,
+      params: {'command': command, 'useSu': useSu},
+      timeout: const Duration(seconds: 120),
+    );
+    final result = _resultMap(response);
+    return DesktopShellResult(
+      exitCode: (result['exitCode'] as num?)?.toInt() ?? -1,
+      stdout: result['stdout'] as String? ?? '',
+      stderr: result['stderr'] as String? ?? '',
+    );
+  }
+
+  /// 开启设备端常驻 shell 会话，同一会话内 cd/export 等状态持续保留
+  Future<bool> openShellSession({bool useSu = true}) async {
+    final response = await request(
+      JsxposedMethod.shellOpen,
+      params: {'useSu': useSu},
+    );
+    final result = _resultMap(response);
+    return result['opened'] as bool? ?? false;
+  }
+
+  /// 向常驻会话写入数据，输出由 shell.output 事件异步推送
+  Future<void> writeShellSession(String data) async {
+    await request(
+      JsxposedMethod.shellWrite,
+      params: {'data': data},
+    );
+  }
+
+  /// 关闭常驻 shell 会话
+  Future<void> closeShellSession() async {
+    await request(JsxposedMethod.shellClose);
   }
 
   /// 保存并运行：内容先落到手机端，再由手机端完成注入。

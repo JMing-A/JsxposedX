@@ -227,6 +227,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopOutputCollapse => '收起输出面板';
 
   @override
+  String get desktopShellHint => '输入 shell 命令，↑ 切换历史';
+
+  @override
+  String get desktopShellSuTooltip => '以 su（root）执行';
+
+  @override
+  String get desktopShellRunTooltip => '执行命令';
+
+  @override
+  String get desktopShellStatusNoDevice => '未连接设备，无法执行命令';
+
+  @override
+  String get desktopShellDisconnected => '与设备的连接已断开';
+
+  @override
+  String get desktopShellSessionClosed => '会话已结束';
+
+  @override
   String get desktopStatusNoDevice => '未连接设备';
 
   @override

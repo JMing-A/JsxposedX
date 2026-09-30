@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -245,6 +246,14 @@ class AndroidDesktopBridgeServer {
         return _toggleScript(request.params);
       case JsxposedMethod.scriptRun:
         return _runScript(request.params);
+      case JsxposedMethod.shellExec:
+        return _shellExec(request.params);
+      case JsxposedMethod.shellOpen:
+        return _shellOpen(request.params);
+      case JsxposedMethod.shellWrite:
+        return _shellWrite(request.params);
+      case JsxposedMethod.shellClose:
+        return _shellCloseSession();
       case JsxposedMethod.consoleGetState:
         return _consoleHost().getState();
       case JsxposedMethod.consoleSetPaused:
@@ -495,6 +504,104 @@ class AndroidDesktopBridgeServer {
       restartApp: restartApp,
     );
     return {'ran': true, 'restartApp': restartApp};
+  }
+
+  /// 执行 shell 命令：useSu 为真时通过 su -c 以 root 运行，默认开启。
+  Future<Map<String, dynamic>> _shellExec(Map<String, dynamic>? params) async {
+    final command = _requireString(params, 'command');
+    final useSu = params?['useSu'] as bool? ?? true;
+    try {
+      // 比桌面端 120s 的请求超时稍短，超时先在设备侧返回错误
+      final result = await Process.run(
+        useSu ? 'su' : 'sh',
+        ['-c', command],
+        stdoutEncoding: utf8,
+        stderrEncoding: utf8,
+      ).timeout(const Duration(seconds: 100));
+      return {
+        'exitCode': result.exitCode,
+        'stdout': result.stdout,
+        'stderr': result.stderr,
+      };
+    } on TimeoutException {
+      throw const _ProtocolException(
+        JsxposedErrorCode.internalError,
+        'Shell command timed out',
+      );
+    } on ProcessException catch (error) {
+      // su/sh 不存在或执行环境异常，把原因带回给桌面端
+      return {'exitCode': -1, 'stdout': '', 'stderr': error.message};
+    }
+  }
+
+  Process? _shellProcess;
+  StreamSubscription<String>? _shellStdoutSub;
+  StreamSubscription<String>? _shellStderrSub;
+
+  /// 常驻 shell 会话：同一进程内持续读写，使 cd/export 等状态跨命令保留。
+  /// 非交互模式（不传 -i）行为确定，提示符与回显由 PC 端终端自行维护。
+  Future<Map<String, dynamic>> _shellOpen(Map<String, dynamic>? params) async {
+    final useSu = params?['useSu'] as bool? ?? true;
+    await _shellCloseSession();
+    try {
+      final process = await Process.start(
+        useSu ? 'su' : 'sh',
+        useSu ? const ['-c', 'sh'] : const <String>[],
+      );
+      _shellProcess = process;
+      _shellStdoutSub = process.stdout
+          .transform(utf8.decoder)
+          .listen((data) => _emitShellOutput('stdout', data));
+      _shellStderrSub = process.stderr
+          .transform(utf8.decoder)
+          .listen((data) => _emitShellOutput('stderr', data));
+      unawaited(
+        process.exitCode.then((code) {
+          // 会话自然结束（如执行 exit）时清理并通知 PC 端
+          if (_shellProcess != process) return;
+          unawaited(_shellStdoutSub?.cancel());
+          unawaited(_shellStderrSub?.cancel());
+          _shellProcess = null;
+          broadcast(JsxposedEvent.shellExit, {'exitCode': code});
+        }),
+      );
+      return {'opened': true, 'useSu': useSu};
+    } on ProcessException catch (error) {
+      return {'opened': false, 'stderr': error.message};
+    }
+  }
+
+  Future<Map<String, dynamic>> _shellWrite(Map<String, dynamic>? params) async {
+    final data = _requireString(params, 'data');
+    final process = _shellProcess;
+    if (process == null) {
+      throw const _ProtocolException(
+        JsxposedErrorCode.internalError,
+        'Shell session is not open',
+      );
+    }
+    process.stdin.write(data);
+    await process.stdin.flush();
+    return {'written': data.length};
+  }
+
+  Future<Map<String, dynamic>> _shellCloseSession() async {
+    final process = _shellProcess;
+    _shellProcess = null;
+    await _shellStdoutSub?.cancel();
+    await _shellStderrSub?.cancel();
+    _shellStdoutSub = null;
+    _shellStderrSub = null;
+    if (process != null) {
+      process.kill();
+      await process.stdin.close();
+    }
+    return {'closed': true};
+  }
+
+  void _emitShellOutput(String stream, String data) {
+    if (data.isEmpty) return;
+    broadcast(JsxposedEvent.shellOutput, {'stream': stream, 'data': data});
   }
 
   Future<List<String>> _scriptNames(String packageName, String source) {
